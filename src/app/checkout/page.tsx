@@ -44,11 +44,12 @@ export default function CheckoutPage() {
 
     const total = cartTotal + shippingCost;
 
-    useEffect(() => {
-        if (!authLoading && !isAuthenticated) {
-            router.push('/auth/login?callbackUrl=/checkout');
-        }
-    }, [isAuthenticated, authLoading, router]);
+    // Auth redirect removed to allow guest checkout until payment
+    // useEffect(() => {
+    //     if (!authLoading && !isAuthenticated) {
+    //         router.push('/auth/login?callbackUrl=/checkout');
+    //     }
+    // }, [isAuthenticated, authLoading, router]);
 
     // Pre-fill user data
     useEffect(() => {
@@ -84,6 +85,11 @@ export default function CheckoutPage() {
 
     const nextStep = () => {
         if (validateStep(currentStep)) {
+            if (currentStep === 2 && !isAuthenticated) {
+                // If moving to Payment (Step 3) and not authenticated, redirect to login
+                router.push('/auth/login?callbackUrl=/checkout');
+                return;
+            }
             setCurrentStep(prev => Math.min(prev + 1, 3));
         }
     };
@@ -151,7 +157,7 @@ export default function CheckoutPage() {
         }
     };
 
-    if (authLoading || !isAuthenticated) return null;
+    if (authLoading) return null;
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
