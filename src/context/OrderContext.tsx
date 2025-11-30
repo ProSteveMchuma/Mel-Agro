@@ -27,6 +27,7 @@ export interface Order {
         details: string;
     };
     paymentStatus?: 'Paid' | 'Unpaid';
+    notificationPreferences?: string[];
 }
 
 export interface Notification {

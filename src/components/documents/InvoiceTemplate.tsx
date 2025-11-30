@@ -7,14 +7,14 @@ interface InvoiceTemplateProps {
 
 export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order }) => {
     return (
-        <div className="bg-white p-8 max-w-4xl mx-auto font-sans text-gray-900" id="invoice-template">
+        <div className="bg-white p-4 md:p-8 max-w-4xl mx-auto font-sans text-gray-900" id="invoice-template">
             {/* Header */}
-            <div className="flex justify-between items-start mb-12 border-b border-gray-200 pb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start mb-8 md:mb-12 border-b border-gray-200 pb-8 gap-6">
                 <div>
-                    <h1 className="text-4xl font-bold text-melagro-primary mb-2">INVOICE</h1>
+                    <h1 className="text-3xl md:text-4xl font-bold text-melagro-primary mb-2">INVOICE</h1>
                     <p className="text-gray-500">#{order.id}</p>
                 </div>
-                <div className="text-right">
+                <div className="md:text-right">
                     <div className="text-2xl font-bold text-gray-900 mb-1">MelAgro</div>
                     <p className="text-gray-500 text-sm">Premium Agricultural Solutions</p>
                     <p className="text-gray-500 text-sm">P.O. Box 123, Nairobi, Kenya</p>
@@ -24,14 +24,14 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order }) => {
             </div>
 
             {/* Info Grid */}
-            <div className="grid grid-cols-2 gap-12 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-12">
                 <div>
                     <h3 className="text-gray-500 uppercase text-xs font-bold tracking-wider mb-4">Bill To</h3>
                     <div className="font-medium">{order.userEmail}</div>
                     <div className="text-gray-600 mt-1">{order.shippingAddress?.details || 'Address not provided'}</div>
                     <div className="text-gray-600">{order.shippingAddress?.county || ''}</div>
                 </div>
-                <div className="text-right">
+                <div className="md:text-right">
                     <div className="mb-4">
                         <span className="text-gray-500 uppercase text-xs font-bold tracking-wider mr-4">Invoice Date</span>
                         <span className="font-medium">{new Date(order.date).toLocaleDateString()}</span>
@@ -45,30 +45,32 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order }) => {
             </div>
 
             {/* Items Table */}
-            <table className="w-full mb-12">
-                <thead>
-                    <tr className="border-b-2 border-gray-100">
-                        <th className="text-left py-4 font-bold text-gray-900">Item Description</th>
-                        <th className="text-center py-4 font-bold text-gray-900">Quantity</th>
-                        <th className="text-right py-4 font-bold text-gray-900">Price</th>
-                        <th className="text-right py-4 font-bold text-gray-900">Total</th>
-                    </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                    {order.items.map((item, i) => (
-                        <tr key={i}>
-                            <td className="py-4 text-gray-900">{item.name}</td>
-                            <td className="py-4 text-center text-gray-600">{item.quantity}</td>
-                            <td className="py-4 text-right text-gray-600">KES {item.price.toLocaleString()}</td>
-                            <td className="py-4 text-right font-medium text-gray-900">KES {(item.price * item.quantity).toLocaleString()}</td>
+            <div className="overflow-x-auto">
+                <table className="w-full mb-12 min-w-[600px]">
+                    <thead>
+                        <tr className="border-b-2 border-gray-100">
+                            <th className="text-left py-4 font-bold text-gray-900">Item Description</th>
+                            <th className="text-center py-4 font-bold text-gray-900">Quantity</th>
+                            <th className="text-right py-4 font-bold text-gray-900">Price</th>
+                            <th className="text-right py-4 font-bold text-gray-900">Total</th>
                         </tr>
-                    ))}
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                        {order.items.map((item, i) => (
+                            <tr key={i}>
+                                <td className="py-4 text-gray-900">{item.name}</td>
+                                <td className="py-4 text-center text-gray-600">{item.quantity}</td>
+                                <td className="py-4 text-right text-gray-600">KES {item.price.toLocaleString()}</td>
+                                <td className="py-4 text-right font-medium text-gray-900">KES {(item.price * item.quantity).toLocaleString()}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
 
             {/* Totals */}
             <div className="flex justify-end mb-12">
-                <div className="w-64 space-y-3">
+                <div className="w-full md:w-64 space-y-3">
                     <div className="flex justify-between text-gray-600">
                         <span>Subtotal</span>
                         <span>KES {order.total.toLocaleString()}</span>

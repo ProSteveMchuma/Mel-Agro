@@ -24,8 +24,32 @@ export const NotificationService = {
     },
 
     sendWhatsApp: async (to: string, message: string) => {
-        console.log(`[WHATSAPP] To: ${to}, Message: ${message}`);
-        // WhatsApp API integration (e.g., Twilio/Meta) would go here.
-        // For now, we'll keep this as a log or potentially use the SMS route if appropriate.
+        try {
+            await fetch('/api/notifications/whatsapp', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to, message }),
+            });
+        } catch (error) {
+            console.error("WhatsApp Notification Error:", error);
+        }
+    },
+
+    notify: async (preferences: string[], contact: { email?: string, phone?: string }, message: { subject: string, emailBody: string, smsBody: string }) => {
+        const promises = [];
+
+        if (preferences.includes('email') && contact.email) {
+            promises.push(NotificationService.sendEmail(contact.email, message.subject, message.emailBody));
+        }
+
+        if (preferences.includes('sms') && contact.phone) {
+            promises.push(NotificationService.sendSMS(contact.phone, message.smsBody));
+        }
+
+        if (preferences.includes('whatsapp') && contact.phone) {
+            promises.push(NotificationService.sendWhatsApp(contact.phone, message.smsBody));
+        }
+
+        await Promise.all(promises);
     }
 };

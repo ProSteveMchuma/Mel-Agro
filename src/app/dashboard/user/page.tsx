@@ -25,6 +25,7 @@ export default function UserDashboard() {
     const [profileForm, setProfileForm] = useState({ name: '', email: '', phone: '', address: '' });
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [printMode, setPrintMode] = useState<'invoice' | 'receipt' | 'delivery' | null>(null);
+    const [printOrder, setPrintOrder] = useState<Order | null>(null);
 
     useEffect(() => {
         if (isLoading) return;
@@ -66,12 +67,10 @@ export default function UserDashboard() {
         alert('Profile updated successfully!');
     };
 
-    const handlePrint = (type: 'invoice' | 'receipt' | 'delivery') => {
+    const handlePrint = (order: Order, type: 'invoice' | 'receipt' | 'delivery') => {
+        setPrintOrder(order);
         setPrintMode(type);
-        setTimeout(() => {
-            window.print();
-            // Optional: setPrintMode(null) after print, but user might want to see preview
-        }, 100);
+        // Removed auto-print
     };
 
     if (isLoading || !user) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagro-primary"></div></div>;
@@ -308,7 +307,7 @@ export default function UserDashboard() {
         <div className="max-w-2xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-6">Customer Support</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <a href="https://wa.me/254700000000" target="_blank" className="bg-green-50 p-6 rounded-2xl border border-green-100 hover:shadow-md transition-all flex flex-col items-center text-center group">
+                <a href="https://wa.me/254748970757" target="_blank" className="bg-green-50 p-6 rounded-2xl border border-green-100 hover:shadow-md transition-all flex flex-col items-center text-center group">
                     <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-4 group-hover:scale-110 transition-transform">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" /></svg>
                     </div>
@@ -353,19 +352,22 @@ export default function UserDashboard() {
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
             {/* Print Overlay */}
-            {printMode && selectedOrder && (
+            {printMode && printOrder && (
                 <div className="fixed inset-0 z-[100] bg-white overflow-auto print:overflow-visible">
-                    <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0">
-                        <div className="font-bold">Print Preview: {printMode.toUpperCase()}</div>
+                    <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0 z-50">
+                        <div className="font-bold">View: {printMode.toUpperCase()}</div>
                         <div className="flex gap-4">
-                            <button onClick={() => window.print()} className="bg-melagro-primary px-4 py-2 rounded-lg hover:bg-melagro-secondary">Print Now</button>
-                            <button onClick={() => setPrintMode(null)} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600">Close</button>
+                            <button onClick={() => window.print()} className="bg-melagro-primary px-4 py-2 rounded-lg hover:bg-melagro-secondary flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                Print
+                            </button>
+                            <button onClick={() => { setPrintMode(null); setPrintOrder(null); }} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600">Close</button>
                         </div>
                     </div>
-                    <div className="p-8 print:p-0">
-                        {printMode === 'invoice' && <InvoiceTemplate order={selectedOrder} />}
-                        {printMode === 'receipt' && <ReceiptTemplate order={selectedOrder} />}
-                        {printMode === 'delivery' && <DeliveryNoteTemplate order={selectedOrder} />}
+                    <div className="p-4 md:p-8 print:p-0 max-w-4xl mx-auto">
+                        {printMode === 'invoice' && <InvoiceTemplate order={printOrder} />}
+                        {printMode === 'receipt' && <ReceiptTemplate order={printOrder} />}
+                        {printMode === 'delivery' && <DeliveryNoteTemplate order={printOrder} />}
                     </div>
                 </div>
             )}
@@ -374,7 +376,6 @@ export default function UserDashboard() {
                 <Header />
 
                 <main className="flex-grow py-8 lg:py-12">
-                    {/* ... (existing main content) ... */}
                     <div className="container-custom">
                         <div className="flex flex-col lg:flex-row gap-8">
                             {/* Sidebar */}
@@ -424,24 +425,24 @@ export default function UserDashboard() {
                                 <button onClick={() => handleReorder(selectedOrder)} className="col-span-2 btn-primary w-full">Buy Again</button>
 
                                 {/* Invoice - Always Available */}
-                                <button onClick={() => handlePrint('invoice')} className="btn-secondary flex items-center justify-center gap-2">
+                                <button onClick={() => handlePrint(selectedOrder, 'invoice')} className="btn-secondary flex items-center justify-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                                    Invoice
+                                    View Invoice
                                 </button>
 
                                 {/* Receipt - Only if Paid */}
                                 {(selectedOrder.paymentStatus === 'Paid' || selectedOrder.status === 'Delivered') && (
-                                    <button onClick={() => handlePrint('receipt')} className="btn-secondary flex items-center justify-center gap-2">
+                                    <button onClick={() => handlePrint(selectedOrder, 'receipt')} className="btn-secondary flex items-center justify-center gap-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                        Receipt
+                                        View Receipt
                                     </button>
                                 )}
 
                                 {/* Delivery Note - Only if Delivered */}
                                 {selectedOrder.status === 'Delivered' && (
-                                    <button onClick={() => handlePrint('delivery')} className="col-span-2 btn-secondary flex items-center justify-center gap-2">
+                                    <button onClick={() => handlePrint(selectedOrder, 'delivery')} className="col-span-2 btn-secondary flex items-center justify-center gap-2">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        Delivery Note
+                                        View Delivery Note
                                     </button>
                                 )}
                             </div>

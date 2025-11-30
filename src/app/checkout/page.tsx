@@ -7,14 +7,11 @@ import { useCart } from "@/context/CartContext";
 import { useOrders } from "@/context/OrderContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 
 import { getDeliveryCost, KENYAN_COUNTIES, DELIVERY_ZONES } from "@/lib/delivery";
 import { PaymentService } from "@/lib/payment";
 import { NotificationService } from "@/lib/notifications";
 import OrderSummary from "@/components/checkout/OrderSummary";
-
-const LocationPicker = dynamic(() => import('@/components/checkout/LocationPicker'), { ssr: false });
 
 export default function CheckoutPage() {
     const { isAuthenticated, user, isLoading: authLoading } = useAuth();
@@ -38,11 +35,10 @@ export default function CheckoutPage() {
         phone: "",
         address: "",
         city: "",
-        county: "Nairobi",
-        latitude: -1.2921,
-        longitude: 36.8219
+        county: "Nairobi"
     });
 
+    const [notificationPreferences, setNotificationPreferences] = useState<string[]>(['email', 'sms']);
     const [paymentMethod, setPaymentMethod] = useState('mpesa');
     const [shippingMethod, setShippingMethod] = useState('delivery'); // 'collection', 'delivery', 'custom'
     const [shippingCost, setShippingCost] = useState(getDeliveryCost('Nairobi'));
@@ -78,9 +74,12 @@ export default function CheckoutPage() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleLocationSelect = (lat: number, lng: number) => {
-        setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }));
-        // Here you could call a reverse geocoding API to fill address/city
+    const handleNotificationChange = (channel: string) => {
+        setNotificationPreferences(prev =>
+            prev.includes(channel)
+                ? prev.filter(p => p !== channel)
+                : [...prev, channel]
+        );
     };
 
     const validateStep = (step: number) => {
@@ -142,18 +141,25 @@ export default function CheckoutPage() {
                 shippingAddress: {
                     county: formData.county,
                     details: `${formData.address}, ${formData.city}`,
-                    coordinates: { lat: formData.latitude, lng: formData.longitude },
                     method: shippingMethod
                 },
                 status: paymentMethod === 'cod' ? 'Pending' : 'Processing',
-                paymentStatus: (paymentMethod === 'cod' ? 'Unpaid' : 'Paid') as 'Paid' | 'Unpaid'
+                paymentStatus: (paymentMethod === 'cod' ? 'Unpaid' : 'Paid') as 'Paid' | 'Unpaid',
+                notificationPreferences: notificationPreferences
             };
 
             const newOrder = await addOrder(orderData);
 
-            // 3. Send Notifications
-            await NotificationService.sendEmail(user.email || "", "Order Confirmation", "Your order has been placed.");
-            await NotificationService.sendSMS(formData.phone, `Order placed successfully. Total: KES ${total}`);
+            // 3. Send Notifications (using preferences)
+            await NotificationService.notify(
+                notificationPreferences,
+                { email: user.email || "", phone: formData.phone },
+                {
+                    subject: "Order Confirmation",
+                    emailBody: "Your order has been placed successfully.",
+                    smsBody: `Order #${newOrder.id.substr(0, 5)} placed. Total: KES ${total}`
+                }
+            );
 
             // 4. Clear Cart and Redirect
             clearCart();
@@ -234,11 +240,7 @@ export default function CheckoutPage() {
                                             <input name="phone" value={formData.phone} onChange={handleInputChange} type="tel" placeholder="07..." className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary" />
                                         </div>
                                         <div className="md:col-span-2">
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Location</label>
-                                            <div className="mb-2">
-                                                <LocationPicker onLocationSelect={handleLocationSelect} initialLat={formData.latitude} initialLng={formData.longitude} />
-                                            </div>
-                                            <p className="text-xs text-gray-500 mb-2">Drag the pin to your exact delivery location.</p>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
                                             <input name="address" value={formData.address} onChange={handleInputChange} type="text" placeholder="Street, Building, etc." className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary" />
                                         </div>
                                         <div>
@@ -252,6 +254,40 @@ export default function CheckoutPage() {
                                                     <option key={county} value={county}>{county}</option>
                                                 ))}
                                             </select>
+                                        </div>
+
+                                        {/* Notification Preferences */}
+                                        <div className="md:col-span-2 pt-4 border-t border-gray-100">
+                                            <label className="block text-sm font-medium text-gray-700 mb-3">Notification Preferences</label>
+                                            <div className="flex gap-6">
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={notificationPreferences.includes('email')}
+                                                        onChange={() => handleNotificationChange('email')}
+                                                        className="rounded text-melagro-primary focus:ring-melagro-primary"
+                                                    />
+                                                    <span className="text-sm text-gray-600">Email</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={notificationPreferences.includes('sms')}
+                                                        onChange={() => handleNotificationChange('sms')}
+                                                        className="rounded text-melagro-primary focus:ring-melagro-primary"
+                                                    />
+                                                    <span className="text-sm text-gray-600">SMS</span>
+                                                </label>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={notificationPreferences.includes('whatsapp')}
+                                                        onChange={() => handleNotificationChange('whatsapp')}
+                                                        className="rounded text-melagro-primary focus:ring-melagro-primary"
+                                                    />
+                                                    <span className="text-sm text-gray-600">WhatsApp</span>
+                                                </label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

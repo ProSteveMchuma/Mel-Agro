@@ -8,58 +8,53 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'To (phone number) and Message are required' }, { status: 400 });
         }
 
-        const apiKey = process.env.AFRICASTALKING_API_KEY;
-        const username = process.env.AFRICASTALKING_USERNAME; // Usually 'sandbox' for dev
-        const from = process.env.AFRICASTALKING_SENDER_ID; // Optional
+        const accountSid = process.env.TWILIO_ACCOUNT_SID;
+        const authToken = process.env.TWILIO_AUTH_TOKEN;
+        const from = process.env.TWILIO_PHONE_NUMBER; // You might need to add this to .env.local if different from WhatsApp
 
-        if (!apiKey || !username) {
-            console.warn("Missing Africa's Talking environment variables. Logging SMS instead.");
+        // Note: For Twilio SMS, 'from' must be a Twilio phone number or Alphanumeric Sender ID (where supported)
+        // If not set, we'll try to use the WhatsApp number but without the 'whatsapp:' prefix if possible,
+        // or fallback to mock if no number is available.
+
+        if (!accountSid || !authToken) {
+            console.warn("Missing Twilio environment variables. Logging SMS instead.");
             console.log(`[MOCK SMS] To: ${to}, Message: ${message}`);
             return NextResponse.json({
                 success: true,
-                message: "SMS logged to console (Mock Mode - Missing SMS Config)"
+                message: "SMS logged to console (Mock Mode - Missing Twilio Config)"
             });
         }
 
-        // Africa's Talking API Endpoint
-        const url = 'https://api.africastalking.com/version1/messaging';
-        // Use sandbox URL if username is 'sandbox'
-        const endpoint = username === 'sandbox'
-            ? 'https://api.sandbox.africastalking.com/version1/messaging'
-            : url;
+        const client = require('twilio')(accountSid, authToken);
 
-        const formData = new URLSearchParams();
-        formData.append('username', username);
-        formData.append('to', to);
-        formData.append('message', message);
-        if (from) formData.append('from', from);
+        // Use a specific Twilio SMS number if available, otherwise try to reuse the WhatsApp number (stripping prefix)
+        // or default to a hardcoded one if you have one.
+        // For now, let's assume the user might add TWILIO_SMS_NUMBER or we use a fallback.
+        const smsFrom = process.env.TWILIO_SMS_NUMBER || process.env.TWILIO_WHATSAPP_NUMBER?.replace('whatsapp:', '') || '';
 
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'apiKey': apiKey,
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'Accept': 'application/json'
-            },
-            body: formData
-        });
-
-        const data = await response.json();
-
-        // Check for success in AT response structure
-        if (data.SMSMessageData && data.SMSMessageData.Recipients && data.SMSMessageData.Recipients.length > 0) {
+        if (!smsFrom) {
+            console.warn("Missing Twilio Sender Number. Logging SMS instead.");
+            console.log(`[MOCK SMS] To: ${to}, Message: ${message}`);
             return NextResponse.json({
                 success: true,
-                message: 'SMS sent successfully',
-                details: data.SMSMessageData
+                message: "SMS logged to console (Mock Mode - Missing Sender Number)"
             });
-        } else {
-            console.error("Africa's Talking Error:", data);
-            return NextResponse.json({ success: false, message: 'Failed to send SMS via provider' }, { status: 500 });
         }
 
+        const response = await client.messages.create({
+            body: message,
+            from: smsFrom,
+            to: to
+        });
+
+        return NextResponse.json({
+            success: true,
+            message: 'SMS sent successfully via Twilio',
+            details: response
+        });
+
     } catch (error) {
-        console.error('SMS API Error:', error);
-        return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
+        console.error('Twilio SMS Error:', error);
+        return NextResponse.json({ success: false, message: 'Failed to send SMS via Twilio' }, { status: 500 });
     }
 }

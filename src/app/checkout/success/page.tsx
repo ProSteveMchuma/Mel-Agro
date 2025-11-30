@@ -25,9 +25,7 @@ function SuccessContent() {
 
     const handlePrint = (type: 'invoice' | 'receipt') => {
         setPrintMode(type);
-        setTimeout(() => {
-            window.print();
-        }, 100);
+        // Removed auto-print to allow viewing first
     };
 
     return (
@@ -35,14 +33,17 @@ function SuccessContent() {
             {/* Print Overlay */}
             {printMode && order && (
                 <div className="fixed inset-0 z-[100] bg-white overflow-auto print:overflow-visible">
-                    <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0">
-                        <div className="font-bold">Print Preview: {printMode.toUpperCase()}</div>
+                    <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0 z-50">
+                        <div className="font-bold">View: {printMode.toUpperCase()}</div>
                         <div className="flex gap-4">
-                            <button onClick={() => window.print()} className="bg-melagro-primary px-4 py-2 rounded-lg hover:bg-melagro-secondary">Print Now</button>
+                            <button onClick={() => window.print()} className="bg-melagro-primary px-4 py-2 rounded-lg hover:bg-melagro-secondary flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                Print
+                            </button>
                             <button onClick={() => setPrintMode(null)} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600">Close</button>
                         </div>
                     </div>
-                    <div className="p-8 print:p-0">
+                    <div className="p-4 md:p-8 print:p-0 max-w-4xl mx-auto">
                         {printMode === 'invoice' && <InvoiceTemplate order={order} />}
                         {printMode === 'receipt' && <ReceiptTemplate order={order} />}
                     </div>
@@ -68,15 +69,15 @@ function SuccessContent() {
                         {order && (
                             <div className="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-100">
                                 <p className="text-sm text-gray-500 mb-2">Order #{order.id}</p>
-                                <div className="flex gap-3 justify-center">
+                                <div className="flex gap-3 justify-center flex-wrap">
                                     <button onClick={() => handlePrint('invoice')} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                                        Download Invoice
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        View Invoice
                                     </button>
                                     {(order.paymentMethod === 'mpesa' || order.paymentMethod === 'card') && (
                                         <button onClick={() => handlePrint('receipt')} className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                            Download Receipt
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                            View Receipt
                                         </button>
                                     )}
                                 </div>
