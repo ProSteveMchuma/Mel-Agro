@@ -1,0 +1,446 @@
+"use client";
+import Header from "@/components/Header";
+import Footer from "@/components/Footer";
+import { useAuth } from "@/context/AuthContext";
+import { useOrders, Order } from "@/context/OrderContext";
+import { useCart } from "@/context/CartContext";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Image from "next/image";
+import Link from "next/link";
+import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
+import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
+import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplate";
+
+type Tab = 'dashboard' | 'orders' | 'profile' | 'support';
+
+export default function UserDashboard() {
+    const { user, isAuthenticated, isLoading, updateUserProfile } = useAuth();
+    const { orders, notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
+    const { addToCart } = useCart();
+    const router = useRouter();
+
+    const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [profileForm, setProfileForm] = useState({ name: '', email: '', phone: '', address: '' });
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [printMode, setPrintMode] = useState<'invoice' | 'receipt' | 'delivery' | null>(null);
+
+    useEffect(() => {
+        if (isLoading) return;
+        if (!isAuthenticated) {
+            router.push('/auth/login');
+        } else if (user) {
+            setProfileForm({
+                name: user.name || '',
+                email: user.email || '',
+                phone: '', // Mock phone
+                address: 'P.O. Box 123, Nairobi' // Mock address
+            });
+        }
+    }, [isAuthenticated, isLoading, router, user]);
+
+    const handleReorder = (order: Order) => {
+        order.items.forEach(item => {
+            // Construct a product object from the order item
+            const product = {
+                id: String(item.id),
+                name: item.name,
+                price: item.price,
+                category: 'Reorder', // Fallback
+                image: item.image || '',
+                rating: 5,
+                reviews: 0,
+                inStock: true,
+                description: ''
+            };
+            addToCart(product, item.quantity);
+        });
+        alert('Items added to cart!');
+    };
+
+    const handleUpdateProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await updateUserProfile({ name: profileForm.name });
+        setIsEditingProfile(false);
+        alert('Profile updated successfully!');
+    };
+
+    const handlePrint = (type: 'invoice' | 'receipt' | 'delivery') => {
+        setPrintMode(type);
+        setTimeout(() => {
+            window.print();
+            // Optional: setPrintMode(null) after print, but user might want to see preview
+        }, 100);
+    };
+
+    if (isLoading || !user) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagro-primary"></div></div>;
+
+    const stats = {
+        totalOrders: orders.length,
+        activeOrders: orders.filter(o => o.status === 'Processing' || o.status === 'Shipped').length,
+        totalSpent: orders.reduce((acc, curr) => acc + curr.total, 0)
+    };
+
+    const renderSidebar = () => (
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-fit">
+            <div className="flex items-center gap-4 mb-8">
+                <div className="w-12 h-12 bg-melagro-primary/10 rounded-full flex items-center justify-center text-melagro-primary font-bold text-xl">
+                    {user.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                    <div className="font-bold text-gray-900">{user.name}</div>
+                    <div className="text-xs text-gray-500">{user.email}</div>
+                </div>
+            </div>
+
+            <nav className="space-y-2">
+                {[
+                    { id: 'dashboard', label: 'Dashboard', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg> },
+                    { id: 'orders', label: 'My Orders', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg> },
+                    { id: 'profile', label: 'Profile Settings', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
+                    { id: 'support', label: 'Support', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg> },
+                ].map((item) => (
+                    <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id as Tab)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === item.id
+                            ? 'bg-melagro-primary text-white shadow-md'
+                            : 'text-gray-600 hover:bg-gray-50'
+                            }`}
+                    >
+                        {item.icon}
+                        {item.label}
+                    </button>
+                ))}
+
+                <div className="pt-4 mt-4 border-t border-gray-100">
+                    <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                        Sign Out
+                    </button>
+                </div>
+            </nav>
+        </div>
+    );
+
+    const renderDashboard = () => (
+        <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div className="text-gray-500 text-sm mb-1">Total Orders</div>
+                    <div className="text-3xl font-bold text-gray-900">{stats.totalOrders}</div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div className="text-gray-500 text-sm mb-1">Active Orders</div>
+                    <div className="text-3xl font-bold text-melagro-primary">{stats.activeOrders}</div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <div className="text-gray-500 text-sm mb-1">Total Spent</div>
+                    <div className="text-3xl font-bold text-gray-900">KES {stats.totalSpent.toLocaleString()}</div>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-bold text-gray-900 mb-4">Recent Orders</h2>
+                {orders.slice(0, 3).map(order => (
+                    <div key={order.id} className="flex items-center justify-between py-4 border-b border-gray-50 last:border-0">
+                        <div>
+                            <div className="font-medium text-gray-900">Order #{order.id}</div>
+                            <div className="text-sm text-gray-500">{order.date}</div>
+                        </div>
+                        <div className="text-right">
+                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold mb-1 ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                                order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
+                                    'bg-yellow-100 text-yellow-700'
+                                }`}>
+                                {order.status}
+                            </span>
+                            <div className="font-bold text-sm">KES {order.total.toLocaleString()}</div>
+                        </div>
+                    </div>
+                ))}
+                <button onClick={() => setActiveTab('orders')} className="w-full mt-4 text-center text-melagro-primary font-medium text-sm hover:underline">
+                    View All Orders
+                </button>
+            </div>
+        </div>
+    );
+
+    const renderOrders = () => (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">My Orders</h2>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="divide-y divide-gray-100">
+                    {orders.map((order) => (
+                        <div key={order.id} className="p-6">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <h3 className="font-bold text-lg text-gray-900">Order #{order.id}</h3>
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                                            order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
+                                                'bg-yellow-100 text-yellow-700'
+                                            }`}>
+                                            {order.status}
+                                        </span>
+                                    </div>
+                                    <p className="text-sm text-gray-500">Placed on {order.date}</p>
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => setSelectedOrder(order)}
+                                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                                    >
+                                        View Details
+                                    </button>
+                                    <button
+                                        onClick={() => handleReorder(order)}
+                                        className="px-4 py-2 bg-melagro-primary text-white rounded-lg text-sm font-medium hover:bg-melagro-secondary transition-colors"
+                                    >
+                                        Buy Again
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-4 overflow-x-auto pb-2">
+                                {order.items.map((item, i) => (
+                                    <div key={i} className="flex-shrink-0 w-20">
+                                        <div className="aspect-square bg-gray-100 rounded-lg relative overflow-hidden mb-2">
+                                            {item.image ? (
+                                                <Image src={item.image} alt={item.name} fill className="object-cover" />
+                                            ) : (
+                                                <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No Img</div>
+                                            )}
+                                        </div>
+                                        <p className="text-xs text-gray-600 truncate">{item.name}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderProfile = () => (
+        <div className="max-w-2xl">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Profile Settings</h2>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                <form onSubmit={handleUpdateProfile} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+                            <input
+                                type="text"
+                                value={profileForm.name}
+                                onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                                disabled={!isEditingProfile}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20 disabled:bg-gray-50 disabled:text-gray-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                            <input
+                                type="email"
+                                value={profileForm.email}
+                                disabled
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
+                            <input
+                                type="tel"
+                                value={profileForm.phone}
+                                onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                                disabled={!isEditingProfile}
+                                placeholder="+254..."
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20 disabled:bg-gray-50 disabled:text-gray-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Default Delivery Address</label>
+                            <input
+                                type="text"
+                                value={profileForm.address}
+                                onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
+                                disabled={!isEditingProfile}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20 disabled:bg-gray-50 disabled:text-gray-500"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-4 pt-4">
+                        {isEditingProfile ? (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={() => setIsEditingProfile(false)}
+                                    className="px-6 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2 bg-melagro-primary text-white rounded-lg text-sm font-medium hover:bg-melagro-secondary"
+                                >
+                                    Save Changes
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setIsEditingProfile(true)}
+                                className="px-6 py-2 bg-gray-900 text-white rounded-lg text-sm font-medium hover:bg-gray-800"
+                            >
+                                Edit Profile
+                            </button>
+                        )}
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+
+    const renderSupport = () => (
+        <div className="max-w-2xl">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Customer Support</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <a href="https://wa.me/254700000000" target="_blank" className="bg-green-50 p-6 rounded-2xl border border-green-100 hover:shadow-md transition-all flex flex-col items-center text-center group">
+                    <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-4 group-hover:scale-110 transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" /></svg>
+                    </div>
+                    <h3 className="font-bold text-gray-900">Chat on WhatsApp</h3>
+                    <p className="text-sm text-gray-500 mt-1">Instant response</p>
+                </a>
+                <a href="mailto:support@melagro.com" className="bg-blue-50 p-6 rounded-2xl border border-blue-100 hover:shadow-md transition-all flex flex-col items-center text-center group">
+                    <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                    </div>
+                    <h3 className="font-bold text-gray-900">Email Support</h3>
+                    <p className="text-sm text-gray-500 mt-1">Response within 24h</p>
+                </a>
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+                <h3 className="font-bold text-gray-900 mb-4">Send us a message</h3>
+                <form className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                        <select className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20">
+                            <option>Order Inquiry</option>
+                            <option>Product Question</option>
+                            <option>Technical Support</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                        <textarea
+                            rows={4}
+                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                            placeholder="How can we help you?"
+                        ></textarea>
+                    </div>
+                    <button className="btn-primary w-full">Send Message</button>
+                </form>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
+            {/* Print Overlay */}
+            {printMode && selectedOrder && (
+                <div className="fixed inset-0 z-[100] bg-white overflow-auto print:overflow-visible">
+                    <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0">
+                        <div className="font-bold">Print Preview: {printMode.toUpperCase()}</div>
+                        <div className="flex gap-4">
+                            <button onClick={() => window.print()} className="bg-melagro-primary px-4 py-2 rounded-lg hover:bg-melagro-secondary">Print Now</button>
+                            <button onClick={() => setPrintMode(null)} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600">Close</button>
+                        </div>
+                    </div>
+                    <div className="p-8 print:p-0">
+                        {printMode === 'invoice' && <InvoiceTemplate order={selectedOrder} />}
+                        {printMode === 'receipt' && <ReceiptTemplate order={selectedOrder} />}
+                        {printMode === 'delivery' && <DeliveryNoteTemplate order={selectedOrder} />}
+                    </div>
+                </div>
+            )}
+
+            <div className="print:hidden">
+                <Header />
+
+                <main className="flex-grow py-8 lg:py-12">
+                    {/* ... (existing main content) ... */}
+                    <div className="container-custom">
+                        <div className="flex flex-col lg:flex-row gap-8">
+                            {/* Sidebar */}
+                            <div className="lg:w-1/4">
+                                {renderSidebar()}
+                            </div>
+
+                            {/* Main Content */}
+                            <div className="lg:w-3/4">
+                                {activeTab === 'dashboard' && renderDashboard()}
+                                {activeTab === 'orders' && renderOrders()}
+                                {activeTab === 'profile' && renderProfile()}
+                                {activeTab === 'support' && renderSupport()}
+                            </div>
+                        </div>
+                    </div>
+                </main>
+
+                {/* Order Details Modal */}
+                {selectedOrder && !printMode && (
+                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setSelectedOrder(null)}>
+                        <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-bold">Order #{selectedOrder.id}</h2>
+                                <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-gray-100 rounded-full">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {selectedOrder.items.map((item, i) => (
+                                    <div key={i} className="flex justify-between items-center border-b border-gray-100 pb-4">
+                                        <div>
+                                            <div className="font-medium">{item.name}</div>
+                                            <div className="text-sm text-gray-500">Qty: {item.quantity}</div>
+                                        </div>
+                                        <div className="font-bold">KES {(item.price * item.quantity).toLocaleString()}</div>
+                                    </div>
+                                ))}
+                                <div className="flex justify-between items-center pt-4 font-bold text-lg">
+                                    <span>Total</span>
+                                    <span>KES {selectedOrder.total.toLocaleString()}</span>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 grid grid-cols-2 gap-4">
+                                <button onClick={() => handleReorder(selectedOrder)} className="col-span-2 btn-primary w-full">Buy Again</button>
+                                <button onClick={() => handlePrint('invoice')} className="btn-secondary flex items-center justify-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                    Invoice
+                                </button>
+                                <button onClick={() => handlePrint('receipt')} className="btn-secondary flex items-center justify-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                    Receipt
+                                </button>
+                                <button onClick={() => handlePrint('delivery')} className="col-span-2 btn-secondary flex items-center justify-center gap-2">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    Delivery Note
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <Footer />
+            </div>
+        </div>
+    );
+}

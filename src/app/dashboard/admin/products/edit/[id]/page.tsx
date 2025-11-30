@@ -1,0 +1,55 @@
+"use client";
+import { useProducts } from "@/context/ProductContext";
+import { useRouter, useParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import ProductForm from "@/components/admin/ProductForm";
+import { Product } from "@/lib/mockData";
+
+export default function EditProductPage() {
+    const { getProduct, updateProduct, products } = useProducts();
+    const router = useRouter();
+    const params = useParams();
+    const id = params.id as string;
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [product, setProduct] = useState<Product | undefined>(undefined);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (products.length > 0) {
+            const foundProduct = getProduct(id);
+            setProduct(foundProduct);
+            setIsLoading(false);
+        }
+    }, [products, id, getProduct]);
+
+    const handleSubmit = async (data: Omit<Product, 'id'>) => {
+        setIsSubmitting(true);
+        try {
+            // Simulate network delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await updateProduct(id, data);
+            router.push('/dashboard/admin/products');
+        } catch (error) {
+            console.error("Failed to update product:", error);
+            alert("Failed to update product. Please try again.");
+            setIsSubmitting(false);
+        }
+    };
+
+    if (isLoading) {
+        return <div className="p-8 text-center text-gray-500">Loading product...</div>;
+    }
+
+    if (!product) {
+        return <div className="p-8 text-center text-red-500">Product not found.</div>;
+    }
+
+    return (
+        <ProductForm
+            title="Edit Product"
+            initialData={product}
+            onSubmit={handleSubmit}
+            isSubmitting={isSubmitting}
+        />
+    );
+}
