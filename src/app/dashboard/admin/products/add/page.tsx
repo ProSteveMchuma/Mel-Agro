@@ -49,7 +49,8 @@ export default function AddProductPage() {
                 description: formData.description,
                 image: imageUrl,
                 inStock: Number(formData.stock) > 0,
-                stock: Number(formData.stock),
+                stockQuantity: Number(formData.stock),
+                lowStockThreshold: 10,
                 rating: 0,
                 reviews: 0
             });

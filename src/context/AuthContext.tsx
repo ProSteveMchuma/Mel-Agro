@@ -8,12 +8,14 @@ interface User {
     name: string;
     email: string;
     role: 'user' | 'admin';
+    phone?: string;
 }
 
 interface AuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
     user: User | null;
+    isAdmin: boolean;
     login: (email: string) => void;
     logout: () => void;
     updateUserProfile: (data: Partial<User>) => Promise<void>;
@@ -27,6 +29,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const router = useRouter();
 
+    const isAdmin = user?.role === 'admin';
+
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
             if (firebaseUser) {
@@ -39,7 +43,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     uid: firebaseUser.uid,
                     name: firebaseUser.displayName || 'User',
                     email: firebaseUser.email || '',
-                    role: role
+                    role: role,
+                    phone: firebaseUser.phoneNumber || undefined
                 });
                 setIsAuthenticated(true);
             } else {
@@ -75,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, isLoading, user, login, logout, updateUserProfile }}>
+        <AuthContext.Provider value={{ isAuthenticated, isLoading, user, isAdmin, login, logout, updateUserProfile }}>
             {children}
         </AuthContext.Provider>
     );

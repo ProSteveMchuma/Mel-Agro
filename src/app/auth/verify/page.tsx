@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { isSignInWithEmailLink, signInWithEmailLink } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
-export default function VerifyPage() {
+function VerifyContent() {
     const [status, setStatus] = useState('Verifying your login...');
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -58,5 +58,13 @@ export default function VerifyPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function VerifyPage() {
+    return (
+        <Suspense fallback={<div>Verifying...</div>}>
+            <VerifyContent />
+        </Suspense>
     );
 }
