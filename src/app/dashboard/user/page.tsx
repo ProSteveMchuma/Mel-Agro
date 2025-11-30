@@ -422,18 +422,28 @@ export default function UserDashboard() {
 
                             <div className="mt-8 grid grid-cols-2 gap-4">
                                 <button onClick={() => handleReorder(selectedOrder)} className="col-span-2 btn-primary w-full">Buy Again</button>
+
+                                {/* Invoice - Always Available */}
                                 <button onClick={() => handlePrint('invoice')} className="btn-secondary flex items-center justify-center gap-2">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                                     Invoice
                                 </button>
-                                <button onClick={() => handlePrint('receipt')} className="btn-secondary flex items-center justify-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                    Receipt
-                                </button>
-                                <button onClick={() => handlePrint('delivery')} className="col-span-2 btn-secondary flex items-center justify-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    Delivery Note
-                                </button>
+
+                                {/* Receipt - Only if Paid */}
+                                {(selectedOrder.paymentStatus === 'Paid' || selectedOrder.status === 'Delivered') && (
+                                    <button onClick={() => handlePrint('receipt')} className="btn-secondary flex items-center justify-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                        Receipt
+                                    </button>
+                                )}
+
+                                {/* Delivery Note - Only if Delivered */}
+                                {selectedOrder.status === 'Delivered' && (
+                                    <button onClick={() => handlePrint('delivery')} className="col-span-2 btn-secondary flex items-center justify-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        Delivery Note
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

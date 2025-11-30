@@ -26,6 +26,7 @@ export interface Order {
         county: string;
         details: string;
     };
+    paymentStatus?: 'Paid' | 'Unpaid';
 }
 
 export interface Notification {

@@ -16,7 +16,6 @@ interface AuthContextType {
     isLoading: boolean;
     user: User | null;
     isAdmin: boolean;
-    login: (email: string) => void;
     logout: () => void;
     updateUserProfile: (data: Partial<User>) => Promise<void>;
 }
@@ -57,11 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return () => unsubscribe();
     }, []);
 
-    const login = async (email: string) => {
-        // This function signature in the context needs to be updated to accept password
-        // For now, we will keep the signature but log a warning that this is not how Firebase works
-        console.warn("Use signInWithEmailAndPassword directly in your components instead of this context method.");
-    };
+
 
     const logout = async () => {
         try {
@@ -80,7 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, isLoading, user, isAdmin, login, logout, updateUserProfile }}>
+        <AuthContext.Provider value={{ isAuthenticated, isLoading, user, isAdmin, logout, updateUserProfile }}>
             {children}
         </AuthContext.Provider>
     );
