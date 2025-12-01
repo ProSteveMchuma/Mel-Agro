@@ -58,7 +58,9 @@ export default function ProductCard({ id, name, price, image, category }: Produc
                 category,
                 inStock: true,
                 rating: 5,
-                reviews: 0
+                reviews: 0,
+                stockQuantity: 0,
+                lowStockThreshold: 0
             });
         }
     };
