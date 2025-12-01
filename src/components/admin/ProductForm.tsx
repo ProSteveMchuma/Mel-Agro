@@ -129,15 +129,44 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
 
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea
-                        required
-                        name="description"
-                        value={formData.description}
-                        onChange={handleChange}
-                        rows={4}
-                        className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary"
-                        placeholder="Detailed product description..."
-                    ></textarea>
+                    <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-melagro-primary focus-within:border-melagro-primary">
+                        <div className="bg-gray-50 border-b border-gray-200 px-3 py-2 flex gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, description: prev.description + '**Bold Text**' }))}
+                                className="p-1 hover:bg-gray-200 rounded text-gray-600 text-xs font-bold"
+                                title="Bold"
+                            >
+                                B
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, description: prev.description + '*Italic Text*' }))}
+                                className="p-1 hover:bg-gray-200 rounded text-gray-600 text-xs italic"
+                                title="Italic"
+                            >
+                                I
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setFormData(prev => ({ ...prev, description: prev.description + '\n- List Item' }))}
+                                className="p-1 hover:bg-gray-200 rounded text-gray-600 text-xs"
+                                title="Bullet List"
+                            >
+                                • List
+                            </button>
+                        </div>
+                        <textarea
+                            required
+                            name="description"
+                            value={formData.description}
+                            onChange={handleChange}
+                            rows={6}
+                            className="w-full p-3 border-none focus:ring-0 resize-y"
+                            placeholder="Detailed product description... (Markdown supported)"
+                        ></textarea>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Supports basic markdown formatting.</p>
                 </div>
 
                 <div>

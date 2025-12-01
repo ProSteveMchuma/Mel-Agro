@@ -1,7 +1,8 @@
 "use client";
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface User {
     uid: string;
@@ -9,6 +10,9 @@ interface User {
     email: string;
     role: 'user' | 'admin';
     phone?: string;
+    address?: string;
+    city?: string;
+    county?: string;
 }
 
 interface AuthContextType {
@@ -33,17 +37,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
             if (firebaseUser) {
-                // In a real app, you might fetch additional user details from Firestore here
-                // For now, we'll assume the role is 'user' unless specified otherwise (e.g., via custom claims)
-                // You can also check if the email matches an admin email
-                const role = firebaseUser.email === 'admin@melagro.com' ? 'admin' : 'user';
+                // Fetch user profile from Firestore
+                const userDocRef = doc(db, 'users', firebaseUser.uid);
+                const userDoc = await getDoc(userDocRef);
+                const userData = userDoc.exists() ? userDoc.data() : {};
+
+                const role = firebaseUser.email === 'admin@melagro.com' ? 'admin' : (userData.role || 'user');
 
                 setUser({
                     uid: firebaseUser.uid,
-                    name: firebaseUser.displayName || 'User',
+                    name: userData.name || firebaseUser.displayName || 'User',
                     email: firebaseUser.email || '',
                     role: role,
-                    phone: firebaseUser.phoneNumber || undefined
+                    phone: userData.phone || firebaseUser.phoneNumber || undefined,
+                    address: userData.address,
+                    city: userData.city,
+                    county: userData.county
                 });
                 setIsAuthenticated(true);
             } else {
@@ -69,8 +78,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const updateUserProfile = async (data: Partial<User>) => {
         if (user) {
-            setUser({ ...user, ...data });
-            // In a real app, you would also update Firebase/Firestore here
+            const updatedUser = { ...user, ...data };
+            setUser(updatedUser);
+
+            // Persist to Firestore
+            try {
+                const userDocRef = doc(db, 'users', user.uid);
+                await setDoc(userDocRef, {
+                    name: updatedUser.name,
+                    email: updatedUser.email,
+                    role: updatedUser.role,
+                    phone: updatedUser.phone || null,
+                    address: updatedUser.address || null,
+                    city: updatedUser.city || null,
+                    county: updatedUser.county || null
+                }, { merge: true });
+            } catch (error) {
+                console.error("Error updating user profile:", error);
+            }
         }
     };
 

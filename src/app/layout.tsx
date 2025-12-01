@@ -9,6 +9,7 @@ import { UserProvider } from "@/context/UserContext";
 import { WishlistProvider } from "@/context/WishlistContext";
 import CartDrawer from "@/components/CartDrawer";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { SettingsProvider } from "@/context/SettingsContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -36,19 +37,21 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <CartProvider>
-            <OrderProvider>
-              <ProductProvider>
-                <UserProvider>
-                  <WishlistProvider>
-                    {children}
-                    <WhatsAppButton />
-                  </WishlistProvider>
-                </UserProvider>
-              </ProductProvider>
-            </OrderProvider>
-            <CartDrawer />
-          </CartProvider>
+          <SettingsProvider> {/* Added SettingsProvider */}
+            <CartProvider>
+              <OrderProvider>
+                <ProductProvider>
+                  <UserProvider>
+                    <WishlistProvider>
+                      {children}
+                      <WhatsAppButton />
+                    </WishlistProvider>
+                  </UserProvider>
+                </ProductProvider>
+              </OrderProvider>
+              <CartDrawer />
+            </CartProvider>
+          </SettingsProvider> {/* Closed SettingsProvider */}
         </AuthProvider>
       </body>
     </html>

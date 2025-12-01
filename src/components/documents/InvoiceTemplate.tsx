@@ -1,30 +1,46 @@
 import React from 'react';
 import { Order } from '@/context/OrderContext';
+import { useSettings } from '@/context/SettingsContext';
 
 interface InvoiceTemplateProps {
     order: Order;
+    settings?: any; // Optional settings override for preview
 }
 
-export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order }) => {
+export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, settings: propSettings }) => {
+    const { general } = useSettings();
+
+    // Use prop settings (for preview) or fetch from somewhere else if needed. 
+    // Ideally, we should fetch document settings from context too, but for now we'll rely on props or defaults.
+    const docSettings = propSettings || {
+        invoiceTitle: "INVOICE",
+        footerText: "Thank you for your business!",
+        terms: "Payment is due within 30 days.",
+        showLogo: true,
+        primaryColor: "#16a34a"
+    };
+
     return (
-        <div className="bg-white p-4 md:p-8 max-w-4xl mx-auto font-sans text-gray-900" id="invoice-template">
+        <div className="bg-white p-8 max-w-4xl mx-auto font-sans text-gray-900" id="invoice-template">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start mb-8 md:mb-12 border-b border-gray-200 pb-8 gap-6">
+            <div className="flex flex-col md:flex-row justify-between items-start mb-12 border-b border-gray-200 pb-8 gap-6">
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-bold text-melagro-primary mb-2">INVOICE</h1>
+                    <h1 className="text-4xl font-bold mb-2" style={{ color: docSettings.primaryColor }}>{docSettings.invoiceTitle}</h1>
                     <p className="text-gray-500">#{order.id}</p>
                 </div>
                 <div className="md:text-right">
-                    <div className="text-2xl font-bold text-gray-900 mb-1">MelAgro</div>
-                    <p className="text-gray-500 text-sm">Premium Agricultural Solutions</p>
-                    <p className="text-gray-500 text-sm">P.O. Box 123, Nairobi, Kenya</p>
-                    <p className="text-gray-500 text-sm">support@melagro.com</p>
-                    <p className="text-gray-500 text-sm">+254 700 000 000</p>
+                    {docSettings.showLogo && general.logoUrl && (
+                        <img src={general.logoUrl} alt="Logo" className="h-12 mb-4 ml-auto" />
+                    )}
+                    <div className="text-2xl font-bold text-gray-900 mb-1">{general.companyName}</div>
+                    <p className="text-gray-500 text-sm">{general.address}</p>
+                    <p className="text-gray-500 text-sm">{general.supportEmail}</p>
+                    <p className="text-gray-500 text-sm">{general.supportPhone}</p>
                 </div>
             </div>
 
             {/* Info Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
                 <div>
                     <h3 className="text-gray-500 uppercase text-xs font-bold tracking-wider mb-4">Bill To</h3>
                     <div className="font-medium">{order.userEmail}</div>
@@ -81,7 +97,7 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order }) => {
                     </div>
                     <div className="flex justify-between text-gray-600">
                         <span>Shipping</span>
-                        <span>KES 0</span>
+                        <span>KES {(order.shippingCost || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-xl font-bold text-gray-900 pt-4 border-t border-gray-200">
                         <span>Total</span>
@@ -92,8 +108,8 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order }) => {
 
             {/* Footer */}
             <div className="border-t border-gray-100 pt-8 text-center text-gray-500 text-sm">
-                <p className="mb-2">Thank you for your business!</p>
-                <p>For any questions regarding this invoice, please contact support@melagro.com</p>
+                <p className="mb-2 font-medium">{docSettings.footerText}</p>
+                <p className="text-xs text-gray-400 max-w-lg mx-auto">{docSettings.terms}</p>
             </div>
         </div>
     );

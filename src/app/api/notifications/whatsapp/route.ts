@@ -12,8 +12,10 @@ export async function POST(request: Request) {
         const authToken = process.env.TWILIO_AUTH_TOKEN;
         const from = process.env.TWILIO_WHATSAPP_NUMBER; // e.g., 'whatsapp:+14155238886'
 
+        console.log(`[WHATSAPP API] Attempting to send message to ${to}`);
+
         if (!accountSid || !authToken || !from) {
-            console.warn("Missing Twilio WhatsApp environment variables. Logging WhatsApp message instead.");
+            console.warn("[WHATSAPP API] Missing Twilio environment variables.");
             console.log(`[MOCK WHATSAPP] To: ${to}, Message: ${message}`);
             return NextResponse.json({
                 success: true,
@@ -27,11 +29,15 @@ export async function POST(request: Request) {
         // Ensure 'to' number has 'whatsapp:' prefix if using Twilio
         const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
 
+        console.log(`[WHATSAPP API] Sending from ${from} to ${formattedTo}`);
+
         const response = await client.messages.create({
             body: message,
             from: from,
             to: formattedTo
         });
+
+        console.log("[WHATSAPP API] Success:", response.sid);
 
         return NextResponse.json({
             success: true,
@@ -39,8 +45,8 @@ export async function POST(request: Request) {
             details: response
         });
 
-    } catch (error) {
-        console.error('WhatsApp API Error:', error);
-        return NextResponse.json({ success: false, message: 'Failed to send WhatsApp' }, { status: 500 });
+    } catch (error: any) {
+        console.error('[WHATSAPP API] Error:', error);
+        return NextResponse.json({ success: false, message: 'Failed to send WhatsApp', error: error.message }, { status: 500 });
     }
 }

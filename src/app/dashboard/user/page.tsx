@@ -12,7 +12,7 @@ import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplate";
 
-type Tab = 'dashboard' | 'orders' | 'profile' | 'support';
+type Tab = 'dashboard' | 'orders' | 'notifications' | 'profile' | 'support';
 
 export default function UserDashboard() {
     const { user, isAuthenticated, isLoading, updateUserProfile } = useAuth();
@@ -35,8 +35,8 @@ export default function UserDashboard() {
             setProfileForm({
                 name: user.name || '',
                 email: user.email || '',
-                phone: '', // Mock phone
-                address: 'P.O. Box 123, Nairobi' // Mock address
+                phone: user.phone || '',
+                address: user.address || ''
             });
         }
     }, [isAuthenticated, isLoading, router, user]);
@@ -62,7 +62,11 @@ export default function UserDashboard() {
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
-        await updateUserProfile({ name: profileForm.name });
+        await updateUserProfile({
+            name: profileForm.name,
+            phone: profileForm.phone,
+            address: profileForm.address
+        });
         setIsEditingProfile(false);
         alert('Profile updated successfully!');
     };
@@ -70,7 +74,6 @@ export default function UserDashboard() {
     const handlePrint = (order: Order, type: 'invoice' | 'receipt' | 'delivery') => {
         setPrintOrder(order);
         setPrintMode(type);
-        // Removed auto-print
     };
 
     if (isLoading || !user) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagro-primary"></div></div>;
@@ -97,6 +100,14 @@ export default function UserDashboard() {
                 {[
                     { id: 'dashboard', label: 'Dashboard', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg> },
                     { id: 'orders', label: 'My Orders', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg> },
+                    {
+                        id: 'notifications', label: 'Notifications', icon: (
+                            <div className="relative">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                                {unreadNotificationsCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full"></span>}
+                            </div>
+                        )
+                    },
                     { id: 'profile', label: 'Profile Settings', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
                     { id: 'support', label: 'Support', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg> },
                 ].map((item) => (
@@ -110,6 +121,11 @@ export default function UserDashboard() {
                     >
                         {item.icon}
                         {item.label}
+                        {item.id === 'notifications' && unreadNotificationsCount > 0 && (
+                            <span className={`ml-auto text-xs font-bold px-2 py-0.5 rounded-full ${activeTab === 'notifications' ? 'bg-white text-melagro-primary' : 'bg-melagro-primary text-white'}`}>
+                                {unreadNotificationsCount}
+                            </span>
+                        )}
                     </button>
                 ))}
 
@@ -122,6 +138,19 @@ export default function UserDashboard() {
             </nav>
         </div>
     );
+
+    const [trackOrderId, setTrackOrderId] = useState('');
+
+    const handleTrackOrder = (e: React.FormEvent) => {
+        e.preventDefault();
+        const order = orders.find(o => o.id.toLowerCase() === trackOrderId.toLowerCase() || o.id.toLowerCase().includes(trackOrderId.toLowerCase()));
+        if (order) {
+            setSelectedOrder(order);
+            setTrackOrderId('');
+        } else {
+            alert('Order not found. Please check the Order ID.');
+        }
+    };
 
     const renderDashboard = () => (
         <div className="space-y-6">
@@ -138,6 +167,23 @@ export default function UserDashboard() {
                     <div className="text-gray-500 text-sm mb-1">Total Spent</div>
                     <div className="text-3xl font-bold text-gray-900">KES {stats.totalSpent.toLocaleString()}</div>
                 </div>
+            </div>
+
+            {/* Track Order Card */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-bold text-gray-900 mb-4">Track Order</h2>
+                <form onSubmit={handleTrackOrder} className="flex gap-4">
+                    <input
+                        type="text"
+                        placeholder="Enter Order ID (e.g., #12345)"
+                        value={trackOrderId}
+                        onChange={(e) => setTrackOrderId(e.target.value)}
+                        className="flex-grow px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                    />
+                    <button type="submit" className="bg-melagro-primary text-white px-6 py-2 rounded-xl font-medium hover:bg-melagro-secondary transition-colors">
+                        Track
+                    </button>
+                </form>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
@@ -189,9 +235,12 @@ export default function UserDashboard() {
                                 <div className="flex gap-3">
                                     <button
                                         onClick={() => setSelectedOrder(order)}
-                                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors"
+                                        className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
                                     >
-                                        View Details
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                        </svg>
+                                        Track Order
                                     </button>
                                     <button
                                         onClick={() => handleReorder(order)}
@@ -219,6 +268,53 @@ export default function UserDashboard() {
                         </div>
                     ))}
                 </div>
+            </div>
+        </div>
+    );
+
+    const renderNotifications = () => (
+        <div className="max-w-2xl">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
+                {unreadNotificationsCount > 0 && (
+                    <button
+                        onClick={() => notifications.forEach(n => markNotificationRead(n.id))}
+                        className="text-sm text-melagro-primary hover:underline font-medium"
+                    >
+                        Mark all as read
+                    </button>
+                )}
+            </div>
+
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                {notifications.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        <p>No notifications yet</p>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-gray-100">
+                        {notifications.map((notification) => (
+                            <div
+                                key={notification.id}
+                                className={`p-4 hover:bg-gray-50 transition-colors ${!notification.read ? 'bg-blue-50/50' : ''}`}
+                                onClick={() => markNotificationRead(notification.id)}
+                            >
+                                <div className="flex gap-4">
+                                    <div className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${!notification.read ? 'bg-melagro-primary' : 'bg-transparent'}`}></div>
+                                    <div className="flex-grow">
+                                        <p className={`text-sm ${!notification.read ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
+                                            {notification.message}
+                                        </p>
+                                        <p className="text-xs text-gray-400 mt-1">{notification.date}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -349,6 +445,44 @@ export default function UserDashboard() {
         </div>
     );
 
+    const OrderTimeline = ({ status }: { status: string }) => {
+        const steps = ['Processing', 'Shipped', 'Delivered'];
+        const currentStepIndex = steps.indexOf(status);
+        // Handle Cancelled or unknown status
+        if (currentStepIndex === -1 && status !== 'Cancelled') return null;
+        if (status === 'Cancelled') return <div className="text-red-600 font-bold bg-red-50 p-3 rounded-lg text-center">Order Cancelled</div>;
+
+        return (
+            <div className="w-full py-4">
+                <div className="relative flex items-center justify-between">
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 -z-10"></div>
+                    <div
+                        className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-green-500 -z-10 transition-all duration-500"
+                        style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                    ></div>
+
+                    {steps.map((step, index) => (
+                        <div key={step} className="flex flex-col items-center bg-white px-2">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-colors duration-300 ${index <= currentStepIndex ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
+                                }`}>
+                                {index < currentStepIndex ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                ) : (
+                                    index + 1
+                                )}
+                            </div>
+                            <span className={`mt-2 text-xs font-bold ${index <= currentStepIndex ? 'text-gray-900' : 'text-gray-400'}`}>
+                                {step}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
             {/* Print Overlay */}
@@ -387,6 +521,7 @@ export default function UserDashboard() {
                             <div className="lg:w-3/4">
                                 {activeTab === 'dashboard' && renderDashboard()}
                                 {activeTab === 'orders' && renderOrders()}
+                                {activeTab === 'notifications' && renderNotifications()}
                                 {activeTab === 'profile' && renderProfile()}
                                 {activeTab === 'support' && renderSupport()}
                             </div>
@@ -403,6 +538,11 @@ export default function UserDashboard() {
                                 <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-gray-100 rounded-full">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                                 </button>
+                            </div>
+
+                            {/* Order Timeline */}
+                            <div className="mb-8 px-2">
+                                <OrderTimeline status={selectedOrder.status} />
                             </div>
 
                             <div className="space-y-4">

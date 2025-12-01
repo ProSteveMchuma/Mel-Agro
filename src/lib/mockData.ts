@@ -26,6 +26,7 @@ export interface Product {
     stockQuantity: number;
     lowStockThreshold: number;
     description?: string;
+    tags?: string[];
 }
 
 export const products: Product[] = [
@@ -40,7 +41,8 @@ export const products: Product[] = [
         inStock: true,
         stockQuantity: 150,
         lowStockThreshold: 20,
-        description: "High-quality Diammonium Phosphate fertilizer for planting."
+        description: "High-quality Diammonium Phosphate fertilizer for planting.",
+        tags: ["planting", "roots", "phosphorus", "growth", "soil"]
     },
     {
         id: 2,
@@ -53,7 +55,8 @@ export const products: Product[] = [
         inStock: true,
         stockQuantity: 80,
         lowStockThreshold: 15,
-        description: "Calcium Ammonium Nitrate fertilizer for top dressing."
+        description: "Calcium Ammonium Nitrate fertilizer for top dressing.",
+        tags: ["top dressing", "nitrogen", "leaves", "growth", "green"]
     },
     {
         id: 3,
@@ -66,7 +69,8 @@ export const products: Product[] = [
         inStock: true,
         stockQuantity: 300,
         lowStockThreshold: 50,
-        description: "High-yield hybrid maize seeds suitable for various climates."
+        description: "High-yield hybrid maize seeds suitable for various climates.",
+        tags: ["corn", "planting", "food", "cereal", "grain"]
     },
     {
         id: 4,
@@ -79,7 +83,8 @@ export const products: Product[] = [
         inStock: true,
         stockQuantity: 25,
         lowStockThreshold: 10,
-        description: "Assorted vegetable seeds including kales, spinach, and tomatoes."
+        description: "Assorted vegetable seeds including kales, spinach, and tomatoes.",
+        tags: ["sukuma wiki", "spinach", "tomato", "kitchen garden", "greens"]
     },
     {
         id: 5,
@@ -92,7 +97,8 @@ export const products: Product[] = [
         inStock: true,
         stockQuantity: 45,
         lowStockThreshold: 10,
-        description: "Effective broad-spectrum pesticide for common crop pests."
+        description: "Effective broad-spectrum pesticide for common crop pests.",
+        tags: ["bugs", "insects", "worms", "aphids", "protection", "medicine"]
     },
     {
         id: 6,
@@ -105,7 +111,8 @@ export const products: Product[] = [
         inStock: true,
         stockQuantity: 12,
         lowStockThreshold: 5,
-        description: "Durable 16L knapsack sprayer for easy application of agrochemicals."
+        description: "Durable 16L knapsack sprayer for easy application of agrochemicals.",
+        tags: ["pump", "spray", "tool", "garden", "manual"]
     },
     {
         id: 7,
@@ -118,7 +125,8 @@ export const products: Product[] = [
         inStock: true,
         stockQuantity: 60,
         lowStockThreshold: 15,
-        description: "Nutrient-rich dairy meal to boost milk production."
+        description: "Nutrient-rich dairy meal to boost milk production.",
+        tags: ["cow", "milk", "livestock", "food", "nutrition"]
     },
     {
         id: 8,
@@ -131,7 +139,8 @@ export const products: Product[] = [
         inStock: true,
         stockQuantity: 40,
         lowStockThreshold: 10,
-        description: "Balanced feed for laying hens to ensure high egg production."
+        description: "Balanced feed for laying hens to ensure high egg production.",
+        tags: ["poultry", "eggs", "hen", "chicks", "bird"]
     }
 ];
 

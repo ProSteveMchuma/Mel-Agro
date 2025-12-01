@@ -6,11 +6,30 @@ import Image from "next/image";
 interface OrderSummaryProps {
     shippingCost: number;
     shippingCounty?: string;
+    discountAmount?: number;
+    couponCode?: string;
+    setCouponCode?: (code: string) => void;
+    onApplyCoupon?: () => void;
+    onRemoveCoupon?: () => void;
+    couponError?: string;
+    isApplyingCoupon?: boolean;
+    appliedDiscount?: any;
 }
 
-export default function OrderSummary({ shippingCost, shippingCounty }: OrderSummaryProps) {
+export default function OrderSummary({
+    shippingCost,
+    shippingCounty,
+    discountAmount = 0,
+    couponCode = "",
+    setCouponCode,
+    onApplyCoupon,
+    onRemoveCoupon,
+    couponError,
+    isApplyingCoupon,
+    appliedDiscount
+}: OrderSummaryProps) {
     const { cartItems, cartTotal } = useCart();
-    const total = cartTotal + shippingCost;
+    const total = cartTotal + shippingCost - discountAmount;
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
@@ -53,11 +72,66 @@ export default function OrderSummary({ shippingCost, shippingCounty }: OrderSumm
                     <span>Shipping {shippingCounty ? `(${shippingCounty})` : ''}</span>
                     <span>KES {shippingCost.toLocaleString()}</span>
                 </div>
+
+                {/* Discount Row */}
+                {discountAmount > 0 && (
+                    <div className="flex justify-between text-sm text-green-600 font-medium">
+                        <span>Discount {appliedDiscount ? `(${appliedDiscount.code})` : ''}</span>
+                        <span>- KES {discountAmount.toLocaleString()}</span>
+                    </div>
+                )}
+
                 <div className="flex justify-between text-lg font-bold text-gray-900 pt-2 border-t border-gray-100">
                     <span>Total</span>
                     <span>KES {total.toLocaleString()}</span>
                 </div>
             </div>
+
+            {/* Coupon Input */}
+            {setCouponCode && onApplyCoupon && (
+                <div className="mt-6 pt-6 border-t border-gray-100">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Promo Code</label>
+                    {appliedDiscount ? (
+                        <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                            <div className="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="text-sm font-bold text-green-700">{appliedDiscount.code} applied</span>
+                            </div>
+                            <button
+                                onClick={onRemoveCoupon}
+                                className="text-gray-400 hover:text-red-500"
+                                title="Remove Coupon"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                placeholder="Enter code"
+                                className="flex-grow rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary text-sm uppercase"
+                                value={couponCode}
+                                onChange={(e) => setCouponCode(e.target.value)}
+                            />
+                            <button
+                                onClick={onApplyCoupon}
+                                disabled={isApplyingCoupon || !couponCode}
+                                className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isApplyingCoupon ? '...' : 'Apply'}
+                            </button>
+                        </div>
+                    )}
+                    {couponError && (
+                        <p className="text-red-500 text-xs mt-2">{couponError}</p>
+                    )}
+                </div>
+            )}
 
             {/* Trust Badges */}
             <div className="mt-8 space-y-3">

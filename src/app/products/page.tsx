@@ -55,7 +55,11 @@ function ProductsContent() {
 
         // Filter by Search
         if (searchTerm) {
-            result = result.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+            const lowerTerm = searchTerm.toLowerCase();
+            result = result.filter(p =>
+                p.name.toLowerCase().includes(lowerTerm) ||
+                p.tags?.some(tag => tag.toLowerCase().includes(lowerTerm))
+            );
         }
 
         // Sort

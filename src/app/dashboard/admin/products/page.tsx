@@ -9,11 +9,54 @@ export default function ProductManagement() {
     const { products, deleteProduct } = useProducts();
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
+    const [filterCategory, setFilterCategory] = useState("All");
+    const [filterStock, setFilterStock] = useState("All"); // All, In Stock, Low Stock, Out of Stock
 
-    const filteredProducts = products.filter(product =>
-        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Get unique categories
+    const categories = ["All", ...Array.from(new Set(products.map(p => p.category)))];
+
+    const filteredProducts = products.filter(product => {
+        const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            product.category.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesCategory = filterCategory === "All" || product.category === filterCategory;
+
+        let matchesStock = true;
+        const isLowStock = product.stockQuantity <= (product.lowStockThreshold || 10);
+        const isOutOfStock = product.stockQuantity === 0;
+
+        if (filterStock === "In Stock") matchesStock = !isOutOfStock;
+        if (filterStock === "Low Stock") matchesStock = isLowStock && !isOutOfStock;
+        if (filterStock === "Out of Stock") matchesStock = isOutOfStock;
+
+        return matchesSearch && matchesCategory && matchesStock;
+    });
+
+    const toggleSelectAll = () => {
+        if (selectedProducts.length === filteredProducts.length) {
+            setSelectedProducts([]);
+        } else {
+            setSelectedProducts(filteredProducts.map(p => String(p.id)));
+        }
+    };
+
+    const toggleSelectProduct = (id: string) => {
+        if (selectedProducts.includes(id)) {
+            setSelectedProducts(selectedProducts.filter(pId => pId !== id));
+        } else {
+            setSelectedProducts([...selectedProducts, id]);
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (confirm(`Are you sure you want to delete ${selectedProducts.length} products?`)) {
+            for (const id of selectedProducts) {
+                await deleteProduct(id);
+            }
+            setSelectedProducts([]);
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -22,16 +65,29 @@ export default function ProductManagement() {
                     <h1 className="text-2xl font-bold text-gray-900">Products</h1>
                     <p className="text-gray-500 text-sm">Manage your inventory and catalog.</p>
                 </div>
-                <Link href="/dashboard/admin/products/new" className="btn-primary flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add New Product
-                </Link>
+                <div className="flex gap-3">
+                    {selectedProducts.length > 0 && (
+                        <button
+                            onClick={handleBulkDelete}
+                            className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors font-medium flex items-center gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                            Delete ({selectedProducts.length})
+                        </button>
+                    )}
+                    <Link href="/dashboard/admin/products/new" className="btn-primary flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add New Product
+                    </Link>
+                </div>
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex gap-4">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
                 <div className="relative flex-grow max-w-md">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -44,6 +100,23 @@ export default function ProductManagement() {
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
+                <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagro-primary outline-none bg-white"
+                >
+                    {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                </select>
+                <select
+                    value={filterStock}
+                    onChange={(e) => setFilterStock(e.target.value)}
+                    className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagro-primary outline-none bg-white"
+                >
+                    <option value="All">All Stock Status</option>
+                    <option value="In Stock">In Stock</option>
+                    <option value="Low Stock">Low Stock</option>
+                    <option value="Out of Stock">Out of Stock</option>
+                </select>
             </div>
 
             {/* Product Table */}
@@ -52,6 +125,14 @@ export default function ProductManagement() {
                     <table className="w-full text-left text-sm">
                         <thead className="bg-gray-50 text-gray-500 border-b border-gray-100">
                             <tr>
+                                <th className="px-6 py-4 w-4">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                                        onChange={toggleSelectAll}
+                                        className="rounded border-gray-300 text-melagro-primary focus:ring-melagro-primary"
+                                    />
+                                </th>
                                 <th className="px-6 py-4 font-medium">Product</th>
                                 <th className="px-6 py-4 font-medium">Category</th>
                                 <th className="px-6 py-4 font-medium">Price</th>
@@ -63,13 +144,22 @@ export default function ProductManagement() {
                             {filteredProducts.map(product => {
                                 const isLowStock = product.stockQuantity <= (product.lowStockThreshold || 10);
                                 const isOutOfStock = product.stockQuantity === 0;
+                                const isSelected = selectedProducts.includes(String(product.id));
 
                                 return (
                                     <tr
                                         key={product.id}
-                                        className="hover:bg-gray-50 transition-colors cursor-pointer group"
+                                        className={`hover:bg-gray-50 transition-colors cursor-pointer group ${isSelected ? 'bg-blue-50' : ''}`}
                                         onClick={() => router.push(`/dashboard/admin/products/edit/${product.id}`)}
                                     >
+                                        <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={() => toggleSelectProduct(String(product.id))}
+                                                className="rounded border-gray-300 text-melagro-primary focus:ring-melagro-primary"
+                                            />
+                                        </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 bg-gray-100 rounded-lg relative overflow-hidden flex-shrink-0 border border-gray-200">

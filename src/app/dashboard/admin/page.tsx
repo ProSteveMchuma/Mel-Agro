@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useUsers } from "@/context/UserContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import AnalyticsCharts from "@/components/admin/AnalyticsCharts";
 
 export default function AdminDashboard() {
     const { orders } = useOrders();
@@ -144,6 +145,11 @@ export default function AdminDashboard() {
                     <div className="text-3xl font-bold text-gray-900 mb-1">{totalUsers}</div>
                     <div className="text-sm text-gray-500">Active Customers</div>
                 </Link>
+            </div>
+
+            {/* Analytics Charts */}
+            <div className="print:hidden">
+                <AnalyticsCharts orders={orders} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 print:hidden">

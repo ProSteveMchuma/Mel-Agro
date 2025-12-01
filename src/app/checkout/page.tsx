@@ -8,13 +8,13 @@ import { useOrders } from "@/context/OrderContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { getDeliveryCost, KENYAN_COUNTIES, DELIVERY_ZONES } from "@/lib/delivery";
+import { getDeliveryCost, KENYAN_COUNTIES } from "@/lib/delivery";
 import { PaymentService } from "@/lib/payment";
 import { NotificationService } from "@/lib/notifications";
 import OrderSummary from "@/components/checkout/OrderSummary";
 
 export default function CheckoutPage() {
-    const { isAuthenticated, user, isLoading: authLoading } = useAuth();
+    const { isAuthenticated, user, isLoading: authLoading, updateUserProfile } = useAuth();
     const { cartItems, cartTotal, clearCart } = useCart();
     const { addOrder } = useOrders();
     const router = useRouter();
@@ -43,63 +43,127 @@ export default function CheckoutPage() {
     const [shippingMethod, setShippingMethod] = useState('delivery'); // 'collection', 'delivery', 'custom'
     const [shippingCost, setShippingCost] = useState(getDeliveryCost('Nairobi'));
 
-    const total = cartTotal + shippingCost;
+    const [couponCode, setCouponCode] = useState("");
+    const [discountAmount, setDiscountAmount] = useState(0);
+    const [appliedDiscount, setAppliedDiscount] = useState<any>(null);
+    const [couponError, setCouponError] = useState("");
+    const [isValidatingCoupon, setIsValidatingCoupon] = useState(false);
 
-    // Pre-fill user data
-    useEffect(() => {
-        if (user) {
-            const names = user.name?.split(' ') || [];
-            setFormData(prev => ({
-                ...prev,
-                firstName: names[0] || "",
-                lastName: names.slice(1).join(' ') || "",
-                phone: user.phone || ""
-            }));
-        }
-    }, [user]);
+    const total = cartTotal + shippingCost - discountAmount;
 
-    // Update shipping cost when method or county changes
-    useEffect(() => {
-        if (shippingMethod === 'collection') {
-            setShippingCost(0);
-        } else if (shippingMethod === 'delivery') {
-            setShippingCost(getDeliveryCost(formData.county));
-        } else {
-            setShippingCost(0); // Custom shipping TBD
-        }
-    }, [shippingMethod, formData.county]);
+    const [saveAddress, setSaveAddress] = useState(false);
+    const [errors, setErrors] = useState<any>({});
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        if (errors[name]) {
+            setErrors((prev: any) => ({ ...prev, [name]: "" }));
+        }
     };
 
-    const handleNotificationChange = (channel: string) => {
+    const handleNotificationChange = (type: string) => {
         setNotificationPreferences(prev =>
-            prev.includes(channel)
-                ? prev.filter(p => p !== channel)
-                : [...prev, channel]
+            prev.includes(type)
+                ? prev.filter(p => p !== type)
+                : [...prev, type]
         );
     };
 
-    const validateStep = (step: number) => {
-        if (step === 1) {
-            if (!formData.firstName || !formData.lastName || !formData.phone || !formData.address || !formData.city) {
-                alert("Please fill in all address details.");
-                return false;
-            }
-        }
-        return true;
+    const validateStep1 = () => {
+        const newErrors: any = {};
+        if (!formData.firstName) newErrors.firstName = "First name is required";
+        if (!formData.lastName) newErrors.lastName = "Last name is required";
+        if (!formData.phone) newErrors.phone = "Phone number is required";
+        if (!formData.address) newErrors.address = "Address is required";
+        if (!formData.city) newErrors.city = "City is required";
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
     };
 
     const nextStep = () => {
-        if (validateStep(currentStep)) {
-            setCurrentStep(prev => Math.min(prev + 1, 3));
+        if (currentStep === 1) {
+            if (validateStep1()) setCurrentStep(2);
+        } else if (currentStep === 2) {
+            setCurrentStep(3);
         }
     };
 
     const prevStep = () => {
-        setCurrentStep(prev => Math.max(prev - 1, 1));
+        if (currentStep > 1) setCurrentStep(currentStep - 1);
+    };
+
+    const handleApplyCoupon = async () => {
+        if (!couponCode.trim()) return;
+        setCouponError("");
+        setIsValidatingCoupon(true);
+
+        try {
+            // Import db here to avoid server-side issues if any, or just use the imported one
+            const { collection, query, where, getDocs } = await import("firebase/firestore");
+            const { db } = await import("@/lib/firebase");
+
+            const q = query(collection(db, "discounts"), where("code", "==", couponCode.toUpperCase()), where("isActive", "==", true));
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                setCouponError("Invalid coupon code.");
+                setIsValidatingCoupon(false);
+                return;
+            }
+
+            const discountDoc = snapshot.docs[0];
+            const discount = discountDoc.data();
+            const now = new Date();
+            const expiresAt = discount.expiresAt.toDate();
+
+            if (now > expiresAt) {
+                setCouponError("This coupon has expired.");
+                setIsValidatingCoupon(false);
+                return;
+            }
+
+            if (discount.minOrderValue && cartTotal < discount.minOrderValue) {
+                setCouponError(`Minimum order value of KES ${discount.minOrderValue} required.`);
+                setIsValidatingCoupon(false);
+                return;
+            }
+
+            if (discount.usageLimit && discount.usageLimit <= 0) {
+                setCouponError("This coupon has reached its usage limit.");
+                setIsValidatingCoupon(false);
+                return;
+            }
+
+            // Calculate discount
+            let amount = 0;
+            if (discount.type === 'PERCENTAGE') {
+                amount = (cartTotal * discount.value) / 100;
+            } else {
+                amount = discount.value;
+            }
+
+            // Ensure discount doesn't exceed total
+            amount = Math.min(amount, cartTotal);
+
+            setDiscountAmount(amount);
+            setAppliedDiscount({ id: discountDoc.id, ...discount });
+            setCouponError("");
+            alert(`Coupon applied! You saved KES ${amount.toLocaleString()}`);
+
+        } catch (error) {
+            console.error("Error validating coupon:", error);
+            setCouponError("Failed to validate coupon.");
+        } finally {
+            setIsValidatingCoupon(false);
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        setCouponCode("");
+        setDiscountAmount(0);
+        setAppliedDiscount(null);
+        setCouponError("");
     };
 
     const handlePlaceOrder = async () => {
@@ -110,6 +174,16 @@ export default function CheckoutPage() {
         setIsProcessing(true);
 
         try {
+            // 0. Save Address if requested
+            if (saveAddress) {
+                await updateUserProfile({
+                    phone: formData.phone,
+                    address: formData.address,
+                    city: formData.city,
+                    county: formData.county
+                });
+            }
+
             // 1. Process Payment (if applicable)
             let paymentResult = { success: true, message: "" };
             if (paymentMethod === 'mpesa') {
@@ -135,8 +209,11 @@ export default function CheckoutPage() {
                     quantity: item.quantity,
                     image: item.image
                 })),
+                subtotal: cartTotal,
                 total: total,
                 shippingCost: shippingCost,
+                discountAmount: discountAmount,
+                couponCode: appliedDiscount ? appliedDiscount.code : null,
                 paymentMethod: paymentMethod,
                 shippingAddress: {
                     county: formData.county,
@@ -229,23 +306,28 @@ export default function CheckoutPage() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                                            <input name="firstName" value={formData.firstName} onChange={handleInputChange} type="text" className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary" />
+                                            <input name="firstName" value={formData.firstName} onChange={handleInputChange} type="text" className={`w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary ${errors.firstName ? 'border-red-500' : ''}`} />
+                                            {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                                            <input name="lastName" value={formData.lastName} onChange={handleInputChange} type="text" className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary" />
+                                            <input name="lastName" value={formData.lastName} onChange={handleInputChange} type="text" className={`w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary ${errors.lastName ? 'border-red-500' : ''}`} />
+                                            {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
                                         </div>
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
-                                            <input name="phone" value={formData.phone} onChange={handleInputChange} type="tel" placeholder="07..." className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary" />
+                                            <input name="phone" value={formData.phone} onChange={handleInputChange} type="tel" placeholder="07..." className={`w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary ${errors.phone ? 'border-red-500' : ''}`} />
+                                            {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                                         </div>
                                         <div className="md:col-span-2">
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                                            <input name="address" value={formData.address} onChange={handleInputChange} type="text" placeholder="Street, Building, etc." className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary" />
+                                            <input name="address" value={formData.address} onChange={handleInputChange} type="text" placeholder="Street, Building, etc." className={`w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary ${errors.address ? 'border-red-500' : ''}`} />
+                                            {errors.address && <p className="text-red-500 text-xs mt-1">{errors.address}</p>}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">City/Town</label>
-                                            <input name="city" value={formData.city} onChange={handleInputChange} type="text" className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary" />
+                                            <input name="city" value={formData.city} onChange={handleInputChange} type="text" className={`w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary ${errors.city ? 'border-red-500' : ''}`} />
+                                            {errors.city && <p className="text-red-500 text-xs mt-1">{errors.city}</p>}
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">County</label>
@@ -254,6 +336,19 @@ export default function CheckoutPage() {
                                                     <option key={county} value={county}>{county}</option>
                                                 ))}
                                             </select>
+                                        </div>
+
+                                        {/* Save Address Checkbox */}
+                                        <div className="md:col-span-2">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={saveAddress}
+                                                    onChange={(e) => setSaveAddress(e.target.checked)}
+                                                    className="rounded text-melagro-primary focus:ring-melagro-primary"
+                                                />
+                                                <span className="text-sm text-gray-600">Save this address for future orders</span>
+                                            </label>
                                         </div>
 
                                         {/* Notification Preferences */}
@@ -363,7 +458,8 @@ export default function CheckoutPage() {
                                                 <span className="block text-sm text-gray-500">Visa, Mastercard, American Express</span>
                                             </div>
                                             <div className="flex gap-2">
-                                                <div className="h-8 px-2 bg-white rounded flex items-center justify-center border border-gray-200 font-bold text-xs text-blue-600">VISA</div>
+                                                <div className="h-6 w-10 bg-gray-200 rounded"></div>
+                                                <div className="h-6 w-10 bg-gray-200 rounded"></div>
                                             </div>
                                         </label>
 
@@ -371,62 +467,74 @@ export default function CheckoutPage() {
                                             <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={(e) => setPaymentMethod(e.target.value)} className="text-melagro-primary focus:ring-melagro-primary" />
                                             <div className="ml-4 flex-grow">
                                                 <span className="block font-bold text-gray-900">Cash on Delivery</span>
-                                                <span className="block text-sm text-gray-500">Pay when you receive your order</span>
+                                                <span className="block text-sm text-gray-500">Pay when you receive your order. Call +254 748 970757 to confirm.</span>
                                             </div>
-                                            <div className="h-8 px-2 bg-white rounded flex items-center justify-center border border-gray-200 font-bold text-xs text-gray-600">CASH</div>
                                         </label>
                                     </div>
-
-                                    {paymentMethod === 'cod' && (
-                                        <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-4 flex gap-3">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                            <div>
-                                                <h4 className="font-bold text-yellow-800 text-sm">Cash on Delivery Note</h4>
-                                                <p className="text-sm text-yellow-700 mt-1">Please have the exact amount ready as you pick up your order. We may not be able to provide change for large amounts.</p>
-                                                <p className="text-sm text-yellow-700 mt-1 font-medium">Questions about payment? Call us at +254 728 400 331</p>
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
                             {/* Navigation Buttons */}
-                            <div className="flex justify-between items-center pt-4">
+                            <div className="flex justify-between pt-6">
                                 {currentStep > 1 ? (
-                                    <button onClick={prevStep} className="px-6 py-3 bg-white border border-gray-200 rounded-xl text-gray-600 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-                                        Back to {steps[currentStep - 2].name}
+                                    <button
+                                        onClick={prevStep}
+                                        className="px-6 py-3 border border-gray-300 rounded-xl text-gray-700 font-bold hover:bg-gray-50 transition-colors"
+                                    >
+                                        Back
                                     </button>
                                 ) : (
                                     <div></div>
                                 )}
 
                                 {currentStep < 3 ? (
-                                    <button onClick={nextStep} className="btn-primary px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex items-center gap-2">
-                                        Continue to {steps[currentStep].name}
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                    <button
+                                        onClick={nextStep}
+                                        className="px-8 py-3 bg-melagro-primary text-white rounded-xl font-bold hover:bg-melagro-dark transition-colors shadow-lg shadow-melagro-primary/30"
+                                    >
+                                        Continue
                                     </button>
                                 ) : (
-                                    <button onClick={handlePlaceOrder} disabled={isProcessing} className="btn-primary px-8 py-3 rounded-xl shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all flex items-center gap-2">
+                                    <button
+                                        onClick={handlePlaceOrder}
+                                        disabled={isProcessing}
+                                        className={`px-8 py-3 bg-melagro-primary text-white rounded-xl font-bold hover:bg-melagro-dark transition-colors shadow-lg shadow-melagro-primary/30 flex items-center gap-2 ${isProcessing ? 'opacity-75 cursor-not-allowed' : ''}`}
+                                    >
                                         {isProcessing ? (
                                             <>
-                                                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                                 </svg>
                                                 Processing...
                                             </>
                                         ) : (
-                                            `Pay KES ${total.toLocaleString()}`
+                                            <>
+                                                Place Order
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                                </svg>
+                                            </>
                                         )}
                                     </button>
                                 )}
                             </div>
                         </div>
 
-                        {/* Sidebar Column */}
+                        {/* Sidebar */}
                         <div className="lg:w-1/3">
-                            <OrderSummary shippingCost={shippingCost} shippingCounty={formData.county} />
+                            <OrderSummary
+                                shippingCost={shippingCost}
+                                shippingCounty={formData.county}
+                                discountAmount={discountAmount}
+                                couponCode={couponCode}
+                                setCouponCode={setCouponCode}
+                                onApplyCoupon={handleApplyCoupon}
+                                onRemoveCoupon={handleRemoveCoupon}
+                                couponError={couponError}
+                                isApplyingCoupon={isValidatingCoupon}
+                                appliedDiscount={appliedDiscount}
+                            />
                         </div>
                     </div>
                 </div>
