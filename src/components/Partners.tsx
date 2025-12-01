@@ -3,12 +3,12 @@
 import Image from "next/image";
 
 const PARTNERS = [
-    { name: "Partner 1", logo: "https://placehold.co/150x50?text=Partner+1" },
-    { name: "Partner 2", logo: "https://placehold.co/150x50?text=Partner+2" },
-    { name: "Partner 3", logo: "https://placehold.co/150x50?text=Partner+3" },
-    { name: "Partner 4", logo: "https://placehold.co/150x50?text=Partner+4" },
-    { name: "Partner 5", logo: "https://placehold.co/150x50?text=Partner+5" },
-    { name: "Partner 6", logo: "https://placehold.co/150x50?text=Partner+6" },
+    { name: "Bayer", logo: "https://makamithi4.vercel.app/assets/partners/Bayer.png" },
+    { name: "Syngenta", logo: "https://makamithi4.vercel.app/assets/partners/syngenta.png" },
+    { name: "Corteva", logo: "https://makamithi4.vercel.app/assets/partners/Corteva.png" },
+    { name: "Seed Co", logo: "https://makamithi4.vercel.app/assets/partners/seedco.png" },
+    { name: "Unga PLC", logo: "https://makamithi4.vercel.app/assets/partners/Unga-plc.png" },
+    { name: "Osho Chemicals", logo: "https://makamithi4.vercel.app/assets/partners/Osha.png" },
 ];
 
 export default function Partners() {

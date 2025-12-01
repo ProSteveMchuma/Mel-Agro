@@ -11,6 +11,7 @@ import { useProducts } from "@/context/ProductContext";
 function ProductsContent() {
     const { products } = useProducts();
     const searchParams = useSearchParams();
+    const initialSearch = searchParams.get('search');
     const initialCategory = searchParams.get('category');
 
     // Derive categories from products
@@ -39,7 +40,11 @@ function ProductsContent() {
                 setActiveCategory(initialCategory.charAt(0).toUpperCase() + initialCategory.slice(1));
             }
         }
-    }, [initialCategory, categories]);
+
+        if (initialSearch) {
+            setSearchTerm(initialSearch);
+        }
+    }, [initialCategory, initialSearch, categories]);
 
     const [filteredProducts, setFilteredProducts] = useState(products);
     const [sortBy, setSortBy] = useState("featured");

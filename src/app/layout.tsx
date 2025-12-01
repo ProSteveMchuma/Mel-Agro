@@ -22,8 +22,49 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MelAgro - Premium Agricultural Solutions",
-  description: "Your trusted partner for quality agricultural inputs and expert advice.",
+  metadataBase: new URL('https://melagro.com'), // Replace with actual domain
+  title: {
+    default: "MelAgro - Premium Agricultural Solutions",
+    template: "%s | MelAgro"
+  },
+  description: "Your trusted partner for quality agricultural inputs, certified seeds, fertilizers, and expert advice in Kenya.",
+  keywords: ["agriculture", "farming", "seeds", "fertilizers", "pesticides", "Kenya", "agrochemicals", "MelAgro"],
+  authors: [{ name: "MelAgro Team" }],
+  creator: "MelAgro",
+  publisher: "MelAgro",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_KE',
+    url: 'https://melagro.com',
+    title: 'MelAgro - Premium Agricultural Solutions',
+    description: 'Your trusted partner for quality agricultural inputs, certified seeds, fertilizers, and expert advice in Kenya.',
+    siteName: 'MelAgro',
+    images: [
+      {
+        url: '/og-image.jpg', // Ensure this image exists in public folder
+        width: 1200,
+        height: 630,
+        alt: 'MelAgro - Agricultural Solutions',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'MelAgro - Premium Agricultural Solutions',
+    description: 'Your trusted partner for quality agricultural inputs, certified seeds, fertilizers, and expert advice in Kenya.',
+    images: ['/og-image.jpg'],
+  },
 };
 
 export default function RootLayout({

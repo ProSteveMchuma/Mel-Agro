@@ -12,11 +12,13 @@ import { getProducts, Product } from "@/lib/products";
 import { useEffect, useState } from "react";
 
 const CATEGORIES = [
-  { name: 'Fertilizers', image: 'https://images.unsplash.com/photo-1628352081506-83c43123ed6d?q=80&w=1000&auto=format&fit=crop', link: '/products?category=fertilizers' },
-  { name: 'Seeds', image: 'https://images.unsplash.com/photo-1595839088654-2e91277c0505?q=80&w=1000&auto=format&fit=crop', link: '/products?category=seeds' },
-  { name: 'Crop Protection', image: 'https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?q=80&w=1000&auto=format&fit=crop', link: '/products?category=protection' },
+  { name: 'Fertilizers', image: 'https://assets.agropests.com/Products/7a8b2cc6ce7a6cd3d0f06547f9024a4eddd44c3d6de37c1af1bdb8553c1038e0?format=auto&width=3840&quality=75', link: '/products?category=fertilizers' },
+  { name: 'Seeds', image: 'https://assets.agropests.com/Products/91e2f76669d5383ae262d34fb82a64313ad583412ebf53f7004dc3646e8d0764?format=auto&width=3840&quality=75', link: '/products?category=seeds' },
+  { name: 'Crop Protection', image: 'https://assets.agropests.com/Products/730667a3e105695df172a2a131a372c87e25de4364bb9b195f96a41131309f07?format=auto&width=3840&quality=75', link: '/products?category=protection' },
   { name: 'Animal Feeds', image: 'https://images.unsplash.com/photo-1548590346-602952ded18c?q=80&w=1000&auto=format&fit=crop', link: '/products?category=feeds' },
 ];
+
+import JsonLd from "@/components/JsonLd";
 
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
@@ -39,6 +41,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans">
+      <JsonLd />
       <Header />
 
       <main className="flex-grow">
