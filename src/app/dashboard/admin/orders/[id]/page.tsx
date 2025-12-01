@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function AdminOrderDetailsPage() {
-    const { orders, updateOrderStatus } = useOrders();
+    const { orders, updateOrderStatus, updateOrderPaymentStatus, updateReturnStatus } = useOrders();
     const params = useParams();
     const router = useRouter();
     const [order, setOrder] = useState<any>(null);
@@ -229,6 +229,74 @@ export default function AdminOrderDetailsPage() {
                             </div>
                         )}
                     </div>
+
+                    {/* Payment Status Card */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Payment Status</h2>
+                        <div className="flex items-center justify-between mb-4">
+                            <span className="text-gray-600">Method:</span>
+                            <span className="font-medium capitalize">{order.paymentMethod || 'N/A'}</span>
+                        </div>
+                        <div className="mb-4">
+                            <span className={`px-3 py-1 rounded-full text-sm font-bold ${order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {order.paymentStatus || 'Unpaid'}
+                            </span>
+                        </div>
+
+                        {order.paymentStatus !== 'Paid' ? (
+                            <button
+                                onClick={() => updateOrderPaymentStatus(order.id, 'Paid')}
+                                className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                            >
+                                Mark as Paid
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => updateOrderPaymentStatus(order.id, 'Unpaid')}
+                                className="w-full bg-gray-100 text-gray-600 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                            >
+                                Mark as Unpaid
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Return Request Card */}
+                    {order.returnStatus && (
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                            <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Return Request</h2>
+
+                            <div className="mb-4">
+                                <span className={`px-3 py-1 rounded-full text-sm font-bold ${order.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' :
+                                        order.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                            'bg-yellow-100 text-yellow-700'
+                                    }`}>
+                                    {order.returnStatus}
+                                </span>
+                            </div>
+
+                            <div className="mb-4 bg-gray-50 p-3 rounded-lg">
+                                <p className="text-xs text-gray-500 font-bold mb-1">Reason:</p>
+                                <p className="text-sm text-gray-700 italic">"{order.returnReason}"</p>
+                            </div>
+
+                            {order.returnStatus === 'Requested' && (
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => updateReturnStatus(order.id, 'Approved')}
+                                        className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
+                                    >
+                                        Approve
+                                    </button>
+                                    <button
+                                        onClick={() => updateReturnStatus(order.id, 'Rejected')}
+                                        className="flex-1 bg-red-50 text-red-600 py-2 rounded-lg hover:bg-red-100 transition-colors font-medium text-sm"
+                                    >
+                                        Reject
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
 

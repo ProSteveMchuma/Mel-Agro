@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Product } from "@/lib/mockData"; // Or wherever Product is defined
+import { Product } from "@/context/ProductContext";
 
 interface ProductFormProps {
     initialData?: Partial<Product>;

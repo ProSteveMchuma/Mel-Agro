@@ -8,15 +8,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { useMessages } from "@/context/MessageContext";
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplate";
+import { toast } from "react-hot-toast";
 
 type Tab = 'dashboard' | 'orders' | 'notifications' | 'profile' | 'support';
 
 export default function UserDashboard() {
     const { user, isAuthenticated, isLoading, updateUserProfile } = useAuth();
-    const { orders, notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
+    const { orders, notifications, markNotificationRead, unreadNotificationsCount, updateOrderStatus, requestReturn } = useOrders();
     const { addToCart } = useCart();
     const router = useRouter();
 
@@ -74,6 +76,44 @@ export default function UserDashboard() {
     const handlePrint = (order: Order, type: 'invoice' | 'receipt' | 'delivery') => {
         setPrintOrder(order);
         setPrintMode(type);
+    };
+
+    const handleConfirmReceipt = async (orderId: string) => {
+        if (confirm("Are you sure you have received this order?")) {
+            try {
+                await updateOrderStatus(orderId, 'Delivered');
+                toast.success("Order marked as Delivered");
+            } catch (error) {
+                console.error("Error updating order:", error);
+                toast.error("Failed to update order status");
+            }
+        }
+    };
+
+    const handleCancelOrder = async (orderId: string) => {
+        if (confirm("Are you sure you want to cancel this order? This action cannot be undone.")) {
+            try {
+                await updateOrderStatus(orderId, 'Cancelled');
+                toast.success("Order cancelled successfully");
+            } catch (error) {
+                console.error("Error cancelling order:", error);
+                toast.error("Failed to cancel order");
+            }
+        }
+    };
+
+    const handleRequestReturn = async (orderId: string) => {
+        const reason = prompt("Please enter the reason for your return:");
+        if (reason) {
+            try {
+                await requestReturn(orderId, reason);
+                toast.success("Return requested successfully");
+                setSelectedOrder(null); // Close modal to refresh or just let it update via context
+            } catch (error) {
+                console.error("Error requesting return:", error);
+                toast.error("Failed to request return");
+            }
+        }
     };
 
     if (isLoading || !user) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagro-primary"></div></div>;
@@ -248,6 +288,28 @@ export default function UserDashboard() {
                                     >
                                         Buy Again
                                     </button>
+                                    {order.status === 'Shipped' && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleConfirmReceipt(order.id);
+                                            }}
+                                            className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
+                                        >
+                                            Confirm Receipt
+                                        </button>
+                                    )}
+                                    {order.status === 'Processing' && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCancelOrder(order.id);
+                                            }}
+                                            className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    )}
                                 </div>
                             </div>
 
@@ -421,29 +483,11 @@ export default function UserDashboard() {
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
                 <h3 className="font-bold text-gray-900 mb-4">Send us a message</h3>
-                <form className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-                        <select className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20">
-                            <option>Order Inquiry</option>
-                            <option>Product Question</option>
-                            <option>Technical Support</option>
-                            <option>Other</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                        <textarea
-                            rows={4}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
-                            placeholder="How can we help you?"
-                        ></textarea>
-                    </div>
-                    <button className="btn-primary w-full">Send Message</button>
-                </form>
+                <MessageForm />
             </div>
         </div>
     );
+
 
     const OrderTimeline = ({ status }: { status: string }) => {
         const steps = ['Processing', 'Shipped', 'Delivered'];
@@ -562,6 +606,22 @@ export default function UserDashboard() {
                             </div>
 
                             <div className="mt-8 grid grid-cols-2 gap-4">
+                                {selectedOrder.status === 'Shipped' && (
+                                    <button
+                                        onClick={() => handleConfirmReceipt(selectedOrder.id)}
+                                        className="col-span-2 bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-colors"
+                                    >
+                                        Confirm Receipt of Goods
+                                    </button>
+                                )}
+                                {selectedOrder.status === 'Processing' && (
+                                    <button
+                                        onClick={() => handleCancelOrder(selectedOrder.id)}
+                                        className="col-span-2 bg-red-50 text-red-600 py-3 rounded-xl font-bold hover:bg-red-100 transition-colors"
+                                    >
+                                        Cancel Order
+                                    </button>
+                                )}
                                 <button onClick={() => handleReorder(selectedOrder)} className="col-span-2 btn-primary w-full">Buy Again</button>
 
                                 {/* Invoice - Always Available */}
@@ -585,6 +645,26 @@ export default function UserDashboard() {
                                         View Delivery Note
                                     </button>
                                 )}
+
+                                {/* Return Button */}
+                                {selectedOrder.status === 'Delivered' && !selectedOrder.returnStatus && (
+                                    <button
+                                        onClick={() => handleRequestReturn(selectedOrder.id)}
+                                        className="col-span-2 bg-orange-50 text-orange-600 py-3 rounded-xl font-bold hover:bg-orange-100 transition-colors"
+                                    >
+                                        Request Return / Refund
+                                    </button>
+                                )}
+
+                                {/* Return Status Badge */}
+                                {selectedOrder.returnStatus && (
+                                    <div className={`col-span-2 p-4 rounded-xl text-center font-bold ${selectedOrder.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' :
+                                            selectedOrder.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                                'bg-yellow-100 text-yellow-700'
+                                        }`}>
+                                        Return Status: {selectedOrder.returnStatus}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -593,5 +673,65 @@ export default function UserDashboard() {
                 <Footer />
             </div>
         </div>
+    );
+}
+
+function MessageForm() {
+    const { sendMessage } = useMessages();
+    const [subject, setSubject] = useState('Order Inquiry');
+    const [message, setMessage] = useState('');
+    const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!message.trim()) return;
+
+        setStatus('sending');
+        try {
+            await sendMessage(subject, message);
+            setStatus('success');
+            setMessage('');
+            setTimeout(() => setStatus('idle'), 3000);
+        } catch (error) {
+            console.error(error);
+            setStatus('error');
+        }
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
+                <select
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                >
+                    <option>Order Inquiry</option>
+                    <option>Product Question</option>
+                    <option>Technical Support</option>
+                    <option>Other</option>
+                </select>
+            </div>
+            <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                <textarea
+                    rows={4}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                    placeholder="How can we help you?"
+                    required
+                ></textarea>
+            </div>
+            <button
+                type="submit"
+                disabled={status === 'sending' || status === 'success'}
+                className={`btn-primary w-full ${status === 'success' ? 'bg-green-600 hover:bg-green-700' : ''}`}
+            >
+                {status === 'sending' ? 'Sending...' : status === 'success' ? 'Message Sent!' : 'Send Message'}
+            </button>
+            {status === 'error' && <p className="text-red-500 text-sm text-center">Failed to send message. Please try again.</p>}
+        </form>
     );
 }

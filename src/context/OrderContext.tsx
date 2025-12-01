@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
 export interface OrderItem {
@@ -27,11 +27,13 @@ export interface Order {
         details: string;
     };
     paymentStatus?: 'Paid' | 'Unpaid';
+    returnStatus?: 'Requested' | 'Approved' | 'Rejected';
+    returnReason?: string;
     notificationPreferences?: string[];
 }
 
 export interface Notification {
-    id: number;
+    id: string;
     userId: string;
     message: string;
     date: string;
@@ -44,7 +46,10 @@ interface OrderContextType {
     notifications: Notification[];
     addOrder: (order: Omit<Order, 'id' | 'date' | 'status'>) => Promise<Order>;
     updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
-    markNotificationRead: (id: number) => void;
+    updateOrderPaymentStatus: (orderId: string, paymentStatus: 'Paid' | 'Unpaid') => Promise<void>;
+    requestReturn: (orderId: string, reason: string) => Promise<void>;
+    updateReturnStatus: (orderId: string, status: 'Approved' | 'Rejected') => Promise<void>;
+    markNotificationRead: (id: string) => Promise<void>;
     unreadNotificationsCount: number;
 }
 
@@ -56,6 +61,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Fetch Orders
     useEffect(() => {
         if (!user) {
             setOrders([]);
@@ -67,7 +73,6 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         if (user.role === 'admin') {
             q = query(collection(db, 'orders'), orderBy('date', 'desc'));
         } else {
-            // Temporarily remove orderBy to avoid needing a composite index immediately
             q = query(collection(db, 'orders'), where('userId', '==', user.uid));
         }
 
@@ -76,11 +81,44 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                 id: doc.id,
                 ...doc.data()
             })) as Order[];
+            // Client-side sort for users if index is missing
+            if (user.role !== 'admin') {
+                orderList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            }
             setOrders(orderList);
             setLoading(false);
         }, (error: Error) => {
             console.error("Error listening to orders:", error);
             setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, [user]);
+
+    // Fetch Notifications
+    useEffect(() => {
+        if (!user) {
+            setNotifications([]);
+            return;
+        }
+
+        const q = query(
+            collection(db, 'notifications'),
+            where('userId', '==', user.uid)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const notifs = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as Notification[];
+
+            // Client-side sort
+            notifs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            setNotifications(notifs);
+        }, (error) => {
+            console.error("Error listening to notifications:", error);
         });
 
         return () => unsubscribe();
@@ -96,51 +134,167 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         const docRef = await addDoc(collection(db, "orders"), newOrderBase);
         const newOrder = { ...newOrderBase, id: docRef.id };
 
-        // Add local notification
-        const newNotification: Notification = {
-            id: Date.now(),
+        // Create Notification for User
+        await addDoc(collection(db, 'notifications'), {
             userId: orderData.userId,
             message: `Order #${docRef.id.substr(0, 5)} has been placed successfully!`,
-            date: new Date().toLocaleTimeString(),
+            date: new Date().toISOString(),
             read: false,
             type: 'order'
-        };
-        setNotifications(prev => [newNotification, ...prev]);
+        });
+
+        // Create Notification for Admins
+        try {
+            const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+            const adminDocs = await getDocs(adminsQuery);
+            adminDocs.forEach(async (adminDoc) => {
+                await addDoc(collection(db, 'notifications'), {
+                    userId: adminDoc.id,
+                    message: `New Order #${docRef.id.substr(0, 5)} placed by ${orderData.userEmail || 'Customer'}`,
+                    date: new Date().toISOString(),
+                    read: false,
+                    type: 'system'
+                });
+            });
+        } catch (error) {
+            console.error("Error notifying admins:", error);
+        }
+
+        // Update Stock
+        try {
+            for (const item of orderData.items) {
+                const productRef = doc(db, "products", String(item.id));
+                const productSnap = await getDoc(productRef);
+
+                if (productSnap.exists()) {
+                    const currentStock = productSnap.data().stockQuantity || 0;
+                    const newStock = Math.max(0, currentStock - item.quantity);
+
+                    await updateDoc(productRef, {
+                        stockQuantity: newStock,
+                        inStock: newStock > 0
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Error updating stock:", error);
+        }
 
         return newOrder;
     };
 
     const updateOrderStatus = async (orderId: string, status: Order['status']) => {
         const orderRef = doc(db, "orders", orderId);
+
+        // Check previous status to handle stock restoration
+        const orderSnap = await getDoc(orderRef);
+        if (!orderSnap.exists()) return;
+
+        const previousStatus = orderSnap.data().status;
+
         await updateDoc(orderRef, { status });
+
+        // Restore stock if cancelling
+        if (status === 'Cancelled' && previousStatus !== 'Cancelled') {
+            const orderItems = orderSnap.data().items as OrderItem[];
+            try {
+                for (const item of orderItems) {
+                    const productRef = doc(db, "products", String(item.id));
+                    const productSnap = await getDoc(productRef);
+
+                    if (productSnap.exists()) {
+                        const currentStock = productSnap.data().stockQuantity || 0;
+                        const newStock = currentStock + item.quantity;
+
+                        await updateDoc(productRef, {
+                            stockQuantity: newStock,
+                            inStock: newStock > 0
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error("Error restoring stock:", error);
+            }
+        }
 
         const order = orders.find(o => o.id === orderId);
         if (order) {
-            const newNotification: Notification = {
-                id: Date.now(),
+            // Create Notification in Firestore
+            await addDoc(collection(db, 'notifications'), {
                 userId: order.userId,
                 message: `Order #${orderId.substr(0, 5)} status updated to ${status}`,
-                date: new Date().toLocaleTimeString(),
+                date: new Date().toISOString(),
                 read: false,
                 type: 'order'
-            };
-            setNotifications(prev => [newNotification, ...prev]);
+            });
         }
     };
 
-    const markNotificationRead = (id: number) => {
-        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    const updateOrderPaymentStatus = async (orderId: string, paymentStatus: 'Paid' | 'Unpaid') => {
+        const orderRef = doc(db, "orders", orderId);
+        await updateDoc(orderRef, { paymentStatus });
     };
 
-    const userNotifications = user ? notifications.filter(n => n.userId === user.uid) : [];
-    const unreadNotificationsCount = userNotifications.filter(n => !n.read).length;
+    const requestReturn = async (orderId: string, reason: string) => {
+        const orderRef = doc(db, "orders", orderId);
+        await updateDoc(orderRef, {
+            returnStatus: 'Requested',
+            returnReason: reason
+        });
+
+        // Notify Admins
+        try {
+            const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+            const adminDocs = await getDocs(adminsQuery);
+            adminDocs.forEach(async (adminDoc) => {
+                await addDoc(collection(db, 'notifications'), {
+                    userId: adminDoc.id,
+                    message: `Return Requested for Order #${orderId.substr(0, 5)}`,
+                    date: new Date().toISOString(),
+                    read: false,
+                    type: 'system'
+                });
+            });
+        } catch (error) {
+            console.error("Error notifying admins:", error);
+        }
+    };
+
+    const updateReturnStatus = async (orderId: string, status: 'Approved' | 'Rejected') => {
+        const orderRef = doc(db, "orders", orderId);
+        await updateDoc(orderRef, { returnStatus: status });
+
+        const order = orders.find(o => o.id === orderId);
+        if (order) {
+            await addDoc(collection(db, 'notifications'), {
+                userId: order.userId,
+                message: `Your return request for Order #${orderId.substr(0, 5)} has been ${status}`,
+                date: new Date().toISOString(),
+                read: false,
+                type: 'order'
+            });
+        }
+    };
+
+    const markNotificationRead = async (id: string) => {
+        // Optimistic update
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+
+        const notifRef = doc(db, 'notifications', id);
+        await updateDoc(notifRef, { read: true });
+    };
+
+    const unreadNotificationsCount = notifications.filter(n => !n.read).length;
 
     return (
         <OrderContext.Provider value={{
             orders,
-            notifications: userNotifications,
+            notifications,
             addOrder,
             updateOrderStatus,
+            updateOrderPaymentStatus,
+            requestReturn,
+            updateReturnStatus,
             markNotificationRead,
             unreadNotificationsCount
         }}>

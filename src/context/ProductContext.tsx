@@ -2,7 +2,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
-import { products as MOCK_PRODUCTS, Product } from '@/lib/mockData';
+import { products as MOCK_PRODUCTS } from '@/lib/mockData';
+
+export interface Product {
+    id: string | number;
+    name: string;
+    price: number;
+    category: string;
+    image: string;
+    rating: number;
+    reviews: number;
+    inStock: boolean;
+    stockQuantity: number;
+    lowStockThreshold: number;
+    description?: string;
+    tags?: string[];
+}
 
 interface ProductContextType {
     products: Product[];

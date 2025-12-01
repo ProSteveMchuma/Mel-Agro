@@ -24,6 +24,12 @@ export default function OrderManagement() {
                     <h1 className="text-2xl font-bold text-gray-900">Orders</h1>
                     <p className="text-gray-500 text-sm">Manage and track customer orders.</p>
                 </div>
+                <Link href="/dashboard/admin/orders/create" className="btn-primary flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Create Order
+                </Link>
             </div>
 
             {/* Filters */}

@@ -10,6 +10,9 @@ import { WishlistProvider } from "@/context/WishlistContext";
 import CartDrawer from "@/components/CartDrawer";
 import WhatsAppButton from "@/components/WhatsAppButton";
 import { SettingsProvider } from "@/context/SettingsContext";
+import { MessageProvider } from "@/context/MessageContext";
+import { ContentProvider } from "@/context/ContentContext";
+import { Toaster } from 'react-hot-toast';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,7 +25,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://melagro.com'), // Replace with actual domain
+  metadataBase: new URL('https://melagro.com'),
   title: {
     default: "MelAgro - Premium Agricultural Solutions",
     template: "%s | MelAgro"
@@ -52,7 +55,7 @@ export const metadata: Metadata = {
     siteName: 'MelAgro',
     images: [
       {
-        url: '/og-image.jpg', // Ensure this image exists in public folder
+        url: '/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'MelAgro - Agricultural Solutions',
@@ -78,21 +81,42 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <SettingsProvider> {/* Added SettingsProvider */}
-            <CartProvider>
-              <OrderProvider>
-                <ProductProvider>
-                  <UserProvider>
-                    <WishlistProvider>
-                      {children}
-                      <WhatsAppButton />
-                    </WishlistProvider>
-                  </UserProvider>
-                </ProductProvider>
-              </OrderProvider>
-              <CartDrawer />
-            </CartProvider>
-          </SettingsProvider> {/* Closed SettingsProvider */}
+          <SettingsProvider>
+            <ContentProvider>
+              <CartProvider>
+                <OrderProvider>
+                  <ProductProvider>
+                    <UserProvider>
+                      <MessageProvider>
+                        <WishlistProvider>
+                          {children}
+                          <WhatsAppButton />
+                          <Toaster position="top-center" toastOptions={{
+                            duration: 3000,
+                            style: {
+                              background: '#333',
+                              color: '#fff',
+                            },
+                            success: {
+                              style: {
+                                background: '#10B981',
+                              },
+                            },
+                            error: {
+                              style: {
+                                background: '#EF4444',
+                              },
+                            },
+                          }} />
+                        </WishlistProvider>
+                      </MessageProvider>
+                    </UserProvider>
+                  </ProductProvider>
+                </OrderProvider>
+                <CartDrawer />
+              </CartProvider>
+            </ContentProvider>
+          </SettingsProvider>
         </AuthProvider>
       </body>
     </html>

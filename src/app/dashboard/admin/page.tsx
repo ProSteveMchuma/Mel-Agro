@@ -69,28 +69,54 @@ export default function AdminDashboard() {
             </div>
 
             {/* Alerts */}
-            {products.some(p => !p.inStock) && (
-                <Link href="/dashboard/admin/products" className="block bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg print:hidden hover:bg-red-100 transition-colors cursor-pointer group">
-                    <div className="flex items-center">
-                        <div className="flex-shrink-0">
-                            <svg className="h-5 w-5 text-red-500 group-hover:text-red-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                            </svg>
-                        </div>
-                        <div className="ml-3">
-                            <h3 className="text-sm font-medium text-red-800 group-hover:text-red-900">Attention Needed</h3>
-                            <div className="mt-2 text-sm text-red-700 group-hover:text-red-800">
-                                <p>You have {products.filter(p => !p.inStock).length} products out of stock.</p>
+            {/* Alerts */}
+            <div className="space-y-4 print:hidden">
+                {products.some(p => !p.inStock) && (
+                    <Link href="/dashboard/admin/products" className="block bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg hover:bg-red-100 transition-colors cursor-pointer group">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                                <svg className="h-5 w-5 text-red-500 group-hover:text-red-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div className="ml-3">
+                                <h3 className="text-sm font-medium text-red-800 group-hover:text-red-900">Out of Stock</h3>
+                                <div className="mt-2 text-sm text-red-700 group-hover:text-red-800">
+                                    <p>You have {products.filter(p => !p.inStock).length} products out of stock.</p>
+                                </div>
+                            </div>
+                            <div className="ml-auto">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400 group-hover:text-red-600 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
                             </div>
                         </div>
-                        <div className="ml-auto">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-400 group-hover:text-red-600 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
+                    </Link>
+                )}
+
+                {products.some(p => p.inStock && p.stockQuantity <= (p.lowStockThreshold || 10)) && (
+                    <Link href="/dashboard/admin/products" className="block bg-yellow-50 border-l-4 border-yellow-500 p-4 rounded-r-lg hover:bg-yellow-100 transition-colors cursor-pointer group">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0">
+                                <svg className="h-5 w-5 text-yellow-500 group-hover:text-yellow-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div className="ml-3">
+                                <h3 className="text-sm font-medium text-yellow-800 group-hover:text-yellow-900">Low Stock Warning</h3>
+                                <div className="mt-2 text-sm text-yellow-700 group-hover:text-yellow-800">
+                                    <p>You have {products.filter(p => p.inStock && p.stockQuantity <= (p.lowStockThreshold || 10)).length} products running low.</p>
+                                </div>
+                            </div>
+                            <div className="ml-auto">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-yellow-400 group-hover:text-yellow-600 group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                            </div>
                         </div>
-                    </div>
-                </Link>
-            )}
+                    </Link>
+                )}
+            </div>
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:hidden">

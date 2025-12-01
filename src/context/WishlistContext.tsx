@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product } from '@/lib/mockData';
+import { Product } from '@/context/ProductContext';
+import { toast } from 'react-hot-toast';
 
 interface WishlistContextType {
     wishlist: Product[];
@@ -28,11 +29,13 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
     const addToWishlist = (product: Product) => {
         if (!isInWishlist(product.id)) {
             setWishlist(prev => [...prev, product]);
+            toast.success('Added to wishlist');
         }
     };
 
     const removeFromWishlist = (productId: string | number) => {
         setWishlist(prev => prev.filter(p => p.id !== productId));
+        toast.success('Removed from wishlist');
     };
 
     const isInWishlist = (productId: string | number) => {

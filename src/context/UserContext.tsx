@@ -9,12 +9,13 @@ export interface User {
     email: string;
     role: 'admin' | 'customer';
     joinDate: string;
-    status: 'active' | 'inactive';
+    status: 'active' | 'suspended';
 }
 
 interface UserContextType {
     users: User[];
     updateUserRole: (userId: string, role: 'admin' | 'customer') => Promise<void>;
+    updateUserStatus: (userId: string, status: 'active' | 'suspended') => Promise<void>;
     deleteUser: (userId: string) => Promise<void>;
 }
 
@@ -52,11 +53,18 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         };
 
         fetchUsers();
-    }, []);
+    }, [user]);
 
     const updateUserRole = async (userId: string, role: 'admin' | 'customer') => {
         const userRef = doc(db, "users", userId);
         await updateDoc(userRef, { role });
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
+    };
+
+    const updateUserStatus = async (userId: string, status: 'active' | 'suspended') => {
+        const userRef = doc(db, "users", userId);
+        await updateDoc(userRef, { status });
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
     };
 
     const deleteUser = async (userId: string) => {
@@ -65,7 +73,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <UserContext.Provider value={{ users, updateUserRole, deleteUser }}>
+        <UserContext.Provider value={{ users, updateUserRole, updateUserStatus, deleteUser }}>
             {children}
         </UserContext.Provider>
     );

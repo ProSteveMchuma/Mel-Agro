@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 
-const SLIDES = [
+import { useContent } from "@/context/ContentContext";
+
+const DEFAULT_SLIDES = [
     {
-        id: 1,
+        id: '1',
         image: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?q=80&w=1740&auto=format&fit=crop",
         tag: "🌱 Premium Agricultural Solutions",
         title: "Cultivating Success for",
@@ -16,54 +18,47 @@ const SLIDES = [
         secondaryBtn: "Contact Experts",
         secondaryLink: "/contact"
     },
-    {
-        id: 2,
-        image: "https://images.unsplash.com/photo-1628352081506-83c43123ed6d?q=80&w=1000&auto=format&fit=crop",
-        tag: "⚡ Boost Your Productivity",
-        title: "Quality Nutrition for",
-        highlight: "Better Yields",
-        description: "Enhance soil health and crop growth with our range of premium fertilizers and soil conditioners tailored for local soils.",
-        primaryBtn: "Shop Fertilizers",
-        primaryLink: "/products?category=fertilizers",
-        secondaryBtn: "View Guide",
-        secondaryLink: "/about"
-    },
-    {
-        id: 3,
-        image: "https://images.unsplash.com/photo-1589923188900-85dae5233271?q=80&w=1000&auto=format&fit=crop",
-        tag: "🚜 Modern Farming Tools",
-        title: "Efficiency in",
-        highlight: "Every Acre",
-        description: "Streamline your operations with durable, high-performance agricultural tools and equipment designed for the modern farmer.",
-        primaryBtn: "Shop Equipment",
-        primaryLink: "/products?category=equipment",
-        secondaryBtn: "Learn More",
-        secondaryLink: "/products"
-    }
+    // ... other defaults can remain or be removed if we want pure dynamic
 ];
 
 export default function Hero() {
+    const { banners, loading } = useContent();
     const [currentSlide, setCurrentSlide] = useState(0);
+
+    const activeBanners = banners.filter(b => b.active);
+
+    const slides = activeBanners.length > 0 ? activeBanners.map(b => ({
+        id: b.id,
+        image: b.image,
+        tag: b.subtitle, // Mapping subtitle to tag
+        title: b.title,
+        highlight: "", // Dynamic banners might not have highlight split
+        description: b.description || "Discover our premium agricultural products.",
+        primaryBtn: "Shop Now",
+        primaryLink: b.link || "/products",
+        secondaryBtn: "Contact Us",
+        secondaryLink: "/contact"
+    })) : DEFAULT_SLIDES;
 
     useEffect(() => {
         const timer = setInterval(() => {
-            setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
+            setCurrentSlide((prev) => (prev + 1) % slides.length);
         }, 5000);
         return () => clearInterval(timer);
-    }, []);
+    }, [slides.length]);
 
     const nextSlide = () => {
-        setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
+        setCurrentSlide((prev) => (prev + 1) % slides.length);
     };
 
     const prevSlide = () => {
-        setCurrentSlide((prev) => (prev - 1 + SLIDES.length) % SLIDES.length);
+        setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
     };
 
     return (
         <section className="relative bg-gray-900 overflow-hidden h-[600px] md:h-[700px]">
             {/* Slides */}
-            {SLIDES.map((slide, index) => (
+            {slides.map((slide, index) => (
                 <div
                     key={slide.id}
                     className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"
@@ -131,7 +126,7 @@ export default function Hero() {
 
             {/* Dots Navigation */}
             <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex gap-3">
-                {SLIDES.map((_, index) => (
+                {slides.map((_, index) => (
                     <button
                         key={index}
                         onClick={() => setCurrentSlide(index)}

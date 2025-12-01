@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product } from '@/lib/products';
+import { toast } from 'react-hot-toast';
 
 export interface CartItem extends Product {
     quantity: number;
@@ -46,12 +47,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
         setCartItems(prev => {
             const existing = prev.find(item => item.id === product.id);
             if (existing) {
+                toast.success(`Updated quantity for ${product.name}`);
                 return prev.map(item =>
                     item.id === product.id
                         ? { ...item, quantity: item.quantity + quantity }
                         : item
                 );
             }
+            toast.success(`Added ${product.name} to cart`);
             return [...prev, { ...product, quantity }];
         });
         setIsCartOpen(true); // Open drawer on add
@@ -59,6 +62,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const removeFromCart = (id: string) => {
         setCartItems(prev => prev.filter(item => item.id !== id));
+        toast.success('Removed from cart');
     };
 
     const updateQuantity = (id: string, quantity: number) => {

@@ -3,7 +3,7 @@ import { useProducts } from "@/context/ProductContext";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import ProductForm from "@/components/admin/ProductForm";
-import { Product } from "@/lib/mockData";
+import { Product } from "@/context/ProductContext";
 
 export default function EditProductPage() {
     const { getProduct, updateProduct, products } = useProducts();
@@ -25,8 +25,6 @@ export default function EditProductPage() {
     const handleSubmit = async (data: Omit<Product, 'id'>) => {
         setIsSubmitting(true);
         try {
-            // Simulate network delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
             await updateProduct(id, data);
             router.push('/dashboard/admin/products');
         } catch (error) {

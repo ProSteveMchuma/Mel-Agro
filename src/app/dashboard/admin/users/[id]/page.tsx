@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function UserProfilePage() {
-    const { users, updateUserRole, deleteUser } = useUsers();
+    const { users, updateUserRole, updateUserStatus, deleteUser } = useUsers();
     const { orders } = useOrders();
     const params = useParams();
     const router = useRouter();
@@ -28,14 +28,17 @@ export default function UserProfilePage() {
     const averageOrderValue = userOrders.length > 0 ? totalSpend / userOrders.length : 0;
 
     const handleSuspendToggle = async () => {
-        // In a real app, this would update a 'status' field in Firestore
-        // For now, we'll simulate it or use a field if it exists in our mock/context
-        // Assuming 'status' is part of the user object we can update
+        if (!user) return;
         const newStatus = user.status === 'active' ? 'suspended' : 'active';
-        // We might need to add updateUserStatus to context, but for now let's assume we can't easily without modifying context
-        // Let's just alert for now as a placeholder for the logic
-        alert(`User ${user.name} has been ${newStatus}. (Simulation)`);
-        // Ideally: await updateUserStatus(user.id, newStatus);
+        try {
+            await updateUserStatus(user.id, newStatus);
+            // Update local state to reflect change immediately
+            setUser({ ...user, status: newStatus });
+            alert(`User ${user.name} has been ${newStatus}.`);
+        } catch (error) {
+            console.error("Failed to update user status:", error);
+            alert("Failed to update user status.");
+        }
     };
 
     return (
@@ -111,9 +114,9 @@ export default function UserProfilePage() {
                                     <td className="px-6 py-4 text-gray-600">{new Date(order.date).toLocaleDateString()}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                                                order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
-                                                    order.status === 'Processing' ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-red-100 text-red-700'
+                                            order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
+                                                order.status === 'Processing' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-red-100 text-red-700'
                                             }`}>
                                             {order.status}
                                         </span>
