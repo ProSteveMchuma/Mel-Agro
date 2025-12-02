@@ -40,7 +40,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 // Fetch user profile from Firestore
                 const userDocRef = doc(db, 'users', firebaseUser.uid);
                 const userDoc = await getDoc(userDocRef);
-                const userData = userDoc.exists() ? userDoc.data() : {};
+
+                let userData = userDoc.exists() ? userDoc.data() : {};
+
+                // If user document doesn't exist, create it
+                if (!userDoc.exists()) {
+                    const newUserData = {
+                        name: firebaseUser.displayName || 'User',
+                        email: firebaseUser.email || '',
+                        role: firebaseUser.email === 'admin@melagro.com' ? 'admin' : 'user',
+                        createdAt: new Date().toISOString()
+                    };
+                    await setDoc(userDocRef, newUserData);
+                    userData = newUserData;
+                }
 
                 const role = firebaseUser.email === 'admin@melagro.com' ? 'admin' : (userData.role || 'user');
 

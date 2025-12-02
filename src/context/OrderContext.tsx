@@ -71,7 +71,8 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         let q;
         if (user.role === 'admin') {
-            q = query(collection(db, 'orders'), orderBy('date', 'desc'));
+            // Remove orderBy to avoid missing index issue
+            q = query(collection(db, 'orders'));
         } else {
             q = query(collection(db, 'orders'), where('userId', '==', user.uid));
         }
@@ -81,10 +82,8 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                 id: doc.id,
                 ...doc.data()
             })) as Order[];
-            // Client-side sort for users if index is missing
-            if (user.role !== 'admin') {
-                orderList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-            }
+            // Client-side sort for everyone
+            orderList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setOrders(orderList);
             setLoading(false);
         }, (error: Error) => {
