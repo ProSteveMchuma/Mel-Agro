@@ -10,7 +10,7 @@ import SmartSearch from "./SmartSearch";
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { cartCount, toggleCart } = useCart();
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const router = useRouter();
 
   const userLink = user
@@ -52,6 +52,12 @@ export default function Header() {
 
             <SmartSearch />
 
+            <Link href="/dashboard/user?tab=orders" className="p-2 text-gray-600 hover:text-melagro-primary transition-colors relative" title="Track Order">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+            </Link>
+
             <Link href="/wishlist" className="p-2 text-gray-600 hover:text-melagro-primary transition-colors relative" title="Wishlist">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -83,22 +89,37 @@ export default function Header() {
               )}
             </button>
 
-            <Link href={userLink} className="p-2 text-gray-600 hover:text-melagro-primary transition-colors" title={user ? "Dashboard" : "Login"}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                />
-              </svg>
-            </Link>
+            {user ? (
+              <div className="relative group">
+                <button className="p-2 text-gray-600 hover:text-melagro-primary transition-colors flex items-center gap-2">
+                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-sm font-bold text-gray-600">
+                    {user.name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                </button>
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all transform origin-top-right z-50">
+                  <div className="px-4 py-2 border-b border-gray-50">
+                    <div className="font-bold text-gray-900 truncate">{user.name}</div>
+                    <div className="text-xs text-gray-500 truncate">{user.email}</div>
+                  </div>
+                  <Link href={userLink} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    Dashboard
+                  </Link>
+                  <Link href="/dashboard/user?tab=orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    My Orders
+                  </Link>
+                  <button
+                    onClick={() => logout()}
+                    className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <Link href="/auth/login" className="p-2 text-gray-600 hover:text-melagro-primary transition-colors font-medium">
+                Login
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}

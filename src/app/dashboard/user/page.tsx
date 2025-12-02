@@ -14,10 +14,10 @@ import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplate";
 import { toast } from "react-hot-toast";
 
-type Tab = 'dashboard' | 'orders' | 'notifications' | 'profile' | 'support';
+type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support';
 
 export default function UserDashboard() {
-    const { user, isAuthenticated, isLoading, updateUserProfile } = useAuth();
+    const { user, isAuthenticated, isLoading, updateUserProfile, logout } = useAuth();
     const { orders, notifications, markNotificationRead, unreadNotificationsCount, updateOrderStatus, requestReturn } = useOrders();
     const { addToCart } = useCart();
     const router = useRouter();
@@ -140,6 +140,7 @@ export default function UserDashboard() {
                 {[
                     { id: 'dashboard', label: 'Dashboard', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg> },
                     { id: 'orders', label: 'My Orders', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg> },
+                    { id: 'returns', label: 'Returns & Refunds', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> },
                     {
                         id: 'notifications', label: 'Notifications', icon: (
                             <div className="relative">
@@ -170,7 +171,10 @@ export default function UserDashboard() {
                 ))}
 
                 <div className="pt-4 mt-4 border-t border-gray-100">
-                    <button className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors">
+                    <button
+                        onClick={logout}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
                         Sign Out
                     </button>
@@ -251,6 +255,55 @@ export default function UserDashboard() {
             </div>
         </div>
     );
+
+    const renderReturns = () => {
+        const returnedOrders = orders.filter(o => o.returnStatus);
+
+        return (
+            <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-900">Returns & Refunds</h2>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    {returnedOrders.length === 0 ? (
+                        <div className="p-8 text-center text-gray-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                            <p>No return requests found.</p>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-gray-100">
+                            {returnedOrders.map((order) => (
+                                <div key={order.id} className="p-6">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <h3 className="font-bold text-lg text-gray-900">Order #{order.id}</h3>
+                                            <p className="text-sm text-gray-500">Requested on {order.date}</p>
+                                        </div>
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${order.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' :
+                                                order.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                                    'bg-yellow-100 text-yellow-700'
+                                            }`}>
+                                            {order.returnStatus}
+                                        </span>
+                                    </div>
+                                    <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                                        <p className="text-sm font-medium text-gray-700">Reason:</p>
+                                        <p className="text-sm text-gray-600">{order.returnReason}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setSelectedOrder(order)}
+                                        className="text-sm text-melagro-primary font-medium hover:underline"
+                                    >
+                                        View Order Details
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     const renderOrders = () => (
         <div className="space-y-6">
@@ -565,6 +618,7 @@ export default function UserDashboard() {
                             <div className="lg:w-3/4">
                                 {activeTab === 'dashboard' && renderDashboard()}
                                 {activeTab === 'orders' && renderOrders()}
+                                {activeTab === 'returns' && renderReturns()}
                                 {activeTab === 'notifications' && renderNotifications()}
                                 {activeTab === 'profile' && renderProfile()}
                                 {activeTab === 'support' && renderSupport()}
@@ -659,8 +713,8 @@ export default function UserDashboard() {
                                 {/* Return Status Badge */}
                                 {selectedOrder.returnStatus && (
                                     <div className={`col-span-2 p-4 rounded-xl text-center font-bold ${selectedOrder.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' :
-                                            selectedOrder.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
-                                                'bg-yellow-100 text-yellow-700'
+                                        selectedOrder.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                            'bg-yellow-100 text-yellow-700'
                                         }`}>
                                         Return Status: {selectedOrder.returnStatus}
                                     </div>

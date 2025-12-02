@@ -13,11 +13,14 @@ import { NotificationService } from '@/lib/notifications';
 import { DELIVERY_ZONES, KENYAN_COUNTIES, getDeliveryCost } from '@/lib/delivery';
 import Link from 'next/link';
 
+import { useSettings } from '@/context/SettingsContext';
+
 export default function CheckoutPage() {
     const router = useRouter();
     const { cartItems, cartTotal, clearCart } = useCart();
     const { user, isLoading: authLoading, updateUserProfile } = useAuth();
     const { addOrder } = useOrders();
+    const { shipping } = useSettings(); // Get dynamic shipping settings
 
     const [currentStep, setCurrentStep] = useState(1);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -31,14 +34,27 @@ export default function CheckoutPage() {
         county: 'Nairobi'
     });
 
+    // Pre-fill address from user profile
+    useEffect(() => {
+        if (user) {
+            const names = user.name ? user.name.split(' ') : ['', ''];
+            setFormData(prev => ({
+                ...prev,
+                firstName: names[0] || '',
+                lastName: names.slice(1).join(' ') || '',
+                phone: user.phone || '',
+                address: user.address || '',
+                city: user.city || '',
+                county: user.county || 'Nairobi'
+            }));
+        }
+    }, [user]);
+
     const steps = [
         { id: 1, name: 'Address' },
         { id: 2, name: 'Shipping' },
         { id: 3, name: 'Payment' }
     ];
-
-    // Define shipping object for compatibility with existing code
-    const shipping = { zones: DELIVERY_ZONES };
 
     const [notificationPreferences, setNotificationPreferences] = useState<string[]>(['email', 'sms']);
     const [paymentMethod, setPaymentMethod] = useState('mpesa');
@@ -315,7 +331,25 @@ export default function CheckoutPage() {
                                     </div>
 
                                     <div className="bg-gray-50 p-4 rounded-xl mb-6 flex gap-4">
-                                        <button className="flex-1 bg-white shadow-sm py-2 px-4 rounded-lg text-sm font-bold text-gray-900 border border-gray-200">Use Existing Address</button>
+                                        <button
+                                            onClick={() => {
+                                                if (user) {
+                                                    const names = user.name ? user.name.split(' ') : ['', ''];
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        firstName: names[0] || '',
+                                                        lastName: names.slice(1).join(' ') || '',
+                                                        phone: user.phone || '',
+                                                        address: user.address || '',
+                                                        city: user.city || '',
+                                                        county: user.county || 'Nairobi'
+                                                    }));
+                                                }
+                                            }}
+                                            className="flex-1 bg-white shadow-sm py-2 px-4 rounded-lg text-sm font-bold text-gray-900 border border-gray-200 hover:bg-gray-50 transition-colors"
+                                        >
+                                            Use Existing Address
+                                        </button>
                                         <button className="flex-1 py-2 px-4 rounded-lg text-sm font-medium text-gray-500 hover:bg-white hover:shadow-sm transition-all">Add New Address</button>
                                     </div>
 
