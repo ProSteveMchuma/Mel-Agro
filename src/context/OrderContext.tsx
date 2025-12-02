@@ -135,13 +135,17 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         const newOrder = { ...newOrderBase, id: docRef.id };
 
         // Create Notification for User
-        await addDoc(collection(db, 'notifications'), {
-            userId: orderData.userId,
-            message: `Order #${docRef.id.substr(0, 5)} has been placed successfully!`,
-            date: new Date().toISOString(),
-            read: false,
-            type: 'order'
-        });
+        try {
+            await addDoc(collection(db, 'notifications'), {
+                userId: orderData.userId,
+                message: `Order #${docRef.id.substr(0, 5)} has been placed successfully!`,
+                date: new Date().toISOString(),
+                read: false,
+                type: 'order'
+            });
+        } catch (error) {
+            console.error("Error creating user notification:", error);
+        }
 
         // Create Notification for Admins
         try {
@@ -220,13 +224,17 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         const order = orders.find(o => o.id === orderId);
         if (order) {
             // Create Notification in Firestore
-            await addDoc(collection(db, 'notifications'), {
-                userId: order.userId,
-                message: `Order #${orderId.substr(0, 5)} status updated to ${status}`,
-                date: new Date().toISOString(),
-                read: false,
-                type: 'order'
-            });
+            try {
+                await addDoc(collection(db, 'notifications'), {
+                    userId: order.userId,
+                    message: `Order #${orderId.substr(0, 5)} status updated to ${status}`,
+                    date: new Date().toISOString(),
+                    read: false,
+                    type: 'order'
+                });
+            } catch (error) {
+                console.error("Error creating status update notification:", error);
+            }
         }
     };
 
@@ -266,13 +274,17 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         const order = orders.find(o => o.id === orderId);
         if (order) {
-            await addDoc(collection(db, 'notifications'), {
-                userId: order.userId,
-                message: `Your return request for Order #${orderId.substr(0, 5)} has been ${status}`,
-                date: new Date().toISOString(),
-                read: false,
-                type: 'order'
-            });
+            try {
+                await addDoc(collection(db, 'notifications'), {
+                    userId: order.userId,
+                    message: `Your return request for Order #${orderId.substr(0, 5)} has been ${status}`,
+                    date: new Date().toISOString(),
+                    read: false,
+                    type: 'order'
+                });
+            } catch (error) {
+                console.error("Error creating return status notification:", error);
+            }
         }
     };
 
