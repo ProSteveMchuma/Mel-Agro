@@ -203,7 +203,7 @@ export default function AdminDashboard() {
                                         onClick={() => router.push(`/dashboard/admin/orders/${order.id}`)}
                                     >
                                         <td className="px-6 py-4 font-medium text-gray-900">#{order.id}</td>
-                                        <td className="px-6 py-4 text-gray-600">{order.userEmail || order.userId}</td>
+                                        <td className="px-6 py-4 text-gray-600">{order.userName || order.userEmail || order.userId}</td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded-full text-xs font-bold ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
                                                 order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :

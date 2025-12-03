@@ -15,18 +15,20 @@ export async function getProductReviews(productId: string): Promise<Review[]> {
     try {
         const q = query(
             collection(db, 'reviews'),
-            where('productId', '==', productId),
-            orderBy('createdAt', 'desc')
+            where('productId', '==', productId)
         );
 
         const snapshot = await getDocs(q);
-        return snapshot.docs.map(doc => ({
+        const reviews = snapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data(),
-            // Convert timestamp to string if needed, or keep as is. 
-            // For simplicity in UI, we often store a formatted date string or convert here.
-            date: doc.data().createdAt?.toDate().toLocaleDateString() || new Date().toLocaleDateString()
-        })) as Review[];
+            date: doc.data().createdAt?.toDate().toLocaleDateString() || new Date().toLocaleDateString(),
+            // Helper for sorting
+            timestamp: doc.data().createdAt?.toMillis() || 0
+        })) as (Review & { timestamp: number })[];
+
+        // Client-side sort
+        return reviews.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
         console.error("Error fetching reviews:", error);
         return [];

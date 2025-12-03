@@ -86,7 +86,7 @@ export default function OrderManagement() {
                                         </Link>
                                     </td>
                                     <td className="px-6 py-4 text-gray-600">{new Date(order.date).toLocaleDateString()}</td>
-                                    <td className="px-6 py-4 text-gray-600">User {order.userId.substr(0, 5)}...</td>
+                                    <td className="px-6 py-4 text-gray-600">{order.userName || `User ${order.userId.substr(0, 5)}...`}</td>
                                     <td className="px-6 py-4 font-bold text-gray-900">KES {order.total.toLocaleString()}</td>
                                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                         <select

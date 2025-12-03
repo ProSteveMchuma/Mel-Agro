@@ -15,6 +15,7 @@ export interface OrderItem {
 export interface Order {
     id: string;
     userId: string;
+    userName?: string;
     userEmail?: string;
     date: string;
     status: 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';

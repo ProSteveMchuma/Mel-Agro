@@ -233,6 +233,7 @@ export default function CheckoutPage() {
             // 2. Create Order
             const orderData = {
                 userId: user.uid,
+                userName: `${formData.firstName} ${formData.lastName}`,
                 userEmail: user.email || "",
                 items: cartItems.map(item => ({
                     id: item.id,

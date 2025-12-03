@@ -48,7 +48,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
-        const q = query(collection(db, "products"), orderBy("name"));
+        const q = query(collection(db, "products"));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             const productList: Product[] = [];
             snapshot.forEach((doc) => {
@@ -58,6 +58,9 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
                     id: doc.id
                 } as Product);
             });
+
+            // Client-side sort by name
+            productList.sort((a, b) => a.name.localeCompare(b.name));
 
             if (productList.length === 0 && !loading) {
                 // Only seed if we're sure it's empty and not just initial load

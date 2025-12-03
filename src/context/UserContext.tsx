@@ -37,12 +37,21 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             }
 
             try {
-                const q = query(collection(db, "users"), orderBy("createdAt", "desc"));
+                // Remove orderBy to ensure we fetch users even if they lack 'createdAt'
+                const q = query(collection(db, "users"));
                 const snapshot = await getDocs(q);
                 const userList: User[] = [];
                 snapshot.forEach((doc) => {
                     userList.push({ ...doc.data(), id: doc.id } as User);
                 });
+
+                // Client-side sort
+                userList.sort((a, b) => {
+                    const dateA = a.joinDate || a.createdAt || '1970-01-01';
+                    const dateB = b.joinDate || b.createdAt || '1970-01-01';
+                    return new Date(dateB).getTime() - new Date(dateA).getTime();
+                });
+
                 setUsers(userList);
             } catch (error) {
                 console.error("Error fetching users:", error);
