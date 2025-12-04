@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, doc, updateDoc, deleteDoc, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteDoc, query, orderBy, getDocs, onSnapshot, QuerySnapshot, QueryDocumentSnapshot } from 'firebase/firestore';
 
 export interface User {
     id: string;
@@ -9,6 +9,7 @@ export interface User {
     email: string;
     role: 'admin' | 'customer';
     joinDate: string;
+    createdAt?: string;
     status: 'active' | 'suspended';
 }
 
@@ -29,7 +30,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchUsers = async () => {
+        let unsubscribe: () => void;
+
+        const setupRealtimeListener = async () => {
             if (!user || user.role !== 'admin') {
                 setUsers([]);
                 setLoading(false);
@@ -37,31 +40,41 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             }
 
             try {
-                // Remove orderBy to ensure we fetch users even if they lack 'createdAt'
                 const q = query(collection(db, "users"));
-                const snapshot = await getDocs(q);
-                const userList: User[] = [];
-                snapshot.forEach((doc) => {
-                    userList.push({ ...doc.data(), id: doc.id } as User);
+
+                unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
+                    const userList: User[] = [];
+                    snapshot.forEach((doc: QueryDocumentSnapshot) => {
+                        userList.push({ ...doc.data(), id: doc.id } as User);
+                    });
+
+                    // Client-side sort
+                    userList.sort((a, b) => {
+                        const dateA = a.joinDate || a.createdAt || '1970-01-01';
+                        const dateB = b.joinDate || b.createdAt || '1970-01-01';
+                        return new Date(dateB).getTime() - new Date(dateA).getTime();
+                    });
+
+                    setUsers(userList);
+                    setLoading(false);
+                }, (error: Error) => {
+                    console.error("Error listening to users:", error);
+                    setLoading(false);
                 });
 
-                // Client-side sort
-                userList.sort((a, b) => {
-                    const dateA = a.joinDate || a.createdAt || '1970-01-01';
-                    const dateB = b.joinDate || b.createdAt || '1970-01-01';
-                    return new Date(dateB).getTime() - new Date(dateA).getTime();
-                });
-
-                setUsers(userList);
             } catch (error) {
-                console.error("Error fetching users:", error);
-                // Don't crash
-            } finally {
+                console.error("Error setting up user listener:", error);
                 setLoading(false);
             }
         };
 
-        fetchUsers();
+        setupRealtimeListener();
+
+        return () => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
     }, [user]);
 
     const updateUserRole = async (userId: string, role: 'admin' | 'customer') => {
