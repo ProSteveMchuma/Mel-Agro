@@ -13,6 +13,7 @@ interface User {
     address?: string;
     city?: string;
     county?: string;
+    loyaltyPoints?: number;
 }
 
 interface AuthContextType {

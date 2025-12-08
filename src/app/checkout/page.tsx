@@ -48,7 +48,7 @@ export default function CheckoutPage() {
     // Points System
     const [usePoints, setUsePoints] = useState(false);
 
-    const pointsBalance = (user as any)?.loyaltyPoints || 0;
+    const pointsBalance = user?.loyaltyPoints || 0;
     const pointsDiscount = usePoints ? Math.min(pointsBalance, (cartTotal + shippingCost) * 0.5) : 0;
 
     const total = cartTotal + shippingCost - discountAmount - pointsDiscount;
