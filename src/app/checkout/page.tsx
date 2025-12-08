@@ -385,7 +385,7 @@ export default function CheckoutPage() {
                         </div>
 
                         {/* RIGHT COLUMN: SUMMARY */}
-                        <div className="lg:w-1/3">
+                        <div className="lg:w-1/3 lg:sticky lg:top-24 h-fit">
                             <OrderSummary
                                 shippingCost={shippingCost}
                                 shippingCounty={formData.county}
@@ -435,11 +435,13 @@ export default function CheckoutPage() {
 
                             <button
                                 onClick={handlePlaceOrder}
-                                disabled={isProcessing}
-                                className="w-full mt-6 bg-melagro-primary text-white text-lg font-bold py-4 rounded-xl shadow-lg shadow-melagro-primary/30 hover:bg-melagro-dark transition-all disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                disabled={isProcessing || authLoading}
+                                className={`w-full mt-6 text-white text-lg font-bold py-4 rounded-xl shadow-lg transition-all disabled:opacity-70 disabled:cursor-not-allowed hidden lg:flex items-center justify-center gap-2 ${!user ? 'bg-gray-800 hover:bg-gray-900 shadow-gray-900/30' : 'bg-melagro-primary hover:bg-melagro-dark shadow-melagro-primary/30'}`}
                             >
                                 {isProcessing ? (
                                     <>Processing...</>
+                                ) : !user ? (
+                                    <>Login to Complete Order</>
                                 ) : (
                                     <>
                                         Complete Order
@@ -450,6 +452,29 @@ export default function CheckoutPage() {
                                 )}
                             </button>
 
+
+                            {/* Mobile Sticky Complete Order Bar */}
+                            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] lg:hidden z-50 safe-area-bottom">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div>
+                                        <div className="text-xs text-gray-500">Total to Pay</div>
+                                        <div className="text-lg font-extrabold text-melagro-primary">KES {(cartTotal + shippingCost - appliedDiscount - pointsDiscount).toLocaleString()}</div>
+                                    </div>
+                                    <button
+                                        onClick={handlePlaceOrder}
+                                        disabled={isProcessing || authLoading}
+                                        className={`text-white py-3 px-6 rounded-xl font-bold text-sm shadow-lg flex-grow disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${!user ? 'bg-gray-800 hover:bg-gray-900 shadow-gray-900/30' : 'bg-melagro-primary hover:bg-melagro-dark shadow-melagro-primary/30'}`}
+                                    >
+                                        {isProcessing ? 'Processing...' : !user ? 'Login to Order' : 'Complete Order'}
+                                        {!isProcessing && user && (
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className="mt-6 text-center text-xs text-gray-500 flex items-center justify-center gap-2">
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
@@ -458,7 +483,7 @@ export default function CheckoutPage() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div >
             </main>
             <Footer />
         </div>

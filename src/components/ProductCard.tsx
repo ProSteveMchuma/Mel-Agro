@@ -88,25 +88,25 @@ export default function ProductCard({ id, name, price, image, category }: Produc
                 </button>
             </Link>
 
-            <div className="p-5 flex flex-col flex-grow">
-                <h3 className="font-bold text-lg text-gray-800 mb-2 line-clamp-2 group-hover:text-melagro-primary transition-colors">
+            <div className="p-3 flex flex-col flex-grow">
+                <h3 className="font-semibold text-sm text-gray-800 mb-1 line-clamp-2 group-hover:text-melagro-primary transition-colors leading-tight min-h-[2.5em]">
                     <Link href={`/products/${id}`}>
                         {name}
                     </Link>
                 </h3>
-                <div className="mt-auto flex items-center justify-between">
-                    <span className="text-xl font-bold text-melagro-primary">
+                <div className="mt-auto flex items-center justify-between gap-2">
+                    <span className="text-base font-bold text-melagro-primary">
                         KES {safePrice.toLocaleString()}
                     </span>
                     <button
                         onClick={handleAddToCart}
                         disabled={isAdding}
-                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${isAdding
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 ${isAdding
                             ? "bg-green-500 text-white"
                             : "bg-melagro-primary text-white hover:bg-melagro-secondary"
                             }`}
                     >
-                        {isAdding ? "Added" : "Add to Cart"}
+                        {isAdding ? "Added" : "Add"}
                     </button>
                 </div>
             </div>
