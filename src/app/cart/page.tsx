@@ -140,7 +140,27 @@ export default function CartPage() {
                 </div>
             </main>
 
+            {/* Mobile Sticky Checkout Bar */}
+            {
+                cartItems.length > 0 && (
+                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] lg:hidden z-50 safe-area-bottom">
+                        <div className="flex items-center justify-between gap-4">
+                            <div>
+                                <div className="text-xs text-gray-500">Total (Excl. Shipping)</div>
+                                <div className="text-lg font-extrabold text-melagro-primary">KES {cartTotal.toLocaleString()}</div>
+                            </div>
+                            <button
+                                onClick={handleCheckout}
+                                className="btn-primary py-3 px-6 text-sm shadow-none"
+                            >
+                                Checkout
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
+
             <Footer />
-        </div>
+        </div >
     );
 }

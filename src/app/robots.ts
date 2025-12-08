@@ -1,12 +1,14 @@
 import { MetadataRoute } from 'next';
 
 export default function robots(): MetadataRoute.Robots {
+    const baseUrl = 'https://melagro.com';
+
     return {
         rules: {
             userAgent: '*',
             allow: '/',
-            disallow: ['/dashboard/', '/api/'],
+            disallow: ['/dashboard/admin/', '/api/', '/checkout/success'],
         },
-        sitemap: 'https://melagro.com/sitemap.xml', // Replace with actual domain
+        sitemap: `${baseUrl}/sitemap.xml`,
     };
 }

@@ -15,6 +15,8 @@ import { ContentProvider } from "@/context/ContentContext";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { Toaster } from 'react-hot-toast';
 import ChatWidget from "@/components/ChatWidget";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import AgroBot from "@/components/AgroBot";
 import { ChamaProvider } from "@/context/ChamaContext";
 
 
@@ -96,7 +98,9 @@ export default function RootLayout({
                           <ChamaProvider>
                             <WishlistProvider>
                               {children}
-                              <ChatWidget />
+                              <PWAInstallPrompt />
+                              <AgroBot />
+                              {/* <ChatWidget /> - Replacing basic widget with AI Bot */}
                               <WhatsAppButton />
                               <Toaster position="top-center" toastOptions={{
                                 duration: 3000,

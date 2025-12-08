@@ -22,6 +22,13 @@ export default function CheckoutPage() {
 
     const [isProcessing, setIsProcessing] = useState(false);
 
+    // Redirect if cart is empty
+    useEffect(() => {
+        if (!authLoading && cartItems.length === 0) {
+            router.push('/cart');
+        }
+    }, [cartItems, authLoading, router]);
+
     // Form State
     const [formData, setFormData] = useState({
         firstName: '',
