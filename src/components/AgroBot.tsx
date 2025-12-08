@@ -67,7 +67,7 @@ export default function AgroBot() {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-24 right-6 bg-melagro-primary text-white w-14 h-14 rounded-full shadow-xl hover:scale-105 transition-transform flex items-center justify-center z-40 animate-bounce-slow"
+                className="fixed bottom-40 md:bottom-24 right-6 bg-melagro-primary text-white w-14 h-14 rounded-full shadow-xl hover:scale-105 transition-transform flex items-center justify-center z-40 animate-bounce-slow"
                 aria-label="Open AgroBot"
             >
                 <span className="text-2xl">🤖</span>
@@ -80,7 +80,7 @@ export default function AgroBot() {
     }
 
     return (
-        <div className="fixed bottom-24 right-6 w-80 md:w-96 bg-white rounded-2xl shadow-2xl z-50 flex flex-col border border-gray-100 overflow-hidden text-sm font-sans max-h-[500px]">
+        <div className="fixed bottom-40 md:bottom-24 right-6 w-80 md:w-96 bg-white rounded-2xl shadow-2xl z-50 flex flex-col border border-gray-100 overflow-hidden text-sm font-sans max-h-[500px]">
             {/* Header */}
             <div className="bg-melagro-primary p-4 flex justify-between items-center text-white">
                 <div className="flex items-center gap-2">
@@ -105,8 +105,8 @@ export default function AgroBot() {
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] p-3 rounded-2xl ${msg.sender === 'user'
-                                ? 'bg-melagro-primary text-white rounded-tr-none'
-                                : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm'
+                            ? 'bg-melagro-primary text-white rounded-tr-none'
+                            : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm'
                             }`}>
                             <p>{msg.text}</p>
 
