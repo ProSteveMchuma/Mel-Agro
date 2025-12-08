@@ -108,23 +108,43 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const updateGeneralSettings = async (settings: Partial<GeneralSettings>) => {
-        const ref = doc(db, "settings", "general");
-        await setDoc(ref, settings, { merge: true });
+        try {
+            const ref = doc(db, "settings", "general");
+            await setDoc(ref, settings, { merge: true });
+        } catch (error) {
+            console.error("Error updating general settings:", error);
+            throw error;
+        }
     };
 
     const updateTaxSettings = async (settings: Partial<TaxSettings>) => {
-        const ref = doc(db, "settings", "tax");
-        await setDoc(ref, settings, { merge: true });
+        try {
+            const ref = doc(db, "settings", "tax");
+            await setDoc(ref, settings, { merge: true });
+        } catch (error) {
+            console.error("Error updating tax settings:", error);
+            throw error;
+        }
     };
 
     const updateNotificationSettings = async (settings: Partial<NotificationSettings>) => {
-        const ref = doc(db, "settings", "notifications");
-        await setDoc(ref, settings, { merge: true });
+        try {
+            const ref = doc(db, "settings", "notifications");
+            await setDoc(ref, settings, { merge: true });
+        } catch (error) {
+            console.error("Error updating notification settings:", error);
+            throw error;
+        }
     };
 
     const updateShippingSettings = async (settings: Partial<ShippingSettings>) => {
-        const ref = doc(db, "settings", "shipping");
-        await setDoc(ref, settings, { merge: true });
+        try {
+            const ref = doc(db, "settings", "shipping");
+            await setDoc(ref, settings, { merge: true });
+        } catch (error) {
+            console.error("Error updating shipping settings:", error);
+            throw error;
+        }
     };
 
     return (

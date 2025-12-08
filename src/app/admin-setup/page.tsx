@@ -9,10 +9,19 @@ export default function AdminSetupPage() {
     const { user, isAuthenticated } = useAuth();
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
+    const [secretCode, setSecretCode] = useState('');
     const router = useRouter();
 
     const handleMakeAdmin = async () => {
         if (!user) return;
+
+        // Simple hardcoded check for demonstration/MVP. Ideally use API/Env.
+        const SECRET = 'melagro2024';
+        if (secretCode !== SECRET) {
+            setMessage('Error: Invalid Security Code');
+            return;
+        }
+
         setLoading(true);
         try {
             const userRef = doc(db, 'users', user.uid);
@@ -75,12 +84,23 @@ export default function AdminSetupPage() {
                     </div>
                 )}
 
+                <div className="mb-4 text-left">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Security Code</label>
+                    <input
+                        type="password"
+                        value={secretCode}
+                        onChange={(e) => setSecretCode(e.target.value)}
+                        placeholder="Enter admin secret"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                    />
+                </div>
+
                 <button
                     onClick={handleMakeAdmin}
-                    disabled={loading}
-                    className="w-full bg-melagro-primary text-white py-3 rounded-xl font-bold hover:bg-melagro-secondary transition-colors disabled:opacity-50"
+                    disabled={loading || !secretCode}
+                    className="w-full bg-melagro-primary text-white py-3 rounded-xl font-bold hover:bg-melagro-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {loading ? 'Processing...' : 'Make Me Admin'}
+                    {loading ? 'Processing...' : 'Verify & Make Me Admin'}
                 </button>
 
                 <p className="mt-4 text-xs text-gray-400">

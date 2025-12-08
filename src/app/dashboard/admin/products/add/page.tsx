@@ -21,12 +21,28 @@ export default function AddProductPage() {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        let finalValue = value;
+
+        // Auto-Capitalize Name
+        if (name === 'name' && value.length > 0) {
+            finalValue = value.charAt(0).toUpperCase() + value.slice(1);
+        }
+
+        // Prevent Negative Numbers
+        if ((name === 'price' || name === 'stock') && Number(value) < 0) {
+            finalValue = "0";
+        }
+
+        setFormData(prev => ({ ...prev, [name]: finalValue }));
     };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files[0]) {
-            setImageFile(e.target.files[0]);
+            const file = e.target.files[0];
+            setImageFile(file);
+            // Create object URL for preview
+            const previewUrl = URL.createObjectURL(file);
+            setFormData(prev => ({ ...prev, image: previewUrl }));
         }
     };
 
@@ -151,6 +167,12 @@ export default function AddProductPage() {
                             onChange={handleChange}
                             className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagro-primary/50 outline-none"
                         />
+                        {formData.image && (
+                            <div className="mt-2 relative w-full h-48 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={formData.image} alt="Preview" className="w-full h-full object-contain" />
+                            </div>
+                        )}
                     </div>
                 </div>
 

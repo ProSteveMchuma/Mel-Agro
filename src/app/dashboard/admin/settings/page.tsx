@@ -25,9 +25,13 @@ export default function SettingsPage() {
             if (activeTab === "notifications") await updateNotificationSettings(notifForm);
             if (activeTab === "shipping") await updateShippingSettings(shippingForm);
             alert("Settings saved successfully!");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error saving settings:", error);
-            alert("Failed to save settings.");
+            if (error.code === 'permission-denied') {
+                alert("Error: You do not have permission to save these settings.");
+            } else {
+                alert(`Failed to save settings: ${error.message}`);
+            }
         } finally {
             setSaving(false);
         }

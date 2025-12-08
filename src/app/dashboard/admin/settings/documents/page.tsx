@@ -55,9 +55,13 @@ export default function DocumentSettingsPage() {
         try {
             await setDoc(doc(db, "settings", "documents"), templateSettings, { merge: true });
             alert("Template settings saved!");
-        } catch (error) {
+        } catch (error: any) {
             console.error("Error saving template settings:", error);
-            alert("Failed to save settings.");
+            if (error.code === 'permission-denied') {
+                alert("Error: You do not have permission to save these settings.");
+            } else {
+                alert(`Failed to save settings: ${error.message}`);
+            }
         } finally {
             setSaving(false);
         }

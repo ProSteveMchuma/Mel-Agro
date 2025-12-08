@@ -44,6 +44,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }, [cartItems]);
 
     const addToCart = (product: Product, quantity = 1) => {
+        // Log analytics
+        import('@/lib/analytics').then(({ AnalyticsService }) => {
+            AnalyticsService.logAddToCart(product.id);
+        });
+
         setCartItems(prev => {
             const existing = prev.find(item => item.id === product.id);
             if (existing) {

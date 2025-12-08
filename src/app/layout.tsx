@@ -12,7 +12,11 @@ import WhatsAppButton from "@/components/WhatsAppButton";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { MessageProvider } from "@/context/MessageContext";
 import { ContentProvider } from "@/context/ContentContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import { Toaster } from 'react-hot-toast';
+import ChatWidget from "@/components/ChatWidget";
+import { ChamaProvider } from "@/context/ChamaContext";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -87,29 +91,34 @@ export default function RootLayout({
                 <OrderProvider>
                   <ProductProvider>
                     <UserProvider>
-                      <MessageProvider>
-                        <WishlistProvider>
-                          {children}
-                          <WhatsAppButton />
-                          <Toaster position="top-center" toastOptions={{
-                            duration: 3000,
-                            style: {
-                              background: '#333',
-                              color: '#fff',
-                            },
-                            success: {
-                              style: {
-                                background: '#10B981',
-                              },
-                            },
-                            error: {
-                              style: {
-                                background: '#EF4444',
-                              },
-                            },
-                          }} />
-                        </WishlistProvider>
-                      </MessageProvider>
+                      <LanguageProvider>
+                        <MessageProvider>
+                          <ChamaProvider>
+                            <WishlistProvider>
+                              {children}
+                              <ChatWidget />
+                              <WhatsAppButton />
+                              <Toaster position="top-center" toastOptions={{
+                                duration: 3000,
+                                style: {
+                                  background: '#333',
+                                  color: '#fff',
+                                },
+                                success: {
+                                  style: {
+                                    background: '#10B981',
+                                  },
+                                },
+                                error: {
+                                  style: {
+                                    background: '#EF4444',
+                                  },
+                                },
+                              }} />
+                            </WishlistProvider>
+                          </ChamaProvider>
+                        </MessageProvider>
+                      </LanguageProvider>
                     </UserProvider>
                   </ProductProvider>
                 </OrderProvider>

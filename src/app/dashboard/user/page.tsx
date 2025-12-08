@@ -9,17 +9,19 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useMessages } from "@/context/MessageContext";
+import { useChama } from "@/context/ChamaContext";
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplate";
 import { toast } from "react-hot-toast";
 
-type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support';
+type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'chamas';
 
 export default function UserDashboard() {
     const { user, isAuthenticated, isLoading, updateUserProfile, logout } = useAuth();
     const { orders, notifications, markNotificationRead, unreadNotificationsCount, updateOrderStatus, requestReturn } = useOrders();
     const { addToCart } = useCart();
+    const { activeChamas } = useChama();
     const router = useRouter();
 
     const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -40,6 +42,13 @@ export default function UserDashboard() {
                 phone: user.phone || '',
                 address: user.address || ''
             });
+
+            // Check URL for tab
+            const params = new URLSearchParams(window.location.search);
+            const tab = params.get('tab');
+            if (tab && ['dashboard', 'orders', 'returns', 'notifications', 'profile', 'support', 'chamas'].includes(tab)) {
+                setActiveTab(tab as Tab);
+            }
         }
     }, [isAuthenticated, isLoading, router, user]);
 
@@ -140,6 +149,7 @@ export default function UserDashboard() {
                 {[
                     { id: 'dashboard', label: 'Dashboard', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg> },
                     { id: 'orders', label: 'My Orders', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg> },
+                    { id: 'chamas', label: 'My Chamas', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg> },
                     { id: 'returns', label: 'Returns & Refunds', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> },
                     {
                         id: 'notifications', label: 'Notifications', icon: (
@@ -230,6 +240,56 @@ export default function UserDashboard() {
                 </form>
             </div>
 
+            {/* Quick Reorder Widget */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-melagro-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Quick Reorder
+                </h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {/* Get unique items from recent orders */}
+                    {Array.from(new Map(orders.flatMap(o => o.items).map(item => [item.id, item])).values())
+                        .slice(0, 4)
+                        .map((item, i) => (
+                            <div key={i} className="bg-gray-50 rounded-xl p-3 flex flex-col items-center text-center group hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-melagro-primary/20">
+                                <div className="w-16 h-16 bg-white rounded-lg mb-2 relative overflow-hidden">
+                                    {item.image ? (
+                                        <Image src={item.image} alt={item.name} fill className="object-cover" />
+                                    ) : (
+                                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No Img</div>
+                                    )}
+                                </div>
+                                <div className="text-xs font-medium text-gray-900 line-clamp-1 mb-1">{item.name}</div>
+                                <div className="text-xs text-gray-500 mb-2">KES {item.price.toLocaleString()}</div>
+                                <button
+                                    onClick={() => {
+                                        addToCart({
+                                            id: String(item.id),
+                                            name: item.name,
+                                            price: item.price,
+                                            category: 'Reorder',
+                                            image: item.image || '',
+                                            rating: 5,
+                                            reviews: 0,
+                                            inStock: true,
+                                            description: ''
+                                        }, 1);
+                                        toast.success("Added to Cart!");
+                                    }}
+                                    className="w-full py-1 bg-melagro-primary text-white text-xs rounded-lg hover:bg-melagro-secondary transition-colors font-bold"
+                                >
+                                    Add 1
+                                </button>
+                            </div>
+                        ))}
+                    {orders.flatMap(o => o.items).length === 0 && (
+                        <div className="col-span-4 text-center text-sm text-gray-500 py-4">No past items to reorder.</div>
+                    )}
+                </div>
+            </div>
+
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                 <h2 className="font-bold text-gray-900 mb-4">Recent Orders</h2>
                 {orders.slice(0, 3).map(order => (
@@ -280,8 +340,8 @@ export default function UserDashboard() {
                                             <p className="text-sm text-gray-500">Requested on {order.date}</p>
                                         </div>
                                         <span className={`px-3 py-1 rounded-full text-xs font-bold ${order.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' :
-                                                order.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
-                                                    'bg-yellow-100 text-yellow-700'
+                                            order.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                                'bg-yellow-100 text-yellow-700'
                                             }`}>
                                             {order.returnStatus}
                                         </span>
@@ -580,6 +640,91 @@ export default function UserDashboard() {
         );
     };
 
+    const renderChamas = () => {
+        const myChamas = activeChamas.filter(c => c.members.some(m => m.userId === user?.uid));
+
+        return (
+            <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-900">My Chama Groups</h2>
+                    <Link href="/products" className="text-sm font-bold text-melagro-primary hover:underline">+ Start New Chama</Link>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {myChamas.map((chama) => {
+                        const filledSpots = chama.members.length;
+                        const progress = (filledSpots / chama.targetSize) * 100;
+                        const isComplete = filledSpots >= chama.targetSize;
+
+                        return (
+                            <div key={chama.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-md transition-shadow">
+                                <div className="h-32 relative bg-gray-100">
+                                    <Image src={chama.productImage} alt={chama.productName} fill className="object-cover" />
+                                    <div className="absolute top-2 right-2 bg-purple-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm">
+                                        {isComplete ? 'COMPLETED' : 'ACTIVE'}
+                                    </div>
+                                </div>
+                                <div className="p-6">
+                                    <h3 className="font-bold text-gray-900 mb-1">{chama.productName}</h3>
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <span className="text-lg font-bold text-purple-600">KES {chama.price.toLocaleString()}</span>
+                                        <span className="text-sm text-gray-400 line-through">KES {chama.originalPrice.toLocaleString()}</span>
+                                    </div>
+
+                                    <div className="mb-4">
+                                        <div className="flex justify-between text-xs font-medium text-gray-500 mb-1">
+                                            <span>{filledSpots} / {chama.targetSize} Members</span>
+                                            <span>{isComplete ? 'Ready to ship!' : 'Waiting for others'}</span>
+                                        </div>
+                                        <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                                            <div className="h-full bg-purple-500 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center -space-x-2 mb-4">
+                                        {chama.members.map((m, i) => (
+                                            <div key={i} className="w-8 h-8 rounded-full bg-purple-100 border-2 border-white flex items-center justify-center text-xs font-bold text-purple-600" title={m.userName}>
+                                                {m.userName.charAt(0)}
+                                            </div>
+                                        ))}
+                                        {!isComplete && (
+                                            <div className="w-8 h-8 rounded-full bg-gray-100 border-2 border-white flex items-center justify-center text-xs text-gray-400">
+                                                +{chama.targetSize - filledSpots}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        className="w-full py-2 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-black transition-colors"
+                                        onClick={() => {
+                                            const url = `${window.location.origin}/products/${chama.productId}?join=${chama.id}`;
+                                            navigator.clipboard.writeText(url);
+                                            toast.success("Link copied! Share with friends.");
+                                        }}
+                                    >
+                                        Share Invite Link
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {myChamas.length === 0 && (
+                        <div className="col-span-2 text-center py-12 bg-white rounded-2xl border border-gray-100">
+                            <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4 text-purple-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </div>
+                            <h3 className="font-bold text-gray-900 mb-2">No Active Chamas</h3>
+                            <p className="text-gray-500 mb-6">Start a group buy to save up to 15% on products.</p>
+                            <Link href="/products" className="btn-primary">Browse Products</Link>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
             {/* Print Overlay */}
@@ -618,6 +763,7 @@ export default function UserDashboard() {
                             <div className="lg:w-3/4">
                                 {activeTab === 'dashboard' && renderDashboard()}
                                 {activeTab === 'orders' && renderOrders()}
+                                {activeTab === 'chamas' && renderChamas()}
                                 {activeTab === 'returns' && renderReturns()}
                                 {activeTab === 'notifications' && renderNotifications()}
                                 {activeTab === 'profile' && renderProfile()}
@@ -742,7 +888,7 @@ function MessageForm() {
 
         setStatus('sending');
         try {
-            await sendMessage(subject, message);
+            await sendMessage(`${subject}: ${message}`, 'text');
             setStatus('success');
             setMessage('');
             setTimeout(() => setStatus('idle'), 3000);

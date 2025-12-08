@@ -10,6 +10,8 @@ import { useCart } from '@/context/CartContext';
 import { getProductReviews, Review } from '@/lib/reviews';
 import ReviewList from '@/components/ReviewList';
 import ReviewForm from '@/components/ReviewForm';
+import { useChama } from '@/context/ChamaContext';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 export default function ProductDetails({ id }: { id: string }) {
     const [product, setProduct] = useState<Product | undefined>(undefined);
@@ -18,6 +20,18 @@ export default function ProductDetails({ id }: { id: string }) {
     const [loading, setLoading] = useState(true);
     const [showToast, setShowToast] = useState(false);
     const [quantity, setQuantity] = useState(1);
+    const { createChama, activeChamas } = useChama();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const joinChamaId = searchParams.get('join');
+    const [targetChama, setTargetChama] = useState<any>(null);
+
+    useEffect(() => {
+        if (joinChamaId && activeChamas.length > 0) {
+            const found = activeChamas.find(c => c.id === joinChamaId);
+            if (found) setTargetChama(found);
+        }
+    }, [joinChamaId, activeChamas]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -25,6 +39,11 @@ export default function ProductDetails({ id }: { id: string }) {
             const p = await getProductById(id);
             setProduct(p);
             if (p) {
+                // Log view
+                import('@/lib/analytics').then(({ AnalyticsService }) => {
+                    AnalyticsService.logView(p.id);
+                });
+
                 const related = await getRelatedProducts(p.category, p.id);
                 setRelatedProducts(related);
                 const productReviews = await getProductReviews(p.id);
@@ -159,6 +178,48 @@ export default function ProductDetails({ id }: { id: string }) {
                                     KES {product.price.toLocaleString()}
                                 </div>
 
+                                {/* Chama Join Offer */}
+                                {targetChama && (
+                                    <div className="mb-8 p-4 bg-purple-50 border-2 border-purple-500 rounded-2xl animate-in slide-in-from-top-4">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h3 className="font-bold text-purple-900 text-lg">Join {targetChama.creatorName}'s Group!</h3>
+                                                <p className="text-sm text-purple-700">Buy together to save 15%</p>
+                                            </div>
+                                            <div className="bg-purple-600 text-white font-bold px-3 py-1 rounded-full text-sm">
+                                                Save KES {(product.price - targetChama.price).toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className="text-3xl font-bold text-purple-700">KES {targetChama.price.toLocaleString()}</div>
+                                            <div className="text-sm text-gray-500 line-through">KES {product.price.toLocaleString()}</div>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                if (product) {
+                                                    addToCart({
+                                                        ...product,
+                                                        id: `${product.id}_chama_${targetChama.id}`,
+                                                        name: `${product.name} (Group Buy)`,
+                                                        price: targetChama.price,
+                                                        category: 'Group Buy' // metadata
+                                                    } as any);
+                                                    setShowToast(true);
+                                                    setTimeout(() => setShowToast(false), 3000);
+                                                }
+                                            }}
+                                            className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold shadow-lg shadow-purple-200 hover:bg-purple-700 transition-all"
+                                        >
+                                            Join & Pay KES {targetChama.price.toLocaleString()}
+                                        </button>
+                                        <div className="mt-3 flex items-center justify-center gap-2 text-xs text-purple-600">
+                                            <span>{targetChama.members.length} / {targetChama.targetSize} Joined</span>
+                                            <span className="w-1 h-1 bg-purple-400 rounded-full"></span>
+                                            <span>Expires in 24h</span>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="prose prose-gray mb-8 text-gray-600 leading-relaxed">
                                     <p>{product.description}</p>
                                 </div>
@@ -186,6 +247,26 @@ export default function ProductDetails({ id }: { id: string }) {
                                     >
                                         Add to Cart
                                     </button>
+                                </div>
+                                <div className="mt-4">
+                                    <button
+                                        onClick={async () => {
+                                            if (product) {
+                                                try {
+                                                    const chamaId = await createChama(product);
+                                                    router.push(`/dashboard/user?tab=chamas`);
+                                                } catch (e) { /* Error handled in context */ }
+                                            }
+                                        }}
+                                        className="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold shadow-lg shadow-purple-200 hover:bg-purple-700 transition-all flex items-center justify-center gap-2 transform hover:-translate-y-1"
+                                    >
+                                        <span className="bg-white/20 px-2 py-0.5 rounded text-xs">SAVE 15%</span>
+                                        Start Chama Group Buy
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                    </button>
+                                    <p className="text-center text-xs text-purple-600 mt-2 font-medium">Group buy with 2 friends to unlock wholesale price!</p>
                                 </div>
                             </div>
                         </div>

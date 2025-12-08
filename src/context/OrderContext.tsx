@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
 export interface OrderItem {
@@ -17,6 +17,7 @@ export interface Order {
     userId: string;
     userName?: string;
     userEmail?: string;
+    phone?: string; // Contact number for updates
     date: string;
     status: 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
     items: OrderItem[];
@@ -195,12 +196,26 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         if (!orderSnap.exists()) return;
 
         const previousStatus = orderSnap.data().status;
+        const orderData = orderSnap.data();
 
         await updateDoc(orderRef, { status });
 
+        // Award Loyalty Points if delivered
+        if (status === 'Delivered') {
+            const pointsToAward = Math.floor(orderData.total / 100);
+            try {
+                const userRef = doc(db, 'users', orderData.userId);
+                await updateDoc(userRef, {
+                    loyaltyPoints: increment(pointsToAward)
+                });
+            } catch (error) {
+                console.error("Error awarding points:", error);
+            }
+        }
+
         // Restore stock if cancelling
         if (status === 'Cancelled' && previousStatus !== 'Cancelled') {
-            const orderItems = orderSnap.data().items as OrderItem[];
+            const orderItems = orderData.items as OrderItem[];
             try {
                 for (const item of orderItems) {
                     const productRef = doc(db, "products", String(item.id));
@@ -227,13 +242,25 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             try {
                 await addDoc(collection(db, 'notifications'), {
                     userId: order.userId,
-                    message: `Order #${orderId.substr(0, 5)} status updated to ${status}`,
+                    message: `Order #${orderId.slice(0, 5)} status updated to ${status}`,
                     date: new Date().toISOString(),
                     read: false,
                     type: 'order'
                 });
             } catch (error) {
                 console.error("Error creating status update notification:", error);
+            }
+
+            // Send SMS Notification
+            if (order.phone) {
+                import('@/lib/sms').then(({ SmsService }) => {
+                    SmsService.sendOrderUpdate(
+                        order.phone!,
+                        orderId,
+                        status,
+                        order.userName || "Customer"
+                    );
+                });
             }
         }
     };

@@ -12,10 +12,21 @@ export default function AddProductPage() {
 
     const handleSubmit = async (data: Omit<Product, 'id'>) => {
         setIsSubmitting(true);
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        await addProduct(data);
-        router.push('/dashboard/admin/products');
+        try {
+            await addProduct(data);
+            // We can assume success if no error thrown
+            alert("Product added successfully!");
+            router.push('/dashboard/admin/products');
+        } catch (error: any) {
+            console.error("Error adding product:", error);
+            if (error.code === 'permission-denied') {
+                alert("Error: You do not have permission to add products.");
+            } else {
+                alert(`Failed to add product: ${error.message}`);
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useProducts } from "@/context/ProductContext";
 import Image from "next/image";
 import Link from "next/link";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function SmartSearch() {
     const { products } = useProducts();
@@ -13,6 +14,7 @@ export default function SmartSearch() {
     const [isOpen, setIsOpen] = useState(false);
     const [suggestions, setSuggestions] = useState<typeof products>([]);
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const { t } = useLanguage();
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -25,21 +27,31 @@ export default function SmartSearch() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Filter products based on query
+    // Initialize Fuse for fuzzy search
+    const fuseOptions = {
+        keys: [
+            { name: 'name', weight: 0.4 },
+            { name: 'tags', weight: 0.3 },
+            { name: 'category', weight: 0.2 },
+            { name: 'description', weight: 0.1 }
+        ],
+        threshold: 0.3, // Lower is stricter, 0.3 is a good balance for typos
+        includeScore: true
+    };
+
+    // Filter products based on query using Fuse
     useEffect(() => {
         if (query.trim().length > 1) {
-            const lowerQuery = query.toLowerCase();
-            const matches = products.filter(product => {
-                const nameMatch = product.name.toLowerCase().includes(lowerQuery);
-                const categoryMatch = product.category.toLowerCase().includes(lowerQuery);
-                const tagMatch = product.tags?.some(tag => tag.toLowerCase().includes(lowerQuery));
-                const descMatch = product.description?.toLowerCase().includes(lowerQuery);
+            // Dynamically import Fuse to avoid server-side issues and reduce initial bundle
+            import("fuse.js").then((Fuse) => {
+                const fuse = new Fuse.default(products, fuseOptions);
+                const result = fuse.search(query);
 
-                return nameMatch || categoryMatch || tagMatch || descMatch;
-            }).slice(0, 5); // Limit to 5 suggestions
-
-            setSuggestions(matches);
-            setIsOpen(true);
+                // Extract items from Fuse result and limit to 5
+                const matches = result.slice(0, 5).map(r => r.item);
+                setSuggestions(matches);
+                setIsOpen(true);
+            });
         } else {
             setSuggestions([]);
             setIsOpen(false);
@@ -48,9 +60,44 @@ export default function SmartSearch() {
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        if (query.trim()) {
-            router.push(`/products?search=${encodeURIComponent(query)}`);
+        performSearch(query);
+    };
+
+    const performSearch = (searchTerm: string) => {
+        if (searchTerm.trim()) {
+            // Log the search query for analytics
+            import('@/lib/analytics').then(({ AnalyticsService }) => {
+                AnalyticsService.logSearch(searchTerm);
+            });
+
+            router.push(`/products?search=${encodeURIComponent(searchTerm)}`);
             setIsOpen(false);
+        }
+    };
+
+    const startVoiceSearch = () => {
+        if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+            // @ts-ignore
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.start();
+
+            recognition.onresult = (event: any) => {
+                const transcript = event.results[0][0].transcript;
+                setQuery(transcript);
+                performSearch(transcript);
+            };
+
+            recognition.onerror = (event: any) => {
+                console.error("Speech recognition error", event.error);
+                alert("Could not hear you. Please try again.");
+            };
+        } else {
+            alert("Voice search is not supported in this browser.");
         }
     };
 
@@ -71,15 +118,15 @@ export default function SmartSearch() {
     };
 
     return (
-        <div ref={wrapperRef} className="relative w-full md:w-80 lg:w-96">
+        <div ref={wrapperRef} className="relative w-full md:w-80 lg:w-96 z-50">
             <form onSubmit={handleSearch} className="relative">
                 <input
                     type="text"
-                    placeholder="Search for 'bugs', 'maize', 'pump'..."
+                    placeholder={t('search.placeholder')}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onFocus={() => query.trim().length > 1 && setIsOpen(true)}
-                    className="w-full pl-10 pr-4 py-2.5 rounded-full bg-gray-100 border-none focus:ring-2 focus:ring-melagro-primary/50 focus:bg-white transition-all text-sm shadow-sm"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-full bg-gray-100 border-none focus:ring-2 focus:ring-melagro-primary/50 focus:bg-white transition-all text-sm shadow-sm"
                 />
                 <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -95,11 +142,23 @@ export default function SmartSearch() {
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     />
                 </svg>
+
+                {/* Microphone Icon */}
+                <button
+                    type="button"
+                    onClick={startVoiceSearch}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-200 rounded-full text-gray-500 hover:text-melagro-primary transition-colors"
+                    title="Voice Search"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                </button>
             </form>
 
             {/* Suggestions Dropdown */}
             {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
                     {suggestions.length > 0 ? (
                         <>
                             <div className="py-2">
