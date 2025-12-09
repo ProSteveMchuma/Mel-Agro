@@ -5,6 +5,10 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ShopLayout from "@/components/ShopLayout";
 import JsonLd from "@/components/JsonLd";
+import BannerCarousel from "@/components/BannerCarousel";
+import CategoryIcons from "@/components/CategoryIcons";
+import FlashSaleStrip from "@/components/FlashSaleStrip";
+import Partners from "@/components/Partners";
 
 export default function Home() {
   return (
@@ -13,27 +17,40 @@ export default function Home() {
       <Header />
 
       <main className="flex-grow">
-        {/* Compact "Daily Deals" Hero */}
-        <div className="bg-gradient-to-r from-melagro-primary to-melagro-secondary text-white py-6 shadow-md">
-          <div className="container-custom flex flex-col md:flex-row items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold flex items-center gap-2">
-                <span className="bg-white text-melagro-primary px-2 py-0.5 rounded text-sm font-extrabold uppercase tracking-wider">Today's Deals</span>
-                Flash Sales
-              </h1>
-              <p className="text-sm text-white/90 mt-1">Get up to 20% off on Fertilizer & Seeds. Ends tonight!</p>
-            </div>
-            <div className="hidden md:block">
-              <span className="text-sm font-medium bg-white/20 px-4 py-2 rounded-full backdrop-blur-sm border border-white/30">
-                ⏱️ Offer ends in: 08h 12m
-              </span>
+        {/* Mobile-style Search Header */}
+        <div className="bg-melagro-primary text-white py-3 sticky top-[var(--header-height)] z-20 shadow-md">
+          <div className="container-custom">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search for seeds, tools, fertilizer..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-melagro-accent shadow-sm"
+              />
+              <svg className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
             </div>
           </div>
         </div>
 
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagro-primary"></div></div>}>
-          <ShopLayout showBreadcrumbs={false} />
-        </Suspense>
+        <div className="container-custom py-4 space-y-2">
+          <BannerCarousel />
+          <CategoryIcons />
+          <FlashSaleStrip />
+
+          {/* Main Shop Grid */}
+          <div className="mt-8">
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-xl font-bold text-gray-900">Just For You</h2>
+              <div className="h-px bg-gray-200 flex-grow"></div>
+            </div>
+            <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-melagro-primary"></div></div>}>
+              <ShopLayout showBreadcrumbs={false} />
+            </Suspense>
+          </div>
+        </div>
+
+        <div className="bg-white py-8 border-t border-gray-100 mt-8">
+          <Partners />
+        </div>
       </main>
 
       <Footer />
