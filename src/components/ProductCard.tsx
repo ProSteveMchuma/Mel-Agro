@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface ProductCardProps {
     id: string | number;
@@ -22,6 +23,12 @@ export default function ProductCard({ id, name, price, image, category }: Produc
     const safePrice = typeof price === 'number' ? price : 0;
     const imageSrc = (typeof image === 'string' && image.startsWith('http')) ? image : "https://placehold.co/400x400?text=No+Image";
     const inWishlist = isInWishlist(id);
+    const router = useRouter();
+
+    const handleBuyNow = (e: React.MouseEvent) => {
+        handleAddToCart(e);
+        router.push('/checkout');
+    };
 
     const handleAddToCart = (e: React.MouseEvent) => {
         e.preventDefault();
@@ -112,16 +119,25 @@ export default function ProductCard({ id, name, price, image, category }: Produc
                         </span>
                     </div>
 
-                    <button
-                        onClick={handleAddToCart}
-                        disabled={isAdding}
-                        className={`w-full py-1.5 rounded text-[11px] font-bold border transition-all duration-300 flex items-center justify-center gap-1.5 uppercase tracking-wide ${isAdding
-                            ? "bg-green-600 text-white border-green-600"
-                            : "bg-white text-melagro-primary border-melagro-primary hover:bg-melagro-primary hover:text-white"
-                            }`}
-                    >
-                        {isAdding ? "Ad..." : "Add"}
-                    </button>
+                    <div className="flex gap-2 transition-all duration-300 md:opacity-0 md:translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0 md:pointer-events-none md:group-hover:pointer-events-auto">
+                        <button
+                            onClick={handleAddToCart}
+                            disabled={isAdding}
+                            className={`flex-1 py-1.5 rounded text-[11px] font-bold border transition-all duration-300 flex items-center justify-center gap-1.5 uppercase tracking-wide ${isAdding
+                                ? "bg-green-600 text-white border-green-600"
+                                : "bg-white text-melagro-primary border-melagro-primary hover:bg-melagro-primary hover:text-white"
+                                }`}
+                        >
+                            {isAdding ? "Adding..." : "Add"}
+                        </button>
+
+                        <button
+                            onClick={handleBuyNow}
+                            className="flex-1 py-1.5 rounded text-[11px] font-bold border border-orange-500 bg-orange-50 text-orange-600 hover:bg-orange-500 hover:text-white transition-all duration-300 uppercase tracking-wide flex items-center justify-center"
+                        >
+                            Buy Now
+                        </button>
+                    </div>
                 </div>
 
                 <div className="mt-2 text-[10px] text-gray-400">

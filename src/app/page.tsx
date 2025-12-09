@@ -1,14 +1,13 @@
 "use client";
 
-import { Suspense } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import ShopLayout from "@/components/ShopLayout";
 import JsonLd from "@/components/JsonLd";
 import BannerCarousel from "@/components/BannerCarousel";
 import CategoryIcons from "@/components/CategoryIcons";
 import FlashSaleStrip from "@/components/FlashSaleStrip";
 import Partners from "@/components/Partners";
+import ProductRow from "@/components/ProductRow";
 
 export default function Home() {
   return (
@@ -36,15 +35,27 @@ export default function Home() {
           <CategoryIcons />
           <FlashSaleStrip />
 
-          {/* Main Shop Grid */}
-          <div className="mt-8">
-            <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-xl font-bold text-gray-900">Just For You</h2>
-              <div className="h-px bg-gray-200 flex-grow"></div>
+          {/* Main Shop Rows */}
+          <div className="mt-4 space-y-2">
+            {/* Best Sellers */}
+            <ProductRow title="Best Sellers" filter={(p) => p.price > 2000} />
+
+            {/* Promo Banner Mid-Page */}
+            <div className="my-8 relative h-40 md:h-56 rounded-xl overflow-hidden shadow-sm">
+              {/* Use a public agriculture image available online for stability */}
+              <img src="https://images.unsplash.com/photo-1628352081506-83c43123ed6d?q=80&w=1000&auto=format&fit=crop" alt="Seeds Promo" className="w-full h-full object-cover" />
+              <div className="absolute inset-0 bg-black/40 flex items-center justify-center flex-col text-white p-6 text-center">
+                <h3 className="text-2xl font-bold mb-2">Certified Seeds Collection</h3>
+                <p className="mb-4 text-sm md:text-base">High germination rates for a better harvest.</p>
+                <button className="bg-white text-melagro-primary px-6 py-2 rounded-full font-bold text-sm hover:bg-gray-100 transition-colors">Shop Seeds</button>
+              </div>
             </div>
-            <Suspense fallback={<div className="h-64 flex items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-melagro-primary"></div></div>}>
-              <ShopLayout showBreadcrumbs={false} />
-            </Suspense>
+
+            {/* New Arrivals */}
+            <ProductRow title="New Arrivals" filter={(p) => true} />
+
+            {/* Garden Essentials */}
+            <ProductRow title="Garden Essentials" filter={(p) => p.category === 'Tools'} />
           </div>
         </div>
 

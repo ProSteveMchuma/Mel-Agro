@@ -55,6 +55,27 @@ export default function CartDrawer() {
                     </button>
                 </div>
 
+                {/* Free Shipping Progress */}
+                <div className="bg-melagro-primary/5 p-4 border-b border-gray-100">
+                    {cartTotal >= 5000 ? (
+                        <div className="text-sm text-green-700 font-bold flex items-center justify-center gap-2 bg-green-50 p-2 rounded-lg border border-green-100">
+                            <span>🎉</span> You've got <span className="uppercase">Free Shipping</span>!
+                        </div>
+                    ) : (
+                        <div>
+                            <p className="text-xs text-gray-600 mb-1.5 text-center">
+                                Add <span className="font-bold text-melagro-primary">KES {(5000 - cartTotal).toLocaleString()}</span> more for <span className="font-bold">Free Shipping</span>
+                            </p>
+                            <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-melagro-primary transition-all duration-500 ease-out"
+                                    style={{ width: `${Math.min((cartTotal / 5000) * 100, 100)}%` }}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {/* Items */}
                 <div className="flex-grow overflow-y-auto p-6 space-y-6">
                     {cartItems.length === 0 ? (
