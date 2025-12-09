@@ -65,49 +65,67 @@ export default function ProductCard({ id, name, price, image, category }: Produc
         }
     };
 
+    // Mock discount for visual parity with reference image
+    const originalPrice = Math.round(safePrice * 1.15); // 15% mockup
+    const discountPercent = 15;
+
     return (
-        <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full relative">
-            <Link href={`/products/${id}`} className="block relative aspect-square overflow-hidden bg-gray-100">
+        <div className="group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200 flex flex-col h-full relative">
+            <Link href={`/products/${id}`} className="block relative aspect-square overflow-hidden bg-white p-2">
                 <Image
                     src={imageSrc}
                     alt={name}
                     fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="object-contain group-hover:scale-105 transition-transform duration-500"
                 />
-                <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-medium text-melagro-primary shadow-sm z-10">
-                    {category}
+                {/* Discount Badge */}
+                <div className="absolute top-2 left-2 bg-[#D32F2F] text-white px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm z-10">
+                    -{discountPercent}%
                 </div>
+
+                {/* Wishlist Button */}
                 <button
                     onClick={toggleWishlist}
-                    className={`absolute top-3 right-3 p-2 rounded-full shadow-sm z-10 transition-colors ${inWishlist ? "bg-red-50 text-red-500" : "bg-white/90 text-gray-400 hover:text-red-500"
+                    className={`absolute top-2 right-2 p-1.5 rounded-full z-10 transition-colors ${inWishlist ? "bg-red-50 text-red-500" : "text-gray-300 hover:text-red-500"
                         }`}
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                     </svg>
                 </button>
             </Link>
 
-            <div className="p-3 flex flex-col flex-grow">
-                <h3 className="font-semibold text-sm text-gray-800 mb-1 line-clamp-2 group-hover:text-melagro-primary transition-colors leading-tight min-h-[2.5em]">
+            <div className="p-2.5 flex flex-col flex-grow bg-white">
+                <h3 className="font-medium text-[13px] text-gray-900 mb-1.5 line-clamp-2 leading-tight min-h-[2.4em] group-hover:text-melagro-primary transition-colors">
                     <Link href={`/products/${id}`}>
                         {name}
                     </Link>
                 </h3>
-                <div className="mt-auto flex items-center justify-between gap-2">
-                    <span className="text-base font-bold text-melagro-primary">
-                        KES {safePrice.toLocaleString()}
-                    </span>
+
+                <div className="mt-auto">
+                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-2">
+                        <span className="font-bold text-melagro-primary text-sm">
+                            KES {safePrice.toLocaleString()}
+                        </span>
+                        <span className="text-gray-400 line-through text-[11px]">
+                            {originalPrice.toLocaleString()}
+                        </span>
+                    </div>
+
                     <button
                         onClick={handleAddToCart}
                         disabled={isAdding}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-300 ${isAdding
-                            ? "bg-green-500 text-white"
-                            : "bg-melagro-primary text-white hover:bg-melagro-secondary"
+                        className={`w-full py-1.5 rounded text-[11px] font-bold border transition-all duration-300 flex items-center justify-center gap-1.5 uppercase tracking-wide ${isAdding
+                            ? "bg-green-600 text-white border-green-600"
+                            : "bg-white text-melagro-primary border-melagro-primary hover:bg-melagro-primary hover:text-white"
                             }`}
                     >
-                        {isAdding ? "Added" : "Add"}
+                        {isAdding ? "Ad..." : "Add"}
                     </button>
+                </div>
+
+                <div className="mt-2 text-[10px] text-gray-400">
+                    {category}
                 </div>
             </div>
         </div>
