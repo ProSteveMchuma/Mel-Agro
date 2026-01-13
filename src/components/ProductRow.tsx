@@ -68,5 +68,3 @@ export default function ProductRow({ title = "", filter }: ProductRowProps) {
         </div>
     );
 }
-    );
-}
