@@ -8,15 +8,10 @@ export function middleware(request: NextRequest) {
     // Define paths that are protected
     const isProtectedPath = path.startsWith('/dashboard/admin');
 
-    // Check for a session cookie (this assumes you are setting one, 
-    // if not, this middleware is limited and client-side checks are primary)
-    // For a purely client-side Firebase app, middleware has limited visibility into Auth state
-    // without a custom cookie implementation. 
-    // However, we can at least prevent obvious access if we had a cookie.
-
-    // For now, since we are using client-side Firebase Auth, we will rely heavily on 
-    // client-side checks (AuthContext) and Firestore Rules (Backend Security).
-    // This middleware serves as a placeholder for future server-side session implementation.
+    // Note: For a client-side Firebase app, server middleware has limited visibility into Auth state
+    // without a custom cookie implementation. Full authentication checks happen in AuthContext.
+    // This middleware serves as a basic path validation layer.
+    // For production, consider implementing server-side session tokens in cookies.
 
     return NextResponse.next();
 }

@@ -37,7 +37,9 @@ export default function ProductManagement() {
         if (selectedProducts.length === filteredProducts.length) {
             setSelectedProducts([]);
         } else {
-            setSelectedProducts(filteredProducts.map(p => String(p.id)));
+            // Ensure all IDs are converted to strings for type safety
+            const productIds = filteredProducts.map(p => typeof p.id === 'string' ? p.id : String(p.id));
+            setSelectedProducts(productIds);
         }
     };
 

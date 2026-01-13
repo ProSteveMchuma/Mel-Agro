@@ -3,50 +3,70 @@
 import ProductCard from "./ProductCard";
 import { useEffect, useState } from "react";
 import { getProducts, Product } from "@/lib/products";
+import Link from "next/link";
 
 interface ProductRowProps {
-    title: string;
+    title?: string;
     filter?: (p: Product) => boolean;
 }
 
-export default function ProductRow({ title, filter }: ProductRowProps) {
+export default function ProductRow({ title = "", filter }: ProductRowProps) {
     const [products, setProducts] = useState<Product[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
+        setIsLoading(true);
         getProducts().then(allProducts => {
             let filtered = allProducts;
             if (filter) {
                 filtered = allProducts.filter(filter);
             }
-            // Limit to 6-8 items for the row
-            setProducts(filtered.slice(0, 8));
+            // Limit to 12 items for the grid
+            setProducts(filtered.slice(0, 12));
+            setIsLoading(false);
         });
     }, [filter]);
+
+    if (isLoading) {
+        return (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {[...Array(8)].map((_, i) => (
+                    <div key={i} className="bg-gray-200 rounded-xl aspect-square animate-pulse"></div>
+                ))}
+            </div>
+        );
+    }
 
     if (products.length === 0) return null;
 
     return (
-        <div className="py-6">
-            <div className="flex items-center justify-between mb-4 px-4 md:px-0">
-                <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-                <button className="text-sm font-medium text-melagro-primary hover:text-melagro-secondary transition-colors">
-                    View All &rarr;
-                </button>
-            </div>
+        <div>
+            {title && (
+                <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
+                    <Link href="/products" className="text-sm font-semibold text-melagro-primary hover:text-melagro-secondary transition-colors flex items-center gap-1 group">
+                        View All 
+                        <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </Link>
+                </div>
+            )}
 
-            <div className="flex overflow-x-auto gap-4 pb-4 px-4 md:px-0 scrollbar-hide snap-x">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {products.map(product => (
-                    <div key={product.id} className="w-44 md:w-56 flex-shrink-0 snap-start">
-                        <ProductCard
-                            id={product.id}
-                            name={product.name}
-                            price={product.price}
-                            image={product.image}
-                            category={product.category}
-                        />
-                    </div>
+                    <ProductCard
+                        key={product.id}
+                        id={product.id}
+                        name={product.name}
+                        price={product.price}
+                        image={product.image}
+                        category={product.category}
+                    />
                 ))}
             </div>
         </div>
+    );
+}
     );
 }
