@@ -8,6 +8,8 @@ import CategoryIcons from "@/components/CategoryIcons";
 import FlashSaleStrip from "@/components/FlashSaleStrip";
 import Partners from "@/components/Partners";
 import ProductRow from "@/components/ProductRow";
+import Sidebar from "@/components/Sidebar";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -21,79 +23,169 @@ export default function Home() {
           <BannerCarousel />
         </div>
 
-        {/* Smart Search Bar - Integrated into header now, but available on scroll */}
-        <div className="sticky top-[64px] z-40 bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
-          <div className="container-custom py-3">
-            <div className="relative max-w-2xl mx-auto">
-              <input
-                type="text"
-                placeholder="Search seeds, fertilizer, tools..."
-                className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-melagro-primary/50 focus:border-transparent shadow-sm hover:border-gray-300 transition-all"
-              />
-              <svg className="w-5 h-5 text-gray-400 absolute left-4 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="container-custom py-12 space-y-16">
-          {/* Categories Section - Redesigned */}
-          <section>
-            <div className="mb-8">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Shop by Category</h2>
-              <p className="text-gray-500 text-lg">Everything you need for a successful harvest</p>
-            </div>
-            <CategoryIcons />
-          </section>
-
-          {/* Flash Sale */}
-          <FlashSaleStrip />
-
-          {/* Featured Products */}
-          <section>
-            <div className="mb-8">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Best Sellers</h2>
-              <p className="text-gray-500">Trusted by thousands of farmers across Kenya</p>
-            </div>
-            <ProductRow title="" filter={(p) => p.price > 2000} />
-          </section>
-
-          {/* Promo Banner - Enhanced Design */}
-          <section className="relative h-64 md:h-80 rounded-2xl overflow-hidden shadow-lg group">
-            <img 
-              src="https://images.unsplash.com/photo-1628352081506-83c43123ed6d?q=80&w=1400&auto=format&fit=crop" 
-              alt="Premium Seeds" 
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/30 to-transparent flex flex-col justify-center px-8 md:px-16">
+        {/* Main Content with Sidebar */}
+        <div className="flex bg-white">
+          {/* Left Sidebar - Hidden on mobile */}
+          <div className="hidden lg:block w-64 border-r border-gray-200 pt-8 sticky top-20 h-fit">
+            <div className="px-6 space-y-6">
+              {/* Browse Categories */}
               <div>
-                <p className="text-melagro-accent font-semibold text-sm md:text-base uppercase tracking-wider mb-3">Limited Time Offer</p>
-                <h3 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">Premium<br />Seeds Collection</h3>
-                <p className="text-gray-100 text-lg mb-6 max-w-md">High germination rates and superior quality. Plant with confidence this season.</p>
-                <button className="bg-melagro-accent hover:bg-melagro-accent/90 text-melagro-primary px-8 py-3 rounded-full font-bold transition-all hover:shadow-lg hover:scale-105 inline-block">
-                  Explore Seeds →
-                </button>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900 mb-4">Browse Categories</h3>
+                <nav className="space-y-2">
+                  {[
+                    "Seeds & Seedlings",
+                    "Fertilizers",
+                    "Crop Protection",
+                    "Farm Tools",
+                    "Irrigation",
+                    "Animal Feeds",
+                    "Vet Products",
+                    "Bulk Orders"
+                  ].map((cat, idx) => (
+                    <Link
+                      key={idx}
+                      href={`/products?category=${encodeURIComponent(cat)}`}
+                      className="block px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 hover:text-melagro-primary hover:bg-gray-50 transition-all"
+                    >
+                      {cat}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+
+              {/* Promo Box */}
+              <div className="pt-6 border-t border-gray-200 bg-gradient-to-br from-melagro-primary/10 to-melagro-secondary/10 p-4 rounded-lg border border-melagro-primary/20">
+                <p className="text-xs font-semibold text-melagro-primary mb-2">MAKAMITHI EXPRESS</p>
+                <p className="text-sm font-bold text-gray-900 mb-3">Fast Delivery</p>
+                <p className="text-xs text-gray-600 mb-3">To major towns</p>
+                <Link href="/checkout" className="inline-block px-3 py-1.5 bg-melagro-primary text-white text-xs font-bold rounded-lg hover:bg-melagro-secondary transition-colors">
+                  Shop Now
+                </Link>
               </div>
             </div>
-          </section>
+          </div>
 
-          {/* New Arrivals */}
-          <section>
-            <div className="mb-8">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">New Arrivals</h2>
-              <p className="text-gray-500">Latest additions to our catalog</p>
-            </div>
-            <ProductRow title="" filter={(p) => true} />
-          </section>
+          {/* Right Content */}
+          <div className="flex-1 py-12">
+            <div className="container-custom px-4 md:px-8 space-y-16">
+              
+              {/* Featured Banner with Offer */}
+              <section className="relative h-72 md:h-96 rounded-2xl overflow-hidden shadow-lg group">
+                <img 
+                  src="https://images.unsplash.com/photo-1574943320219-553eb213f72d?q=80&w=1400&auto=format&fit=crop" 
+                  alt="Prepare For Long Rains" 
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent flex flex-col justify-center px-6 md:px-16">
+                  <div className="mb-4">
+                    <span className="inline-block bg-melagro-accent text-melagro-primary font-bold text-xs px-3 py-1.5 rounded-lg uppercase tracking-wider">
+                      Weekly Offer
+                    </span>
+                  </div>
+                  <h2 className="text-3xl md:text-5xl font-bold text-white mb-3 leading-tight">
+                    Prepare Your Shamba<br />For The Long Rains
+                  </h2>
+                  <p className="text-gray-100 text-base md:text-lg mb-6 max-w-lg">
+                    Get up to 20% OFF on all planting fertilizers and certified hybrid maize seeds.
+                  </p>
+                  <div className="flex gap-4">
+                    <Link href="/products" className="bg-melagro-accent hover:bg-melagro-accent/90 text-melagro-primary px-6 py-3 rounded-lg font-bold transition-all inline-flex items-center gap-2">
+                      Shop Now →
+                    </Link>
+                  </div>
+                </div>
+                
+                {/* Carousel Indicators */}
+                <div className="absolute bottom-4 left-6 flex gap-2">
+                  <button className="w-2 h-2 bg-white/60 rounded-full"></button>
+                  <button className="w-2 h-2 bg-white/30 rounded-full"></button>
+                  <button className="w-2 h-2 bg-white/30 rounded-full"></button>
+                </div>
+              </section>
 
-          {/* Garden Essentials */}
-          <section>
-            <div className="mb-8">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Garden Essentials</h2>
-              <p className="text-gray-500">Professional tools for modern farming</p>
+              {/* Categories Section */}
+              <section>
+                <div className="mb-8">
+                  <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Shop by Category</h2>
+                  <p className="text-gray-500">Everything you need for a successful harvest</p>
+                </div>
+                <CategoryIcons />
+              </section>
+
+              {/* Flash Sale */}
+              <FlashSaleStrip />
+
+              {/* Best Sellers */}
+              <section>
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Best Sellers</h2>
+                    <p className="text-gray-500">Trusted by thousands of farmers</p>
+                  </div>
+                  <Link href="/products" className="text-sm font-semibold text-melagro-primary hover:text-melagro-secondary transition-colors flex items-center gap-1 group">
+                    See All 
+                    <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+                <ProductRow title="" filter={(p) => p.price > 2000} />
+              </section>
+
+              {/* Promotional Banner - Seeds */}
+              <section className="relative h-64 md:h-72 rounded-2xl overflow-hidden shadow-lg bg-gradient-to-r from-melagro-primary to-melagro-secondary flex items-center">
+                <div className="px-6 md:px-12 py-8 z-10">
+                  <p className="text-melagro-accent font-semibold text-xs md:text-sm uppercase tracking-wider mb-2">Premium Collection</p>
+                  <h3 className="text-2xl md:text-4xl font-bold text-white mb-3">Certified Genuine</h3>
+                  <p className="text-gray-100 text-sm md:text-base mb-6 max-w-lg">Direct from manufacturers. Quality assured agricultural inputs.</p>
+                  <Link href="/products?category=Seeds" className="inline-block bg-white text-melagro-primary px-6 py-2.5 rounded-lg font-bold hover:bg-gray-100 transition-colors">
+                    Shop Certified Inputs →
+                  </Link>
+                </div>
+                <div className="absolute right-0 top-0 bottom-0 w-1/2 opacity-10">
+                  <img 
+                    src="https://images.unsplash.com/photo-1625246333333-37e7b646a6da?q=80&w=600" 
+                    alt="" 
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </section>
+
+              {/* New Arrivals */}
+              <section>
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">New Arrivals</h2>
+                    <p className="text-gray-500">Latest additions to our catalog</p>
+                  </div>
+                  <Link href="/products" className="text-sm font-semibold text-melagro-primary hover:text-melagro-secondary transition-colors flex items-center gap-1 group">
+                    See All 
+                    <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+                <ProductRow title="" filter={(p) => true} />
+              </section>
+
+              {/* Garden Essentials / Tools */}
+              <section>
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Farm Tools & Equipment</h2>
+                    <p className="text-gray-500">Professional tools for modern farming</p>
+                  </div>
+                  <Link href="/products?category=Farm%20Tools" className="text-sm font-semibold text-melagro-primary hover:text-melagro-secondary transition-colors flex items-center gap-1 group">
+                    See All 
+                    <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                </div>
+                <ProductRow title="" filter={(p) => p.category === 'Tools'} />
+              </section>
             </div>
-            <ProductRow title="" filter={(p) => p.category === 'Tools'} />
-          </section>
+          </div>
         </div>
 
         {/* Partners Section */}
