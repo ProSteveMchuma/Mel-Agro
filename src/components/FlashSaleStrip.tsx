@@ -1,41 +1,35 @@
 "use client";
 
-import ProductCard from "./ProductCard";
-import { useEffect, useState } from "react";
-import { getProducts, Product } from "@/lib/products";
+import Link from "next/link";
+import ProductRow from "./ProductRow";
 
 export default function FlashSaleStrip() {
-    const [hotProducts, setHotProducts] = useState<Product[]>([]);
-
-    useEffect(() => {
-        getProducts().then(products => {
-            // Simulate "Hot" deals by taking random or specific items
-            setHotProducts(products.slice(0, 5));
-        });
-    }, []);
-
     return (
-        <div className="mb-8 bg-red-50 p-4 rounded-xl border border-red-100">
-            <div className="flex justify-between items-center mb-4">
+        <div className="bg-white rounded-xl overflow-hidden shadow-sm border border-red-100">
+            {/* Header */}
+            <div className="bg-[#ef4444] px-6 py-3 flex justify-between items-center text-white">
                 <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-red-600 uppercase italic">Flash Sale</span>
-                    <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded font-mono">03:12:45</span>
+                    <svg className="w-5 h-5 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-black text-lg tracking-wide uppercase">Flash Sales</span>
                 </div>
-                <button className="text-xs text-red-600 font-bold hover:underline">View All &rarr;</button>
+
+                <div className="flex items-center gap-4">
+                    <span className="text-xs font-semibold uppercase tracking-wider hidden sm:inline">Ends in:</span>
+                    <div className="flex items-center gap-1 font-mono text-sm font-bold bg-white text-red-600 px-2 py-1 rounded">
+                        <span>04</span>:<span>23</span>:<span>32</span>
+                    </div>
+                </div>
+
+                <Link href="/flash-sale" className="text-xs font-bold uppercase tracking-wider hover:underline">
+                    See All &rarr;
+                </Link>
             </div>
 
-            <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-hide snap-x">
-                {hotProducts.map(product => (
-                    <div key={product.id} className="w-40 flex-shrink-0 snap-start">
-                        <ProductCard
-                            id={product.id}
-                            name={product.name}
-                            price={product.price}
-                            image={product.image}
-                            category={product.category}
-                        />
-                    </div>
-                ))}
+            {/* Products Row */}
+            <div className="p-6">
+                <ProductRow title="" filter={(p) => p.price < 5000} />
             </div>
         </div>
     );

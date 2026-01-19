@@ -22,7 +22,7 @@ const DEFAULT_SLIDES = [
 ];
 
 export default function Hero() {
-    const { banners, loading } = useContent();
+    const { banners } = useContent();
     const [currentSlide, setCurrentSlide] = useState(0);
 
     const activeBanners = banners.filter(b => b.active);
@@ -30,115 +30,120 @@ export default function Hero() {
     const slides = activeBanners.length > 0 ? activeBanners.map(b => ({
         id: b.id,
         image: b.image,
-        tag: b.subtitle, // Mapping subtitle to tag
+        tag: "Weekly Offer",
         title: b.title,
-        highlight: "", // Dynamic banners might not have highlight split
         description: b.description || "Discover our premium agricultural products.",
         primaryBtn: "Shop Now",
         primaryLink: b.link || "/products",
-        secondaryBtn: "Contact Us",
-        secondaryLink: "/contact"
-    })) : DEFAULT_SLIDES;
+    })) : [
+        {
+            id: 'shamba-ready',
+            image: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?q=80&w=1740&auto=format&fit=crop",
+            tag: "WEEKLY OFFER",
+            title: "Prepare Your Shamba For The Long Rains",
+            description: "Get up to 20% OFF on all planting fertilizers and certified hybrid maize seeds.",
+            primaryBtn: "Shop Now",
+            primaryLink: "/products?category=seeds"
+        }
+    ];
 
     useEffect(() => {
+        if (slides.length <= 1) return;
         const timer = setInterval(() => {
             setCurrentSlide((prev) => (prev + 1) % slides.length);
         }, 5000);
         return () => clearInterval(timer);
     }, [slides.length]);
 
-    const nextSlide = () => {
-        setCurrentSlide((prev) => (prev + 1) % slides.length);
-    };
-
-    const prevSlide = () => {
-        setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
-    };
+    const categories = [
+        { name: "Seeds & Seedlings", icon: "🌱" },
+        { name: "Fertilizers", icon: "📦" },
+        { name: "Crop Protection", icon: "🛡️" },
+        { name: "Farm Tools", icon: "🛠️" },
+        { name: "Irrigation", icon: "💧" },
+        { name: "Animal Feeds", icon: "🐄" },
+        { name: "Vet Products", icon: "💊" },
+        { name: "Bulk Orders", icon: "🚛" }
+    ];
 
     return (
-        <section className="relative bg-gray-900 overflow-hidden h-[600px] md:h-[700px]">
-            {/* Slides */}
-            {slides.map((slide, index) => (
-                <div
-                    key={slide.id}
-                    className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"
-                        }`}
-                >
-                    {/* Background Image with Overlay */}
-                    <div className="absolute inset-0">
-                        <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-black/30 z-10" />
-                        <div
-                            className="w-full h-full bg-cover bg-center transform transition-transform duration-[10000ms] ease-linear scale-100"
-                            style={{
-                                backgroundImage: `url('${slide.image}')`,
-                                transform: index === currentSlide ? "scale(110%)" : "scale(100%)"
-                            }}
-                        />
-                    </div>
+        <section className="bg-white py-6">
+            <div className="container-custom">
+                <div className="flex flex-col lg:flex-row gap-4 h-auto lg:h-[480px]">
+                    {/* Left Sidebar - Category Nav */}
+                    <aside className="hidden lg:block w-64 bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm flex-shrink-0">
+                        <nav className="flex flex-col h-full">
+                            {categories.map((cat, idx) => (
+                                <Link
+                                    key={idx}
+                                    href={`/products?category=${encodeURIComponent(cat.name)}`}
+                                    className="flex items-center gap-3 px-6 py-3.5 text-sm font-medium text-gray-600 hover:text-green-600 hover:bg-green-50 transition-all border-b border-gray-50 last:border-none"
+                                >
+                                    <span className="text-lg">{cat.icon}</span>
+                                    {cat.name}
+                                </Link>
+                            ))}
+                        </nav>
+                    </aside>
 
-                    <div className="container-custom relative z-20 h-full flex items-center">
-                        <div className="max-w-2xl text-white pt-16">
-                            <div className={`inline-block px-4 py-1.5 rounded-full bg-melagro-secondary/20 border border-melagro-secondary/50 text-melagro-secondary font-medium text-sm mb-6 backdrop-blur-sm transform transition-all duration-700 delay-100 ${index === currentSlide ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-                                }`}>
-                                {slide.tag}
+                    {/* Middle - Main Slider */}
+                    <div className="flex-grow relative rounded-2xl overflow-hidden group shadow-md min-h-[300px]">
+                        {slides.map((slide, index) => (
+                            <div
+                                key={slide.id}
+                                className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0"}`}
+                            >
+                                <div className="absolute inset-0">
+                                    <img src={slide.image} alt={slide.title} className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/20 to-transparent" />
+                                </div>
+                                <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-12 text-white max-w-xl">
+                                    <span className="inline-block px-3 py-1 bg-orange-500 text-white text-[10px] font-bold rounded mb-4 w-fit uppercase tracking-widest">{slide.tag}</span>
+                                    <h2 className="text-3xl md:text-5xl font-black mb-4 leading-tight">{slide.title}</h2>
+                                    <p className="text-sm md:text-lg text-gray-100 mb-8 max-w-sm font-medium">{slide.description}</p>
+                                    <Link href={slide.primaryLink} className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-3 rounded-xl font-black text-sm uppercase tracking-widest w-fit transition-transform hover:scale-105 shadow-lg shadow-green-500/20">
+                                        {slide.primaryBtn}
+                                    </Link>
+                                </div>
                             </div>
-                            <h1 className={`text-4xl md:text-5xl lg:text-6xl font-bold leading-tight mb-6 transform transition-all duration-700 delay-200 ${index === currentSlide ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-                                }`}>
-                                {slide.title} <span className="text-melagro-secondary">{slide.highlight}</span>
-                            </h1>
-                            <p className={`text-lg md:text-xl text-gray-200 mb-8 leading-relaxed transform transition-all duration-700 delay-300 ${index === currentSlide ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-                                }`}>
-                                {slide.description}
-                            </p>
-                            <div className={`flex flex-col sm:flex-row gap-4 transform transition-all duration-700 delay-400 ${index === currentSlide ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0"
-                                }`}>
-                                <Link href={slide.primaryLink} className="btn-primary text-center">
-                                    {slide.primaryBtn}
-                                </Link>
-                                <Link href={slide.secondaryLink} className="btn-secondary bg-transparent text-white border-white hover:bg-white hover:text-melagro-primary text-center">
-                                    {slide.secondaryBtn}
-                                </Link>
-                            </div>
+                        ))}
+
+                        {/* Dots */}
+                        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex gap-2">
+                            {slides.map((_, idx) => (
+                                <button
+                                    key={idx}
+                                    onClick={() => setCurrentSlide(idx)}
+                                    className={`w-2 h-2 rounded-full transition-all ${idx === currentSlide ? 'bg-white w-6' : 'bg-white/40'}`}
+                                />
+                            ))}
                         </div>
                     </div>
+
+                    {/* Right - Static Banners */}
+                    <aside className="hidden xl:flex flex-col gap-4 w-72 flex-shrink-0">
+                        <div className="flex-1 bg-white border border-gray-100 rounded-2xl p-6 relative overflow-hidden group shadow-sm hover:shadow-md transition-shadow">
+                            <div className="relative z-10">
+                                <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest block mb-2">Mel-Agri Express</span>
+                                <h3 className="text-xl font-black text-gray-900 mb-4 leading-tight">Fast<br />Delivery</h3>
+                                <p className="text-[11px] text-gray-500 font-medium">To major towns</p>
+                            </div>
+                            <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-green-100 rounded-full opacity-50 group-hover:scale-110 transition-transform"></div>
+                            <div className="absolute top-4 right-4 text-3xl">🚛</div>
+                        </div>
+
+                        <div className="flex-1 bg-white border border-gray-100 rounded-2xl p-6 relative overflow-hidden group shadow-sm hover:shadow-md transition-shadow">
+                            <div className="relative z-10">
+                                <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest block mb-2">Official Store</span>
+                                <h3 className="text-xl font-black text-gray-900 mb-4 leading-tight">Certified<br />Genuine</h3>
+                                <p className="text-[11px] text-gray-500 font-medium">Direct from manufacturers</p>
+                            </div>
+                            <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-orange-100 rounded-full opacity-50 group-hover:scale-110 transition-transform"></div>
+                            <div className="absolute top-4 right-4 text-3xl">⭐</div>
+                        </div>
+                    </aside>
                 </div>
-            ))}
-
-            {/* Navigation Arrows */}
-            <button
-                onClick={prevSlide}
-                className="absolute left-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm transition-all hidden md:block group"
-                aria-label="Previous slide"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-            </button>
-            <button
-                onClick={nextSlide}
-                className="absolute right-4 top-1/2 -translate-y-1/2 z-30 p-2 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm transition-all hidden md:block group"
-                aria-label="Next slide"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-            </button>
-
-            {/* Dots Navigation */}
-            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-30 flex gap-3">
-                {slides.map((_, index) => (
-                    <button
-                        key={index}
-                        onClick={() => setCurrentSlide(index)}
-                        className={`w-3 h-3 rounded-full transition-all duration-300 ${index === currentSlide ? "bg-melagro-secondary w-8" : "bg-white/50 hover:bg-white"
-                            }`}
-                        aria-label={`Go to slide ${index + 1}`}
-                    />
-                ))}
             </div>
-
-            {/* Decorative Elements */}
-            <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-white to-transparent z-20" />
         </section>
     );
 }
