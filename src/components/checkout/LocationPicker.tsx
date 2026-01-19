@@ -51,6 +51,7 @@ function LocationMarker({ position, setPosition, onLocationSelect }: any) {
             position={position}
             icon={icon}
             draggable={true}
+            // @ts-ignore
             eventHandlers={eventHandlers}
             ref={markerRef}
         >

@@ -262,8 +262,8 @@ export default function ProductDetails({ id }: { id: string }) {
                                     key={tab}
                                     onClick={() => setActiveTab(tab.toLowerCase() as any)}
                                     className={`pb-4 text-sm font-bold capitalize whitespace-nowrap transition-colors border-b-2 ${activeTab === tab.toLowerCase()
-                                            ? 'text-green-600 border-green-500'
-                                            : 'text-gray-400 border-transparent hover:text-gray-600'
+                                        ? 'text-green-600 border-green-500'
+                                        : 'text-gray-400 border-transparent hover:text-gray-600'
                                         }`}
                                 >
                                     {tab}
@@ -428,7 +428,14 @@ export default function ProductDetails({ id }: { id: string }) {
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         {relatedProducts.length > 0 ? relatedProducts.map((p) => (
-                            <ProductCard key={p.id} product={p} />
+                            <ProductCard
+                                key={p.id}
+                                id={p.id}
+                                name={p.name}
+                                price={p.price}
+                                image={p.image}
+                                category={p.category}
+                            />
                         )) : (
                             // Fallback Skeleton
                             [...Array(4)].map((_, i) => (
