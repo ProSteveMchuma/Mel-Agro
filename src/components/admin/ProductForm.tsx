@@ -116,11 +116,11 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                             onChange={handleChange}
                             className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary"
                         >
+                            <option value="Animal Feeds">Animal Feeds</option>
                             <option value="Fertilizers">Fertilizers</option>
                             <option value="Seeds">Seeds</option>
-                            <option value="Pesticides">Pesticides</option>
-                            <option value="Equipment">Equipment</option>
-                            <option value="Animal Feeds">Animal Feeds</option>
+                            <option value="Crop Protection Products">Crop Protection Products</option>
+                            <option value="Veterinary Products">Veterinary Products</option>
                         </select>
                     </div>
                     <div>

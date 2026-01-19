@@ -10,14 +10,11 @@ interface SidebarProps {
 }
 
 const defaultCategories = [
-    "Seeds & Seedlings",
-    "Fertilizers",
-    "Crop Protection",
-    "Farm Tools",
-    "Irrigation",
     "Animal Feeds",
-    "Vet Products",
-    "Bulk Orders"
+    "Fertilizers",
+    "Seeds",
+    "Crop Protection Products",
+    "Veterinary Products"
 ];
 
 export default function Sidebar({ categories = defaultCategories, onCategoryChange, onPriceChange }: SidebarProps) {

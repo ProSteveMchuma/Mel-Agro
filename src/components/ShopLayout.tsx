@@ -21,7 +21,7 @@ export default function ShopLayout({ showBreadcrumbs = true }: { showBreadcrumbs
             setCategories(["All", ...unique]);
         } else {
             // Fallback if no products yet
-            setCategories(["All", "Fertilizers", "Seeds", "Crop Protection", "Animal Feeds"]);
+            setCategories(["All", "Animal Feeds", "Fertilizers", "Seeds", "Crop Protection Products", "Veterinary Products"]);
         }
     }, [products]);
 

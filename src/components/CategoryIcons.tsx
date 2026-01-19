@@ -4,11 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 
 const CATEGORIES = [
-    { name: 'Seeds', image: 'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?q=80&w=400&auto=format&fit=crop', link: '/products?category=Seeds' },
+    { name: 'Animal Feeds', image: 'https://images.unsplash.com/photo-1563205764-6e929f62334d?q=80&w=400&auto=format&fit=crop', link: '/products?category=Animal%20Feeds' },
     { name: 'Fertilizers', image: 'https://images.unsplash.com/photo-1628352081506-83c43123ed6d?q=80&w=400&auto=format&fit=crop', link: '/products?category=Fertilizers' },
-    { name: 'Chemicals', image: 'https://images.unsplash.com/photo-1592982537447-7440770cbfc9?q=80&w=400&auto=format&fit=crop', link: '/products?category=Chemicals' },
-    { name: 'Tools', image: 'https://images.unsplash.com/photo-1597843796323-57a55ae58814?q=80&w=400&auto=format&fit=crop', link: '/products?category=Tools' },
-    { name: 'Sprayers', image: 'https://images.unsplash.com/photo-1591130219388-ae3d1c17431b?q=80&w=400&auto=format&fit=crop', link: '/products?category=Sprayers' },
+    { name: 'Seeds', image: 'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?q=80&w=400&auto=format&fit=crop', link: '/products?category=Seeds' },
+    { name: 'Crop Protection Products', image: 'https://images.unsplash.com/photo-1615485925763-867862f80930?q=80&w=400&auto=format&fit=crop', link: '/products?category=Crop%20Protection%20Products' },
+    { name: 'Veterinary Products', image: 'https://images.unsplash.com/photo-1591130219388-ae3d1c17431b?q=80&w=400&auto=format&fit=crop', link: '/products?category=Veterinary%20Products' },
 ];
 
 export default function CategoryIcons() {

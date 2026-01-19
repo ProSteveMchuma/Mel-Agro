@@ -38,7 +38,7 @@ export default function ProductsClient({ initialProducts }: ProductsClientProps)
             return 0; // Default (Popular)
         });
 
-    const categories = ["All", "Fertilizers", "Seeds", "Pesticides", "Equipment", "Animal Feeds"];
+    const categories = ["All", "Animal Feeds", "Fertilizers", "Seeds", "Crop Protection Products", "Veterinary Products"];
 
     return (
         <div className="min-h-screen bg-gray-50 pb-12">
