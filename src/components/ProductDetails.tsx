@@ -41,12 +41,12 @@ export default function ProductDetails({ id }: { id: string }) {
             if (p) {
                 // Log view
                 import('@/lib/analytics').then(({ AnalyticsService }) => {
-                    AnalyticsService.logView(p.id);
+                    AnalyticsService.logView(String(p.id));
                 });
 
-                const related = await getRelatedProducts(p.category, p.id);
+                const related = await getRelatedProducts(p.category, String(p.id));
                 setRelatedProducts(related);
-                const productReviews = await getProductReviews(p.id);
+                const productReviews = await getProductReviews(String(p.id));
                 setReviews(productReviews);
             }
             setLoading(false);
@@ -57,7 +57,7 @@ export default function ProductDetails({ id }: { id: string }) {
 
     const handleReviewAdded = async () => {
         if (product) {
-            const productReviews = await getProductReviews(product.id);
+            const productReviews = await getProductReviews(String(product.id));
             setReviews(productReviews);
         }
     };
@@ -279,7 +279,7 @@ export default function ProductDetails({ id }: { id: string }) {
                             <ReviewList reviews={reviews} />
                         </div>
                         <div>
-                            <ReviewForm productId={product.id} onReviewAdded={handleReviewAdded} />
+                            <ReviewForm productId={String(product.id)} onReviewAdded={handleReviewAdded} />
                         </div>
                     </div>
 

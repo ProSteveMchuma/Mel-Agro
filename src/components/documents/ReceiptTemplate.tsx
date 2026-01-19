@@ -27,7 +27,7 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({ order }) => {
             </div>
 
             <div className="space-y-2 mb-4 border-b border-dashed border-gray-300 pb-4">
-                {order.items.map((item, i) => (
+                {order.items.map((item: any, i: number) => (
                     <div key={i} className="flex justify-between">
                         <span>{item.quantity} x {item.name}</span>
                         <span>{(item.price * item.quantity).toLocaleString()}</span>

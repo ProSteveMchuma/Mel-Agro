@@ -2,6 +2,7 @@ import { db } from './firebase';
 import { collection, getDocs, doc, getDoc, query, where, limit } from 'firebase/firestore';
 
 import { Product } from '@/types';
+export type { Product };
 
 export async function getProducts(): Promise<Product[]> {
     try {

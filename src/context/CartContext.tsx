@@ -1,12 +1,8 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product } from '@/lib/products';
+import { CartItem, Product } from '@/types';
 import { toast } from 'react-hot-toast';
-
-export interface CartItem extends Product {
-    quantity: number;
-}
 
 interface CartContextType {
     cartItems: CartItem[];
@@ -46,7 +42,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const addToCart = (product: Product, quantity = 1) => {
         // Log analytics
         import('@/lib/analytics').then(({ AnalyticsService }) => {
-            AnalyticsService.logAddToCart(product.id);
+            AnalyticsService.logAddToCart(String(product.id));
         });
 
         setCartItems(prev => {

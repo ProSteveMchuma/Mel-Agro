@@ -72,7 +72,7 @@ export default function UserManagement() {
                                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                         <select
                                             value={user.role}
-                                            onChange={(e) => updateUserRole(user.id, e.target.value as 'admin' | 'customer')}
+                                            onChange={(e) => updateUserRole(String(user.id), e.target.value as 'admin' | 'customer')}
                                             className={`text-xs font-medium px-2 py-1 rounded-full border-0 focus:ring-2 focus:ring-melagro-primary cursor-pointer ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
                                                 }`}
                                         >
@@ -91,7 +91,7 @@ export default function UserManagement() {
                                         <button
                                             onClick={() => {
                                                 if (confirm('Are you sure you want to delete this user?')) {
-                                                    deleteUser(user.id);
+                                                    deleteUser(String(user.id));
                                                 }
                                             }}
                                             className="text-red-500 hover:text-red-700 text-xs font-medium"

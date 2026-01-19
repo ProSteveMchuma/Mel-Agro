@@ -6,6 +6,7 @@ import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, order
 import { products as MOCK_PRODUCTS } from '@/lib/mockData';
 
 import { Product } from '@/types';
+export type { Product };
 
 interface ProductContextType {
     products: Product[];

@@ -55,7 +55,7 @@ export const DeliveryNoteTemplate: React.FC<DeliveryNoteTemplateProps> = ({ orde
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {order.items.map((item, i) => (
+                        {order.items.map((item: any, i: number) => (
                             <tr key={i}>
                                 <td className="py-4 text-gray-900">{item.name}</td>
                                 <td className="py-4 text-center text-gray-600">{item.quantity}</td>

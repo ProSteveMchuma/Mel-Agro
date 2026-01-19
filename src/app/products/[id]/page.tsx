@@ -19,10 +19,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     return {
         title: `${product.name} | MelAgro`,
-        description: product.description.substring(0, 160),
+        description: (product.description || '').substring(0, 160),
         openGraph: {
             title: `${product.name} | MelAgro`,
-            description: product.description.substring(0, 160),
+            description: (product.description || '').substring(0, 160),
             images: [product.image],
         },
     };
@@ -37,7 +37,7 @@ export default async function Page({ params }: Props) {
         '@type': 'Product',
         name: product.name,
         image: product.image,
-        description: product.description,
+        description: product.description || '',
         sku: product.id,
         offers: {
             '@type': 'Offer',

@@ -11,6 +11,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMessages } from "@/context/MessageContext";
 import { useChama, ChamaGroup } from "@/context/ChamaContext";
+import { useWishlist } from "@/context/WishlistContext";
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplate";
@@ -25,6 +26,7 @@ export default function UserDashboard() {
     const { addToCart } = useCart();
     const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
     const { activeChamas } = useChama();
+    const { wishlist, removeFromWishlist } = useWishlist();
     const router = useRouter();
 
     const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -35,6 +37,9 @@ export default function UserDashboard() {
         phone: user?.phone || '',
         address: user?.address || ''
     });
+    const [printMode, setPrintMode] = useState<'invoice' | 'receipt' | 'delivery' | null>(null);
+    const [printOrder, setPrintOrder] = useState<Order | null>(null);
+    const [trackOrderId, setTrackOrderId] = useState('');
 
     useEffect(() => {
         if (user) {
@@ -119,11 +124,37 @@ export default function UserDashboard() {
         { label: "Total Spent", value: `KES ${orders.reduce((acc: number, curr: Order) => acc + curr.total, 0).toLocaleString()}`, icon: "💰", color: "bg-green-50 text-green-600" }
     ];
 
+    const handleTrackOrder = (e: React.FormEvent) => {
+        e.preventDefault();
+        const order = orders.find(o => o.id.toLowerCase() === trackOrderId.toLowerCase() || o.id.toLowerCase().includes(trackOrderId.toLowerCase()));
+        if (order) {
+            setSelectedOrder(order);
+            setTrackOrderId('');
+        } else {
+            toast.error('Order not found. Please check the Order ID.');
+        }
+    };
+
     const renderDashboard = () => (
         <div className="space-y-8">
             <div className="bg-white rounded-2xl p-8 border border-gray-200">
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">Jambo, {user.name?.split(' ')[0]}! 👋</h1>
                 <p className="text-gray-600">Here's what's happening with your farm inputs today.</p>
+            </div>
+
+            {/* Tracking Widget */}
+            <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
+                <h3 className="font-bold text-gray-900 mb-4">Track Your Order</h3>
+                <form onSubmit={handleTrackOrder} className="flex gap-3">
+                    <input
+                        type="text"
+                        placeholder="Enter Order ID (e.g. #12345)"
+                        value={trackOrderId}
+                        onChange={(e) => setTrackOrderId(e.target.value)}
+                        className="flex-grow px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-melagro-primary/20"
+                    />
+                    <button type="submit" className="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:scale-[1.02] transition-all">Track</button>
+                </form>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
@@ -137,20 +168,30 @@ export default function UserDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Quick Actions */}
                 <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
                     <h3 className="font-bold text-gray-900 mb-6">Quick Actions</h3>
-                    <div className="space-y-3">
-                        <Link href="/products" className="w-full bg-melagro-primary hover:bg-melagro-secondary text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-between group shadow-lg shadow-melagro-primary/20">
-                            + New Order
-                            <span className="group-hover:translate-x-1 transition-transform">→</span>
+                    <div className="grid grid-cols-2 gap-4">
+                        <Link href="/products" className="p-4 bg-melagro-primary text-white rounded-2xl flex flex-col items-center gap-2 hover:scale-[1.05] transition-all group shadow-lg shadow-melagro-primary/20">
+                            <span className="text-2xl">🚜</span>
+                            <span className="text-xs font-bold uppercase">Shop Now</span>
                         </Link>
-                        <button onClick={() => setActiveTab('profile')} className="w-full border-2 border-gray-100 text-gray-900 px-4 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all flex items-center justify-between group">
-                            Update Profile
-                            <span className="group-hover:translate-x-1 transition-transform">→</span>
+                        <button onClick={() => setActiveTab('chamas')} className="p-4 bg-purple-500 text-white rounded-2xl flex flex-col items-center gap-2 hover:scale-[1.05] transition-all shadow-lg shadow-purple-500/20">
+                            <span className="text-2xl">👥</span>
+                            <span className="text-xs font-bold uppercase">My Chamas</span>
+                        </button>
+                        <button onClick={() => setActiveTab('wishlist')} className="p-4 bg-red-500 text-white rounded-2xl flex flex-col items-center gap-2 hover:scale-[1.05] transition-all shadow-lg shadow-red-500/20">
+                            <span className="text-2xl">❤️</span>
+                            <span className="text-xs font-bold uppercase">Wishlist</span>
+                        </button>
+                        <button onClick={() => setActiveTab('support')} className="p-4 bg-blue-500 text-white rounded-2xl flex flex-col items-center gap-2 hover:scale-[1.05] transition-all shadow-lg shadow-blue-500/20">
+                            <span className="text-2xl">🎧</span>
+                            <span className="text-xs font-bold uppercase">Support</span>
                         </button>
                     </div>
                 </div>
 
+                {/* Recent Activity */}
                 <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-bold text-gray-900">Recent Orders</h3>
@@ -159,7 +200,7 @@ export default function UserDashboard() {
                     {orders.length > 0 ? (
                         <div className="space-y-3">
                             {orders.slice(0, 3).map((order: Order) => (
-                                <div key={order.id} onClick={() => { setSelectedOrder(order); setActiveTab('orders'); }} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-melagro-primary/10">
+                                <div key={order.id} onClick={() => { setSelectedOrder(order); }} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-melagro-primary/10">
                                     <div>
                                         <p className="text-sm font-bold text-gray-900">#{order.id.slice(0, 8)}</p>
                                         <p className="text-[10px] text-gray-400 font-medium">{new Date(order.date).toLocaleDateString()}</p>
@@ -172,10 +213,47 @@ export default function UserDashboard() {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-4 text-gray-400 text-sm">No orders yet</div>
+                        <div className="text-center py-12 bg-gray-50 rounded-2xl">
+                            <p className="text-gray-400 text-sm">No orders yet</p>
+                        </div>
                     )}
                 </div>
             </div>
+
+            {/* Quick Reorder Widget */}
+            {orders.length > 0 && (
+                <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-6">Frequently Ordered Items</h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
+                        {Array.from(new Map(orders.flatMap(o => o.items).map(item => [item.id, item])).values())
+                            .slice(0, 6)
+                            .map((item: any, i: number) => (
+                                <div key={i} className="group cursor-pointer" onClick={() => addToCart({
+                                    id: String(item.id),
+                                    name: item.name,
+                                    price: item.price,
+                                    image: item.image || '',
+                                    category: 'Reorder',
+                                    rating: 5,
+                                    reviews: 0,
+                                    inStock: true,
+                                    description: '',
+                                    stockQuantity: 100,
+                                    lowStockThreshold: 10
+                                }, 1)}>
+                                    <div className="aspect-square bg-gray-50 rounded-xl relative overflow-hidden mb-2 border border-gray-100 group-hover:border-melagro-primary transition-colors">
+                                        {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                            <span className="text-white text-xs font-bold bg-melagro-primary px-3 py-1 rounded-full">+ Add</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-[10px] font-bold text-gray-800 truncate">{item.name}</p>
+                                    <p className="text-[10px] text-melagro-primary font-bold">KES {item.price.toLocaleString()}</p>
+                                </div>
+                            ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 
@@ -197,8 +275,8 @@ export default function UserDashboard() {
                                         <div className="flex items-center gap-3 mb-1">
                                             <h3 className="font-bold text-lg text-gray-900">Order #{order.id.slice(0, 8)}</h3>
                                             <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                                                    order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
-                                                        'bg-yellow-100 text-yellow-700'
+                                                order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-yellow-100 text-yellow-700'
                                                 }`}>
                                                 {order.status}
                                             </span>
@@ -211,7 +289,7 @@ export default function UserDashboard() {
                                     </div>
                                 </div>
                                 <div className="flex gap-4 overflow-x-auto pb-2">
-                                    {order.items.map((item, i) => (
+                                    {order.items.map((item: any, i: number) => (
                                         <div key={i} className="flex-shrink-0 w-20">
                                             <div className="aspect-square bg-gray-50 rounded-xl relative overflow-hidden mb-1 border border-gray-100">
                                                 {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
@@ -266,6 +344,134 @@ export default function UserDashboard() {
                         ))}
                     </div>
                 )}
+            </div>
+        );
+    };
+
+    const renderReturns = () => {
+        const returnedOrders = orders.filter((o: Order) => o.status === 'Cancelled' || o.returnStatus);
+        return (
+            <div className="space-y-6">
+                <h2 className="text-2xl font-bold text-gray-900">Returns & Refunds</h2>
+                {returnedOrders.length === 0 ? (
+                    <div className="bg-white p-12 rounded-3xl border border-gray-100 text-center shadow-sm">
+                        <div className="grow text-5xl mb-4">🔄</div>
+                        <p className="text-gray-500 font-medium">No return requests found.</p>
+                    </div>
+                ) : (
+                    <div className="grid gap-4">
+                        {returnedOrders.map((order: Order) => (
+                            <div key={order.id} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                                <div className="flex justify-between items-center mb-4">
+                                    <div>
+                                        <p className="font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
+                                        <p className="text-xs text-gray-400">{new Date(order.date).toLocaleDateString()}</p>
+                                    </div>
+                                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${order.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                        {order.returnStatus || 'Processing'}
+                                    </span>
+                                </div>
+                                <p className="text-sm text-gray-600 mb-4">Reason: {order.returnReason || 'N/A'}</p>
+                                <button onClick={() => setSelectedOrder(order)} className="text-melagro-primary text-sm font-bold hover:underline">View Details</button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderNotifications = () => (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
+                {unreadNotificationsCount > 0 && (
+                    <button onClick={() => notifications.forEach((n: Notification) => markNotificationRead(n.id))} className="text-sm font-bold text-melagro-primary hover:underline">Mark all as read</button>
+                )}
+            </div>
+            {notifications.length === 0 ? (
+                <div className="bg-white p-12 rounded-3xl border border-gray-100 text-center shadow-sm">
+                    <div className="text-5xl mb-4">🔔</div>
+                    <p className="text-gray-500 font-medium">No new notifications.</p>
+                </div>
+            ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                    <div className="divide-y divide-gray-50">
+                        {notifications.map((n: Notification) => (
+                            <div key={n.id} onClick={() => markNotificationRead(n.id)} className={`p-6 flex gap-4 cursor-pointer hover:bg-gray-50 transition-colors ${!n.read ? 'bg-blue-50/30' : ''}`}>
+                                <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!n.read ? 'bg-melagro-primary' : 'bg-transparent'}`}></div>
+                                <div>
+                                    <p className={`text-sm ${!n.read ? 'font-bold text-gray-900' : 'text-gray-600'}`}>{n.message}</p>
+                                    <p className="text-[10px] text-gray-400 mt-1">{new Date(n.date).toLocaleString()}</p>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+
+    const renderWishlist = () => (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-900">My Wishlist</h2>
+            {wishlist.length === 0 ? (
+                <div className="bg-white p-12 rounded-3xl border border-gray-100 text-center shadow-sm">
+                    <div className="text-5xl mb-4">❤️</div>
+                    <p className="text-gray-500 font-medium">Your wishlist is empty.</p>
+                    <Link href="/products" className="btn-primary mt-6 inline-block">Start Shopping</Link>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {wishlist.map((product) => (
+                        <div key={product.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm group hover:shadow-xl transition-all">
+                            <div className="aspect-square relative rounded-xl overflow-hidden mb-4 bg-gray-50">
+                                <Image src={product.image} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform" />
+                                <button onClick={() => removeFromWishlist(product.id)} className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur-md rounded-full text-red-500 hover:bg-red-50 transition-colors">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" /></svg>
+                                </button>
+                            </div>
+                            <h3 className="font-bold text-gray-900 truncate">{product.name}</h3>
+                            <p className="text-melagro-primary font-black mb-4">KES {product.price.toLocaleString()}</p>
+                            <button onClick={() => addToCart(product, 1)} className="w-full py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-all">Add to Cart</button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+
+    const OrderTimeline = ({ status }: { status: string }) => {
+        const steps = ['Processing', 'Shipped', 'Delivered'];
+        const currentStepIndex = steps.indexOf(status);
+        if (currentStepIndex === -1 && status !== 'Cancelled') return null;
+        if (status === 'Cancelled') return <div className="text-red-600 font-bold bg-red-50 p-4 rounded-2xl text-center border border-red-100 mb-6">Order Cancelled</div>;
+
+        return (
+            <div className="w-full py-8">
+                <div className="relative flex items-center justify-between">
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1.5 bg-gray-100 -z-10 rounded-full"></div>
+                    <div
+                        className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 bg-melagro-primary -z-10 transition-all duration-700 ease-out rounded-full"
+                        style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                    ></div>
+
+                    {steps.map((step, index) => (
+                        <div key={step} className="flex flex-col items-center bg-transparent px-2 group">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 shadow-lg ${index <= currentStepIndex ? 'bg-melagro-primary text-white scale-110 shadow-melagro-primary/30' : 'bg-white text-gray-400 border-2 border-gray-100'
+                                }`}>
+                                {index < currentStepIndex ? (
+                                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                ) : (
+                                    index + 1
+                                )}
+                            </div>
+                            <span className={`mt-3 text-[10px] font-black uppercase tracking-wider ${index <= currentStepIndex ? 'text-gray-900' : 'text-gray-400'}`}>
+                                {step}
+                            </span>
+                        </div>
+                    ))}
+                </div>
             </div>
         );
     };
@@ -327,6 +533,7 @@ export default function UserDashboard() {
                                     { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
                                     { id: 'orders', label: 'My Orders', icon: '📦' },
                                     { id: 'chamas', label: 'My Chamas', icon: '👥' },
+                                    { id: 'wishlist', label: 'Wishlist', icon: '❤️' },
                                     { id: 'returns', label: 'Returns', icon: '🔄' },
                                     { id: 'notifications', label: 'Alerts', icon: '🔔' },
                                     { id: 'profile', label: 'Settings', icon: '⚙️' },
@@ -335,9 +542,9 @@ export default function UserDashboard() {
                                     <button
                                         key={item.id}
                                         onClick={() => setActiveTab(item.id as Tab)}
-                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === item.id
-                                                ? 'bg-melagro-primary text-white shadow-xl shadow-melagro-primary/20 translate-x-1'
-                                                : 'text-gray-500 hover:bg-gray-50 hover:text-melagro-primary'
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 ${activeTab === item.id
+                                            ? 'bg-melagro-primary text-white shadow-[0_10px_20px_-5px_rgba(34,197,94,0.4)] translate-x-1'
+                                            : 'text-gray-500 hover:bg-gray-50 hover:text-melagro-primary hover:translate-x-1'
                                             }`}
                                     >
                                         <span className="text-lg">{item.icon}</span>
@@ -361,6 +568,9 @@ export default function UserDashboard() {
                         {activeTab === 'dashboard' && renderDashboard()}
                         {activeTab === 'orders' && renderOrders()}
                         {activeTab === 'chamas' && renderChamas()}
+                        {activeTab === 'wishlist' && renderWishlist()}
+                        {activeTab === 'notifications' && renderNotifications()}
+                        {activeTab === 'returns' && renderReturns()}
                         {activeTab === 'support' && renderSupport()}
                         {activeTab === 'profile' && (
                             <div className="max-w-2xl bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
@@ -398,7 +608,7 @@ export default function UserDashboard() {
                             </div>
                         )}
                         {/* Fallback for other tabs if not implemented yet */}
-                        {!['dashboard', 'orders', 'chamas', 'support', 'profile'].includes(activeTab) && (
+                        {!['dashboard', 'orders', 'chamas', 'support', 'profile', 'wishlist', 'notifications', 'returns'].includes(activeTab) && (
                             <div className="bg-white p-20 rounded-3xl border border-gray-100 text-center shadow-sm">
                                 <div className="text-6xl mb-6">🛠️</div>
                                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon</h3>
@@ -407,6 +617,65 @@ export default function UserDashboard() {
                         )}
                     </div>
                 </div>
+
+                {/* Modals & Overlays */}
+                {selectedOrder && (
+                    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectedOrder(null)}>
+                        <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 relative" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => setSelectedOrder(null)} className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors">
+                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                            <h2 className="text-2xl font-black text-gray-900 mb-6">Order Details</h2>
+                            <OrderTimeline status={selectedOrder.status} />
+                            <div className="flex gap-4 mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Status</p>
+                                    <p className="font-black text-melagro-primary uppercase">{selectedOrder.status}</p>
+                                </div>
+                                <div className="ml-auto text-right">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase">Total Amount</p>
+                                    <p className="font-black text-gray-900">KES {selectedOrder.total.toLocaleString()}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-4 mb-8">
+                                {selectedOrder.items.map((item: any, i: number) => (
+                                    <div key={i} className="flex gap-4 items-center">
+                                        <div className="w-12 h-12 bg-gray-100 rounded-lg relative overflow-hidden flex-shrink-0">
+                                            {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
+                                        </div>
+                                        <div className="flex-grow">
+                                            <p className="text-sm font-bold text-gray-900">{item.name}</p>
+                                            <p className="text-xs text-gray-500">{item.quantity} x KES {item.price.toLocaleString()}</p>
+                                        </div>
+                                        <p className="font-bold text-gray-900">KES {(item.price * item.quantity).toLocaleString()}</p>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('invoice'); }} className="py-3 px-4 bg-gray-900 text-white rounded-xl text-xs font-bold hover:scale-[1.02] transition-all">Invoice</button>
+                                <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('receipt'); }} className="py-3 px-4 bg-gray-900 text-white rounded-xl text-xs font-bold hover:scale-[1.02] transition-all">Receipt</button>
+                                <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('delivery'); }} className="py-3 px-4 bg-gray-900 text-white rounded-xl text-xs font-bold hover:scale-[1.02] transition-all">Ship Doc</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {printMode && printOrder && (
+                    <div className="fixed inset-0 z-[100] bg-white overflow-auto print:p-0">
+                        <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0 z-50">
+                            <span className="font-bold">Preview: {printMode.toUpperCase()}</span>
+                            <div className="flex gap-2">
+                                <button onClick={() => window.print()} className="bg-melagro-primary px-6 py-2 rounded-xl text-sm font-bold hover:bg-melagro-secondary transition-all">Print Document</button>
+                                <button onClick={() => { setPrintMode(null); setPrintOrder(null); }} className="bg-gray-700 px-6 py-2 rounded-xl text-sm font-bold hover:bg-gray-600 transition-all">Close</button>
+                            </div>
+                        </div>
+                        <div className="p-8 max-w-4xl mx-auto">
+                            {printMode === 'invoice' && <InvoiceTemplate order={printOrder} />}
+                            {printMode === 'receipt' && <ReceiptTemplate order={printOrder} />}
+                            {printMode === 'delivery' && <DeliveryNoteTemplate order={printOrder} />}
+                        </div>
+                    </div>
+                )}
             </main>
             <Footer />
         </div>

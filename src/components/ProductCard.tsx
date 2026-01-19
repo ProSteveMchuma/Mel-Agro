@@ -44,7 +44,9 @@ export default function ProductCard({ id, name, price, image, category }: Produc
             description: "",
             inStock: true,
             rating: 5,
-            reviews: 0
+            reviews: 0,
+            stockQuantity: 100,
+            lowStockThreshold: 10
         };
 
         addToCart(productForCart, 1);
@@ -87,7 +89,7 @@ export default function ProductCard({ id, name, price, image, category }: Produc
                         fill
                         className="object-contain group-hover:scale-110 transition-transform duration-500 p-3"
                     />
-                    
+
                     {/* Discount Badge */}
                     <div className="absolute top-3 left-3 bg-melagro-accent text-melagro-primary px-2 py-1 rounded-lg text-xs font-bold shadow-md z-10">
                         -{discountPercent}%
@@ -96,10 +98,10 @@ export default function ProductCard({ id, name, price, image, category }: Produc
                     {/* Wishlist Button */}
                     <button
                         onClick={toggleWishlist}
-                        className={`absolute top-3 right-3 p-2 rounded-full z-10 transition-all duration-300 backdrop-blur-sm ${inWishlist 
-                            ? "bg-red-500/90 text-white shadow-lg" 
+                        className={`absolute top-3 right-3 p-2 rounded-full z-10 transition-all duration-300 backdrop-blur-sm ${inWishlist
+                            ? "bg-red-500/90 text-white shadow-lg"
                             : "bg-white/80 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                        }`}
+                            }`}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={inWishlist ? "currentColor" : "none"} viewBox="0 0 20 20" stroke="currentColor">
                             <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
@@ -144,7 +146,7 @@ export default function ProductCard({ id, name, price, image, category }: Produc
                             className={`py-2.5 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-1.5 ${isAdding
                                 ? "bg-green-600 text-white"
                                 : "bg-melagro-primary/10 text-melagro-primary hover:bg-melagro-primary hover:text-white"
-                            }`}
+                                }`}
                         >
                             {isAdding ? (
                                 <>

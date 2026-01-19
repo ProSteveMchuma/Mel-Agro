@@ -12,6 +12,7 @@ interface AuthContextType {
     user: User | null;
     isAdmin: boolean;
     logout: () => void;
+    updateProfile: (data: Partial<User>) => Promise<void>;
     updateUserProfile: (data: Partial<User>) => Promise<void>;
 }
 
@@ -80,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const updateUserProfile = async (data: Partial<User>) => {
+    const updateProfile = async (data: Partial<User>) => {
         if (user) {
             const updatedUser = { ...user, ...data };
             setUser(updatedUser);
@@ -104,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, isLoading, user, isAdmin, logout, updateUserProfile }}>
+        <AuthContext.Provider value={{ isAuthenticated, isLoading, user, isAdmin, logout, updateProfile, updateUserProfile: updateProfile }}>
             {children}
         </AuthContext.Provider>
     );

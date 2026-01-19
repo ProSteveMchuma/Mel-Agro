@@ -4,16 +4,8 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
-export type { Order, OrderItem } from '@/types';
-
-export interface Notification {
-    id: string;
-    userId: string;
-    message: string;
-    date: string;
-    read: boolean;
-    type: 'order' | 'system' | 'promo';
-}
+import { Order, OrderItem } from '@/types';
+export type { Order, OrderItem };
 
 export interface Notification {
     id: string;
@@ -32,6 +24,7 @@ interface OrderContextType {
     updateOrderPaymentStatus: (orderId: string, paymentStatus: 'Paid' | 'Unpaid') => Promise<void>;
     requestReturn: (orderId: string, reason: string) => Promise<void>;
     updateReturnStatus: (orderId: string, status: 'Approved' | 'Rejected') => Promise<void>;
+    handleConfirmReceipt: (orderId: string) => Promise<void>;
     markNotificationRead: (id: string) => Promise<void>;
     unreadNotificationsCount: number;
 }
@@ -318,6 +311,27 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const handleConfirmReceipt = async (orderId: string) => {
+        const orderRef = doc(db, "orders", orderId);
+        await updateDoc(orderRef, { status: 'Delivered' });
+
+        // Create Notification
+        const order = orders.find(o => o.id === orderId);
+        if (order) {
+            try {
+                await addDoc(collection(db, 'notifications'), {
+                    userId: order.userId,
+                    message: `Order #${orderId.slice(0, 5)} has been successfully delivered and confirmed.`,
+                    date: new Date().toISOString(),
+                    read: false,
+                    type: 'order'
+                });
+            } catch (error) {
+                console.error("Error creating receipt confirmation notification:", error);
+            }
+        }
+    };
+
     const markNotificationRead = async (id: string) => {
         // Optimistic update
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
@@ -337,6 +351,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             updateOrderPaymentStatus,
             requestReturn,
             updateReturnStatus,
+            handleConfirmReceipt,
             markNotificationRead,
             unreadNotificationsCount
         }}>

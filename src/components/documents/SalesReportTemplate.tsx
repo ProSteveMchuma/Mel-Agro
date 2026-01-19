@@ -57,7 +57,7 @@ export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                        {Object.entries(statusCounts).map(([status, count]) => (
+                        {Object.entries(statusCounts).map(([status, count]: [string, number]) => (
                             <tr key={status}>
                                 <td className="py-3 px-4 text-gray-900">{status}</td>
                                 <td className="py-3 px-4 text-right text-gray-900">{count}</td>

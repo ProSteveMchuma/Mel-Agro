@@ -72,14 +72,14 @@ export default function CartPage() {
                                         <div className="flex items-center gap-4">
                                             <div className="flex items-center border border-gray-200 rounded-lg">
                                                 <button
-                                                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                                                    onClick={() => updateQuantity(String(item.id), item.quantity - 1)}
                                                     className="w-10 h-10 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-l-lg transition-colors font-bold"
                                                 >
                                                     -
                                                 </button>
                                                 <span className="w-12 text-center font-medium">{item.quantity}</span>
                                                 <button
-                                                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                                                    onClick={() => updateQuantity(String(item.id), item.quantity + 1)}
                                                     className="w-10 h-10 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-r-lg transition-colors font-bold"
                                                 >
                                                     +
@@ -87,7 +87,7 @@ export default function CartPage() {
                                             </div>
 
                                             <button
-                                                onClick={() => removeFromCart(item.id)}
+                                                onClick={() => removeFromCart(String(item.id))}
                                                 className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                                                 title="Remove Item"
                                             >
