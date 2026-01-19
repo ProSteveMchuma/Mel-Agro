@@ -1,4 +1,5 @@
 "use client";
+
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
@@ -16,87 +17,71 @@ import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplat
 import WeatherWidget from "@/components/dashboard/WeatherWidget";
 import { toast } from "react-hot-toast";
 
-type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'chamas';
+type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'chamas' | 'wishlist' | 'addresses' | 'payments';
 
 export default function UserDashboard() {
-    const { user, isAuthenticated, isLoading, updateUserProfile, logout } = useAuth();
-    const { orders, notifications, markNotificationRead, unreadNotificationsCount, updateOrderStatus, requestReturn } = useOrders();
+    const { user, isLoading, logout, updateProfile } = useAuth();
+    const { orders, updateOrderStatus, requestReturn, handleConfirmReceipt } = useOrders();
     const { addToCart } = useCart();
+    const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
     const { activeChamas } = useChama();
     const router = useRouter();
 
     const [activeTab, setActiveTab] = useState<Tab>('dashboard');
-    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-    const [profileForm, setProfileForm] = useState({ name: '', email: '', phone: '', address: '' });
     const [isEditingProfile, setIsEditingProfile] = useState(false);
-    const [printMode, setPrintMode] = useState<'invoice' | 'receipt' | 'delivery' | null>(null);
-    const [printOrder, setPrintOrder] = useState<Order | null>(null);
+    const [profileForm, setProfileForm] = useState({
+        name: user?.name || '',
+        email: user?.email || '',
+        phone: user?.phone || '',
+        address: user?.address || ''
+    });
 
     useEffect(() => {
-        if (isLoading) return;
-        if (!isAuthenticated) {
-            router.push('/auth/login');
-        } else if (user) {
+        if (user) {
             setProfileForm({
                 name: user.name || '',
                 email: user.email || '',
                 phone: user.phone || '',
                 address: user.address || ''
             });
-
-            // Check URL for tab
-            const params = new URLSearchParams(window.location.search);
-            const tab = params.get('tab');
-            if (tab && ['dashboard', 'orders', 'returns', 'notifications', 'profile', 'support', 'chamas'].includes(tab)) {
-                setActiveTab(tab as Tab);
-            }
         }
-    }, [isAuthenticated, isLoading, router, user]);
+    }, [user]);
 
-    const handleReorder = (order: Order) => {
-        order.items.forEach(item => {
-            // Construct a product object from the order item
-            const product = {
-                id: String(item.id),
-                name: item.name,
-                price: item.price,
-                category: 'Reorder', // Fallback
-                image: item.image || '',
-                rating: 5,
-                reviews: 0,
-                inStock: true,
-                description: ''
-            };
-            addToCart(product, item.quantity);
-        });
-        alert('Items added to cart!');
-    };
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
-        await updateUserProfile({
-            name: profileForm.name,
-            phone: profileForm.phone,
-            address: profileForm.address
-        });
-        setIsEditingProfile(false);
-        alert('Profile updated successfully!');
+        try {
+            await updateProfile(profileForm);
+            setIsEditingProfile(false);
+            toast.success("Profile updated successfully");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to update profile");
+        }
     };
 
-    const handlePrint = (order: Order, type: 'invoice' | 'receipt' | 'delivery') => {
-        setPrintOrder(order);
-        setPrintMode(type);
-    };
-
-    const handleConfirmReceipt = async (orderId: string) => {
-        if (confirm("Are you sure you have received this order?")) {
-            try {
-                await updateOrderStatus(orderId, 'Delivered');
-                toast.success("Order marked as Delivered");
-            } catch (error) {
-                console.error("Error updating order:", error);
-                toast.error("Failed to update order status");
+    const handleReorder = async (order: Order) => {
+        try {
+            for (const item of order.items) {
+                await addToCart({
+                    id: String(item.id),
+                    name: item.name,
+                    price: item.price,
+                    image: item.image || '',
+                    category: 'Reorder',
+                    rating: 5,
+                    reviews: 0,
+                    inStock: true,
+                    description: '',
+                    stockQuantity: 100,
+                    lowStockThreshold: 10
+                }, item.quantity);
             }
+            toast.success("All items added to cart!");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to reorder items");
         }
     };
 
@@ -118,7 +103,7 @@ export default function UserDashboard() {
             try {
                 await requestReturn(orderId, reason);
                 toast.success("Return requested successfully");
-                setSelectedOrder(null); // Close modal to refresh or just let it update via context
+                setSelectedOrder(null);
             } catch (error) {
                 console.error("Error requesting return:", error);
                 toast.error("Failed to request return");
@@ -128,393 +113,153 @@ export default function UserDashboard() {
 
     if (isLoading || !user) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagro-primary"></div></div>;
 
-    const stats = {
-        totalOrders: orders.length,
-        activeOrders: orders.filter((o: Order) => o.status === 'Processing' || o.status === 'Shipped').length,
-        totalSpent: orders.reduce((acc: number, curr: Order) => acc + curr.total, 0)
-    };
-
-    interface NavItem {
-        id: Tab;
-        label: string;
-        icon: React.ReactNode;
-    }
-
-    const renderSidebar = () => (
-        <div className="bg-white/80 backdrop-blur-md p-6 rounded-3xl shadow-sm border border-gray-100 sticky top-24">
-            <div className="flex items-center gap-4 mb-8 px-2">
-                <div className="w-14 h-14 bg-melagro-primary/10 rounded-2xl flex items-center justify-center text-melagro-primary font-bold text-2xl shadow-inner">
-                    {user?.name?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                <div className="overflow-hidden">
-                    <div className="font-bold text-gray-900 truncate">{user?.name}</div>
-                    <div className="text-xs text-gray-500 truncate">{user?.email}</div>
-                </div>
-            </div>
-
-            <div className="mb-6 px-2">
-                <WeatherWidget />
-            </div>
-
-            <nav className="space-y-1.5">
-                {([
-                    { id: 'dashboard', label: 'Dashboard', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg> },
-                    { id: 'orders', label: 'My Orders', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg> },
-                    { id: 'chamas', label: 'My Chamas', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg> },
-                    { id: 'returns', label: 'Returns & Refunds', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg> },
-                    {
-                        id: 'notifications', label: 'Notifications', icon: (
-                            <div className="relative">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                                {unreadNotificationsCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
-                            </div>
-                        )
-                    },
-                    { id: 'profile', label: 'Profile Settings', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
-                    { id: 'support', label: 'Support', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" /></svg> },
-                ] as NavItem[]).map((item) => (
-                    <button
-                        key={item.id}
-                        onClick={() => setActiveTab(item.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition-all group ${activeTab === item.id
-                            ? 'bg-melagro-primary text-white shadow-lg shadow-melagro-primary/20 scale-[1.02]'
-                            : 'text-gray-600 hover:bg-gray-100/50 hover:text-melagro-primary'
-                            }`}
-                    >
-                        <span className={`transition-transform duration-300 ${activeTab === item.id ? 'scale-110' : 'group-hover:scale-110'}`}>
-                            {item.icon}
-                        </span>
-                        {item.label}
-                        {item.id === 'notifications' && unreadNotificationsCount > 0 && (
-                            <span className={`ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full ${activeTab === 'notifications' ? 'bg-white text-melagro-primary' : 'bg-melagro-primary text-white'}`}>
-                                {unreadNotificationsCount}
-                            </span>
-                        )}
-                    </button>
-                ))}
-
-                <div className="pt-4 mt-6 border-t border-gray-100 px-2">
-                    <button
-                        onClick={logout}
-                        className="w-full flex items-center gap-3 py-3 text-sm font-semibold text-red-500 hover:text-red-600 transition-all hover:gap-4 group"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 transition-transform group-hover:rotate-12" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                        Sign Out
-                    </button>
-                </div>
-            </nav>
-        </div>
-    );
-
-    const [trackOrderId, setTrackOrderId] = useState('');
-
-    const handleTrackOrder = (e: React.FormEvent) => {
-        e.preventDefault();
-        const order = orders.find((o: Order) => o.id.toLowerCase() === trackOrderId.toLowerCase() || o.id.toLowerCase().includes(trackOrderId.toLowerCase()));
-        if (order) {
-            setSelectedOrder(order);
-            setTrackOrderId('');
-        } else {
-            alert('Order not found. Please check the Order ID.');
-        }
-    };
+    const statsData = [
+        { label: "Total Orders", value: orders.length.toString(), icon: "📦", color: "bg-blue-50 text-blue-600" },
+        { label: "Active Orders", value: orders.filter((o: Order) => o.status === 'Processing' || o.status === 'Shipped').length.toString(), icon: "🕒", color: "bg-yellow-50 text-yellow-600" },
+        { label: "Total Spent", value: `KES ${orders.reduce((acc: number, curr: Order) => acc + curr.total, 0).toLocaleString()}`, icon: "💰", color: "bg-green-50 text-green-600" }
+    ];
 
     const renderDashboard = () => (
-        <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-melagro-primary/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-                    <div className="text-gray-500 text-sm font-medium mb-1 relative">Total Orders</div>
-                    <div className="text-3xl font-bold text-gray-900 relative">{stats.totalOrders}</div>
-                </div>
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-melagro-secondary/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-                    <div className="text-gray-500 text-sm font-medium mb-1 relative">Active Orders</div>
-                    <div className="text-3xl font-bold text-melagro-primary relative">{stats.activeOrders}</div>
-                </div>
-                <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-md transition-shadow">
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-melagro-accent/5 rounded-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
-                    <div className="text-gray-500 text-sm font-medium mb-1 relative">Total Spent</div>
-                    <div className="text-3xl font-bold text-gray-900 relative">KES {stats.totalSpent.toLocaleString()}</div>
-                </div>
+        <div className="space-y-8">
+            <div className="bg-white rounded-2xl p-8 border border-gray-200">
+                <h1 className="text-4xl font-bold text-gray-900 mb-2">Jambo, {user.name?.split(' ')[0]}! 👋</h1>
+                <p className="text-gray-600">Here's what's happening with your farm inputs today.</p>
             </div>
 
-            {/* Track Order Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="font-bold text-gray-900 mb-4">Track Order</h2>
-                <form onSubmit={handleTrackOrder} className="flex gap-4">
-                    <input
-                        type="text"
-                        placeholder="Enter Order ID (e.g., #12345)"
-                        value={trackOrderId}
-                        onChange={(e) => setTrackOrderId(e.target.value)}
-                        className="flex-grow px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
-                    />
-                    <button type="submit" className="bg-melagro-primary text-white px-6 py-2 rounded-xl font-medium hover:bg-melagro-secondary transition-colors">
-                        Track
-                    </button>
-                </form>
-            </div>
-
-            {/* Quick Reorder Widget */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-melagro-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Quick Reorder
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {/* Get unique items from recent orders */}
-                    {Array.from(new Map(orders.flatMap(o => o.items).map(item => [item.id, item])).values())
-                        .slice(0, 4)
-                        .map((item, i) => (
-                            <div key={i} className="bg-gray-50 rounded-xl p-3 flex flex-col items-center text-center group hover:bg-white hover:shadow-md transition-all border border-transparent hover:border-melagro-primary/20">
-                                <div className="w-16 h-16 bg-white rounded-lg mb-2 relative overflow-hidden">
-                                    {item.image ? (
-                                        <Image src={item.image} alt={item.name} fill className="object-cover" />
-                                    ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No Img</div>
-                                    )}
-                                </div>
-                                <div className="text-xs font-medium text-gray-900 line-clamp-1 mb-1">{item.name}</div>
-                                <div className="text-xs text-gray-500 mb-2">KES {item.price.toLocaleString()}</div>
-                                <button
-                                    onClick={() => {
-                                        addToCart({
-                                            id: String(item.id),
-                                            name: item.name,
-                                            price: item.price,
-                                            category: 'Reorder',
-                                            image: item.image || '',
-                                            rating: 5,
-                                            reviews: 0,
-                                            inStock: true,
-                                            description: ''
-                                        }, 1);
-                                        toast.success("Added to Cart!");
-                                    }}
-                                    className="w-full py-1 bg-melagro-primary text-white text-xs rounded-lg hover:bg-melagro-secondary transition-colors font-bold"
-                                >
-                                    Add 1
-                                </button>
-                            </div>
-                        ))}
-                    {orders.flatMap(o => o.items).length === 0 && (
-                        <div className="col-span-4 text-center text-sm text-gray-500 py-4">No past items to reorder.</div>
-                    )}
-                </div>
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                <h2 className="font-bold text-gray-900 mb-4">Recent Orders</h2>
-                {orders.slice(0, 3).map((order: Order) => (
-                    <div key={order.id} className="flex items-center justify-between py-4 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors px-2 rounded-xl">
-                        <div>
-                            <div className="font-semibold text-gray-900">Order #{order.id.slice(0, 8)}</div>
-                            <div className="text-xs text-gray-500 font-medium">
-                                {new Date(order.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold mb-1 ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                                order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
-                                    'bg-yellow-100 text-yellow-700'
-                                }`}>
-                                {order.status}
-                            </span>
-                            <div className="font-bold text-sm text-melagro-primary">KES {order.total.toLocaleString()}</div>
-                        </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                {statsData.map((stat, idx) => (
+                    <div key={idx} className={`${stat.color} rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all`}>
+                        <div className="text-3xl mb-3">{stat.icon}</div>
+                        <p className="text-sm font-semibold text-gray-500 mb-1">{stat.label}</p>
+                        <p className="text-2xl font-bold">{stat.value}</p>
                     </div>
                 ))}
-                <button onClick={() => setActiveTab('orders')} className="w-full mt-4 text-center text-melagro-primary font-medium text-sm hover:underline">
-                    View All Orders
-                </button>
             </div>
-        </div>
-    );
 
-    const renderReturns = () => {
-        const returnedOrders = orders.filter(o => o.returnStatus);
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
+                    <h3 className="font-bold text-gray-900 mb-6">Quick Actions</h3>
+                    <div className="space-y-3">
+                        <Link href="/products" className="w-full bg-melagro-primary hover:bg-melagro-secondary text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-between group shadow-lg shadow-melagro-primary/20">
+                            + New Order
+                            <span className="group-hover:translate-x-1 transition-transform">→</span>
+                        </Link>
+                        <button onClick={() => setActiveTab('profile')} className="w-full border-2 border-gray-100 text-gray-900 px-4 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all flex items-center justify-between group">
+                            Update Profile
+                            <span className="group-hover:translate-x-1 transition-transform">→</span>
+                        </button>
+                    </div>
+                </div>
 
-        return (
-            <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-gray-900">Returns & Refunds</h2>
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    {returnedOrders.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                            </svg>
-                            <p>No return requests found.</p>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-gray-100">
-                            {returnedOrders.map((order: Order) => (
-                                <div key={order.id} className="p-6 hover:bg-gray-50/50 transition-colors">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <h3 className="font-bold text-lg text-gray-900">Order #{order.id.slice(0, 8)}</h3>
-                                            <p className="text-sm text-gray-500 font-medium">Requested on {new Date(order.date).toLocaleDateString()}</p>
-                                        </div>
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${order.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' :
-                                            order.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
-                                                'bg-yellow-100 text-yellow-700'
-                                            }`}>
-                                            {order.returnStatus}
-                                        </span>
+                <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="font-bold text-gray-900">Recent Orders</h3>
+                        <button onClick={() => setActiveTab('orders')} className="text-melagro-primary hover:underline text-sm font-semibold">View All</button>
+                    </div>
+                    {orders.length > 0 ? (
+                        <div className="space-y-3">
+                            {orders.slice(0, 3).map((order: Order) => (
+                                <div key={order.id} onClick={() => { setSelectedOrder(order); setActiveTab('orders'); }} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-melagro-primary/10">
+                                    <div>
+                                        <p className="text-sm font-bold text-gray-900">#{order.id.slice(0, 8)}</p>
+                                        <p className="text-[10px] text-gray-400 font-medium">{new Date(order.date).toLocaleDateString()}</p>
                                     </div>
-                                    <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-100 mb-4">
-                                        <p className="text-xs font-bold text-gray-400 uppercase mb-1">Reason</p>
-                                        <p className="text-sm text-gray-700 leading-relaxed">{order.returnReason}</p>
+                                    <div className="text-right">
+                                        <p className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{order.status}</p>
+                                        <p className="text-sm font-bold text-melagro-primary">KES {order.total.toLocaleString()}</p>
                                     </div>
-                                    <button
-                                        onClick={() => setSelectedOrder(order)}
-                                        className="text-sm text-melagro-primary font-bold hover:text-melagro-secondary transition-colors inline-flex items-center gap-1 group"
-                                    >
-                                        View Order Details
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                                        </svg>
-                                    </button>
                                 </div>
                             ))}
                         </div>
+                    ) : (
+                        <div className="text-center py-4 text-gray-400 text-sm">No orders yet</div>
                     )}
                 </div>
             </div>
-        );
-    };
+        </div>
+    );
 
     const renderOrders = () => (
         <div className="space-y-6">
             <h2 className="text-2xl font-bold text-gray-900">My Orders</h2>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="divide-y divide-gray-100">
-                    {orders.map((order: Order) => (
-                        <div key={order.id} className="p-6 hover:bg-gray-50/30 transition-colors">
-                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                                <div>
-                                    <div className="flex items-center gap-3 mb-1">
-                                        <h3 className="font-bold text-lg text-gray-900">Order #{order.id.slice(0, 8)}</h3>
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                                            order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
-                                                'bg-yellow-100 text-yellow-700'
-                                            }`}>
-                                            {order.status}
-                                        </span>
-                                    </div>
-                                    <p className="text-sm text-gray-500 font-medium">Placed on {new Date(order.date).toLocaleDateString()}</p>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                    <button
-                                        onClick={() => setSelectedOrder(order)}
-                                        className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-white hover:border-melagro-primary hover:text-melagro-primary transition-all flex items-center gap-2"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                        </svg>
-                                        Details
-                                    </button>
-                                    <button
-                                        onClick={() => handleReorder(order)}
-                                        className="px-4 py-2 bg-melagro-primary text-white rounded-xl text-sm font-semibold hover:bg-melagro-secondary shadow-md shadow-melagro-primary/20 transition-all"
-                                    >
-                                        Buy Again
-                                    </button>
-                                    {order.status === 'Shipped' && (
-                                        <button
-                                            onClick={(e: React.MouseEvent) => {
-                                                e.stopPropagation();
-                                                handleConfirmReceipt(order.id);
-                                            }}
-                                            className="px-4 py-2 bg-green-600 text-white rounded-xl text-sm font-semibold hover:bg-green-700 shadow-md shadow-green-600/20 transition-all"
-                                        >
-                                            Confirm Receipt
-                                        </button>
-                                    )}
-                                    {order.status === 'Processing' && (
-                                        <button
-                                            onClick={(e: React.MouseEvent) => {
-                                                e.stopPropagation();
-                                                handleCancelOrder(order.id);
-                                            }}
-                                            className="px-4 py-2 bg-red-50 text-red-600 rounded-xl text-sm font-semibold hover:bg-red-100 transition-all"
-                                        >
-                                            Cancel
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-                                {order.items.map((item: OrderItem, i: number) => (
-                                    <div key={i} className="flex-shrink-0 w-24">
-                                        <div className="aspect-square bg-gray-50 rounded-2xl relative overflow-hidden mb-2 border border-gray-100 group">
-                                            {item.image ? (
-                                                <Image src={item.image} alt={item.name} fill className="object-cover transition-transform group-hover:scale-110" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-gray-300">NO IMAGE</div>
-                                            )}
-                                        </div>
-                                        <p className="text-[10px] font-bold text-gray-900 truncate px-1">{item.name}</p>
-                                        <p className="text-[10px] font-medium text-gray-500 px-1">Qty: {item.quantity}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+            {orders.length === 0 ? (
+                <div className="bg-white p-12 rounded-2xl border border-gray-100 text-center">
+                    <p className="text-gray-500 mb-6">No orders found.</p>
+                    <Link href="/products" className="btn-primary">Browse Products</Link>
                 </div>
-            </div>
+            ) : (
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
+                    <div className="divide-y divide-gray-50">
+                        {orders.map((order: Order) => (
+                            <div key={order.id} className="p-6 hover:bg-gray-50/50 transition-colors">
+                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                    <div>
+                                        <div className="flex items-center gap-3 mb-1">
+                                            <h3 className="font-bold text-lg text-gray-900">Order #{order.id.slice(0, 8)}</h3>
+                                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                                                    order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
+                                                        'bg-yellow-100 text-yellow-700'
+                                                }`}>
+                                                {order.status}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-400 font-medium tracking-tight">Placed on {new Date(order.date).toLocaleDateString()}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => setSelectedOrder(order)} className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-melagro-primary transition-colors">Details</button>
+                                        <button onClick={() => handleReorder(order)} className="px-4 py-2 bg-melagro-primary text-white text-xs font-bold rounded-lg hover:bg-melagro-secondary transition-all">Reorder</button>
+                                    </div>
+                                </div>
+                                <div className="flex gap-4 overflow-x-auto pb-2">
+                                    {order.items.map((item, i) => (
+                                        <div key={i} className="flex-shrink-0 w-20">
+                                            <div className="aspect-square bg-gray-50 rounded-xl relative overflow-hidden mb-1 border border-gray-100">
+                                                {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
+                                            </div>
+                                            <p className="text-[10px] font-bold text-gray-800 truncate">{item.name}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 
-    const renderNotifications = () => (
-        <div className="max-w-2xl">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
-                {unreadNotificationsCount > 0 && (
-                    <button
-                        onClick={() => notifications.forEach(n => markNotificationRead(n.id))}
-                        className="text-sm text-melagro-primary hover:underline font-medium"
-                    >
-                        Mark all as read
-                    </button>
-                )}
-            </div>
-
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                {notifications.length === 0 ? (
-                    <div className="p-8 text-center text-gray-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
-                        <p>No notifications yet</p>
+    const renderChamas = () => {
+        const myChamas = activeChamas.filter((c: ChamaGroup) => c.members.some((m: any) => m.userId === user?.uid));
+        return (
+            <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                    <h2 className="text-2xl font-bold text-gray-900">My Chama Groups</h2>
+                    <Link href="/products" className="text-sm font-bold text-melagro-primary hover:underline">+ Start New</Link>
+                </div>
+                {myChamas.length === 0 ? (
+                    <div className="bg-white p-12 rounded-2xl border border-gray-100 text-center">
+                        <p className="text-gray-500 mb-6">No active Chamas found.</p>
+                        <Link href="/products" className="btn-primary">Browse Products</Link>
                     </div>
                 ) : (
-                    <div className="divide-y divide-gray-100">
-                        {notifications.map((notification: Notification) => (
-                            <div
-                                key={notification.id}
-                                className={`p-4 hover:bg-gray-50/80 transition-all cursor-pointer border-l-4 ${!notification.read ? 'bg-melagro-primary/5 border-melagro-primary shadow-sm' : 'border-transparent'}`}
-                                onClick={() => markNotificationRead(notification.id)}
-                            >
-                                <div className="flex gap-4">
-                                    <div className={`mt-1 w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${!notification.read ? 'bg-melagro-primary text-white' : 'bg-gray-100 text-gray-400'}`}>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                                        </svg>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {myChamas.map((chama: ChamaGroup) => (
+                            <div key={chama.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden group hover:shadow-xl transition-all">
+                                <div className="aspect-video relative overflow-hidden bg-gray-50">
+                                    <Image src={chama.productImage} alt={chama.productName} fill className="object-cover transition-transform group-hover:scale-105" />
+                                    <div className="absolute top-3 left-3">
+                                        <span className="bg-melagro-primary text-white text-[10px] font-bold px-2 py-1 rounded-full">ACTIVE</span>
                                     </div>
-                                    <div className="flex-grow">
-                                        <p className={`text-sm ${!notification.read ? 'font-bold text-gray-900' : 'text-gray-600'}`}>
-                                            {notification.message}
-                                        </p>
-                                        <p className="text-[10px] font-bold text-gray-400 mt-1 flex items-center gap-1">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            {new Date(notification.date).toLocaleString()}
-                                        </p>
+                                </div>
+                                <div className="p-4">
+                                    <h3 className="font-bold text-gray-900 mb-1">{chama.productName}</h3>
+                                    <p className="text-lg font-black text-melagro-primary mb-3">KES {chama.price.toLocaleString()}</p>
+                                    <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden mb-2">
+                                        <div className="bg-melagro-primary h-full transition-all" style={{ width: `${(chama.members.length / chama.targetSize) * 100}%` }}></div>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[10px] font-bold text-gray-400">
+                                        <span>{chama.members.length} / {chama.targetSize} Members</span>
+                                        <button onClick={() => toast.success("Link Copied!")} className="text-melagro-primary">Share Link</button>
                                     </div>
                                 </div>
                             </div>
@@ -522,403 +267,148 @@ export default function UserDashboard() {
                     </div>
                 )}
             </div>
-        </div>
-    );
-
-    const renderProfile = () => (
-        <div className="max-w-2xl">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Profile Settings</h2>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-                <form onSubmit={handleUpdateProfile} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                            <input
-                                type="text"
-                                value={profileForm.name}
-                                onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
-                                disabled={!isEditingProfile}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20 disabled:bg-gray-50 disabled:text-gray-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
-                            <input
-                                type="email"
-                                value={profileForm.email}
-                                disabled
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                            <input
-                                type="tel"
-                                value={profileForm.phone}
-                                onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
-                                disabled={!isEditingProfile}
-                                placeholder="+254..."
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20 disabled:bg-gray-50 disabled:text-gray-500"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Default Delivery Address</label>
-                            <input
-                                type="text"
-                                value={profileForm.address}
-                                onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })}
-                                disabled={!isEditingProfile}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20 disabled:bg-gray-50 disabled:text-gray-500"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-4 pt-8">
-                        {isEditingProfile ? (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={() => setIsEditingProfile(false)}
-                                    className="px-8 py-3 border border-gray-200 rounded-2xl text-sm font-bold hover:bg-gray-50 transition-all"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-8 py-3 bg-melagro-primary text-white rounded-2xl text-sm font-bold hover:bg-melagro-secondary shadow-lg shadow-melagro-primary/20 transition-all scale-105 active:scale-100"
-                                >
-                                    Save Changes
-                                </button>
-                            </>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={() => setIsEditingProfile(true)}
-                                className="px-8 py-3 bg-gray-900 text-white rounded-2xl text-sm font-bold hover:bg-gray-800 transition-all flex items-center gap-2 group"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 transition-transform group-hover:rotate-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                                Edit Profile
-                            </button>
-                        )}
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
+        );
+    };
 
     const renderSupport = () => (
-        <div className="max-w-2xl">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Customer Support</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <a href="https://wa.me/254748970757" target="_blank" className="bg-white p-6 rounded-2xl border border-gray-100 hover:border-green-500/50 hover:shadow-xl hover:shadow-green-500/10 transition-all flex flex-col items-center text-center group">
-                    <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center text-green-600 mb-4 group-hover:scale-110 transition-transform">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.017-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" /></svg>
+        <div className="max-w-2xl space-y-8">
+            <h2 className="text-2xl font-bold text-gray-900">Customer Support</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <a href="https://wa.me/254748970757" target="_blank" className="p-6 bg-white border border-gray-100 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                    <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-green-500">
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.038 3.284l-.54 1.964 2.009-.528c.954.524 1.942.85 3.037.852 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.586-5.772-5.744-5.772zm3.374 8.086c-.1.272-.58.513-.801.551-.237.042-.46.079-.769-.015-.297-.091-.676-.239-1.144-.442-1.99-.861-3.284-2.885-3.383-3.018-.099-.134-.736-.979-.736-1.959 0-.979.512-1.46.694-1.658.183-.198.396-.247.53-.247.13 0 .26.012.37.012.11 0 .26-.041.408.321.148.36.512 1.25.56 1.348.049.099.083.214.016.347-.066.13-.1.214-.2.33-.1.115-.208.261-.297.35-.099.099-.198.198-.083.396.115.198.512.845 1.099 1.366.759.673 1.398.882 1.596.981.198.099.313.082.43-.049.115-.132.512-.596.644-.793.132-.198.26-.165.43-.099.172.066 1.09.514 1.277.613.183.1.312.148.363.23.049.082.049.479-.05.751z" /></svg>
                     </div>
-                    <span className="font-bold text-gray-900 mb-1">WhatsApp Support</span>
-                    <span className="text-xs text-gray-400 font-medium">Fastest response time</span>
+                    <div>
+                        <p className="font-bold text-gray-900">WhatsApp</p>
+                        <p className="text-[10px] text-gray-400">Fastest response</p>
+                    </div>
                 </a>
-                <a href="mailto:proinnovationtech@gmail.com" className="bg-white p-6 rounded-2xl border border-gray-100 hover:border-melagro-primary/50 hover:shadow-xl hover:shadow-melagro-primary/10 transition-all flex flex-col items-center text-center group">
-                    <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                        </svg>
+                <a href="mailto:support@melagro.com" className="p-6 bg-white border border-gray-100 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     </div>
-                    <span className="font-bold text-gray-900 mb-1">Email Support</span>
-                    <span className="text-xs text-gray-400 font-medium">For official inquiries</span>
+                    <div>
+                        <p className="font-bold text-gray-900">Email Support</p>
+                        <p className="text-[10px] text-gray-400">Official inquiries</p>
+                    </div>
                 </a>
             </div>
-
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-                <h3 className="font-bold text-gray-900 mb-4">Send us a message</h3>
+            <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                <h3 className="font-bold text-gray-900 mb-6">Send us a message</h3>
                 <MessageForm />
             </div>
         </div>
     );
 
-
-    const OrderTimeline = ({ status }: { status: string }) => {
-        const steps = ['Processing', 'Shipped', 'Delivered'];
-        const currentStepIndex = steps.indexOf(status);
-        // Handle Cancelled or unknown status
-        if (currentStepIndex === -1 && status !== 'Cancelled') return null;
-        if (status === 'Cancelled') return <div className="text-red-600 font-bold bg-red-50 p-3 rounded-lg text-center">Order Cancelled</div>;
-
-        return (
-            <div className="w-full py-4">
-                <div className="relative flex items-center justify-between">
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 -z-10"></div>
-                    <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-green-500 -z-10 transition-all duration-500"
-                        style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
-                    ></div>
-
-                    {steps.map((step, index) => (
-                        <div key={step} className="flex flex-col items-center bg-white px-2">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs transition-colors duration-300 ${index <= currentStepIndex ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'
-                                }`}>
-                                {index < currentStepIndex ? (
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                ) : (
-                                    index + 1
-                                )}
-                            </div>
-                            <span className={`mt-2 text-xs font-bold ${index <= currentStepIndex ? 'text-gray-900' : 'text-gray-400'}`}>
-                                {step}
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    };
-
-    const renderChamas = () => {
-        const myChamas = activeChamas.filter((c: ChamaGroup) => c.members.some((m: any) => m.userId === user?.uid));
-
-        return (
-            <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-gray-900">My Chama Groups</h2>
-                    <Link href="/products" className="text-sm font-bold text-melagro-primary hover:underline">+ Start New Chama</Link>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {myChamas.map((chama: ChamaGroup) => {
-                        const filledSpots = chama.members.length;
-                        const progress = (filledSpots / chama.targetSize) * 100;
-                        const isComplete = filledSpots >= chama.targetSize;
-
-                        return (
-                            <div key={chama.id} className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-                                <div className="aspect-video relative overflow-hidden bg-gray-50">
-                                    <Image src={chama.productImage} alt={chama.productName} fill className="object-cover transition-transform group-hover:scale-110" />
-                                    <div className="absolute top-4 left-4">
-                                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full shadow-lg ${isComplete ? 'bg-green-500 text-white' : 'bg-melagro-primary text-white'}`}>
-                                            {isComplete ? 'COMPLETED' : 'ACTIVE CHAMA'}
-                                        </span>
-                                    </div>
-                                    <div className="absolute bottom-0 inset-x-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent"></div>
+    return (
+        <div className="min-h-screen flex flex-col bg-[#F9FAFB] font-sans">
+            <Header />
+            <main className="flex-grow py-12 px-4 max-w-7xl mx-auto w-full">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    {/* Sidebar */}
+                    <div className="lg:col-span-1">
+                        <div className="bg-white rounded-3xl p-6 border border-gray-100 sticky top-24 shadow-sm">
+                            <div className="flex items-center gap-4 mb-8">
+                                <div className="w-16 h-16 bg-gradient-to-tr from-melagro-primary to-green-400 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg ring-4 ring-melagro-primary/10">
+                                    {user.name?.charAt(0)}
                                 </div>
-                                <div className="p-6">
-                                    <h3 className="font-bold text-gray-900 mb-1 group-hover:text-melagro-primary transition-colors">{chama.productName}</h3>
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <span className="text-xl font-black text-melagro-primary">KES {chama.price.toLocaleString()}</span>
-                                        <span className="text-sm text-gray-400 line-through font-medium">KES {chama.originalPrice.toLocaleString()}</span>
-                                    </div>
+                                <div className="overflow-hidden">
+                                    <p className="font-bold text-gray-900 truncate leading-tight">{user.name}</p>
+                                    <p className="text-[10px] text-gray-400 font-medium truncate">{user.email}</p>
+                                </div>
+                            </div>
 
-                                    <div className="mb-6">
-                                        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
-                                            <span>{filledSpots} / {chama.targetSize} Members</span>
-                                            <span className={isComplete ? 'text-green-500' : 'text-melagro-primary'}>
-                                                {isComplete ? 'READY TO SHIP!' : 'JOINING...'}
-                                            </span>
+                            <div className="mb-8">
+                                <WeatherWidget />
+                            </div>
+
+                            <nav className="space-y-1.5">
+                                {[
+                                    { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
+                                    { id: 'orders', label: 'My Orders', icon: '📦' },
+                                    { id: 'chamas', label: 'My Chamas', icon: '👥' },
+                                    { id: 'returns', label: 'Returns', icon: '🔄' },
+                                    { id: 'notifications', label: 'Alerts', icon: '🔔' },
+                                    { id: 'profile', label: 'Settings', icon: '⚙️' },
+                                    { id: 'support', label: 'Support', icon: '🎧' }
+                                ].map((item) => (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => setActiveTab(item.id as Tab)}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all ${activeTab === item.id
+                                                ? 'bg-melagro-primary text-white shadow-xl shadow-melagro-primary/20 translate-x-1'
+                                                : 'text-gray-500 hover:bg-gray-50 hover:text-melagro-primary'
+                                            }`}
+                                    >
+                                        <span className="text-lg">{item.icon}</span>
+                                        {item.label}
+                                        {item.id === 'notifications' && unreadNotificationsCount > 0 && (
+                                            <span className="ml-auto w-2 h-2 bg-red-500 rounded-full"></span>
+                                        )}
+                                    </button>
+                                ))}
+                                <div className="pt-4 mt-6 border-t border-gray-50">
+                                    <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-2xl transition-all">
+                                        <span className="text-lg">🚪</span> Sign Out
+                                    </button>
+                                </div>
+                            </nav>
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="lg:col-span-3">
+                        {activeTab === 'dashboard' && renderDashboard()}
+                        {activeTab === 'orders' && renderOrders()}
+                        {activeTab === 'chamas' && renderChamas()}
+                        {activeTab === 'support' && renderSupport()}
+                        {activeTab === 'profile' && (
+                            <div className="max-w-2xl bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                                <h2 className="text-2xl font-bold text-gray-900 mb-8">Profile Settings</h2>
+                                <form onSubmit={handleUpdateProfile} className="space-y-6">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Full Name</label>
+                                            <input type="text" value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} disabled={!isEditingProfile} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-melagro-primary/20 disabled:opacity-50 font-medium" />
                                         </div>
-                                        <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                                            <div
-                                                className={`h-full rounded-full transition-all duration-1000 ${isComplete ? 'bg-green-500' : 'bg-melagro-primary'}`}
-                                                style={{ width: `${progress}%` }}
-                                            ></div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Email Address</label>
+                                            <input type="email" value={profileForm.email} disabled className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium opacity-50 cursor-not-allowed" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Phone</label>
+                                            <input type="tel" value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} disabled={!isEditingProfile} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Delivery Address</label>
+                                            <input type="text" value={profileForm.address} onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })} disabled={!isEditingProfile} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium" />
                                         </div>
                                     </div>
-
-                                    <div className="flex items-center -space-x-3 mb-6">
-                                        {chama.members.map((m: any, i: number) => (
-                                            <div key={i} className="w-10 h-10 rounded-full bg-melagro-primary/10 border-2 border-white flex items-center justify-center text-xs font-bold text-melagro-primary ring-2 ring-transparent group-hover:ring-melagro-primary/20 transition-all" title={m.userName}>
-                                                {m.userName.charAt(0)}
+                                    <div className="flex justify-end pt-4">
+                                        {isEditingProfile ? (
+                                            <div className="flex gap-3">
+                                                <button type="button" onClick={() => setIsEditingProfile(false)} className="px-6 py-3 font-bold text-gray-500">Cancel</button>
+                                                <button type="submit" className="px-8 py-3 bg-melagro-primary text-white rounded-2xl font-bold shadow-lg shadow-melagro-primary/20 hover:scale-105 transition-all">Save Changes</button>
                                             </div>
-                                        ))}
-                                        {!isComplete && (
-                                            <div className="w-10 h-10 rounded-full bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-400">
-                                                +{chama.targetSize - filledSpots}
-                                            </div>
+                                        ) : (
+                                            <button type="button" onClick={() => setIsEditingProfile(true)} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-bold hover:scale-105 transition-all">Edit Profile</button>
                                         )}
                                     </div>
-
-                                    <button
-                                        className="w-full py-3.5 bg-gray-900 text-white rounded-2xl font-bold text-sm hover:bg-melagro-primary shadow-lg hover:shadow-melagro-primary/25 transition-all active:scale-95 flex items-center justify-center gap-2"
-                                        onClick={() => {
-                                            const url = `${window.location.origin}/products/${chama.productId}?join=${chama.id}`;
-                                            navigator.clipboard.writeText(url);
-                                            toast.success("Link copied! Share with friends.");
-                                        }}
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                        </svg>
-                                        Share Invite Link
-                                    </button>
-                                </div>
+                                </form>
                             </div>
-                        );
-                    })}
-                    {myChamas.length === 0 && (
-                        <div className="col-span-2 text-center py-12 bg-white rounded-2xl border border-gray-100">
-                            <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4 text-purple-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                </svg>
+                        )}
+                        {/* Fallback for other tabs if not implemented yet */}
+                        {!['dashboard', 'orders', 'chamas', 'support', 'profile'].includes(activeTab) && (
+                            <div className="bg-white p-20 rounded-3xl border border-gray-100 text-center shadow-sm">
+                                <div className="text-6xl mb-6">🛠️</div>
+                                <h3 className="text-2xl font-bold text-gray-900 mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon</h3>
+                                <p className="text-gray-500 font-medium">We're working hard to bring you this feature.</p>
                             </div>
-                            <h3 className="font-bold text-gray-900 mb-2">No Active Chamas</h3>
-                            <p className="text-gray-500 mb-6">Start a group buy to save up to 15% on products.</p>
-                            <Link href="/products" className="btn-primary">Browse Products</Link>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
-    };
-
-    return (
-        <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
-            {/* Print Overlay */}
-            {printMode && printOrder && (
-                <div className="fixed inset-0 z-[100] bg-white overflow-auto print:overflow-visible">
-                    <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0 z-50">
-                        <div className="font-bold">View: {printMode.toUpperCase()}</div>
-                        <div className="flex gap-4">
-                            <button onClick={() => window.print()} className="bg-melagro-primary px-4 py-2 rounded-lg hover:bg-melagro-secondary flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                Print
-                            </button>
-                            <button onClick={() => { setPrintMode(null); setPrintOrder(null); }} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600">Close</button>
-                        </div>
-                    </div>
-                    <div className="p-4 md:p-8 print:p-0 max-w-4xl mx-auto">
-                        {printMode === 'invoice' && <InvoiceTemplate order={printOrder} />}
-                        {printMode === 'receipt' && <ReceiptTemplate order={printOrder} />}
-                        {printMode === 'delivery' && <DeliveryNoteTemplate order={printOrder} />}
+                        )}
                     </div>
                 </div>
-            )}
-
-            <div className="print:hidden">
-                <Header />
-
-                <main className="flex-grow py-8 lg:py-12">
-                    <div className="container-custom">
-                        <div className="flex flex-col lg:flex-row gap-8">
-                            {/* Sidebar */}
-                            <div className="lg:w-1/4">
-                                {renderSidebar()}
-                            </div>
-
-                            {/* Main Content */}
-                            <div className="lg:w-3/4">
-                                {activeTab === 'dashboard' && renderDashboard()}
-                                {activeTab === 'orders' && renderOrders()}
-                                {activeTab === 'chamas' && renderChamas()}
-                                {activeTab === 'returns' && renderReturns()}
-                                {activeTab === 'notifications' && renderNotifications()}
-                                {activeTab === 'profile' && renderProfile()}
-                                {activeTab === 'support' && renderSupport()}
-                            </div>
-                        </div>
-                    </div>
-                </main>
-
-                {/* Order Details Modal */}
-                {selectedOrder && !printMode && (
-                    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setSelectedOrder(null)}>
-                        <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
-                            <div className="flex justify-between items-center mb-6">
-                                <h2 className="text-xl font-bold">Order #{selectedOrder.id}</h2>
-                                <button onClick={() => setSelectedOrder(null)} className="p-2 hover:bg-gray-100 rounded-full">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                                </button>
-                            </div>
-
-                            {/* Order Timeline */}
-                            <div className="mb-8 px-2">
-                                <OrderTimeline status={selectedOrder.status} />
-                            </div>
-
-                            <div className="space-y-4">
-                                {selectedOrder.items.map((item, i) => (
-                                    <div key={i} className="flex justify-between items-center border-b border-gray-100 pb-4">
-                                        <div>
-                                            <div className="font-medium">{item.name}</div>
-                                            <div className="text-sm text-gray-500">Qty: {item.quantity}</div>
-                                        </div>
-                                        <div className="font-bold">KES {(item.price * item.quantity).toLocaleString()}</div>
-                                    </div>
-                                ))}
-                                <div className="flex justify-between items-center pt-4 font-bold text-lg">
-                                    <span>Total</span>
-                                    <span>KES {selectedOrder.total.toLocaleString()}</span>
-                                </div>
-                            </div>
-
-                            <div className="mt-8 grid grid-cols-2 gap-4">
-                                {selectedOrder.status === 'Shipped' && (
-                                    <button
-                                        onClick={() => handleConfirmReceipt(selectedOrder.id)}
-                                        className="col-span-2 bg-green-600 text-white py-3 rounded-xl font-bold hover:bg-green-700 transition-colors"
-                                    >
-                                        Confirm Receipt of Goods
-                                    </button>
-                                )}
-                                {selectedOrder.status === 'Processing' && (
-                                    <button
-                                        onClick={() => handleCancelOrder(selectedOrder.id)}
-                                        className="col-span-2 bg-red-50 text-red-600 py-3 rounded-xl font-bold hover:bg-red-100 transition-colors"
-                                    >
-                                        Cancel Order
-                                    </button>
-                                )}
-                                <button onClick={() => handleReorder(selectedOrder)} className="col-span-2 btn-primary w-full">Buy Again</button>
-
-                                {/* Invoice - Always Available */}
-                                <button onClick={() => handlePrint(selectedOrder, 'invoice')} className="btn-secondary flex items-center justify-center gap-2">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
-                                    View Invoice
-                                </button>
-
-                                {/* Receipt - Only if Paid */}
-                                {(selectedOrder.paymentStatus === 'Paid' || selectedOrder.status === 'Delivered') && (
-                                    <button onClick={() => handlePrint(selectedOrder, 'receipt')} className="btn-secondary flex items-center justify-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                        View Receipt
-                                    </button>
-                                )}
-
-                                {/* Delivery Note - Only if Delivered */}
-                                {selectedOrder.status === 'Delivered' && (
-                                    <button onClick={() => handlePrint(selectedOrder, 'delivery')} className="col-span-2 btn-secondary flex items-center justify-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        View Delivery Note
-                                    </button>
-                                )}
-
-                                {/* Return Button */}
-                                {selectedOrder.status === 'Delivered' && !selectedOrder.returnStatus && (
-                                    <button
-                                        onClick={() => handleRequestReturn(selectedOrder.id)}
-                                        className="col-span-2 bg-orange-50 text-orange-600 py-3 rounded-xl font-bold hover:bg-orange-100 transition-colors"
-                                    >
-                                        Request Return / Refund
-                                    </button>
-                                )}
-
-                                {/* Return Status Badge */}
-                                {selectedOrder.returnStatus && (
-                                    <div className={`col-span-2 p-4 rounded-xl text-center font-bold ${selectedOrder.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' :
-                                        selectedOrder.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
-                                            'bg-yellow-100 text-yellow-700'
-                                        }`}>
-                                        Return Status: {selectedOrder.returnStatus}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                <Footer />
-            </div>
+            </main>
+            <Footer />
         </div>
     );
 }
@@ -932,7 +422,6 @@ function MessageForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!message.trim()) return;
-
         setStatus('sending');
         try {
             await sendMessage(`${subject}: ${message}`, 'text');
@@ -948,12 +437,8 @@ function MessageForm() {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-                <select
-                    value={subject}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSubject(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
-                >
+                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Subject</label>
+                <select value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium focus:ring-2 focus:ring-melagro-primary/20">
                     <option>Order Inquiry</option>
                     <option>Product Question</option>
                     <option>Technical Support</option>
@@ -961,24 +446,12 @@ function MessageForm() {
                 </select>
             </div>
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                <textarea
-                    rows={4}
-                    value={message}
-                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setMessage(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
-                    placeholder="How can we help you?"
-                    required
-                ></textarea>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Message</label>
+                <textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium focus:ring-2 focus:ring-melagro-primary/20" placeholder="How can we help you?" required></textarea>
             </div>
-            <button
-                type="submit"
-                disabled={status === 'sending' || status === 'success'}
-                className={`btn-primary w-full ${status === 'success' ? 'bg-green-600 hover:bg-green-700' : ''}`}
-            >
+            <button type="submit" disabled={status === 'sending' || status === 'success'} className={`w-full py-4 rounded-2xl font-bold text-white transition-all shadow-lg ${status === 'success' ? 'bg-green-500' : 'bg-melagro-primary hover:scale-[1.02]'}`}>
                 {status === 'sending' ? 'Sending...' : status === 'success' ? 'Message Sent!' : 'Send Message'}
             </button>
-            {status === 'error' && <p className="text-red-500 text-sm text-center">Failed to send message. Please try again.</p>}
         </form>
     );
 }

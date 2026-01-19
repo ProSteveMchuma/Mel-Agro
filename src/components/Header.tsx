@@ -20,70 +20,76 @@ export default function Header() {
     : "/auth/login";
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 shadow-sm">
+    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
       <div className="container-custom py-4">
         <div className="flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-melagro-primary rounded-lg flex items-center justify-center text-white font-bold text-xl group-hover:bg-melagro-secondary transition-colors">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-melagro-primary to-melagro-secondary rounded-lg flex items-center justify-center text-white font-bold text-xl group-hover:shadow-lg transition-all">
               M
             </div>
-            <span className="text-2xl font-bold text-melagro-primary tracking-tight">
-              MelAgro
-            </span>
+            <div>
+              <span className="text-xl font-bold text-melagro-primary tracking-tight block">MelAgro</span>
+              <span className="text-xs text-gray-500 block -mt-1">Agricultural Hub</span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
-            <Link href="/" className="text-gray-600 hover:text-melagro-primary font-medium transition-colors">
+          <nav className="hidden lg:flex items-center gap-12">
+            <Link href="/" className="text-gray-600 hover:text-melagro-primary font-medium transition-colors relative group">
               {t('nav.home')}
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-melagro-primary group-hover:w-full transition-all duration-300"></span>
             </Link>
-            <Link href="/products" className="text-gray-600 hover:text-melagro-primary font-medium transition-colors">
+            <Link href="/products" className="text-gray-600 hover:text-melagro-primary font-medium transition-colors relative group">
               {t('nav.products')}
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-melagro-primary group-hover:w-full transition-all duration-300"></span>
             </Link>
-            <Link href="/about" className="text-gray-600 hover:text-melagro-primary font-medium transition-colors">
+            <Link href="/about" className="text-gray-600 hover:text-melagro-primary font-medium transition-colors relative group">
               {t('nav.about')}
+              <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-melagro-primary group-hover:w-full transition-all duration-300"></span>
             </Link>
-            <div className="flex bg-gray-100 rounded-lg p-1">
+          </nav>
+
+          {/* Actions */}
+          <div className="flex items-center gap-3">
+            {/* Language Selector */}
+            <div className="hidden md:flex bg-gray-100 rounded-lg p-0.5">
               <button
                 onClick={() => setLanguage('en')}
-                className={`px-2 py-1 text-xs font-bold rounded ${language === 'en' ? 'bg-white shadow-sm text-melagro-primary' : 'text-gray-500'}`}
+                className={`px-3 py-1 text-xs font-semibold rounded transition-all ${language === 'en' ? 'bg-white text-melagro-primary shadow-sm' : 'text-gray-500'}`}
               >
                 EN
               </button>
               <button
                 onClick={() => setLanguage('sw')}
-                className={`px-2 py-1 text-xs font-bold rounded ${language === 'sw' ? 'bg-white shadow-sm text-melagro-primary' : 'text-gray-500'}`}
+                className={`px-3 py-1 text-xs font-semibold rounded transition-all ${language === 'sw' ? 'bg-white text-melagro-primary shadow-sm' : 'text-gray-500'}`}
               >
                 SW
               </button>
             </div>
-          </nav>
 
-          {/* Search & Actions */}
-          <div className="hidden md:flex items-center gap-4">
-
-            <SmartSearch />
-
-            <Link href="/dashboard/user?tab=orders" className="p-2 text-gray-600 hover:text-melagro-primary transition-colors relative" title="Track Order">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            {/* Track Orders */}
+            <Link href="/dashboard/user?tab=orders" className="hidden md:flex p-2 text-gray-600 hover:text-melagro-primary hover:bg-melagro-primary/10 rounded-lg transition-all" title="Track Orders">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
               </svg>
             </Link>
 
-            <Link href="/wishlist" className="p-2 text-gray-600 hover:text-melagro-primary transition-colors relative" title="Wishlist">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {/* Wishlist */}
+            <Link href="/wishlist" className="hidden md:flex p-2 text-gray-600 hover:text-melagro-primary hover:bg-melagro-primary/10 rounded-lg transition-all" title="Wishlist">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </Link>
 
+            {/* Cart */}
             <button
               onClick={toggleCart}
-              className="p-2 text-gray-600 hover:text-melagro-primary transition-colors relative"
+              className="relative p-2 text-gray-600 hover:text-melagro-primary hover:bg-melagro-primary/10 rounded-lg transition-all"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
-                className="h-6 w-6"
+                className="h-5 w-5"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -96,11 +102,13 @@ export default function Header() {
                 />
               </svg>
               {cartCount > 0 && (
-                <span className="absolute top-0 right-0 h-4 w-4 bg-melagro-accent text-white text-[10px] font-bold flex items-center justify-center rounded-full">
+                <span className="absolute -top-1 -right-1 h-5 w-5 bg-melagro-accent text-melagro-primary text-xs font-bold flex items-center justify-center rounded-full shadow-md">
                   {cartCount}
                 </span>
               )}
             </button>
+
+            {/* User Menu */}
 
             {user ? (
               <div className="relative group">

@@ -23,14 +23,11 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     const { user: authUser } = useAuth();
 
     const seedProducts = async () => {
-        console.log("Starting seedProducts...");
         try {
             for (const p of MOCK_PRODUCTS) {
-                console.log("Adding product:", p.name);
                 const { id, ...rest } = p;
                 await addDoc(collection(db, "products"), rest);
             }
-            console.log("Seeding complete.");
         } catch (e) {
             console.error("Error seeding products:", e);
         }
@@ -56,8 +53,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
                 // Actually, onSnapshot fires immediately with empty if empty.
                 // We should be careful not to infinite loop seeding.
                 // For now, let's assume if it's empty we might need to seed, but let's do it only once or check a flag.
-                // To be safe, let's just log it. Seeding should be manual or handled better.
-                console.log("No products found in Firestore.");
+                // To be safe, just log in debug mode. Seeding should be manual or handled better.
             } else {
                 setProducts(productList);
             }

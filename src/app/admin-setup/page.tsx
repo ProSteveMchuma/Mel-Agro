@@ -15,8 +15,13 @@ export default function AdminSetupPage() {
     const handleMakeAdmin = async () => {
         if (!user) return;
 
-        // Simple hardcoded check for demonstration/MVP. Ideally use API/Env.
-        const SECRET = 'melagro2024';
+        // SECURITY: Always load secret from environment variables, never hardcode
+        const SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET_CODE;
+        if (!SECRET) {
+            setMessage('Error: Admin setup is not configured. Contact administrator.');
+            return;
+        }
+
         if (secretCode !== SECRET) {
             setMessage('Error: Invalid Security Code');
             return;
@@ -104,7 +109,11 @@ export default function AdminSetupPage() {
                 </button>
 
                 <p className="mt-4 text-xs text-gray-400">
-                    This is a temporary setup page. Delete this route after use for security.
+                    ⚠️ SECURITY WARNING: This route should be disabled after admin setup is complete.
+                    <br />
+                    1. Set NEXT_PUBLIC_ADMIN_SECRET_CODE in .env.local
+                    <br />
+                    2. Delete this route from src/app/admin-setup/ after use
                 </p>
             </div>
         </div>
