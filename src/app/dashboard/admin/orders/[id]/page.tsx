@@ -3,6 +3,7 @@ import { useOrders } from "@/context/OrderContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 
 export default function AdminOrderDetailsPage() {
     const { orders, updateOrderStatus, updateOrderPaymentStatus, updateReturnStatus } = useOrders();
@@ -21,7 +22,7 @@ export default function AdminOrderDetailsPage() {
 
     const handleDispatch = () => {
         if (!trackingInfo.carrier || !trackingInfo.trackingNumber) {
-            alert("Please enter carrier and tracking number.");
+            toast.error("Please enter carrier and tracking number.");
             return;
         }
         // In a real app, we would save the tracking info to the order object in Firestore here
@@ -267,8 +268,8 @@ export default function AdminOrderDetailsPage() {
 
                             <div className="mb-4">
                                 <span className={`px-3 py-1 rounded-full text-sm font-bold ${order.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' :
-                                        order.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
-                                            'bg-yellow-100 text-yellow-700'
+                                    order.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                        'bg-yellow-100 text-yellow-700'
                                     }`}>
                                     {order.returnStatus}
                                 </span>

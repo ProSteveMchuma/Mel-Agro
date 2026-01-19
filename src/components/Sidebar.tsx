@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 interface SidebarProps {
     categories?: string[];
     onCategoryChange?: (category: string) => void;
+    onPriceChange?: (range: [number, number]) => void;
 }
 
 const defaultCategories = [
@@ -19,7 +20,7 @@ const defaultCategories = [
     "Bulk Orders"
 ];
 
-export default function Sidebar({ categories = defaultCategories, onCategoryChange }: SidebarProps) {
+export default function Sidebar({ categories = defaultCategories, onCategoryChange, onPriceChange }: SidebarProps) {
     const pathname = usePathname();
 
     return (
@@ -36,11 +37,10 @@ export default function Sidebar({ categories = defaultCategories, onCategoryChan
                                     key={idx}
                                     href={`/products?category=${encodeURIComponent(category)}`}
                                     onClick={() => onCategoryChange?.(category)}
-                                    className={`block px-3 py-2.5 rounded-lg transition-all text-sm font-medium ${
-                                        isActive
-                                            ? "bg-melagro-primary/10 text-melagro-primary"
-                                            : "text-gray-600 hover:text-melagro-primary hover:bg-gray-50"
-                                    }`}
+                                    className={`block px-3 py-2.5 rounded-lg transition-all text-sm font-medium ${isActive
+                                        ? "bg-melagro-primary/10 text-melagro-primary"
+                                        : "text-gray-600 hover:text-melagro-primary hover:bg-gray-50"
+                                        }`}
                                 >
                                     {category}
                                 </Link>
@@ -52,20 +52,25 @@ export default function Sidebar({ categories = defaultCategories, onCategoryChan
                 {/* Price Range Filter */}
                 <div>
                     <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900 mb-4">Price Range (KSh)</h3>
-                    <div className="space-y-3">
-                        <div>
+                    <div className="space-y-4">
+                        <div className="flex gap-2 items-center">
                             <input
-                                type="range"
-                                min="0"
-                                max="50000"
-                                defaultValue="0"
-                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-melagro-primary"
+                                type="number"
+                                placeholder="Min"
+                                onChange={(e) => onPriceChange?.([Number(e.target.value), 50000])}
+                                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-melagro-primary"
                             />
-                            <div className="flex justify-between text-xs text-gray-500 mt-2">
-                                <span>Min: 100</span>
-                                <span>Max: 10,000+</span>
-                            </div>
+                            <span className="text-gray-400">-</span>
+                            <input
+                                type="number"
+                                placeholder="Max"
+                                onChange={(e) => onPriceChange?.([0, Number(e.target.value)])}
+                                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-melagro-primary"
+                            />
                         </div>
+                        <button className="w-full py-2 bg-gray-100 text-gray-600 text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-gray-200 transition-colors">
+                            Apply Filter
+                        </button>
                     </div>
                 </div>
 
@@ -85,27 +90,7 @@ export default function Sidebar({ categories = defaultCategories, onCategoryChan
                     </div>
                 </div>
 
-                {/* Availability */}
-                <div>
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-gray-900 mb-4">Availability</h3>
-                    <div className="space-y-2">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                defaultChecked
-                                className="w-4 h-4 rounded accent-melagro-primary"
-                            />
-                            <span className="text-sm text-gray-600 hover:text-gray-900">In Stock (42)</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                className="w-4 h-4 rounded accent-melagro-primary"
-                            />
-                            <span className="text-sm text-gray-600 hover:text-gray-900">On Sale (15)</span>
-                        </label>
-                    </div>
-                </div>
+
 
                 {/* Featured Section */}
                 <div className="pt-6 border-t border-gray-200">

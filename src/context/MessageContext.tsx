@@ -54,7 +54,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
 
         let unsubscribe: () => void;
 
-        if (user.role === 'admin') {
+        if (user.role === 'admin' || user.role === 'super-admin') {
             // Admin sees all conversations
             const q = query(collection(db, 'conversations'), orderBy('lastMessageAt', 'desc'));
             unsubscribe = onSnapshot(q, (snapshot) => {
@@ -107,7 +107,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         // Determine target conversation ID
         // If Admin: activeConversationId
         // If User: user.uid
-        const targetId = user.role === 'admin' ? activeConversationId : user.uid;
+        const targetId = (user.role === 'admin' || user.role === 'super-admin') ? activeConversationId : user.uid;
 
         if (!targetId) {
             console.error("No target conversation ID");
@@ -129,8 +129,8 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         // Update conversation document (summary)
         await setDoc(doc(db, 'conversations', targetId), {
             id: targetId,
-            userName: user.role === 'admin' ? conversations.find(c => c.id === targetId)?.userName : user.name, // Maintain user name
-            userEmail: user.role === 'admin' ? conversations.find(c => c.id === targetId)?.userEmail : user.email,
+            userName: (user.role === 'admin' || user.role === 'super-admin') ? conversations.find(c => c.id === targetId)?.userName : user.name, // Maintain user name
+            userEmail: (user.role === 'admin' || user.role === 'super-admin') ? conversations.find(c => c.id === targetId)?.userEmail : user.email,
             lastMessage: type === 'order-proposal' ? '📦 Sent an Order Proposal' : content,
             lastMessageAt: serverTimestamp(),
             unreadCount: 0 // Resetting logic would go here ideally 

@@ -46,7 +46,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         }
 
         let q;
-        if (user.role === 'admin') {
+        if (user.role === 'admin' || user.role === 'super-admin') {
             // Remove orderBy to avoid missing index issue
             q = query(collection(db, 'orders'));
         } else {

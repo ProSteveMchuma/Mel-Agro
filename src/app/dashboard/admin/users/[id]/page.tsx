@@ -56,7 +56,7 @@ export default function UserProfilePage() {
                         <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
                         <p className="text-gray-500 text-sm">{user.email}</p>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${(user.role === 'admin' || user.role === 'super-admin') ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
                                 {user.role}
                             </span>
                             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

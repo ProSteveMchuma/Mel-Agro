@@ -6,6 +6,23 @@ import { useProducts } from "@/context/ProductContext";
 import Image from "next/image";
 import Link from "next/link";
 import { useLanguage } from "@/context/LanguageContext";
+import Fuse from "fuse.js";
+
+// Export reusable search function
+export const fuzzySearch = (products: any[], query: string) => {
+    const fuseOptions = {
+        keys: [
+            { name: 'name', weight: 0.4 },
+            { name: 'tags', weight: 0.3 },
+            { name: 'category', weight: 0.2 },
+            { name: 'description', weight: 0.1 }
+        ],
+        threshold: 0.3,
+        includeScore: true
+    };
+    const fuse = new Fuse(products, fuseOptions);
+    return fuse.search(query).map(r => r.item);
+};
 
 export default function SmartSearch() {
     const { products } = useProducts();
@@ -28,6 +45,7 @@ export default function SmartSearch() {
     }, []);
 
     // Initialize Fuse for fuzzy search
+    // Options are now centralized in fuzzySearch export
     const fuseOptions = {
         keys: [
             { name: 'name', weight: 0.4 },
@@ -35,7 +53,7 @@ export default function SmartSearch() {
             { name: 'category', weight: 0.2 },
             { name: 'description', weight: 0.1 }
         ],
-        threshold: 0.3, // Lower is stricter, 0.3 is a good balance for typos
+        threshold: 0.3,
         includeScore: true
     };
 

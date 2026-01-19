@@ -62,14 +62,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
 
     const removeFromCart = (id: string) => {
-        setCartItems(prev => prev.filter(item => item.id !== id));
+        setCartItems(prev => prev.filter(item => String(item.id) !== String(id)));
         toast.success('Removed from cart');
     };
 
     const updateQuantity = (id: string, quantity: number) => {
         if (quantity < 1) return;
         setCartItems(prev => prev.map(item =>
-            item.id === id ? { ...item, quantity } : item
+            String(item.id) === String(id) ? { ...item, quantity } : item
         ));
     };
 

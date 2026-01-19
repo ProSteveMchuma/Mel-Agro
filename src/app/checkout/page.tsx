@@ -4,24 +4,31 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { useOrders } from '@/context/OrderContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import { toast } from 'react-hot-toast';
+import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 export default function CheckoutPage() {
     const router = useRouter();
-    const { cartItems, cartTotal } = useCart();
+    const { cartItems, cartTotal, clearCart } = useCart();
     const { user } = useAuth();
+    const { addOrder } = useOrders();
 
     const [currentStep, setCurrentStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
+    const [isProcessing, setIsProcessing] = useState(false);
+
     const [shippingData, setShippingData] = useState({
         firstName: user?.name?.split(' ')[0] || '',
         lastName: user?.name?.split(' ')[1] || '',
         email: user?.email || '',
-        phone: '',
-        county: 'Nairobi',
-        town: '',
-        address: '',
+        phone: user?.phone || '',
+        county: user?.county || 'Nairobi',
+        town: user?.city || '',
+        address: user?.address || '',
         landmark: ''
     });
 
@@ -37,11 +44,110 @@ export default function CheckoutPage() {
     };
 
     const handleNextStep = () => {
+        if (currentStep === 1) {
+            if (!shippingData.firstName || !shippingData.phone || !shippingData.address) {
+                toast.error("Please fill in all required shipping details.");
+                return;
+            }
+        }
         if (currentStep < 3) setCurrentStep(currentStep + 1);
     };
 
     const handlePrevStep = () => {
         if (currentStep > 1) setCurrentStep(currentStep - 1);
+    };
+
+    const handlePlaceOrder = async () => {
+        if (!user) {
+            toast.error("You must be logged in to place an order.");
+            return;
+        }
+
+        setIsProcessing(true);
+        try {
+            const orderData = {
+                userId: user.uid,
+                userName: `${shippingData.firstName} ${shippingData.lastName}`,
+                userEmail: shippingData.email,
+                items: cartItems,
+                total: total,
+                shippingAddress: `${shippingData.address}, ${shippingData.town}, ${shippingData.county}`,
+                phone: shippingData.phone,
+                paymentMethod: paymentMethod,
+                paymentStatus: 'Unpaid' as const,
+                shippingMethod: shippingMethod,
+                shippingCost: shippingCost
+            };
+
+            const newOrder = await addOrder(orderData);
+
+            if (paymentMethod === 'mpesa') {
+                const loadingToast = toast.loading("Initiating M-Pesa prompt...");
+
+                // 1. Trigger STK Push
+                const response = await fetch('/api/payment/mpesa', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phoneNumber: shippingData.phone,
+                        amount: total
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    toast.success("Sent! Check your phone to pay.", { id: loadingToast });
+
+                    // 2. Save CheckoutRequestID to Order
+                    const orderRef = doc(db, 'orders', newOrder.id);
+                    await updateDoc(orderRef, {
+                        checkoutRequestId: data.checkoutRequestID
+                    });
+
+                    // 3. Listen for Payment Confirmation
+                    const unsubscribe = onSnapshot(orderRef, (snapshot) => {
+                        const updatedOrder = snapshot.data();
+                        if (updatedOrder?.paymentStatus === 'Paid') {
+                            toast.success("Payment Received!");
+                            unsubscribe();
+                            clearCart();
+                            router.push(`/checkout/success?orderId=${newOrder.id}`);
+                        } else if (updatedOrder?.paymentStatus === 'Failed') {
+                            toast.error(`Payment Failed: ${updatedOrder.paymentFailureReason || 'Unknown error'}`);
+                            unsubscribe();
+                            setIsProcessing(false);
+                        }
+                    });
+
+                    // Auto-timeout listener after 2 minutes
+                    setTimeout(() => {
+                        unsubscribe();
+                        if (isProcessing) {
+                            toast("Payment check timed out. Please check order status in dashboard.");
+                            clearCart();
+                            router.push(`/dashboard/user`); // Redirect anyway so they don't get stuck
+                        }
+                    }, 120000);
+
+                    return; // Don't redirect immediately, wait for listener
+                } else {
+                    toast.error(data.message || "Failed to initiate M-Pesa.", { id: loadingToast });
+                    setIsProcessing(false);
+                    return;
+                }
+            }
+
+            // Normal flow for non-MPesa
+            clearCart();
+            toast.success("Order placed successfully!");
+            router.push(`/checkout/success?orderId=${newOrder.id}`);
+
+        } catch (error) {
+            console.error("Failed to place order:", error);
+            toast.error("Failed to place order. Please try again.");
+            setIsProcessing(false);
+        }
     };
 
     const steps = [
@@ -71,25 +177,22 @@ export default function CheckoutPage() {
                             {steps.map((step, idx) => (
                                 <div key={step.id} className="flex-1">
                                     <div className="flex items-center">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${
-                                            currentStep >= step.id
-                                                ? 'bg-melagro-primary text-white'
-                                                : 'bg-gray-200 text-gray-500'
-                                        }`}>
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${currentStep >= step.id
+                                            ? 'bg-melagro-primary text-white'
+                                            : 'bg-gray-200 text-gray-500'
+                                            }`}>
                                             {currentStep > step.id ? '✓' : step.id}
                                         </div>
                                         <div className="ml-3 flex-1">
-                                            <p className={`text-sm font-semibold transition-all ${
-                                                currentStep >= step.id ? 'text-melagro-primary' : 'text-gray-500'
-                                            }`}>
+                                            <p className={`text-sm font-semibold transition-all ${currentStep >= step.id ? 'text-melagro-primary' : 'text-gray-500'
+                                                }`}>
                                                 {step.label}
                                             </p>
                                         </div>
                                     </div>
                                     {idx < steps.length - 1 && (
-                                        <div className={`ml-5 mt-2 h-1 transition-all ${
-                                            currentStep > step.id ? 'bg-melagro-primary' : 'bg-gray-200'
-                                        }`}></div>
+                                        <div className={`ml-5 mt-2 h-1 transition-all ${currentStep > step.id ? 'bg-melagro-primary' : 'bg-gray-200'
+                                            }`}></div>
                                     )}
                                 </div>
                             ))}
@@ -129,6 +232,8 @@ export default function CheckoutPage() {
                                             <input
                                                 type="tel"
                                                 name="phone"
+                                                value={shippingData.phone}
+                                                onChange={handleInputChange}
                                                 placeholder="748 970 757"
                                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
                                             />
@@ -178,6 +283,7 @@ export default function CheckoutPage() {
                                                 <option>Mombasa</option>
                                                 <option>Kisumu</option>
                                                 <option>Nakuru</option>
+                                                <option>Eldoret</option>
                                             </select>
                                         </div>
 
@@ -187,6 +293,8 @@ export default function CheckoutPage() {
                                             <input
                                                 type="text"
                                                 name="town"
+                                                value={shippingData.town}
+                                                onChange={handleInputChange}
                                                 placeholder="e.g. Westlands, Tuka Tusi, Langata"
                                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
                                             />
@@ -197,6 +305,8 @@ export default function CheckoutPage() {
                                             <label className="block text-sm font-semibold text-gray-900 mb-2">Street Address / Nearest Landmark</label>
                                             <textarea
                                                 name="address"
+                                                value={shippingData.address}
+                                                onChange={handleInputChange}
                                                 placeholder="e.g. Rd. Hill-Rd. Station, Mid Avenue"
                                                 rows={3}
                                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
@@ -208,11 +318,10 @@ export default function CheckoutPage() {
                                     <div className="mt-8 pt-8 border-t">
                                         <h3 className="text-lg font-bold text-gray-900 mb-4">Shipping Method</h3>
                                         <div className="space-y-3">
-                                            <label className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                                shippingMethod === 'standard'
-                                                    ? 'border-melagro-primary bg-melagro-primary/5'
-                                                    : 'border-gray-200 hover:border-gray-300'
-                                            }`}>
+                                            <label className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${shippingMethod === 'standard'
+                                                ? 'border-melagro-primary bg-melagro-primary/5'
+                                                : 'border-gray-200 hover:border-gray-300'
+                                                }`}>
                                                 <div className="flex items-center gap-3">
                                                     <input
                                                         type="radio"
@@ -230,11 +339,10 @@ export default function CheckoutPage() {
                                                 </div>
                                             </label>
 
-                                            <label className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                                shippingMethod === 'pickup'
-                                                    ? 'border-melagro-primary bg-melagro-primary/5'
-                                                    : 'border-gray-200 hover:border-gray-300'
-                                            }`}>
+                                            <label className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${shippingMethod === 'pickup'
+                                                ? 'border-melagro-primary bg-melagro-primary/5'
+                                                : 'border-gray-200 hover:border-gray-300'
+                                                }`}>
                                                 <div className="flex items-center gap-3">
                                                     <input
                                                         type="radio"
@@ -271,66 +379,132 @@ export default function CheckoutPage() {
                                 <div className="bg-white rounded-2xl p-8 border border-gray-200">
                                     <h2 className="text-2xl font-bold mb-8 text-gray-900">Payment Method</h2>
 
-                                    <div className="space-y-3">
-                                        <label className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                            paymentMethod === 'mpesa'
-                                                ? 'border-melagro-primary bg-melagro-primary/5'
-                                                : 'border-gray-200'
-                                        }`}>
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="radio"
-                                                    value="mpesa"
-                                                    checked={paymentMethod === 'mpesa'}
-                                                    onChange={(e) => setPaymentMethod(e.target.value)}
-                                                    className="w-4 h-4 accent-melagro-primary"
-                                                />
-                                                <div className="flex-1">
-                                                    <p className="font-semibold text-gray-900">M-Pesa</p>
-                                                    <p className="text-sm text-gray-500">Pay using your phone number</p>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* M-Pesa Option */}
+                                        <div
+                                            onClick={() => setPaymentMethod('mpesa')}
+                                            className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'mpesa'
+                                                ? 'border-[#22c55e] bg-green-50/50 shadow-sm ring-2 ring-[#22c55e]/20'
+                                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            {paymentMethod === 'mpesa' && (
+                                                <div className="absolute top-3 right-3 text-[#22c55e]">
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                                                 </div>
+                                            )}
+                                            <div className="mb-4">
+                                                <span className="bg-[#22c55e] text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wide">Recommended</span>
                                             </div>
-                                        </label>
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center p-1 border border-gray-100 shadow-sm">
+                                                    <span className="font-black text-[#22c55e] tracking-tighter text-xs">M-PESA</span>
+                                                </div>
+                                                <span className="font-bold text-gray-900">M-Pesa Express</span>
+                                            </div>
+                                            <p className="text-sm text-gray-500 font-medium">Instant payment directly from your phone.</p>
+                                        </div>
 
-                                        <label className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                                            paymentMethod === 'card'
-                                                ? 'border-melagro-primary bg-melagro-primary/5'
-                                                : 'border-gray-200'
-                                        }`}>
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="radio"
-                                                    value="card"
-                                                    checked={paymentMethod === 'card'}
-                                                    onChange={(e) => setPaymentMethod(e.target.value)}
-                                                    className="w-4 h-4 accent-melagro-primary"
-                                                />
-                                                <div className="flex-1">
-                                                    <p className="font-semibold text-gray-900">Card Payment</p>
-                                                    <p className="text-sm text-gray-500">Visa, Mastercard, American Express</p>
+                                        {/* Card Option */}
+                                        <div
+                                            onClick={() => setPaymentMethod('card')}
+                                            className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'card'
+                                                ? 'border-melagro-primary bg-blue-50/50 shadow-sm ring-2 ring-melagro-primary/20'
+                                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            {paymentMethod === 'card' && (
+                                                <div className="absolute top-3 right-3 text-melagro-primary">
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                                                 </div>
+                                            )}
+                                            <div className="mb-4 h-[22px]"></div>
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-100 shadow-sm text-gray-600">
+                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                                                </div>
+                                                <span className="font-bold text-gray-900">Card Payment</span>
                                             </div>
-                                        </label>
+                                            <p className="text-sm text-gray-500 font-medium">Visa, Mastercard, AMEX safely processed.</p>
+                                        </div>
+
+                                        {/* Cash on Delivery Option */}
+                                        <div
+                                            onClick={() => setPaymentMethod('cod')}
+                                            className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 md:col-span-2 ${paymentMethod === 'cod'
+                                                ? 'border-gray-800 bg-gray-100 shadow-sm ring-2 ring-gray-800/20'
+                                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            {paymentMethod === 'cod' && (
+                                                <div className="absolute top-3 right-3 text-gray-800">
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                                </div>
+                                            )}
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-100 shadow-sm text-gray-600">
+                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                                </div>
+                                                <span className="font-bold text-gray-900">Cash on Delivery</span>
+                                            </div>
+                                            <p className="text-sm text-gray-500 font-medium">Pay with cash or M-Pesa upon delivery/pickup.</p>
+                                        </div>
                                     </div>
 
-                                    {paymentMethod === 'mpesa' && (
-                                        <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                                            <p className="text-sm text-green-800">
-                                                <strong>How to pay:</strong> You'll receive a prompt on your phone. Enter your M-Pesa PIN to complete the payment.
-                                            </p>
-                                        </div>
-                                    )}
+                                    {/* Selected Payment Details */}
+                                    {/* Selected Payment Details */}
+                                    <div className="mt-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                                        {paymentMethod === 'mpesa' && (
+                                            <div className="bg-[#f0f9f1] p-6 rounded-2xl border border-green-100">
+                                                <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
+                                                    <span className="text-xl">📱</span> Confirm M-Pesa Number
+                                                </h3>
+                                                <p className="text-sm text-gray-600 mb-4">
+                                                    We will send an M-Pesa prompt to this number to complete your purchase.
+                                                </p>
+                                                <div className="flex gap-3">
+                                                    <div className="bg-white px-4 py-3 border border-gray-200 rounded-xl font-bold text-gray-900 flex-grow max-w-xs flex items-center gap-3">
+                                                        <span className="text-gray-400 font-medium">+254</span>
+                                                        {shippingData.phone || 'Enter phone in Step 1'}
+                                                    </div>
+                                                    <button onClick={() => setCurrentStep(1)} className="text-sm font-bold text-[#22c55e] hover:underline px-4">Edit</button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {paymentMethod === 'card' && (
+                                            <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
+                                                <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
+                                                    <span className="text-xl">🔒</span> Secure Redirect
+                                                </h3>
+                                                <p className="text-sm text-gray-600">
+                                                    You will be redirected to our secure payment partner (Stripe) to complete your card transaction safely. We do not store your card details.
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {paymentMethod === 'cod' && (
+                                            <div className="bg-gray-100 p-6 rounded-2xl border border-gray-200">
+                                                <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
+                                                    <span className="text-xl">🤝</span> Cash on Delivery
+                                                </h3>
+                                                <p className="text-sm text-gray-600">
+                                                    Pay when you receive your order or when you pick it up. Please have the exact amount ready or use M-Pesa on delivery.
+                                                </p>
+                                            </div>
+                                        )}
+                                    </div>
 
                                     <div className="mt-8 flex gap-4">
                                         <button
                                             onClick={handlePrevStep}
-                                            className="flex-1 border-2 border-gray-300 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                                            className="w-1/3 border-2 border-gray-100 text-gray-600 px-6 py-4 rounded-xl font-bold hover:bg-gray-50 hover:text-gray-900 transition-all text-sm uppercase tracking-wide"
                                         >
                                             ← Back
                                         </button>
                                         <button
                                             onClick={handleNextStep}
-                                            className="flex-1 bg-melagro-primary hover:bg-melagro-secondary text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                                            className="flex-grow bg-[#22c55e] hover:bg-green-600 text-white px-6 py-4 rounded-xl font-bold transition-all shadow-lg shadow-[#22c55e]/20 text-sm uppercase tracking-widest"
                                         >
                                             Review Order →
                                         </button>
@@ -353,8 +527,8 @@ export default function CheckoutPage() {
                                             <p className="text-gray-900 font-semibold">{shippingData.firstName} {shippingData.lastName}</p>
                                             <p className="text-gray-600">{shippingData.address}</p>
                                             <p className="text-gray-600">P.O. Box 1234, Highland Farm</p>
-                                            <p className="text-gray-600">Nairobi, KE-Valley</p>
-                                            <p className="text-gray-600">+254 712 345 678</p>
+                                            <p className="text-gray-600">{shippingData.town}, {shippingData.county}</p>
+                                            <p className="text-gray-600">{shippingData.phone}</p>
                                         </div>
 
                                         {/* Shipping Method */}
@@ -373,8 +547,12 @@ export default function CheckoutPage() {
                                                 <h3 className="font-bold text-gray-900">Payment Method</h3>
                                                 <button className="text-melagro-primary hover:underline text-sm font-semibold" onClick={() => setCurrentStep(2)}>Edit</button>
                                             </div>
-                                            <p className="text-gray-900 font-semibold">M-Pesa</p>
-                                            <p className="text-gray-600 text-sm">Phone number ending in "***"</p>
+                                            <p className="text-gray-900 font-semibold uppercase">{paymentMethod === 'cod' ? 'Cash on Delivery' : paymentMethod}</p>
+                                            <p className="text-gray-600 text-sm">
+                                                {paymentMethod === 'mpesa' && 'Paying via M-Pesa Express (Phone)'}
+                                                {paymentMethod === 'card' && 'Paying via Secure Card (Stripe)'}
+                                                {paymentMethod === 'cod' && 'Pay on Delivery / Collection'}
+                                            </p>
                                         </div>
 
                                         {/* Order Items */}
@@ -397,15 +575,27 @@ export default function CheckoutPage() {
                                     <div className="mt-8 flex gap-4">
                                         <button
                                             onClick={handlePrevStep}
-                                            className="flex-1 border-2 border-gray-300 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                                            disabled={isProcessing}
+                                            className="flex-1 border-2 border-gray-300 text-gray-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
                                         >
                                             ← Back
                                         </button>
                                         <button
-                                            onClick={() => router.push('/checkout/success')}
-                                            className="flex-1 bg-melagro-primary hover:bg-melagro-secondary text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                                            onClick={handlePlaceOrder}
+                                            disabled={isProcessing}
+                                            className="flex-1 bg-melagro-primary hover:bg-melagro-secondary text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                         >
-                                            Place Order
+                                            {isProcessing ? (
+                                                <>
+                                                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    Processing...
+                                                </>
+                                            ) : (
+                                                'Place Order'
+                                            )}
                                         </button>
                                     </div>
                                 </div>

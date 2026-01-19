@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useOrders } from '@/context/OrderContext';
+import { toast } from 'react-hot-toast';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -11,6 +12,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const { unreadNotificationsCount } = useOrders();
     const router = useRouter();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+    const { isLoading, isAuthenticated, isAdmin } = useAuth(); // Destructure isAdmin and loading state
+
+    React.useEffect(() => {
+        if (!isLoading) {
+            if (!isAuthenticated) {
+                router.push('/auth/login');
+            } else if (!isAdmin) {
+                router.push('/dashboard/user'); // Redirect normal users to their dashboard
+                toast.error("Access Denied: Admin privileges required.");
+            }
+        }
+    }, [isLoading, isAuthenticated, isAdmin, router]);
+
+    if (isLoading) {
+        return <div className="min-h-screen flex items-center justify-center bg-gray-100">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagro-primary"></div>
+        </div>;
+    }
 
     const menuItems = [
         {

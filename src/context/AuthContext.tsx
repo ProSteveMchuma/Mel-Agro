@@ -24,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const router = useRouter();
 
-    const isAdmin = user?.role === 'admin';
+    const isAdmin = user?.role === 'admin' || user?.role === 'super-admin';
 
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
@@ -40,14 +40,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     const newUserData = {
                         name: firebaseUser.displayName || 'User',
                         email: firebaseUser.email || '',
-                        role: firebaseUser.email === 'admin@melagro.com' ? 'admin' : 'user',
+                        role: firebaseUser.email === 'proinnovationtech@gmail.com' ? 'super-admin' : (firebaseUser.email === 'admin@melagro.com' ? 'admin' : 'user'),
                         createdAt: new Date().toISOString()
                     };
                     await setDoc(userDocRef, newUserData);
                     userData = newUserData;
                 }
 
-                const role = firebaseUser.email === 'admin@melagro.com' ? 'admin' : (userData.role || 'user');
+                const role = firebaseUser.email === 'proinnovationtech@gmail.com'
+                    ? 'super-admin'
+                    : (firebaseUser.email === 'admin@melagro.com' ? 'admin' : (userData.role || 'user'));
 
                 setUser({
                     uid: firebaseUser.uid,

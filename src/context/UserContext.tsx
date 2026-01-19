@@ -25,7 +25,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         let unsubscribe: () => void;
 
         const setupRealtimeListener = async () => {
-            if (!user || user.role !== 'admin') {
+            if (!user || (user.role !== 'admin' && user.role !== 'super-admin')) {
                 setUsers([]);
                 setLoading(false);
                 return;

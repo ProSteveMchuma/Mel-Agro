@@ -73,7 +73,7 @@ export default function UserManagement() {
                                         <select
                                             value={user.role}
                                             onChange={(e) => updateUserRole(String(user.id), e.target.value as 'admin' | 'customer')}
-                                            className={`text-xs font-medium px-2 py-1 rounded-full border-0 focus:ring-2 focus:ring-melagro-primary cursor-pointer ${user.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                                            className={`text-xs font-medium px-2 py-1 rounded-full border-0 focus:ring-2 focus:ring-melagro-primary cursor-pointer ${user.role === 'admin' || user.role === 'super-admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
                                                 }`}
                                         >
                                             <option value="customer">Customer</option>

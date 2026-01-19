@@ -42,15 +42,8 @@ export default function Header() {
           </Link>
 
           {/* Search Bar - Desktop */}
-          <div className="hidden md:flex flex-grow max-w-2xl relative">
-            <input
-              type="text"
-              placeholder="Search seeds, fertilizers, tools..."
-              className="w-full pl-6 pr-32 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-[#22c55e]/30 focus:outline-none focus:ring-4 focus:ring-[#22c55e]/5 transition-all"
-            />
-            <button className="absolute right-1 top-1 bottom-1 px-8 bg-[#22c55e] text-white font-black text-sm rounded-lg hover:bg-green-600 transition-colors uppercase tracking-widest">
-              Search
-            </button>
+          <div className="hidden md:flex flex-grow max-w-2xl relative justify-center">
+            <SmartSearch />
           </div>
 
           {/* Action Icons */}
