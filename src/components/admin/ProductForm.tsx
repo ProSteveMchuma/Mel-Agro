@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Product } from "@/types";
+import { uploadImage } from "@/lib/storage";
 
 interface ProductFormProps {
     initialData?: Partial<Product>;
@@ -24,6 +25,29 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const [uploading, setUploading] = useState(false);
+
+    const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 2 * 1024 * 1024) {
+            alert("File size must be less than 2MB");
+            return;
+        }
+
+        setUploading(true);
+        try {
+            const url = await uploadImage(file, `products/${Date.now()}_${file.name}`);
+            setFormData(prev => ({ ...prev, image: url }));
+        } catch (error) {
+            console.error("Error uploading image:", error);
+            alert("Failed to upload image");
+        } finally {
+            setUploading(false);
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -170,16 +194,62 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                 </div>
 
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Image URL</label>
-                    <input
-                        type="url"
-                        name="image"
-                        value={formData.image}
-                        onChange={handleChange}
-                        className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary"
-                        placeholder="https://example.com/image.jpg"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Leave empty for default placeholder.</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Product Image</label>
+                    <div className="space-y-4">
+                        {/* Image Preview */}
+                        <div className="flex items-center gap-6">
+                            <div className="relative w-32 h-32 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center overflow-hidden">
+                                {formData.image ? (
+                                    <img src={formData.image} alt="Preview" className="w-full h-full object-cover" />
+                                ) : (
+                                    <svg className="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                    </svg>
+                                )}
+                                {uploading && (
+                                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                                        <svg className="animate-spin h-6 w-6 text-melagro-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex-1">
+                                <label className="block w-full">
+                                    <span className="sr-only">Choose profile photo</span>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        onChange={handleImageUpload}
+                                        disabled={uploading || isSubmitting}
+                                        className="block w-full text-sm text-gray-500
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-full file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-melagro-primary/10 file:text-melagro-primary
+                                        hover:file:bg-melagro-primary/20
+                                        cursor-pointer disabled:opacity-50"
+                                    />
+                                </label>
+                                <p className="text-xs text-gray-500 mt-2">
+                                    PNG, JPG or WEBP (Max 2MB).
+                                </p>
+                                <div className="mt-2 flex items-center gap-2">
+                                    <span className="text-xs text-gray-400">OR</span>
+                                    <input
+                                        type="url"
+                                        name="image"
+                                        value={formData.image}
+                                        onChange={handleChange}
+                                        placeholder="Paste image URL directly"
+                                        className="text-xs w-full border-gray-200 rounded focus:ring-melagro-primary focus:border-melagro-primary"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="pt-4 border-t border-gray-100 flex justify-end gap-4">
