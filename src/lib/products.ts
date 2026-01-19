@@ -1,19 +1,7 @@
 import { db } from './firebase';
 import { collection, getDocs, doc, getDoc, query, where, limit } from 'firebase/firestore';
 
-export interface Product {
-    id: string;
-    name: string;
-    category: string;
-    price: number;
-    description: string;
-    image: string;
-    rating: number;
-    reviews: number;
-    inStock: boolean;
-    stock?: number;
-    features?: string[];
-}
+import { Product } from '@/types';
 
 export async function getProducts(): Promise<Product[]> {
     try {

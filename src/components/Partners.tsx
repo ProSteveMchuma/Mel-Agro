@@ -3,12 +3,12 @@
 import Image from "next/image";
 
 const PARTNERS = [
-    { name: "Bayer", logo: "https://makamithi4.vercel.app/assets/partners/Bayer.png" },
-    { name: "Syngenta", logo: "https://makamithi4.vercel.app/assets/partners/syngenta.png" },
-    { name: "Corteva", logo: "https://makamithi4.vercel.app/assets/partners/Corteva.png" },
-    { name: "Seed Co", logo: "https://makamithi4.vercel.app/assets/partners/seedco.png" },
-    { name: "Unga PLC", logo: "https://makamithi4.vercel.app/assets/partners/Unga-plc.png" },
-    { name: "Osho Chemicals", logo: "https://makamithi4.vercel.app/assets/partners/Osha.png" },
+    { name: "Bayer", logo: "https://Mel-Agri4.vercel.app/assets/partners/Bayer.png" },
+    { name: "Syngenta", logo: "https://Mel-Agri4.vercel.app/assets/partners/syngenta.png" },
+    { name: "Corteva", logo: "https://Mel-Agri4.vercel.app/assets/partners/Corteva.png" },
+    { name: "Seed Co", logo: "https://Mel-Agri4.vercel.app/assets/partners/seedco.png" },
+    { name: "Unga PLC", logo: "https://Mel-Agri4.vercel.app/assets/partners/Unga-plc.png" },
+    { name: "Osho Chemicals", logo: "https://Mel-Agri4.vercel.app/assets/partners/Osha.png" },
 ];
 
 export default function Partners() {

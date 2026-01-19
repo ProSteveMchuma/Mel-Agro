@@ -7,10 +7,10 @@ export default function AnnouncementBar() {
     if (!isVisible) return null;
 
     return (
-        <div className="bg-makamithi-dark text-white text-sm py-2 px-4 relative z-50">
+        <div className="bg-Mel-Agri-dark text-white text-sm py-2 px-4 relative z-50">
             <div className="container-custom flex justify-between items-center">
                 <p className="w-full text-center font-medium">
-                    🌱 Free Shipping on orders over KES 5,000 | Use code <span className="font-bold text-makamithi-light">GROW2025</span>
+                    🌱 Free Shipping on orders over KES 5,000 | Use code <span className="font-bold text-Mel-Agri-light">GROW2025</span>
                 </p>
                 <button
                     onClick={() => setIsVisible(false)}

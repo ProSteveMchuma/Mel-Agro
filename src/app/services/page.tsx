@@ -9,7 +9,7 @@ export default function ServicesPage() {
             <main className="flex-grow py-16 bg-gray-50">
                 <div className="container-custom">
                     <div className="text-center mb-16">
-                        <h1 className="text-4xl font-extrabold text-makamithi-dark mb-4">Our Services</h1>
+                        <h1 className="text-4xl font-extrabold text-Mel-Agri-dark mb-4">Our Services</h1>
                         <p className="text-xl text-gray-600 max-w-2xl mx-auto">
                             Comprehensive agricultural solutions tailored to meet the needs of every farmer.
                         </p>
@@ -18,7 +18,7 @@ export default function ServicesPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                         {/* Service 1 */}
                         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 group">
-                            <div className="bg-makamithi-light/10 w-20 h-20 rounded-full flex items-center justify-center mb-6 text-makamithi-green group-hover:bg-makamithi-green group-hover:text-white transition-colors">
+                            <div className="bg-Mel-Agri-light/10 w-20 h-20 rounded-full flex items-center justify-center mb-6 text-Mel-Agri-green group-hover:bg-Mel-Agri-green group-hover:text-white transition-colors">
                                 <span className="text-4xl">🌱</span>
                             </div>
                             <h3 className="text-2xl font-bold text-gray-800 mb-4">Crop Advisory</h3>
@@ -27,11 +27,11 @@ export default function ServicesPage() {
                             </p>
                             <ul className="space-y-2 text-gray-500">
                                 <li className="flex items-center space-x-2">
-                                    <svg className="w-5 h-5 text-makamithi-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <svg className="w-5 h-5 text-Mel-Agri-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                                     <span>Site selection</span>
                                 </li>
                                 <li className="flex items-center space-x-2">
-                                    <svg className="w-5 h-5 text-makamithi-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <svg className="w-5 h-5 text-Mel-Agri-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                                     <span>Pest & disease control</span>
                                 </li>
                             </ul>
@@ -39,7 +39,7 @@ export default function ServicesPage() {
 
                         {/* Service 2 */}
                         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 group">
-                            <div className="bg-makamithi-light/10 w-20 h-20 rounded-full flex items-center justify-center mb-6 text-makamithi-green group-hover:bg-makamithi-green group-hover:text-white transition-colors">
+                            <div className="bg-Mel-Agri-light/10 w-20 h-20 rounded-full flex items-center justify-center mb-6 text-Mel-Agri-green group-hover:bg-Mel-Agri-green group-hover:text-white transition-colors">
                                 <span className="text-4xl">🧪</span>
                             </div>
                             <h3 className="text-2xl font-bold text-gray-800 mb-4">Soil Testing</h3>
@@ -48,11 +48,11 @@ export default function ServicesPage() {
                             </p>
                             <ul className="space-y-2 text-gray-500">
                                 <li className="flex items-center space-x-2">
-                                    <svg className="w-5 h-5 text-makamithi-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <svg className="w-5 h-5 text-Mel-Agri-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                                     <span>pH analysis</span>
                                 </li>
                                 <li className="flex items-center space-x-2">
-                                    <svg className="w-5 h-5 text-makamithi-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <svg className="w-5 h-5 text-Mel-Agri-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                                     <span>Nutrient profiling</span>
                                 </li>
                             </ul>
@@ -60,7 +60,7 @@ export default function ServicesPage() {
 
                         {/* Service 3 */}
                         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 group">
-                            <div className="bg-makamithi-light/10 w-20 h-20 rounded-full flex items-center justify-center mb-6 text-makamithi-green group-hover:bg-makamithi-green group-hover:text-white transition-colors">
+                            <div className="bg-Mel-Agri-light/10 w-20 h-20 rounded-full flex items-center justify-center mb-6 text-Mel-Agri-green group-hover:bg-Mel-Agri-green group-hover:text-white transition-colors">
                                 <span className="text-4xl">🚚</span>
                             </div>
                             <h3 className="text-2xl font-bold text-gray-800 mb-4">Delivery</h3>
@@ -69,11 +69,11 @@ export default function ServicesPage() {
                             </p>
                             <ul className="space-y-2 text-gray-500">
                                 <li className="flex items-center space-x-2">
-                                    <svg className="w-5 h-5 text-makamithi-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <svg className="w-5 h-5 text-Mel-Agri-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                                     <span>Nationwide coverage</span>
                                 </li>
                                 <li className="flex items-center space-x-2">
-                                    <svg className="w-5 h-5 text-makamithi-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                    <svg className="w-5 h-5 text-Mel-Agri-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
                                     <span>Timely dispatch</span>
                                 </li>
                             </ul>

@@ -9,7 +9,7 @@ export default function BrandLogos() {
                 <p className="text-center text-gray-400 text-sm font-medium uppercase tracking-widest mb-8">Trusted by Farmers & Partners</p>
                 <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
                     {brands.map((brand, index) => (
-                        <span key={index} className="text-xl md:text-2xl font-bold text-gray-400 hover:text-makamithi-dark cursor-default select-none transition-colors">
+                        <span key={index} className="text-xl md:text-2xl font-bold text-gray-400 hover:text-Mel-Agri-dark cursor-default select-none transition-colors">
                             {brand}
                         </span>
                     ))}

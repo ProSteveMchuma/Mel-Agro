@@ -16,7 +16,7 @@ export default function AddProductPage() {
         category: "Fertilizers",
         description: "",
         image: "",
-        stock: ""
+        stockQuantity: ""
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -29,11 +29,11 @@ export default function AddProductPage() {
         }
 
         // Prevent Negative Numbers
-        if ((name === 'price' || name === 'stock') && Number(value) < 0) {
+        if ((name === 'price' || name === 'stockQuantity') && Number(value) < 0) {
             finalValue = "0";
         }
 
-        setFormData(prev => ({ ...prev, [name]: finalValue }));
+        setFormData((prev: typeof formData) => ({ ...prev, [name]: finalValue }));
     };
 
     const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -42,7 +42,7 @@ export default function AddProductPage() {
             setImageFile(file);
             // Create object URL for preview
             const previewUrl = URL.createObjectURL(file);
-            setFormData(prev => ({ ...prev, image: previewUrl }));
+            setFormData((prev: typeof formData) => ({ ...prev, image: previewUrl }));
         }
     };
 
@@ -64,8 +64,8 @@ export default function AddProductPage() {
                 category: formData.category,
                 description: formData.description,
                 image: imageUrl,
-                inStock: Number(formData.stock) > 0,
-                stockQuantity: Number(formData.stock),
+                inStock: Number(formData.stockQuantity) > 0,
+                stockQuantity: Number(formData.stockQuantity),
                 lowStockThreshold: 10,
                 rating: 0,
                 reviews: 0
@@ -113,9 +113,9 @@ export default function AddProductPage() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
                         <input
                             type="number"
-                            name="stock"
+                            name="stockQuantity"
                             required
-                            value={formData.stock}
+                            value={formData.stockQuantity}
                             onChange={handleChange}
                             className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagro-primary/50 outline-none"
                         />

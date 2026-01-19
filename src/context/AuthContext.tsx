@@ -4,17 +4,7 @@ import { useRouter } from 'next/navigation';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
-interface User {
-    uid: string;
-    name: string;
-    email: string;
-    role: 'user' | 'admin';
-    phone?: string;
-    address?: string;
-    city?: string;
-    county?: string;
-    loyaltyPoints?: number;
-}
+import { User } from '@/types';
 
 interface AuthContextType {
     isAuthenticated: boolean;

@@ -3,7 +3,7 @@ export default function Testimonials() {
         {
             name: "John Kamau",
             role: "Maize Farmer, Eldoret",
-            quote: "Makamithi has transformed my yield. The quality of seeds and the advice I get is unmatched.",
+            quote: "Mel-Agri has transformed my yield. The quality of seeds and the advice I get is unmatched.",
             rating: 5
         },
         {
@@ -25,7 +25,7 @@ export default function Testimonials() {
             <div className="container-custom">
                 <div className="text-center mb-16">
                     <h2 className="text-3xl md:text-4xl font-bold text-gray-900 tracking-tight mb-4">What Our Farmers Say</h2>
-                    <p className="text-gray-500 max-w-2xl mx-auto">Join thousands of satisfied farmers who trust Makamithi for their agricultural success.</p>
+                    <p className="text-gray-500 max-w-2xl mx-auto">Join thousands of satisfied farmers who trust Mel-Agri for their agricultural success.</p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

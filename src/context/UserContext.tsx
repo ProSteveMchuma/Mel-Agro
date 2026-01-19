@@ -3,15 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, doc, updateDoc, deleteDoc, query, orderBy, getDocs, onSnapshot, QuerySnapshot, QueryDocumentSnapshot } from 'firebase/firestore';
 
-export interface User {
-    id: string;
-    name: string;
-    email: string;
-    role: 'admin' | 'customer';
-    joinDate: string;
-    createdAt?: string;
-    status: 'active' | 'suspended';
-}
+import { User } from '@/types';
 
 interface UserContextType {
     users: User[];
@@ -80,13 +72,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     const updateUserRole = async (userId: string, role: 'admin' | 'customer') => {
         const userRef = doc(db, "users", userId);
         await updateDoc(userRef, { role });
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u));
+        setUsers((prev: User[]) => prev.map((u: User) => u.id === userId ? { ...u, role: role as any } : u));
     };
 
     const updateUserStatus = async (userId: string, status: 'active' | 'suspended') => {
         const userRef = doc(db, "users", userId);
         await updateDoc(userRef, { status });
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
+        setUsers((prev: User[]) => prev.map((u: User) => u.id === userId ? { ...u, status } : u));
     };
 
     const deleteUser = async (userId: string) => {

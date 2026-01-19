@@ -19,6 +19,8 @@ export interface Product {
     name: string;
     price: number;
     category: string;
+    subCategory?: string;
+    supplier?: string;
     image: string;
     rating: number;
     reviews: number;
@@ -27,6 +29,8 @@ export interface Product {
     lowStockThreshold: number;
     description?: string;
     tags?: string[];
+    specification?: string;
+    howToUse?: string;
 }
 
 export const products: Product[] = [
@@ -141,6 +145,96 @@ export const products: Product[] = [
         lowStockThreshold: 10,
         description: "Balanced feed for laying hens to ensure high egg production.",
         tags: ["poultry", "eggs", "hen", "chicks", "bird"]
+    },
+    {
+        id: 'new-1',
+        name: "Ambition AKTIVATOR",
+        price: 1400,
+        category: "Fertilizers",
+        subCategory: "Foliar",
+        supplier: "Bayer Crop Science",
+        image: "/images/products/ambition.jpg",
+        rating: 4.8,
+        reviews: 0,
+        inStock: true,
+        stockQuantity: 100,
+        lowStockThreshold: 10,
+        description: "High-quality foliar fertilizer by Bayer Crop Science. Boosts plant vitality and yield.",
+        specification: "1 Litre, 5 Litres",
+        howToUse: "Rate of use: 50ml/20L",
+        tags: ["foliar", "bayer", "booster", "growth"]
+    },
+    {
+        id: 'new-2',
+        name: "Kale 1,000 Headed (Royal Seed)",
+        price: 1500,
+        category: "Seeds",
+        subCategory: "Vegetable seed",
+        supplier: "Royal Seed",
+        image: "/images/products/kale.jpg",
+        rating: 4.7,
+        reviews: 0,
+        inStock: true,
+        stockQuantity: 200,
+        lowStockThreshold: 20,
+        description: "High-yield Kale seeds. Drought tolerant and high production.",
+        specification: "500g",
+        howToUse: "Planting time: All seasons. Germination: 10-14 days. Maturity 40-60 days.",
+        tags: ["kale", "seeds", "vegetable", "royal seed"]
+    },
+    {
+        id: 'new-3',
+        name: "Prazipet Plus",
+        price: 1600,
+        category: "Animal Health",
+        subCategory: "Animal Drugs",
+        supplier: "UltraVetis",
+        image: "/images/products/prazipet.jpg",
+        rating: 4.9,
+        reviews: 0,
+        inStock: true,
+        stockQuantity: 50,
+        lowStockThreshold: 5,
+        description: "Comprehensive dewormer for dogs and cats.",
+        specification: "2*10 Tablets",
+        howToUse: "1 Tablet per 10 KG Weight",
+        tags: ["dewormer", "dogs", "cats", "veterinary"]
+    },
+    {
+        id: 'new-4',
+        name: "New Pal Dog Shampoo",
+        price: 1100,
+        category: "Animal",
+        subCategory: "Soap",
+        supplier: "Aesthetics Pet Care",
+        image: "https://images.unsplash.com/photo-1516734212186-a967f81ad0d7?q=80&w=1000&auto=format&fit=crop",
+        rating: 4.5,
+        reviews: 0,
+        inStock: true,
+        stockQuantity: 30,
+        lowStockThreshold: 5,
+        description: "Gentle soap for dogs. Cleans and protects the coat.",
+        specification: "1 Litre",
+        howToUse: "Mix 100ml with 1 liter of water. Lather and rinse.",
+        tags: ["shampoo", "dog", "cleaning", "pet care"]
+    },
+    {
+        id: 'new-5',
+        name: "Osho Foliar Fertilizer",
+        price: 300,
+        category: "Fertilizers",
+        subCategory: "Foliar",
+        supplier: "Osho Chemical Limited",
+        image: "https://images.unsplash.com/photo-1592982537447-7440770cbfc9?q=80&w=1000&auto=format&fit=crop",
+        rating: 4.6,
+        reviews: 0,
+        inStock: true,
+        stockQuantity: 150,
+        lowStockThreshold: 20,
+        description: "Versatile foliar fertilizer for various crops.",
+        specification: "500g",
+        howToUse: "Rate of use: 40g/20L",
+        tags: ["foliar", "osho", "fertilizer", "growth"]
     }
 ];
 

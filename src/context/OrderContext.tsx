@@ -4,34 +4,15 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
-export interface OrderItem {
-    id: string | number;
-    name: string;
-    price: number;
-    quantity: number;
-    image?: string;
-}
+export type { Order, OrderItem } from '@/types';
 
-export interface Order {
+export interface Notification {
     id: string;
     userId: string;
-    userName?: string;
-    userEmail?: string;
-    phone?: string; // Contact number for updates
+    message: string;
     date: string;
-    status: 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
-    items: OrderItem[];
-    total: number;
-    shippingCost: number;
-    paymentMethod: string;
-    shippingAddress: {
-        county: string;
-        details: string;
-    };
-    paymentStatus?: 'Paid' | 'Unpaid';
-    returnStatus?: 'Requested' | 'Approved' | 'Rejected';
-    returnReason?: string;
-    notificationPreferences?: string[];
+    read: boolean;
+    type: 'order' | 'system' | 'promo';
 }
 
 export interface Notification {
@@ -179,6 +160,17 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                         stockQuantity: newStock,
                         inStock: newStock > 0
                     });
+
+                    // Log Inventory History
+                    await addDoc(collection(db, "inventory_history"), {
+                        productId: String(item.id),
+                        productName: item.name,
+                        previousStock: currentStock,
+                        newStock: newStock,
+                        change: -item.quantity,
+                        updatedBy: 'System (Order)',
+                        updatedAt: new Date().toISOString()
+                    });
                 }
             }
         } catch (error) {
@@ -228,6 +220,17 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                         await updateDoc(productRef, {
                             stockQuantity: newStock,
                             inStock: newStock > 0
+                        });
+
+                        // Log Inventory History
+                        await addDoc(collection(db, "inventory_history"), {
+                            productId: String(item.id),
+                            productName: item.name,
+                            previousStock: currentStock,
+                            newStock: newStock,
+                            change: item.quantity,
+                            updatedBy: 'System (Cancellation)',
+                            updatedAt: new Date().toISOString()
                         });
                     }
                 }

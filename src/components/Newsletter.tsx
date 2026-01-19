@@ -1,6 +1,6 @@
 export default function Newsletter() {
     return (
-        <section className="py-24 bg-makamithi-dark relative overflow-hidden">
+        <section className="py-24 bg-gray-900 relative overflow-hidden text-white">
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
 
@@ -15,12 +15,12 @@ export default function Newsletter() {
                         <input
                             type="email"
                             placeholder="Enter your email address"
-                            className="flex-grow px-6 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-makamithi-light focus:bg-white/20 transition-all"
+                            className="flex-grow px-6 py-4 rounded-full bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-melagro-secondary focus:bg-white/20 transition-all"
                             required
                         />
                         <button
                             type="submit"
-                            className="btn-primary bg-white text-makamithi-dark hover:bg-gray-100 hover:text-makamithi-dark px-8 py-4 rounded-full font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all"
+                            className="btn-primary bg-white text-gray-900 border-none hover:bg-melagro-secondary hover:text-white px-8 py-4 rounded-full font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all"
                         >
                             Subscribe
                         </button>

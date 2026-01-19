@@ -1,23 +1,11 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
 import { products as MOCK_PRODUCTS } from '@/lib/mockData';
 
-export interface Product {
-    id: string | number;
-    name: string;
-    price: number;
-    category: string;
-    image: string;
-    rating: number;
-    reviews: number;
-    inStock: boolean;
-    stockQuantity: number;
-    lowStockThreshold: number;
-    description?: string;
-    tags?: string[];
-}
+import { Product } from '@/types';
 
 interface ProductContextType {
     products: Product[];
@@ -32,6 +20,7 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 export function ProductProvider({ children }: { children: React.ReactNode }) {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
+    const { user: authUser } = useAuth();
 
     const seedProducts = async () => {
         console.log("Starting seedProducts...");
@@ -49,9 +38,9 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const q = query(collection(db, "products"));
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, (snapshot: any) => {
             const productList: Product[] = [];
-            snapshot.forEach((doc) => {
+            snapshot.forEach((doc: any) => {
                 const data = doc.data();
                 productList.push({
                     ...data,
@@ -73,7 +62,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
                 setProducts(productList);
             }
             setLoading(false);
-        }, (error) => {
+        }, (error: any) => {
             console.error("Error listening to products:", error);
             setLoading(false);
         });
@@ -88,7 +77,22 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     const updateProduct = async (id: number | string, updates: Partial<Product>) => {
         try {
             const productRef = doc(db, "products", String(id));
+            const oldProduct = products.find((p: Product) => String(p.id) === String(id));
+
             await updateDoc(productRef, updates);
+
+            // Log Inventory History if stock changed
+            if (updates.stockQuantity !== undefined && oldProduct && updates.stockQuantity !== oldProduct.stockQuantity) {
+                await addDoc(collection(db, "inventory_history"), {
+                    productId: String(id),
+                    productName: oldProduct.name,
+                    previousStock: oldProduct.stockQuantity,
+                    newStock: updates.stockQuantity,
+                    change: updates.stockQuantity - oldProduct.stockQuantity,
+                    updatedBy: authUser?.email || 'System',
+                    updatedAt: new Date().toISOString()
+                });
+            }
         } catch (error) {
             console.error("Error updating product:", error);
             throw error;
@@ -101,7 +105,7 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     };
 
     const getProduct = (id: number | string) => {
-        return products.find(p => String(p.id) === String(id));
+        return products.find((p: Product) => String(p.id) === String(id));
     };
 
     return (
