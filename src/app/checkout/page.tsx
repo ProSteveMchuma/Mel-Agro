@@ -71,7 +71,11 @@ export default function CheckoutPage() {
                 userEmail: shippingData.email,
                 items: cartItems,
                 total: total,
-                shippingAddress: `${shippingData.address}, ${shippingData.town}, ${shippingData.county}`,
+                shippingAddress: {
+                    county: shippingData.county,
+                    details: `${shippingData.address}, ${shippingData.town}`,
+                    method: shippingMethod
+                },
                 phone: shippingData.phone,
                 paymentMethod: paymentMethod,
                 paymentStatus: 'Unpaid' as const,
