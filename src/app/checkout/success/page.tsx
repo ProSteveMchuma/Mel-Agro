@@ -132,8 +132,8 @@ export default function OrderSuccessPage() {
                                     </div>
 
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${order.status !== 'Pending' ? 'bg-melagro-primary border-melagro-primary' : 'border-gray-300'}`}>
-                                            <div className={`w-2 h-2 rounded-full ${order.status !== 'Pending' ? 'bg-white' : 'bg-gray-300'}`}></div>
+                                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${order.status !== 'Cancelled' ? 'bg-melagro-primary border-melagro-primary' : 'border-gray-300'}`}>
+                                            <div className={`w-2 h-2 rounded-full ${order.status !== 'Cancelled' ? 'bg-white' : 'bg-gray-300'}`}></div>
                                         </div>
                                         <div>
                                             <p className="text-sm font-semibold text-gray-900">Processing</p>
