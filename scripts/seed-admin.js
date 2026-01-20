@@ -193,6 +193,13 @@ const USERS = [
         createdAt: admin.firestore.FieldValue.serverTimestamp()
     },
     {
+        uid: 'james_wambua_id',
+        email: 'james.wambua@makamithi.com',
+        name: 'James Wambua',
+        role: 'admin',
+        createdAt: admin.firestore.FieldValue.serverTimestamp()
+    },
+    {
         uid: 'test_user_id',
         email: 'test@example.com',
         name: 'Test Customer',

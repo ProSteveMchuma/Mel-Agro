@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     const newUserData = {
                         name: firebaseUser.displayName || 'User',
                         email: firebaseUser.email || '',
-                        role: firebaseUser.email === 'proinnovationtech@gmail.com' ? 'super-admin' : (firebaseUser.email === 'admin@melagro.com' ? 'admin' : 'user'),
+                        role: firebaseUser.email === 'proinnovationtech@gmail.com' ? 'super-admin' : (['admin@melagro.com', 'james.wambua@makamithi.com'].includes(firebaseUser.email || '') ? 'admin' : 'user'),
                         createdAt: new Date().toISOString()
                     };
                     await setDoc(userDocRef, newUserData);
@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                 const role = firebaseUser.email === 'proinnovationtech@gmail.com'
                     ? 'super-admin'
-                    : (firebaseUser.email === 'admin@melagro.com' ? 'admin' : (userData.role || 'user'));
+                    : (['admin@melagro.com', 'james.wambua@makamithi.com'].includes(firebaseUser.email || '') ? 'admin' : (userData.role || 'user'));
 
                 setUser({
                     uid: firebaseUser.uid,
