@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
@@ -53,8 +55,7 @@ export default function ProductDetails({ id }: { id: string }) {
                 ...product,
                 inStock: product.inStock ?? true // Defensive
             }, quantity);
-            setShowToast(true);
-            setTimeout(() => setShowToast(false), 3000);
+            toast.success(`${product.name} added to cart!`);
         }
     };
 
