@@ -5,13 +5,15 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
 import ProductRow from "@/components/ProductRow";
+import ProductCard from "@/components/ProductCard";
 import { Product, getProductsPage } from "@/lib/products";
 import { fuzzySearch } from "@/components/SmartSearch";
 import { useSearchParams } from "next/navigation";
 
 export default function ProductsPage() {
+    const searchParams = useSearchParams();
     // State for filters
-    const [selectedCategory, setSelectedCategory] = useState<string>("");
+    const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get("category") || "");
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
     const [searchQuery, setSearchQuery] = useState("");
     const [sortBy, setSortBy] = useState("best-selling");
@@ -173,7 +175,14 @@ function ProductsGrid({ category, priceRange, sortBy }: { category: string, pric
         <div className="space-y-10">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProducts.map(product => (
-                    <ProductCard key={product.id} product={product} />
+                    <ProductCard
+                        key={product.id}
+                        id={product.id}
+                        name={product.name}
+                        price={product.price}
+                        image={product.image}
+                        category={product.category}
+                    />
                 ))}
             </div>
 
@@ -190,95 +199,6 @@ function ProductsGrid({ category, priceRange, sortBy }: { category: string, pric
                     </button>
                 </div>
             )}
-        </div>
-    );
-}
-
-function ProductCard({ product }: { product: Product }) {
-    // ... (Keep existing ProductCard implementation, just reusing for brevity if unchanged, 
-    // but explicit re-inclusion is safer to avoid deletion)
-    const [isWishlisted, setIsWishlisted] = useState(false);
-
-    return (
-        <div className="bg-white rounded-xl overflow-hidden border border-gray-200 hover:shadow-lg transition-all duration-300 group hover:-translate-y-1">
-            {/* Image */}
-            <div className="relative h-56 bg-gray-100 overflow-hidden">
-                <img
-                    src={product.image}
-                    alt={product.name}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                {!product.inStock && (
-                    <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
-                        Out of Stock
-                    </div>
-                )}
-                {product.inStock && Math.random() > 0.7 && (
-                    <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-md">
-                        New
-                    </div>
-                )}
-                <button
-                    onClick={() => setIsWishlisted(!isWishlisted)}
-                    className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center transition-all shadow-sm hover:shadow-md"
-                >
-                    <svg
-                        className={`w-5 h-5 ${isWishlisted ? 'text-red-500 fill-red-500' : 'text-gray-400'}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
-                        />
-                    </svg>
-                </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-5 flex flex-col gap-3">
-                <div className="flex justify-between items-start">
-                    <span className="inline-block px-2.5 py-1 bg-green-50 text-melagro-primary text-[10px] font-bold uppercase tracking-wider rounded-md">
-                        {product.category}
-                    </span>
-                    <div className="flex items-center gap-1 text-xs font-medium text-gray-500">
-                        <svg className="w-3 h-3 text-yellow-400 fill-current" viewBox="0 0 20 20"><path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z rounded-sm" /></svg>
-                        <span>{product.rating}</span>
-                        <span className="text-gray-300">|</span>
-                        <span>{product.reviews} Sold</span>
-                    </div>
-                </div>
-
-                <h3 className="font-bold text-gray-900 line-clamp-2 text-sm h-10 leading-tight">
-                    {product.name}
-                </h3>
-
-                <div className="flex items-end justify-between mt-1">
-                    <div className="flex flex-col">
-                        <span className="text-xs text-gray-400 line-through">KSh {(product.price * 1.2).toLocaleString()}</span>
-                        <span className="text-lg font-black text-gray-900">KSh {product.price.toLocaleString()}</span>
-                    </div>
-                    <button
-                        disabled={!product.inStock}
-                        className={`
-                            px-4 py-2 rounded-lg font-bold text-xs transition-all flex items-center gap-2
-                            ${product.inStock
-                                ? 'bg-melagro-primary text-white hover:bg-melagro-secondary hover:shadow-lg hover:-translate-y-0.5'
-                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'}
-                        `}
-                    >
-                        {product.inStock ? (
-                            <>
-                                <span>Add</span>
-                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-                            </>
-                        ) : 'Out of Stock'}
-                    </button>
-                </div>
-            </div>
         </div>
     );
 }

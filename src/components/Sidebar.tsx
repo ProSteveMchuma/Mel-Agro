@@ -54,20 +54,35 @@ export default function Sidebar({ categories = defaultCategories, onCategoryChan
                             <input
                                 type="number"
                                 placeholder="Min"
-                                onChange={(e) => onPriceChange?.([Number(e.target.value), 50000])}
+                                onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    // We need to know the current max, but we don't have it in props.
+                                    // Ideally Sidebar should receive the current range as a prop.
+                                    // For now, let's assume a default high max if we don't have one, or better yet,
+                                    // let's change the component to using a ref or state if we want to be independent.
+                                    // ACTUALLY: The best way is to not use 0 or 50000 hardcoded but use the existing known values.
+                                    // Since this is a simple sidebar, let's use a local variable for the inputs and trigger the callback with both.
+                                    const maxInput = document.getElementById('price-max') as HTMLInputElement;
+                                    const currentMax = maxInput ? Number(maxInput.value) || 50000 : 50000;
+                                    onPriceChange?.([val, currentMax]);
+                                }}
+                                id="price-min"
                                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-melagro-primary"
                             />
                             <span className="text-gray-400">-</span>
                             <input
                                 type="number"
                                 placeholder="Max"
-                                onChange={(e) => onPriceChange?.([0, Number(e.target.value)])}
+                                onChange={(e) => {
+                                    const val = Number(e.target.value);
+                                    const minInput = document.getElementById('price-min') as HTMLInputElement;
+                                    const currentMin = minInput ? Number(minInput.value) || 0 : 0;
+                                    onPriceChange?.([currentMin, val || 50000]);
+                                }}
+                                id="price-max"
                                 className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-melagro-primary"
                             />
                         </div>
-                        <button className="w-full py-2 bg-gray-100 text-gray-600 text-xs font-bold uppercase tracking-wider rounded-lg hover:bg-gray-200 transition-colors">
-                            Apply Filter
-                        </button>
                     </div>
                 </div>
 
