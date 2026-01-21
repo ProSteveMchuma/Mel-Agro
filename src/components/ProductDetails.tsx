@@ -7,8 +7,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getProductById, getRelatedProducts, Product } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
-
-
+import { useAuth } from '@/context/AuthContext';
 import { toast } from "react-hot-toast";
 
 export default function ProductDetails({ id }: { id: string }) {
