@@ -1,12 +1,29 @@
 import { db } from './firebase';
-import { collection, getDocs, doc, getDoc, query, where, limit } from 'firebase/firestore';
-
 import { Product } from '@/types';
 export type { Product };
+import { collection, getDocs, doc, getDoc, query, where, limit, orderBy, startAfter, QueryConstraint } from 'firebase/firestore';
 
-export async function getProducts(): Promise<Product[]> {
+export async function getProducts(options: {
+    category?: string,
+    limitCount?: number,
+    sortBy?: string
+} = {}): Promise<Product[]> {
     try {
-        const querySnapshot = await getDocs(collection(db, "products"));
+        const constraints: QueryConstraint[] = [];
+
+        if (options.category && options.category !== 'All') {
+            constraints.push(where("category", "==", options.category));
+        }
+
+        if (options.sortBy) {
+            constraints.push(orderBy(options.sortBy));
+        }
+
+        constraints.push(limit(options.limitCount || 50));
+
+        const q = query(collection(db, "products"), ...constraints);
+        const querySnapshot = await getDocs(q);
+
         return querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -14,6 +31,37 @@ export async function getProducts(): Promise<Product[]> {
     } catch (error) {
         console.error("Error fetching products:", error);
         return [];
+    }
+}
+
+export async function getProductsPage(pageSize: number = 12, lastVisible?: any, category?: string): Promise<{ products: Product[], lastVisible: any }> {
+    try {
+        const constraints: QueryConstraint[] = [];
+
+        if (category && category !== 'All') {
+            constraints.push(where("category", "==", category));
+        }
+
+        constraints.push(orderBy("name"));
+        constraints.push(limit(pageSize));
+
+        if (lastVisible) {
+            constraints.push(startAfter(lastVisible));
+        }
+
+        const q = query(collection(db, "products"), ...constraints);
+        const querySnapshot = await getDocs(q);
+        const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
+
+        const products = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Product));
+
+        return { products, lastVisible: lastDoc };
+    } catch (error) {
+        console.error("Error fetching products page:", error);
+        return { products: [], lastVisible: null };
     }
 }
 

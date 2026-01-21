@@ -10,7 +10,6 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useMessages } from "@/context/MessageContext";
-import { useChama, ChamaGroup } from "@/context/ChamaContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
@@ -18,14 +17,13 @@ import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplat
 import WeatherWidget from "@/components/dashboard/WeatherWidget";
 import { toast } from "react-hot-toast";
 
-type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'chamas' | 'wishlist' | 'addresses' | 'payments';
+type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses' | 'payments';
 
 export default function UserDashboard() {
     const { user, isLoading, logout, updateProfile } = useAuth();
     const { orders, updateOrderStatus, requestReturn, handleConfirmReceipt } = useOrders();
     const { addToCart } = useCart();
     const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
-    const { activeChamas } = useChama();
     const { wishlist, removeFromWishlist } = useWishlist();
     const router = useRouter();
 
@@ -176,10 +174,6 @@ export default function UserDashboard() {
                             <span className="text-2xl">🚜</span>
                             <span className="text-xs font-bold uppercase">Shop Now</span>
                         </Link>
-                        <button onClick={() => setActiveTab('chamas')} className="p-4 bg-purple-500 text-white rounded-2xl flex flex-col items-center gap-2 hover:scale-[1.05] transition-all shadow-lg shadow-purple-500/20">
-                            <span className="text-2xl">👥</span>
-                            <span className="text-xs font-bold uppercase">My Chamas</span>
-                        </button>
                         <button onClick={() => setActiveTab('wishlist')} className="p-4 bg-red-500 text-white rounded-2xl flex flex-col items-center gap-2 hover:scale-[1.05] transition-all shadow-lg shadow-red-500/20">
                             <span className="text-2xl">❤️</span>
                             <span className="text-xs font-bold uppercase">Wishlist</span>
@@ -306,47 +300,6 @@ export default function UserDashboard() {
         </div>
     );
 
-    const renderChamas = () => {
-        const myChamas = activeChamas.filter((c: ChamaGroup) => c.members.some((m: any) => m.userId === user?.uid));
-        return (
-            <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                    <h2 className="text-2xl font-bold text-gray-900">My Chama Groups</h2>
-                    <Link href="/products" className="text-sm font-bold text-melagro-primary hover:underline">+ Start New</Link>
-                </div>
-                {myChamas.length === 0 ? (
-                    <div className="bg-white p-12 rounded-2xl border border-gray-100 text-center">
-                        <p className="text-gray-500 mb-6">No active Chamas found.</p>
-                        <Link href="/products" className="btn-primary">Browse Products</Link>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {myChamas.map((chama: ChamaGroup) => (
-                            <div key={chama.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden group hover:shadow-xl transition-all">
-                                <div className="aspect-video relative overflow-hidden bg-gray-50">
-                                    <Image src={chama.productImage} alt={chama.productName} fill className="object-cover transition-transform group-hover:scale-105" />
-                                    <div className="absolute top-3 left-3">
-                                        <span className="bg-melagro-primary text-white text-[10px] font-bold px-2 py-1 rounded-full">ACTIVE</span>
-                                    </div>
-                                </div>
-                                <div className="p-4">
-                                    <h3 className="font-bold text-gray-900 mb-1">{chama.productName}</h3>
-                                    <p className="text-lg font-black text-melagro-primary mb-3">KES {chama.price.toLocaleString()}</p>
-                                    <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden mb-2">
-                                        <div className="bg-melagro-primary h-full transition-all" style={{ width: `${(chama.members.length / chama.targetSize) * 100}%` }}></div>
-                                    </div>
-                                    <div className="flex justify-between items-center text-[10px] font-bold text-gray-400">
-                                        <span>{chama.members.length} / {chama.targetSize} Members</span>
-                                        <button onClick={() => toast.success("Link Copied!")} className="text-melagro-primary">Share Link</button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        );
-    };
 
     const renderReturns = () => {
         const returnedOrders = orders.filter((o: Order) => o.status === 'Cancelled' || o.returnStatus);
@@ -532,7 +485,6 @@ export default function UserDashboard() {
                                 {[
                                     { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
                                     { id: 'orders', label: 'My Orders', icon: '📦' },
-                                    { id: 'chamas', label: 'My Chamas', icon: '👥' },
                                     { id: 'wishlist', label: 'Wishlist', icon: '❤️' },
                                     { id: 'returns', label: 'Returns', icon: '🔄' },
                                     { id: 'notifications', label: 'Alerts', icon: '🔔' },
@@ -567,7 +519,6 @@ export default function UserDashboard() {
                     <div className="lg:col-span-3">
                         {activeTab === 'dashboard' && renderDashboard()}
                         {activeTab === 'orders' && renderOrders()}
-                        {activeTab === 'chamas' && renderChamas()}
                         {activeTab === 'wishlist' && renderWishlist()}
                         {activeTab === 'notifications' && renderNotifications()}
                         {activeTab === 'returns' && renderReturns()}
@@ -608,7 +559,7 @@ export default function UserDashboard() {
                             </div>
                         )}
                         {/* Fallback for other tabs if not implemented yet */}
-                        {!['dashboard', 'orders', 'chamas', 'support', 'profile', 'wishlist', 'notifications', 'returns'].includes(activeTab) && (
+                        {!['dashboard', 'orders', 'support', 'profile', 'wishlist', 'notifications', 'returns'].includes(activeTab) && (
                             <div className="bg-white p-20 rounded-3xl border border-gray-100 text-center shadow-sm">
                                 <div className="text-6xl mb-6">🛠️</div>
                                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon</h3>

@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
 import { Order, OrderItem } from '@/types';
@@ -100,77 +100,108 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     }, [user]);
 
     const addOrder = async (orderData: Omit<Order, 'id' | 'date' | 'status'>) => {
-        const newOrderBase = {
-            ...orderData,
-            date: new Date().toISOString(),
-            status: 'Processing' as const,
-        };
+        const orderId = doc(collection(db, "orders")).id;
+        const date = new Date().toISOString();
 
-        const docRef = await addDoc(collection(db, "orders"), newOrderBase);
-        const newOrder = { ...newOrderBase, id: docRef.id };
+        await runTransaction(db, async (transaction) => {
+            // 1. Verify Stock for all items first
+            const productRefs = orderData.items.map(item => ({
+                ref: doc(db, "products", String(item.id)),
+                quantity: item.quantity,
+                name: item.name
+            }));
 
-        // Create Notification for User
-        try {
-            await addDoc(collection(db, 'notifications'), {
+            const productSnaps = await Promise.all(productRefs.map(p => transaction.get(p.ref)));
+
+            // Check if any product is out of stock
+            for (let i = 0; i < productSnaps.length; i++) {
+                const snap = productSnaps[i];
+                const requestedQty = productRefs[i].quantity;
+                if (!snap.exists()) {
+                    throw new Error(`Product ${productRefs[i].name} does not exist.`);
+                }
+                const data = snap.data();
+                if (!data) {
+                    throw new Error(`Product ${productRefs[i].name} has no data.`);
+                }
+                const stock = data.stockQuantity || 0;
+                if (stock < requestedQty) {
+                    throw new Error(`Insufficient stock for ${productRefs[i].name}. Only ${stock} left.`);
+                }
+            }
+
+            // 2. Create the Order
+            const newOrderRef = doc(db, "orders", orderId);
+            const newOrderBase = {
+                ...orderData,
+                id: orderId,
+                date,
+                status: 'Processing' as const,
+            };
+            transaction.set(newOrderRef, newOrderBase);
+
+            // 3. Create User Notification
+            const userNotifRef = doc(collection(db, 'notifications'));
+            transaction.set(userNotifRef, {
                 userId: orderData.userId,
-                message: `Order #${docRef.id.substr(0, 5)} has been placed successfully!`,
-                date: new Date().toISOString(),
+                message: `Order #${orderId.substr(0, 5)} has been placed successfully!`,
+                date,
                 read: false,
                 type: 'order'
             });
-        } catch (error) {
-            console.error("Error creating user notification:", error);
-        }
 
-        // Create Notification for Admins
+            // 4. Update Stock and Log Inventory History for each item
+            for (let i = 0; i < productSnaps.length; i++) {
+                const snap = productSnaps[i];
+                const p = productRefs[i];
+                const updateData = snap.data();
+                if (!updateData) continue; // Should not happen given exists check above
+
+                const currentStock = updateData.stockQuantity || 0;
+                const newStock = currentStock - p.quantity;
+
+                transaction.update(p.ref, {
+                    stockQuantity: newStock,
+                    inStock: newStock > 0
+                });
+
+                const historyRef = doc(collection(db, "inventory_history"));
+                transaction.set(historyRef, {
+                    productId: String(p.ref.id),
+                    productName: p.name,
+                    previousStock: currentStock,
+                    newStock: newStock,
+                    change: -p.quantity,
+                    updatedBy: 'System (Atomic Order)',
+                    updatedAt: date,
+                    orderId: orderId
+                });
+            }
+        });
+
+        // Async: Notify Admins (Failure here doesn't roll back the order)
         try {
             const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
             const adminDocs = await getDocs(adminsQuery);
             adminDocs.forEach(async (adminDoc) => {
                 await addDoc(collection(db, 'notifications'), {
                     userId: adminDoc.id,
-                    message: `New Order #${docRef.id.substr(0, 5)} placed by ${orderData.userEmail || 'Customer'}`,
-                    date: new Date().toISOString(),
+                    message: `New Order #${orderId.substr(0, 5)} placed by ${orderData.userEmail || 'Customer'}`,
+                    date,
                     read: false,
                     type: 'system'
                 });
             });
         } catch (error) {
-            console.error("Error notifying admins:", error);
+            console.warn("Failed to notify admins, but order was placed:", error);
         }
 
-        // Update Stock
-        try {
-            for (const item of orderData.items) {
-                const productRef = doc(db, "products", String(item.id));
-                const productSnap = await getDoc(productRef);
-
-                if (productSnap.exists()) {
-                    const currentStock = productSnap.data().stockQuantity || 0;
-                    const newStock = Math.max(0, currentStock - item.quantity);
-
-                    await updateDoc(productRef, {
-                        stockQuantity: newStock,
-                        inStock: newStock > 0
-                    });
-
-                    // Log Inventory History
-                    await addDoc(collection(db, "inventory_history"), {
-                        productId: String(item.id),
-                        productName: item.name,
-                        previousStock: currentStock,
-                        newStock: newStock,
-                        change: -item.quantity,
-                        updatedBy: 'System (Order)',
-                        updatedAt: new Date().toISOString()
-                    });
-                }
-            }
-        } catch (error) {
-            console.error("Error updating stock:", error);
-        }
-
-        return newOrder;
+        return {
+            ...orderData,
+            id: orderId,
+            date,
+            status: 'Processing' as const,
+        } as Order;
     };
 
     const updateOrderStatus = async (orderId: string, status: Order['status']) => {

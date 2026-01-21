@@ -7,29 +7,21 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { getProductById, getRelatedProducts, Product } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
-import { useChama } from '@/context/ChamaContext';
-import { useRouter, useSearchParams } from 'next/navigation';
+
+
+import { toast } from "react-hot-toast";
 
 export default function ProductDetails({ id }: { id: string }) {
     const [product, setProduct] = useState<Product | undefined>(undefined);
     const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
-    const [showToast, setShowToast] = useState(false);
     const [quantity, setQuantity] = useState(1);
     const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'usage'>('description');
-
-    const { activeChamas } = useChama();
+    const { user } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const joinChamaId = searchParams.get('join');
-    const [targetChama, setTargetChama] = useState<any>(null);
 
-    useEffect(() => {
-        if (joinChamaId && activeChamas.length > 0) {
-            const found = activeChamas.find(c => c.id === joinChamaId);
-            if (found) setTargetChama(found);
-        }
-    }, [joinChamaId, activeChamas]);
+    const userCity = user?.city || user?.county;
 
     useEffect(() => {
         const fetchData = async () => {
@@ -43,6 +35,7 @@ export default function ProductDetails({ id }: { id: string }) {
                 const related = await getRelatedProducts(p.category, String(p.id));
                 setRelatedProducts(related);
             }
+
             setLoading(false);
         };
         fetchData();
@@ -99,21 +92,6 @@ export default function ProductDetails({ id }: { id: string }) {
     return (
         <div className="min-h-screen flex flex-col bg-white font-sans text-gray-900">
             <Header />
-
-            {/* Toast Notification */}
-            {showToast && (
-                <div className="fixed top-24 right-4 bg-green-600 text-white px-6 py-4 rounded-xl shadow-xl z-50 animate-in slide-in-from-right-5 flex items-center gap-3">
-                    <div className="bg-white/20 p-1 rounded-full">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                    </div>
-                    <div>
-                        <p className="font-bold text-sm">Added to Cart!</p>
-                        <p className="text-xs text-white/80">{quantity} x {product.name}</p>
-                    </div>
-                </div>
-            )}
 
             <main className="flex-grow container-custom py-8">
                 {/* Breadcrumbs */}
@@ -182,11 +160,27 @@ export default function ProductDetails({ id }: { id: string }) {
                             <span className="text-xs text-gray-500 font-medium">120 Reviews</span>
                         </div>
 
-                        {/* Price */}
-                        <div className="flex items-center gap-3 mb-6">
-                            <span className="text-3xl font-extrabold text-[#22c55e]">KES {product.price.toLocaleString()}</span>
-                            <span className="text-lg text-gray-400 line-through font-medium">KES {(product.price * 1.15).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                            <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">Save KES {(product.price * 0.15).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                        {/* Price & Stock Urgency */}
+                        <div className="flex flex-col gap-2 mb-6">
+                            <div className="flex items-center gap-3">
+                                <span className="text-4xl font-black text-[#22c55e]">KES {product.price.toLocaleString()}</span>
+                                <span className="text-lg text-gray-400 line-through font-medium">KES {(product.price * 1.15).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                                <span className="bg-green-100 text-green-700 text-[10px] font-black px-2 py-1 rounded uppercase tracking-tighter">Save 15%</span>
+                            </div>
+
+                            {product.stockQuantity > 0 && product.stockQuantity <= 50 && (
+                                <motion.div
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    className="flex items-center gap-2 text-red-600 text-sm font-bold"
+                                >
+                                    <span className="relative flex h-2 w-2">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                    </span>
+                                    Only {product.stockQuantity} items left in stock!
+                                </motion.div>
+                            )}
                         </div>
 
                         <p className="text-gray-600 text-sm leading-relaxed mb-6">
@@ -220,18 +214,37 @@ export default function ProductDetails({ id }: { id: string }) {
                             </button>
                         </div>
 
-                        {/* Delivery Info */}
-                        <div className="bg-green-50 rounded-xl p-4 border border-green-100">
-                            <div className="flex justify-between items-start mb-2">
-                                <div className="flex items-center gap-2">
-                                    <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                                    <span className="text-sm font-bold text-gray-900">Delivery to Nairobi</span>
+                        {/* Delivery Info & Trust */}
+                        <div className="space-y-4 mb-8">
+                            <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                                <div className="flex justify-between items-start mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
+                                        <span className="text-sm font-bold text-gray-900">Delivery to {userCity || 'Your Location'}</span>
+                                    </div>
+                                    <button className="text-xs font-bold text-green-600 hover:underline">Change</button>
                                 </div>
-                                <button className="text-xs font-bold text-green-600 hover:underline">Change</button>
+                                <p className="text-xs text-gray-600 leading-normal">
+                                    Order now for delivery by <span className="font-bold text-gray-900">tomorrow</span>. Free delivery on orders over KES 10,000.
+                                </p>
                             </div>
-                            <p className="text-xs text-gray-600 leading-normal">
-                                Order now for delivery by tomorrow. Free delivery on orders over KES 5,000.
-                            </p>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="flex items-center gap-2 p-3 border border-gray-100 rounded-xl">
+                                    <span className="text-xl">🛡️</span>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-900 uppercase">Verified Quality</p>
+                                        <p className="text-[9px] text-gray-500">Certified Agri-Inputs</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 p-3 border border-gray-100 rounded-xl">
+                                    <span className="text-xl">🔒</span>
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-900 uppercase">Secure Payment</p>
+                                        <p className="text-[9px] text-gray-500">M-Pesa & Card Encrypted</p>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -256,86 +269,79 @@ export default function ProductDetails({ id }: { id: string }) {
                         </div>
 
                         {/* Tab Content */}
-                        <div className="min-h-[300px]">
-                            {activeTab === 'description' && (
-                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
-                                    <h3 className="text-lg font-bold text-gray-900">Product Overview</h3>
-                                    <p className="text-gray-600 text-sm leading-relaxed">
-                                        {product.description}
-                                    </p>
-                                </div>
-                            )}
-
-                            {activeTab === 'specifications' && (
-                                <div className="animate-in fade-in slide-in-from-bottom-2">
-                                    <h3 className="text-lg font-bold text-gray-900 mb-4">Detailed Specifications</h3>
-                                    <div className="bg-white border border-gray-200 rounded-xl p-6">
+                        <div className="min-h-[300px] relative">
+                            <AnimatePresence mode="wait">
+                                {activeTab === 'description' && (
+                                    <motion.div
+                                        key="description"
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="space-y-6"
+                                    >
+                                        <h3 className="text-lg font-bold text-gray-900">Product Overview</h3>
                                         <p className="text-gray-600 text-sm leading-relaxed">
-                                            {product.specification || "No detailed specifications provided for this product."}
+                                            {product.description}
                                         </p>
-                                    </div>
-                                </div>
-                            )}
+                                    </motion.div>
+                                )}
 
-                            {activeTab === 'usage' && (
-                                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
-                                    <h3 className="text-lg font-bold text-gray-900">Usage Instructions</h3>
-                                    <div className="bg-green-50 p-6 rounded-xl border border-green-100">
-                                        <p className="text-sm text-gray-700">
-                                            {product.howToUse || "Follow standard agricultural practices for application. Refer to product packaging for specific instructions."}
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
+                                {activeTab === 'specifications' && (
+                                    <motion.div
+                                        key="specs"
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                    >
+                                        <h3 className="text-lg font-bold text-gray-900 mb-4">Detailed Specifications</h3>
+                                        <div className="bg-white border border-gray-200 rounded-xl p-6">
+                                            <p className="text-gray-600 text-sm leading-relaxed">
+                                                {product.specification || "No detailed specifications provided for this product."}
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                )}
+
+                                {activeTab === 'usage' && (
+                                    <motion.div
+                                        key="usage"
+                                        initial={{ opacity: 0, y: 10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="space-y-4"
+                                    >
+                                        <h3 className="text-lg font-bold text-gray-900">Usage Instructions</h3>
+                                        <div className="bg-green-50 p-6 rounded-xl border border-green-100">
+                                            <p className="text-sm text-gray-700">
+                                                {product.howToUse || "Follow standard agricultural practices for application. Refer to product packaging for specific instructions."}
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
 
                     <div className="hidden lg:block">
-                        {targetChama ? (
-                            <div className="bg-purple-50 border-2 border-purple-500 rounded-2xl p-6">
-                                <h3 className="font-bold text-purple-900 text-lg mb-2">Join {targetChama.creatorName}'s Group!</h3>
-                                <p className="text-sm text-purple-700 mb-4">Buy together to save 15%</p>
-                                <div className="flex items-center gap-2 mb-4">
-                                    <div className="text-3xl font-bold text-purple-700">KES {targetChama.price.toLocaleString()}</div>
-                                    <div className="text-sm text-gray-500 line-through">KES {product.price.toLocaleString()}</div>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        if (product) {
-                                            addToCart({
-                                                ...product,
-                                                id: `${product.id}_chama_${targetChama.id}`,
-                                                name: `${product.name} (Group Buy)`,
-                                                price: targetChama.price,
-                                                category: 'Group Buy'
-                                            } as any);
-                                            setShowToast(true);
-                                            setTimeout(() => setShowToast(false), 3000);
-                                        }
-                                    }}
-                                    className="w-full py-3 bg-purple-600 text-white rounded-xl font-bold hover:bg-purple-700 transition-all"
-                                >
-                                    Join & Pay
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="bg-yellow-50 rounded-2xl p-6 border border-yellow-100">
-                                <h4 className="font-bold text-yellow-800 mb-2">Need Bulk Supply?</h4>
-                                <p className="text-xs text-yellow-700 mb-4">We offer special rates for orders over 100 bags.</p>
-                                <Link href="/dashboard/user?tab=support" className="text-sm font-bold text-yellow-800 underline">Contact Sales Team</Link>
-                            </div>
-                        )}
+                        <div className="bg-yellow-50 rounded-2xl p-6 border border-yellow-100">
+                            <h4 className="font-bold text-yellow-800 mb-2">Need Bulk Supply?</h4>
+                            <p className="text-xs text-yellow-700 mb-4">We offer special rates for orders over 100 bags.</p>
+                            <Link href="/dashboard/user?tab=support" className="text-sm font-bold text-yellow-800 underline">Contact Sales Team</Link>
+                        </div>
                     </div>
                 </div>
 
                 {/* Farmers Also Bought */}
-                <div>
+                <div className="mb-20">
                     <div className="flex justify-between items-end mb-8">
-                        <h2 className="text-2xl font-bold text-gray-900">Farmers also bought</h2>
-                        <Link href="/products" className="text-green-600 font-bold text-sm hover:underline">View All</Link>
+                        <div>
+                            <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em] mb-1">More Choice</p>
+                            <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase">More in {product.category}</h2>
+                        </div>
+                        <Link href="/products" className="text-gray-400 font-bold text-sm hover:text-green-600 transition-colors uppercase tracking-widest">Explore All →</Link>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                         {relatedProducts.length > 0 ? relatedProducts.map((p) => (
                             <ProductCard
                                 key={p.id}
@@ -347,14 +353,32 @@ export default function ProductDetails({ id }: { id: string }) {
                             />
                         )) : (
                             [...Array(4)].map((_, i) => (
-                                <div key={i} className="bg-gray-100 rounded-xl h-80 animate-pulse"></div>
+                                <div key={i} className="bg-gray-50 rounded-[2rem] h-80 animate-pulse"></div>
                             ))
                         )}
                     </div>
                 </div>
+
+
             </main>
 
             <Footer />
-        </div>
+
+            {/* Sticky Mobile Add to Cart */}
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 z-40 flex items-center justify-between gap-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase">Total Price</p>
+                    <p className="text-xl font-black text-[#22c55e]">KES {(product.price * quantity).toLocaleString()}</p>
+                </div>
+                <button
+                    onClick={handleAddToCart}
+                    disabled={!product.inStock}
+                    className="flex-grow h-12 bg-[#22c55e] text-white font-black rounded-xl shadow-lg shadow-green-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    Add
+                </button>
+            </div>
+        </div >
     );
 }

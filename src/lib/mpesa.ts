@@ -41,3 +41,15 @@ export function generatePassword() {
 
     return { password, timestamp, shortcode };
 }
+export const getMpesaErrorMessage = (resultCode: number | string): string => {
+    const codes: Record<string, string> = {
+        '1': 'The balance is insufficient for the transaction.',
+        '1032': 'You cancelled the transaction on your phone.',
+        '1037': 'The transaction timed out. Please try again.',
+        '2001': 'The initiator information is invalid (e.g. wrong PIN).',
+        '17': 'The transaction was rejected by Safaricom.',
+        '1019': 'The transaction has already been processed.',
+        '0': 'Success'
+    };
+    return codes[String(resultCode)] || 'An error occurred during payment. Please check your phone or try again.';
+};

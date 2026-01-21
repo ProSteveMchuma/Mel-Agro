@@ -83,10 +83,11 @@ export default function ProductCard({ id, name, price, image, category }: Produc
             <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-green-200 flex flex-col h-full cursor-pointer relative">
                 {/* Image Section */}
                 <div className="relative aspect-square overflow-hidden bg-[#f8fcf9] flex items-center justify-center p-6">
-                    <img
+                    <Image
                         src={imageSrc}
                         alt={name}
-                        className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700 ease-out"
+                        fill
+                        className="object-contain p-6 group-hover:scale-110 transition-transform duration-700 ease-out"
                     />
 
                     {/* Quick Action Overlay */}

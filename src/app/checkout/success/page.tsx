@@ -7,6 +7,8 @@ import { useSearchParams } from "next/navigation";
 import { useOrders, Order } from "@/context/OrderContext";
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
+import confetti from 'canvas-confetti';
+import { motion } from 'framer-motion';
 
 function OrderSuccessContent() {
     const searchParams = useSearchParams();
@@ -14,6 +16,17 @@ function OrderSuccessContent() {
     const { orders } = useOrders();
     const [order, setOrder] = useState<Order | null>(null);
     const [isNotFound, setIsNotFound] = useState(false);
+
+    useEffect(() => {
+        if (order) {
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#22c55e', '#16a34a', '#ffffff']
+            });
+        }
+    }, [order]);
 
     useEffect(() => {
         const fetchOrder = async () => {
@@ -83,40 +96,52 @@ function OrderSuccessContent() {
         <main className="flex-grow py-12 px-4">
             <div className="max-w-4xl mx-auto">
                 {/* Success Banner */}
-                <div className="bg-white rounded-2xl p-12 border border-gray-200 mb-8">
-                    <div className="flex flex-col md:flex-row items-center gap-8">
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-white rounded-3xl p-8 md:p-12 border border-gray-100 mb-8 shadow-xl shadow-green-500/5 overflow-hidden relative"
+                >
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-bl-full -z-0 opacity-50"></div>
+
+                    <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
                         {/* Farmer Image */}
                         <div className="md:w-1/3">
                             <img
                                 src="https://images.unsplash.com/photo-1552679552-cb6ebb75f5b1?q=80&w=400&auto=format&fit=crop"
                                 alt="Happy Farmer"
-                                className="rounded-2xl w-full h-64 object-cover"
+                                className="rounded-2xl w-full h-64 object-cover shadow-lg"
                             />
                         </div>
 
                         {/* Success Message */}
                         <div className="md:w-2/3">
-                            <div className="flex items-center gap-2 mb-4">
-                                <div className="w-8 h-8 bg-melagro-primary rounded-full flex items-center justify-center text-white font-bold">✓</div>
-                                <span className="text-sm font-bold text-melagro-primary uppercase tracking-wider">Order Successful!</span>
+                            <div className="inline-flex items-center gap-2 bg-green-100 px-3 py-1 rounded-full mb-6">
+                                <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold">✓</div>
+                                <span className="text-[10px] font-black text-green-700 uppercase tracking-widest">Order Verified</span>
                             </div>
-                            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-2">Thank you!</h1>
-                            <p className="text-gray-600 mb-6 text-lg">
-                                Your order <span className="font-bold text-gray-900">#{order.id.slice(0, 8)}</span> has been placed securely and is being processed.
+                            <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Success!</h1>
+                            <p className="text-gray-600 mb-8 text-lg leading-relaxed">
+                                Thank you for your order <span className="font-black text-gray-900">#{order.id.slice(0, 8)}</span>.
+                                We've sent a receipt to your email and our team is preparing your agri-inputs for dispatch.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4">
-                                <Link href="/products" className="bg-melagro-primary hover:bg-melagro-secondary text-white px-6 py-3 rounded-lg font-bold transition-colors">
-                                    Continue Shopping →
+                                <Link href="/products" className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-200 text-center">
+                                    Shop More
                                 </Link>
-                                <Link href="/dashboard/user" className="border-2 border-gray-300 text-gray-900 px-6 py-3 rounded-lg font-bold hover:bg-gray-50 transition-colors">
-                                    View Order Status
+                                <Link href="/dashboard/user" className="border-2 border-gray-100 text-gray-900 px-8 py-4 rounded-2xl font-black hover:bg-gray-50 transition-all text-center">
+                                    Track Order
                                 </Link>
                             </div>
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                    className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8"
+                >
                     {/* Order Summary */}
                     <div className="md:col-span-2">
                         <div className="bg-white rounded-2xl p-8 border border-gray-200">
@@ -181,7 +206,7 @@ function OrderSuccessContent() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </motion.div>
 
                 {/* Help Section */}
                 <div className="mt-12 bg-green-50 rounded-2xl p-8 border border-green-200">
@@ -197,7 +222,7 @@ function OrderSuccessContent() {
                     </div>
                 </div>
             </div>
-        </main>
+        </main >
     );
 }
 

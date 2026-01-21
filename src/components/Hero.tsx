@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useContent } from "@/context/ContentContext";
+import Image from "next/image";
 
 export default function Hero() {
     const { banners } = useContent();
@@ -100,7 +101,13 @@ export default function Hero() {
                                 className="absolute inset-0"
                             >
                                 <div className="absolute inset-0">
-                                    <img src={slides[currentSlide].image} alt={slides[currentSlide].title} className="w-full h-full object-cover" />
+                                    <Image
+                                        src={slides[currentSlide].image}
+                                        alt={slides[currentSlide].title}
+                                        fill
+                                        priority
+                                        className="object-cover"
+                                    />
                                     <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent" />
                                 </div>
 

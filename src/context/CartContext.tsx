@@ -3,6 +3,9 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CartItem, Product } from '@/types';
 import { toast } from 'react-hot-toast';
+import { useAuth } from './AuthContext';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface CartContextType {
     cartItems: CartItem[];
@@ -19,25 +22,69 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
+    const { user } = useAuth();
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-    // Load cart from local storage on mount
+    // 1. Initial Load: LocalStorage -> Firestore Merge
     useEffect(() => {
-        const storedCart = localStorage.getItem('melagro_cart');
-        if (storedCart) {
-            try {
-                setCartItems(JSON.parse(storedCart));
-            } catch (e) {
-                console.error("Failed to parse cart from local storage", e);
+        const loadCart = async () => {
+            const localCart = localStorage.getItem('melagro_cart');
+            let items: CartItem[] = [];
+
+            if (localCart) {
+                try {
+                    items = JSON.parse(localCart);
+                } catch (e) {
+                    console.error("Failed to parse local cart", e);
+                }
             }
-        }
-    }, []);
 
-    // Save cart to local storage whenever it changes
+            if (user) {
+                try {
+                    const cartDoc = await getDoc(doc(db, 'carts', user.uid));
+                    if (cartDoc.exists()) {
+                        const cloudItems = cartDoc.data().items as CartItem[];
+                        // Simple merge strategy: Cloud items take priority if they exist
+                        // Or you could combine them. Let's combine unique ones.
+                        const combinedMap = new Map();
+                        items.forEach(item => combinedMap.set(item.id, item));
+                        cloudItems.forEach(item => combinedMap.set(item.id, item));
+                        items = Array.from(combinedMap.values());
+                    }
+                } catch (e) {
+                    console.error("Failed to sync cloud cart", e);
+                }
+            }
+
+            setCartItems(items);
+            setIsInitialLoad(false);
+        };
+
+        loadCart();
+    }, [user]);
+
+    // 2. Persist to LocalStorage and Cloud
     useEffect(() => {
+        if (isInitialLoad) return;
+
         localStorage.setItem('melagro_cart', JSON.stringify(cartItems));
-    }, [cartItems]);
+
+        if (user) {
+            const syncCart = async () => {
+                try {
+                    await setDoc(doc(db, 'carts', user.uid), {
+                        items: cartItems,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                } catch (e) {
+                    console.error("Cloud cart sync failed", e);
+                }
+            };
+            syncCart();
+        }
+    }, [cartItems, user, isInitialLoad]);
 
     const addToCart = (product: Product, quantity = 1) => {
         // Log analytics

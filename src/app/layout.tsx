@@ -18,7 +18,6 @@ import ChatWidget from "@/components/ChatWidget";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import AgroBot from "@/components/AgroBot";
 import MobileNav from "@/components/MobileNav";
-import { ChamaProvider } from "@/context/ChamaContext";
 import { BehaviorProvider } from "@/context/BehaviorContext";
 
 
@@ -97,35 +96,33 @@ export default function RootLayout({
                     <UserProvider>
                       <LanguageProvider>
                         <MessageProvider>
-                          <ChamaProvider>
-                            <BehaviorProvider>
-                              <WishlistProvider>
-                                {children}
-                                <PWAInstallPrompt />
-                                <MobileNav />
-                                <AgroBot />
-                                {/* <ChatWidget /> - Replacing basic widget with AI Bot */}
-                                <WhatsAppButton />
-                                <Toaster position="top-center" toastOptions={{
-                                  duration: 3000,
+                          <BehaviorProvider>
+                            <WishlistProvider>
+                              {children}
+                              <PWAInstallPrompt />
+                              <MobileNav />
+                              <AgroBot />
+                              {/* <ChatWidget /> - Replacing basic widget with AI Bot */}
+                              <WhatsAppButton />
+                              <Toaster position="top-center" toastOptions={{
+                                duration: 3000,
+                                style: {
+                                  background: '#333',
+                                  color: '#fff',
+                                },
+                                success: {
                                   style: {
-                                    background: '#333',
-                                    color: '#fff',
+                                    background: '#10B981',
                                   },
-                                  success: {
-                                    style: {
-                                      background: '#10B981',
-                                    },
+                                },
+                                error: {
+                                  style: {
+                                    background: '#EF4444',
                                   },
-                                  error: {
-                                    style: {
-                                      background: '#EF4444',
-                                    },
-                                  },
-                                }} />
-                              </WishlistProvider>
-                            </BehaviorProvider>
-                          </ChamaProvider>
+                                },
+                              }} />
+                            </WishlistProvider>
+                          </BehaviorProvider>
                         </MessageProvider>
                       </LanguageProvider>
                     </UserProvider>

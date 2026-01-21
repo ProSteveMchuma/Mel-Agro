@@ -5,14 +5,16 @@ import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
 import Hero from "@/components/Hero";
 import ProductRow from "@/components/ProductRow";
-import Newsletter from "@/components/Newsletter";
 import CategoryIcons from "@/components/CategoryIcons";
-import FlashSaleStrip from "@/components/FlashSaleStrip";
-import Partners from "@/components/Partners";
-import DualPromoBanners from "@/components/DualPromoBanners";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import dynamic from 'next/dynamic';
+
+const Newsletter = dynamic(() => import("@/components/Newsletter"), { ssr: false });
+const Partners = dynamic(() => import("@/components/Partners"), { ssr: false });
+const DualPromoBanners = dynamic(() => import("@/components/DualPromoBanners"), { ssr: false });
+const FlashSaleStrip = dynamic(() => import("@/components/FlashSaleStrip"), { ssr: false });
 
 const FadeInWhenVisible = ({ children, delay = 0 }: { children: React.ReactNode, delay?: number }) => {
   return (

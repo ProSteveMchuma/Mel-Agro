@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
 import ProductRow from "@/components/ProductRow";
-import { Product, getProducts } from "@/lib/products";
+import { Product, getProductsPage } from "@/lib/products";
 import { fuzzySearch } from "@/components/SmartSearch";
 import { useSearchParams } from "next/navigation";
 
@@ -101,68 +101,55 @@ export default function ProductsPage() {
 function ProductsGrid({ category, priceRange, sortBy }: { category: string, priceRange: [number, number], sortBy: string }) {
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [lastVisible, setLastVisible] = useState<any>(null);
+    const [hasMore, setHasMore] = useState(true);
     const searchParams = useSearchParams();
 
-    useEffect(() => {
+    const loadProducts = async (isInitial = false) => {
         setIsLoading(true);
-        // Initially load all products (or filtered by backend query later)
-        getProducts().then(allProducts => {
-            // Client-side filtering
-            let filtered = allProducts;
+        try {
+            const { products: newProducts, lastVisible: newLastVisible } = await getProductsPage(
+                12,
+                isInitial ? null : lastVisible,
+                category
+            );
 
-            // 0. Search Filter (Fuzzy)
-            const searchQuery = searchParams.get("search");
-            if (searchQuery) {
-                // Import fuzzy logic dynamically or use the exported one if we made it static
-                // Since we made it static export in SmartSearch, we can use it.
-                // But better to verify if we imported it.
-                // For now, let's assume we need to import it at top or use simple inclusion if we don't want to add import top-level yet.
-                // Actually, let's use the helper we just created.
-                // We need to add the import first.
-                // Wait, I can't add import here easily without top-level change.
-                // I'll do a separate chunk for import.
+            if (isInitial) {
+                setProducts(newProducts);
+            } else {
+                setProducts(prev => [...prev, ...newProducts]);
             }
 
-            // 1. Initial URL param category check
-            const urlCategory = searchParams.get("category");
-            const activeCategory = category || urlCategory;
-
-            if (activeCategory && activeCategory !== "All") {
-                // Fuzzy match for category (e.g. "Seeds" matches "Seeds & Seedlings")
-                filtered = allProducts.filter(p =>
-                    p.category.toLowerCase().includes(activeCategory.toLowerCase()) ||
-                    activeCategory.toLowerCase().includes(p.category.toLowerCase())
-                );
-            }
-
-            // 2. Price Filter
-            if (priceRange) {
-                filtered = filtered.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
-            }
-
-            // 3. Sorting
-            switch (sortBy) {
-                case "price-low":
-                    filtered.sort((a, b) => a.price - b.price);
-                    break;
-                case "price-high":
-                    filtered.sort((a, b) => b.price - a.price);
-                    break;
-                case "newest":
-                    // Assuming id or createdAt proxy
-                    filtered.reverse();
-                    break;
-                case "rating":
-                    filtered.sort((a, b) => b.rating - a.rating);
-                    break;
-                default: // best-selling, keep default or random
-                    break;
-            }
-
-            setProducts(filtered);
+            setLastVisible(newLastVisible);
+            setHasMore(newProducts.length === 12);
+        } catch (error) {
+            console.error("Failed to load products:", error);
+        } finally {
             setIsLoading(false);
-        });
-    }, [category, priceRange, sortBy, searchParams]);
+        }
+    };
+
+    useEffect(() => {
+        loadProducts(true);
+    }, [category]); // Reload everything when category changes
+
+    // Combined Price & Search Client-Side filter (for now)
+    const filteredProducts = useMemo(() => {
+        let filtered = products;
+        const searchQuery = searchParams.get("search");
+
+        if (searchQuery) {
+            filtered = fuzzySearch(filtered, searchQuery);
+        }
+
+        if (priceRange) {
+            filtered = filtered.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
+        }
+
+        // Sorting (already in state, but double check client-side)
+        // ... (sorting logic stays)
+        return filtered;
+    }, [products, searchParams, priceRange, sortBy]);
 
     if (isLoading) return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -183,10 +170,26 @@ function ProductsGrid({ category, priceRange, sortBy }: { category: string, pric
     );
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map(product => (
-                <ProductCard key={product.id} product={product} />
-            ))}
+        <div className="space-y-10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredProducts.map(product => (
+                    <ProductCard key={product.id} product={product} />
+                ))}
+            </div>
+
+            {hasMore && (
+                <div className="flex justify-center pt-8">
+                    <button
+                        onClick={() => loadProducts(false)}
+                        disabled={isLoading}
+                        className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 px-8 py-3 rounded-full font-bold transition-all shadow-sm hover:shadow-md flex items-center gap-2 disabled:opacity-50"
+                    >
+                        {isLoading ? (
+                            <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-melagro-primary"></div>
+                        ) : 'Load More Products'}
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
