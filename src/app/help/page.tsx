@@ -57,10 +57,6 @@ const faqCategories = [
                 question: "How should I store farm inputs?",
                 answer: "Store in a cool, dry place away from direct sunlight. Fertilizers should be kept away from moisture. See product packaging for specific storage instructions."
             },
-            {
-                question: "Can I get farming advice for my products?",
-                answer: "Absolutely! Call our agricultural experts at +254 700 123 456. They provide free consultation on product usage and farming techniques."
-            }
         ]
     },
     {
@@ -126,11 +122,10 @@ export default function HelpCenterPage() {
                                 <button
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat.id)}
-                                    className={`p-6 rounded-xl transition-all font-semibold text-center ${
-                                        selectedCategory === cat.id
-                                            ? 'bg-melagro-primary text-white shadow-lg'
-                                            : 'bg-white text-gray-900 hover:bg-gray-50 border border-gray-200'
-                                    }`}
+                                    className={`p-6 rounded-xl transition-all font-semibold text-center ${selectedCategory === cat.id
+                                        ? 'bg-melagro-primary text-white shadow-lg'
+                                        : 'bg-white text-gray-900 hover:bg-gray-50 border border-gray-200'
+                                        }`}
                                 >
                                     <div className="text-3xl mb-2">{cat.icon}</div>
                                     <p className="text-sm md:text-base">{cat.label}</p>
@@ -158,9 +153,8 @@ export default function HelpCenterPage() {
                                     >
                                         <h3 className="font-bold text-gray-900 text-base md:text-lg">{faq.question}</h3>
                                         <svg
-                                            className={`w-6 h-6 text-melagro-primary transition-transform flex-shrink-0 ml-4 ${
-                                                expandedFaq === `${selectedCategory}-${idx}` ? 'rotate-180' : ''
-                                            }`}
+                                            className={`w-6 h-6 text-melagro-primary transition-transform flex-shrink-0 ml-4 ${expandedFaq === `${selectedCategory}-${idx}` ? 'rotate-180' : ''
+                                                }`}
                                             fill="none"
                                             stroke="currentColor"
                                             viewBox="0 0 24 24"
@@ -185,35 +179,35 @@ export default function HelpCenterPage() {
                             {/* Contact Options */}
                             <div>
                                 <h3 className="text-2xl font-bold text-gray-900 mb-6">Still need help?</h3>
-                                <p className="text-gray-600 mb-8">Our agricultural experts and support team are available Monday - Friday, 8am - 5pm</p>
+                                <p className="text-gray-600 mb-8">Our support team is available Monday - Friday, 8am - 5pm</p>
 
                                 <div className="space-y-4">
-                                    <button className="w-full flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors group">
+                                    <Link href="https://wa.me/254748970757" target="_blank" className="w-full flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors group text-left">
                                         <span className="text-3xl">💬</span>
                                         <div className="text-left flex-1">
                                             <p className="font-bold text-gray-900">WhatsApp</p>
                                             <p className="text-sm text-gray-600">Chat with support team</p>
                                         </div>
                                         <span className="text-melagro-primary group-hover:translate-x-1 transition-transform">→</span>
-                                    </button>
+                                    </Link>
 
-                                    <button className="w-full flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors group">
+                                    <Link href="tel:+254748970757" className="w-full flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors group text-left">
                                         <span className="text-3xl">📞</span>
                                         <div className="text-left flex-1">
                                             <p className="font-bold text-gray-900">Call Us</p>
-                                            <p className="text-sm text-gray-600">+254 700 123 456</p>
+                                            <p className="text-sm text-gray-600">+254 748 970 757</p>
                                         </div>
                                         <span className="text-melagro-primary group-hover:translate-x-1 transition-transform">→</span>
-                                    </button>
+                                    </Link>
 
-                                    <button className="w-full flex items-center gap-4 p-4 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors group">
+                                    <Link href="mailto:proinnovationtech@gmail.com" className="w-full flex items-center gap-4 p-4 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors group text-left">
                                         <span className="text-3xl">📧</span>
                                         <div className="text-left flex-1">
                                             <p className="font-bold text-gray-900">Email</p>
-                                            <p className="text-sm text-gray-600">support@melagro.com</p>
+                                            <p className="text-sm text-gray-600">proinnovationtech@gmail.com</p>
                                         </div>
                                         <span className="text-melagro-primary group-hover:translate-x-1 transition-transform">→</span>
-                                    </button>
+                                    </Link>
                                 </div>
                             </div>
 

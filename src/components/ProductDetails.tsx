@@ -1,4 +1,3 @@
-
 "use client";
 import { useState, useEffect } from 'react';
 import Header from "@/components/Header";
@@ -19,7 +18,7 @@ export default function ProductDetails({ id }: { id: string }) {
     const [quantity, setQuantity] = useState(1);
     const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'usage'>('description');
 
-    const { createChama, activeChamas } = useChama();
+    const { activeChamas } = useChama();
     const router = useRouter();
     const searchParams = useSearchParams();
     const joinChamaId = searchParams.get('join');
@@ -113,9 +112,7 @@ export default function ProductDetails({ id }: { id: string }) {
                 <nav className="flex items-center gap-2 text-xs text-gray-500 mb-8 font-medium">
                     <Link href="/" className="hover:text-green-600">Home</Link>
                     <span>/</span>
-                    <Link href="/products" className="hover:text-green-600">Fertilizers</Link>
-                    <span>/</span>
-                    <span className="text-green-600 truncate">{product.category}</span>
+                    <Link href="/products" className="hover:text-green-600">{product.category}</Link>
                     <span>/</span>
                     <span className="text-gray-900 truncate max-w-[200px]">{product.name}</span>
                 </nav>
@@ -124,7 +121,6 @@ export default function ProductDetails({ id }: { id: string }) {
                     {/* Left Column: Images */}
                     <div className="space-y-6">
                         <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-square mx-auto max-w-lg lg:max-w-none">
-                            {/* Badges */}
                             <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
                                 <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">Best Seller</span>
                                 <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm">-10%</span>
@@ -137,13 +133,6 @@ export default function ProductDetails({ id }: { id: string }) {
                                 className="object-contain p-8 hover:scale-105 transition-transform duration-500"
                                 priority
                             />
-
-                            {/* Magnify Icon Placeholder */}
-                            <button className="absolute bottom-4 right-4 p-2 bg-white rounded-full shadow-sm text-gray-400 hover:text-gray-600">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
                         </div>
 
                         {/* Thumbnails */}
@@ -161,7 +150,7 @@ export default function ProductDetails({ id }: { id: string }) {
                     {/* Right Column: Info */}
                     <div className="flex flex-col">
                         <span className="text-green-600 font-bold text-xs uppercase tracking-wider mb-2">
-                            {product.supplier || "YARA EAST AFRICA"}
+                            {product.supplier || "MEL-AGRI QUALITY"}
                         </span>
 
                         <div className="flex justify-between items-start">
@@ -187,34 +176,17 @@ export default function ProductDetails({ id }: { id: string }) {
 
                         {/* Price */}
                         <div className="flex items-center gap-3 mb-6">
-                            <span className="text-3xl font-extrabold text-green-500">KES {product.price.toLocaleString()}</span>
+                            <span className="text-3xl font-extrabold text-[#22c55e]">KES {product.price.toLocaleString()}</span>
                             <span className="text-lg text-gray-400 line-through font-medium">KES {(product.price * 1.15).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                             <span className="bg-green-100 text-green-700 text-xs font-bold px-2 py-1 rounded">Save KES {(product.price * 0.15).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                         </div>
 
                         <p className="text-gray-600 text-sm leading-relaxed mb-6">
-                            {product.description || "High-quality fertilizer ideal for planting. Provides essential nitrogen and phosphorus for strong root development and early crop growth. Suitable for maize, beans, vegetables, and cereals."}
+                            {product.description}
                         </p>
-
-                        {/* Tags */}
-                        <div className="flex flex-wrap gap-2 mb-8">
-                            <span className="bg-green-50 text-green-700 text-xs font-bold px-3 py-1.5 rounded-md flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                Standard 18:46:0
-                            </span>
-                            <span className="bg-gray-100 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-md flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
-                                50kg Bag
-                            </span>
-                            <span className="bg-gray-100 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-md flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                Original
-                            </span>
-                        </div>
 
                         {/* Actions */}
                         <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                            {/* Quantity */}
                             <div className="flex items-center border border-gray-300 rounded-lg px-2 w-32 justify-between h-12">
                                 <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 flex justify-center text-gray-500 hover:text-green-600 text-lg font-bold">-</button>
                                 <span className="text-gray-900 font-bold">{quantity}</span>
@@ -224,17 +196,21 @@ export default function ProductDetails({ id }: { id: string }) {
                             <button
                                 onClick={handleAddToCart}
                                 disabled={!product.inStock}
-                                className="h-12 flex-1 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-green-200"
+                                className="h-12 flex-1 bg-[#22c55e] hover:bg-green-600 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-green-200"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                                 Add to Cart
                             </button>
                         </div>
 
-                        {/* Direct Buy Buttons (Mock) */}
-                        <button className="w-full h-12 border-2 border-gray-900 text-gray-900 font-bold rounded-lg hover:bg-gray-50 transition-colors mb-8">
-                            Buy Now
-                        </button>
+                        <div className="flex flex-col gap-3 mb-8">
+                            <button
+                                onClick={() => { handleAddToCart(); router.push('/checkout'); }}
+                                className="w-full h-12 border-2 border-gray-900 text-gray-900 font-bold rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                                Buy Now
+                            </button>
+                        </div>
 
                         {/* Delivery Info */}
                         <div className="bg-green-50 rounded-xl p-4 border border-green-100">
@@ -246,7 +222,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                 <button className="text-xs font-bold text-green-600 hover:underline">Change</button>
                             </div>
                             <p className="text-xs text-gray-600 leading-normal">
-                                Order within <span className="text-green-600 font-bold">4 hrs 22 mins</span> for delivery by tomorrow, 12 AM. Free delivery on orders over 10 bags.
+                                Order now for delivery by tomorrow. Free delivery on orders over KES 5,000.
                             </p>
                         </div>
                     </div>
@@ -262,7 +238,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                     key={tab}
                                     onClick={() => setActiveTab(tab.toLowerCase() as any)}
                                     className={`pb-4 text-sm font-bold capitalize whitespace-nowrap transition-colors border-b-2 ${activeTab === tab.toLowerCase()
-                                        ? 'text-green-600 border-green-500'
+                                        ? 'text-[#22c55e] border-[#22c55e]'
                                         : 'text-gray-400 border-transparent hover:text-gray-600'
                                         }`}
                                 >
@@ -277,88 +253,18 @@ export default function ProductDetails({ id }: { id: string }) {
                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
                                     <h3 className="text-lg font-bold text-gray-900">Product Overview</h3>
                                     <p className="text-gray-600 text-sm leading-relaxed">
-                                        DAP (Di-Ammonium Phosphate) is the world's most widely used phosphorus fertilizer. It's popular because of its relatively high nutrient content and its excellent physical properties. Mel-Agri sources premium DAP ensuring that your crops get the best start possible.
+                                        {product.description}
                                     </p>
-                                    <p className="text-gray-600 text-sm leading-relaxed">
-                                        The high phosphorus content makes it a true high-energy fertilizer for strong root growth. The ammonium nitrogen present in DAP is an excellent N source and is gradually converted to nitrate by soil bacteria, resulting in a subsequent pH drop which aids phosphorus uptake.
-                                    </p>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                                        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" /></svg>
-                                                <h4 className="font-bold text-gray-900 text-sm">Chemical Composition</h4>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between text-xs">
-                                                    <span className="text-gray-500">Total Nitrogen (N)</span>
-                                                    <span className="font-bold text-gray-900">18%</span>
-                                                </div>
-                                                <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                                                    <div className="bg-green-500 h-full rounded-full" style={{ width: '18%' }}></div>
-                                                </div>
-                                                <div className="flex justify-between text-xs pt-2">
-                                                    <span className="text-gray-500">Available Phosphate (P2O5)</span>
-                                                    <span className="font-bold text-gray-900">46%</span>
-                                                </div>
-                                                <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                                                    <div className="bg-green-500 h-full rounded-full" style={{ width: '46%' }}></div>
-                                                </div>
-                                                <div className="flex justify-between text-xs pt-2">
-                                                    <span className="text-gray-500">Soluble Potash (K2O)</span>
-                                                    <span className="font-bold text-gray-900">0%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" /></svg>
-                                                <h4 className="font-bold text-gray-900 text-sm">Physical Specs</h4>
-                                            </div>
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between text-xs py-1 border-b border-gray-50">
-                                                    <span className="text-gray-500">Packaging</span>
-                                                    <span className="font-bold text-gray-900">Woven Polypropylene</span>
-                                                </div>
-                                                <div className="flex justify-between text-xs py-1 border-b border-gray-50">
-                                                    <span className="text-gray-500">Weight</span>
-                                                    <span className="font-bold text-gray-900">50 kg</span>
-                                                </div>
-                                                <div className="flex justify-between text-xs py-1 border-b border-gray-50">
-                                                    <span className="text-gray-500">Appearance</span>
-                                                    <span className="font-bold text-gray-900">Grey/Black Granules</span>
-                                                </div>
-                                                <div className="flex justify-between text-xs py-1 border-b border-gray-50">
-                                                    <span className="text-gray-500">Granule Size</span>
-                                                    <span className="font-bold text-gray-900">2-4 mm</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             )}
 
                             {activeTab === 'specifications' && (
                                 <div className="animate-in fade-in slide-in-from-bottom-2">
                                     <h3 className="text-lg font-bold text-gray-900 mb-4">Detailed Specifications</h3>
-                                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                                        <table className="w-full text-sm text-left">
-                                            <tbody className="divide-y divide-gray-100">
-                                                <tr className="bg-gray-50">
-                                                    <td className="px-6 py-3 font-medium text-gray-600 w-1/3">Nutrient content</td>
-                                                    <td className="px-6 py-3 text-gray-900">18% N, 46% P2O5</td>
-                                                </tr>
-                                                <tr>
-                                                    <td className="px-6 py-3 font-medium text-gray-600">Moisture Content</td>
-                                                    <td className="px-6 py-3 text-gray-900">Max 1.5%</td>
-                                                </tr>
-                                                <tr className="bg-gray-50">
-                                                    <td className="px-6 py-3 font-medium text-gray-600">Density</td>
-                                                    <td className="px-6 py-3 text-gray-900">900-1000 kg/m³</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
+                                    <div className="bg-white border border-gray-200 rounded-xl p-6">
+                                        <p className="text-gray-600 text-sm leading-relaxed">
+                                            {product.specification || "No detailed specifications provided for this product."}
+                                        </p>
                                     </div>
                                 </div>
                             )}
@@ -367,21 +273,16 @@ export default function ProductDetails({ id }: { id: string }) {
                                 <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
                                     <h3 className="text-lg font-bold text-gray-900">Usage Instructions</h3>
                                     <div className="bg-green-50 p-6 rounded-xl border border-green-100">
-                                        <ul className="list-disc list-inside space-y-2 text-sm text-gray-700">
-                                            <li>Apply during planting for best results.</li>
-                                            <li>Do not mix directly with seed to avoid scorching.</li>
-                                            <li>Recommended dosage: 50kg per acre for maize.</li>
-                                            <li>Store in a cool, dry place away from direct sunlight.</li>
-                                        </ul>
+                                        <p className="text-sm text-gray-700">
+                                            {product.howToUse || "Follow standard agricultural practices for application. Refer to product packaging for specific instructions."}
+                                        </p>
                                     </div>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Right Side - Empty or Additional Promo (Customer Reviews was here) */}
                     <div className="hidden lg:block">
-                        {/* We removed reviews. We can put the Chama Offer here if we want, or leave it blank/promo */}
                         {targetChama ? (
                             <div className="bg-purple-50 border-2 border-purple-500 rounded-2xl p-6">
                                 <h3 className="font-bold text-purple-900 text-lg mb-2">Join {targetChama.creatorName}'s Group!</h3>
@@ -398,7 +299,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                                 id: `${product.id}_chama_${targetChama.id}`,
                                                 name: `${product.name} (Group Buy)`,
                                                 price: targetChama.price,
-                                                category: 'Group Buy' // metadata
+                                                category: 'Group Buy'
                                             } as any);
                                             setShowToast(true);
                                             setTimeout(() => setShowToast(false), 3000);
@@ -413,7 +314,7 @@ export default function ProductDetails({ id }: { id: string }) {
                             <div className="bg-yellow-50 rounded-2xl p-6 border border-yellow-100">
                                 <h4 className="font-bold text-yellow-800 mb-2">Need Bulk Supply?</h4>
                                 <p className="text-xs text-yellow-700 mb-4">We offer special rates for orders over 100 bags.</p>
-                                <Link href="/contact" className="text-sm font-bold text-yellow-800 underline">Contact Sales Team</Link>
+                                <Link href="/dashboard/user?tab=support" className="text-sm font-bold text-yellow-800 underline">Contact Sales Team</Link>
                             </div>
                         )}
                     </div>
@@ -437,14 +338,12 @@ export default function ProductDetails({ id }: { id: string }) {
                                 category={p.category}
                             />
                         )) : (
-                            // Fallback Skeleton
                             [...Array(4)].map((_, i) => (
                                 <div key={i} className="bg-gray-100 rounded-xl h-80 animate-pulse"></div>
                             ))
                         )}
                     </div>
                 </div>
-
             </main>
 
             <Footer />

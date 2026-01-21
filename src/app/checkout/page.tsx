@@ -11,15 +11,19 @@ import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { generateWhatsAppMessage, getWhatsAppUrl } from '@/lib/whatsapp';
+import { useBehavior } from '@/context/BehaviorContext';
 
 export default function CheckoutPage() {
     const router = useRouter();
     const { cartItems, cartTotal, clearCart } = useCart();
     const { user } = useAuth();
     const { addOrder } = useOrders();
+    const { trackAction } = useBehavior();
 
     const [currentStep, setCurrentStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
     const [isProcessing, setIsProcessing] = useState(false);
+    const [validationErrorCount, setValidationErrorCount] = useState(0);
 
     const [shippingData, setShippingData] = useState({
         firstName: user?.name?.split(' ')[0] || '',
@@ -47,9 +51,14 @@ export default function CheckoutPage() {
         if (currentStep === 1) {
             if (!shippingData.firstName || !shippingData.phone || !shippingData.address) {
                 toast.error("Please fill in all required shipping details.");
+                setValidationErrorCount(prev => prev + 1);
+                if (validationErrorCount >= 1) {
+                    trackAction('checkout_validation_frustration', { errors: ['missing_fields'] });
+                }
                 return;
             }
         }
+        trackAction('checkout_step_advance', { from: currentStep, to: currentStep + 1 });
         if (currentStep < 3) setCurrentStep(currentStep + 1);
     };
 
@@ -78,14 +87,39 @@ export default function CheckoutPage() {
                 },
                 phone: shippingData.phone,
                 paymentMethod: paymentMethod,
-                paymentStatus: 'Unpaid' as const,
+                paymentStatus: paymentMethod === 'whatsapp' ? 'Pending WhatsApp' : 'Unpaid' as any,
                 shippingMethod: shippingMethod,
                 shippingCost: shippingCost
             };
 
             const newOrder = await addOrder(orderData);
 
+            if (paymentMethod === 'whatsapp') {
+                const message = generateWhatsAppMessage({
+                    orderId: newOrder.id,
+                    items: cartItems.map(item => ({
+                        name: item.name,
+                        quantity: item.quantity,
+                        price: item.price
+                    })),
+                    total: total,
+                    userName: `${shippingData.firstName} ${shippingData.lastName}`,
+                    phone: shippingData.phone,
+                    address: `${shippingData.address}, ${shippingData.town}, ${shippingData.county}`
+                });
+
+                const whatsappUrl = getWhatsAppUrl(message);
+                clearCart();
+                toast.success("Order recorded! Redirecting to WhatsApp...");
+                setTimeout(() => {
+                    window.open(whatsappUrl, '_blank');
+                    router.push(`/checkout/success?orderId=${newOrder.id}`);
+                }, 2000);
+                return;
+            }
+
             if (paymentMethod === 'mpesa') {
+
                 const loadingToast = toast.loading("Initiating M-Pesa prompt...");
 
                 // 1. Trigger STK Push
@@ -211,11 +245,6 @@ export default function CheckoutPage() {
                                 <div className="bg-white rounded-2xl p-8 border border-gray-200">
                                     <h2 className="text-2xl font-bold mb-8 text-gray-900">Contact Information</h2>
 
-                                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 flex items-start gap-3">
-                                        <span className="mt-0.5">ℹ️</span>
-                                        <span>Already have an account? <Link href="#" className="font-semibold hover:underline">Log in</Link></span>
-                                    </div>
-
                                     <div className="space-y-6">
                                         {/* Email */}
                                         <div>
@@ -241,7 +270,6 @@ export default function CheckoutPage() {
                                                 placeholder="748 970 757"
                                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
                                             />
-                                            <p className="text-xs text-gray-500 mt-2">Used for delivery updates notify Prefer analytics</p>
                                         </div>
 
                                         <hr />
@@ -299,7 +327,7 @@ export default function CheckoutPage() {
                                                 name="town"
                                                 value={shippingData.town}
                                                 onChange={handleInputChange}
-                                                placeholder="e.g. Westlands, Tuka Tusi, Langata"
+                                                placeholder="e.g. Westlands, Kilimani, Langata"
                                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
                                             />
                                         </div>
@@ -311,7 +339,7 @@ export default function CheckoutPage() {
                                                 name="address"
                                                 value={shippingData.address}
                                                 onChange={handleInputChange}
-                                                placeholder="e.g. Rd. Hill-Rd. Station, Mid Avenue"
+                                                placeholder="e.g. Apartment, Building, Floor"
                                                 rows={3}
                                                 className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
                                             />
@@ -409,6 +437,29 @@ export default function CheckoutPage() {
                                             <p className="text-sm text-gray-500 font-medium">Instant payment directly from your phone.</p>
                                         </div>
 
+                                        {/* WhatsApp Order Option */}
+                                        <div
+                                            onClick={() => setPaymentMethod('whatsapp')}
+                                            className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'whatsapp'
+                                                ? 'border-[#25D366] bg-green-50 shadow-sm ring-2 ring-[#25D366]/20'
+                                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                }`}
+                                        >
+                                            {paymentMethod === 'whatsapp' && (
+                                                <div className="absolute top-3 right-3 text-[#25D366]">
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                                </div>
+                                            )}
+                                            <div className="mb-4 h-[22px]"></div>
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-100 shadow-sm text-[#25D366]">
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.038 3.284l-.54 1.964 2.009-.528c.954.524 1.942.85 3.037.852 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.586-5.772-5.744-5.772zm3.374 8.086c-.1.272-.58.513-.801.551-.237.042-.46.079-.769-.015-.297-.091-.676-.239-1.144-.442-1.99-.861-3.284-2.885-3.383-3.018-.099-.134-.736-.979-.736-1.959 0-.979.512-1.46.694-1.658.183-.198.396-.247.53-.247.13 0 .26.012.37.012.11 0 .26-.041.408.321.148.36.512 1.25.56 1.348.049.099.083.214.016.347-.066.13-.1.214-.2.33-.1.115-.208.261-.297.35-.099.099-.198.198-.083.396.115.198.512.845 1.099 1.366.759.673 1.398.882 1.596.981.198.099.313.082.43-.049.115-.132.512-.596.644-.793.132-.198.26-.165.43-.099.172.066 1.09.514 1.277.613.183.1.312.148.363.23.049.082.049.479-.05.751z" /></svg>
+                                                </div>
+                                                <span className="font-bold text-gray-900">WhatsApp Order</span>
+                                            </div>
+                                            <p className="text-sm text-gray-500 font-medium">Order via WhatsApp and pay on delivery.</p>
+                                        </div>
+
                                         {/* Card Option */}
                                         <div
                                             onClick={() => setPaymentMethod('card')}
@@ -435,7 +486,7 @@ export default function CheckoutPage() {
                                         {/* Cash on Delivery Option */}
                                         <div
                                             onClick={() => setPaymentMethod('cod')}
-                                            className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 md:col-span-2 ${paymentMethod === 'cod'
+                                            className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'cod'
                                                 ? 'border-gray-800 bg-gray-100 shadow-sm ring-2 ring-gray-800/20'
                                                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                                 }`}
@@ -445,6 +496,7 @@ export default function CheckoutPage() {
                                                     <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                                                 </div>
                                             )}
+                                            <div className="mb-4 h-[22px]"></div>
                                             <div className="flex items-center gap-3 mb-2">
                                                 <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-100 shadow-sm text-gray-600">
                                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
@@ -455,7 +507,6 @@ export default function CheckoutPage() {
                                         </div>
                                     </div>
 
-                                    {/* Selected Payment Details */}
                                     {/* Selected Payment Details */}
                                     <div className="mt-8 animate-in fade-in slide-in-from-top-2 duration-300">
                                         {paymentMethod === 'mpesa' && (
@@ -473,6 +524,17 @@ export default function CheckoutPage() {
                                                     </div>
                                                     <button onClick={() => setCurrentStep(1)} className="text-sm font-bold text-[#22c55e] hover:underline px-4">Edit</button>
                                                 </div>
+                                            </div>
+                                        )}
+
+                                        {paymentMethod === 'whatsapp' && (
+                                            <div className="bg-green-50 p-6 rounded-2xl border border-green-100">
+                                                <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
+                                                    <span className="text-xl">💬</span> WhatsApp Ordering
+                                                </h3>
+                                                <p className="text-sm text-gray-600">
+                                                    Complete your order on WhatsApp. Our team will confirm your items and arrange delivery details via chat.
+                                                </p>
                                             </div>
                                         )}
 
@@ -530,7 +592,6 @@ export default function CheckoutPage() {
                                             </div>
                                             <p className="text-gray-900 font-semibold">{shippingData.firstName} {shippingData.lastName}</p>
                                             <p className="text-gray-600">{shippingData.address}</p>
-                                            <p className="text-gray-600">P.O. Box 1234, Highland Farm</p>
                                             <p className="text-gray-600">{shippingData.town}, {shippingData.county}</p>
                                             <p className="text-gray-600">{shippingData.phone}</p>
                                         </div>
@@ -541,8 +602,7 @@ export default function CheckoutPage() {
                                                 <h3 className="font-bold text-gray-900">Shipping Method</h3>
                                                 <button className="text-melagro-primary hover:underline text-sm font-semibold" onClick={() => setCurrentStep(1)}>Edit</button>
                                             </div>
-                                            <p className="text-gray-900 font-semibold">Standard Delivery (Wells Fargo)</p>
-                                            <p className="text-gray-600 text-sm">Estimated Delivery: 2-3 Business Days</p>
+                                            <p className="text-gray-900 font-semibold">{shippingMethod === 'standard' ? 'Standard Delivery (2-3 Days)' : 'Pick-up from Store'}</p>
                                         </div>
 
                                         {/* Payment Method */}
@@ -551,11 +611,15 @@ export default function CheckoutPage() {
                                                 <h3 className="font-bold text-gray-900">Payment Method</h3>
                                                 <button className="text-melagro-primary hover:underline text-sm font-semibold" onClick={() => setCurrentStep(2)}>Edit</button>
                                             </div>
-                                            <p className="text-gray-900 font-semibold uppercase">{paymentMethod === 'cod' ? 'Cash on Delivery' : paymentMethod}</p>
+                                            <p className="text-gray-900 font-semibold uppercase">
+                                                {paymentMethod === 'cod' ? 'Cash on Delivery' :
+                                                    paymentMethod === 'whatsapp' ? 'WhatsApp Order' : paymentMethod}
+                                            </p>
                                             <p className="text-gray-600 text-sm">
                                                 {paymentMethod === 'mpesa' && 'Paying via M-Pesa Express (Phone)'}
                                                 {paymentMethod === 'card' && 'Paying via Secure Card (Stripe)'}
                                                 {paymentMethod === 'cod' && 'Pay on Delivery / Collection'}
+                                                {paymentMethod === 'whatsapp' && 'Confirm and complete order on WhatsApp'}
                                             </p>
                                         </div>
 
@@ -598,7 +662,7 @@ export default function CheckoutPage() {
                                                     Processing...
                                                 </>
                                             ) : (
-                                                'Place Order'
+                                                paymentMethod === 'whatsapp' ? 'Complete on WhatsApp' : 'Place Order'
                                             )}
                                         </button>
                                     </div>
@@ -647,16 +711,6 @@ export default function CheckoutPage() {
                                     </div>
                                 </div>
 
-                                <div className="mt-6 pt-6 border-t space-y-3 text-xs">
-                                    <div className="flex gap-2 items-start">
-                                        <span className="text-lg">📱</span>
-                                        <div>
-                                            <p className="font-semibold text-gray-900">Need Help?</p>
-                                            <p className="text-gray-500">Call our agricultural experts</p>
-                                            <p className="text-melagro-primary font-semibold">+254 700 123 456</p>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>

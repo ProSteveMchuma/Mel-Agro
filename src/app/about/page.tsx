@@ -25,7 +25,7 @@ export default function AboutPage() {
                                 Cultivating the <span className="text-transparent bg-clip-text bg-gradient-to-r from-melagro-primary to-green-300">Future</span> of Agri-Tech
                             </h1>
                             <p className="text-xl md:text-2xl text-gray-400 font-medium leading-relaxed max-w-2xl">
-                                Mel-Agro is redefining the agricultural landscape in Africa through innovation, quality inputs, and expert-led digital solutions.
+                                Mel-Agro is redefining the agricultural landscape in Africa through innovation and quality inputs.
                             </p>
                         </div>
                     </div>
@@ -96,7 +96,7 @@ export default function AboutPage() {
                                 </div>
                                 <h3 className="text-3xl font-black text-gray-900 mb-6">Our Mission</h3>
                                 <p className="text-lg text-gray-500 leading-relaxed font-medium">
-                                    To empower farmers by providing frictionless access to high-quality agricultural inputs, data-driven advisory, and sustainable solutions that maximize productivity and legacy.
+                                    To empower farmers by providing frictionless access to high-quality agricultural inputs and sustainable solutions that maximize productivity and legacy.
                                 </p>
                             </div>
 

@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useLanguage } from "@/context/LanguageContext";
 import Fuse from "fuse.js";
+import { useBehavior } from "@/context/BehaviorContext";
 
 // Export reusable search function
 export const fuzzySearch = (products: any[], query: string) => {
@@ -32,6 +33,7 @@ export default function SmartSearch() {
     const [suggestions, setSuggestions] = useState<typeof products>([]);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const { t } = useLanguage();
+    const { trackAction } = useBehavior();
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -67,6 +69,11 @@ export default function SmartSearch() {
 
                 // Extract items from Fuse result and limit to 5
                 const matches = result.slice(0, 5).map(r => r.item);
+
+                if (matches.length === 0) {
+                    trackAction('empty_search', { query });
+                }
+
                 setSuggestions(matches);
                 setIsOpen(true);
             });

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Logo from "./Logo";
 
 export default function Footer() {
     return (
@@ -7,11 +8,9 @@ export default function Footer() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
                     {/* Column 1: Brand */}
                     <div className="space-y-6">
-                        <Link href="/" className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-[#22c55e] rounded-lg flex items-center justify-center text-white font-bold text-lg">
-                                M
-                            </div>
-                            <span className="text-xl font-black text-white tracking-widest">Mel-Agri</span>
+                        <Link href="/">
+                            <Logo light iconOnly />
+                            <span className="text-xl font-black text-white tracking-widest ml-2">Mel-Agri</span>
                         </Link>
                         <p className="text-sm text-gray-400 leading-relaxed">
                             The No.1 Agricultural Online Store in Kenya. We connect farmers with quality inputs for better harvests.

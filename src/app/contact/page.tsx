@@ -12,7 +12,7 @@ export default function ContactPage() {
                     {/* Header */}
                     <div className="mb-16 text-center lg:text-left">
                         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Contact Makamithi</h1>
-                        <p className="text-lg text-gray-600">We are here to help you grow. Reach out with your orders, farming advice, or partnerships.</p>
+                        <p className="text-lg text-gray-600">We are here to help you grow. Reach out with your orders or partnerships.</p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
@@ -54,7 +54,6 @@ export default function ContactPage() {
                                     <select className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50">
                                         <option>General Inquiry</option>
                                         <option>Order Issue</option>
-                                        <option>Farming Advice</option>
                                         <option>Partnership</option>
                                         <option>Feedback</option>
                                     </select>
@@ -89,7 +88,7 @@ export default function ContactPage() {
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold text-gray-500 uppercase">Phone Support</p>
-                                            <p className="text-lg font-bold text-gray-900">+254 700 123 456</p>
+                                            <p className="text-lg font-bold text-gray-900">+254 748 970 757</p>
                                         </div>
                                     </div>
 
@@ -100,7 +99,7 @@ export default function ContactPage() {
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold text-gray-500 uppercase">Email</p>
-                                            <p className="text-lg font-bold text-gray-900">support@melagro.com</p>
+                                            <p className="text-lg font-bold text-gray-900">proinnovationtech@gmail.com</p>
                                         </div>
                                     </div>
 
@@ -135,7 +134,7 @@ export default function ContactPage() {
                                     </div>
                                 </div>
                                 <div className="mt-8">
-                                    <Link href="https://wa.me/254700123456" target="_blank" className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    <Link href="https://wa.me/254748970757" target="_blank" className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2">
                                         <span>💬</span> Chat on WhatsApp
                                     </Link>
                                 </div>
@@ -183,15 +182,15 @@ export default function ContactPage() {
                     {/* Support Section */}
                     <div className="mt-16 bg-gradient-to-r from-melagro-primary to-melagro-secondary rounded-2xl p-12 text-white text-center">
                         <h2 className="text-3xl font-bold mb-4">Still need help?</h2>
-                        <p className="text-lg mb-8 opacity-90">Our agricultural experts and support team are available Monday - Sunday, 8am - 8pm</p>
+                        <p className="text-lg mb-8 opacity-90">Our support team is available Monday - Sunday, 8am - 8pm</p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <Link href="https://wa.me/254700123456" target="_blank" className="bg-white text-melagro-primary px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors">
+                            <Link href="https://wa.me/254748970757" target="_blank" className="bg-white text-melagro-primary px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors">
                                 💬 WhatsApp
                             </Link>
-                            <Link href="tel:+254700123456" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">
+                            <Link href="tel:+254748970757" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">
                                 📞 Call Us
                             </Link>
-                            <Link href="mailto:support@melagro.com" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">
+                            <Link href="mailto:proinnovationtech@gmail.com" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">
                                 📧 Email
                             </Link>
                         </div>

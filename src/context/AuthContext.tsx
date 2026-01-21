@@ -47,6 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     userData = newUserData;
                 }
 
+                // If user document exists but name is generic, and firebase has a display name, update it
+                if (userData.name === 'User' && firebaseUser.displayName) {
+                    await setDoc(userDocRef, { name: firebaseUser.displayName }, { merge: true });
+                    userData.name = firebaseUser.displayName;
+                }
+
                 const role = firebaseUser.email === 'proinnovationtech@gmail.com'
                     ? 'super-admin'
                     : (['admin@melagro.com', 'james.wambua@makamithi.com'].includes(firebaseUser.email || '') ? 'admin' : (userData.role || 'user'));

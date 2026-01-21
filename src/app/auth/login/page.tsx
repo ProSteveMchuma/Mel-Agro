@@ -4,6 +4,7 @@ import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import Logo from '@/components/Logo';
 import { sendSignInLinkToEmail, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 
@@ -126,11 +127,14 @@ function LoginForm() {
             <main className="flex-grow flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-gray-100">
                     <div className="text-center">
-                        <h2 className="mt-6 text-3xl font-extrabold text-gray-900 tracking-tight">
-                            Welcome to MelAgro
+                        <div className="flex justify-center mb-6">
+                            <Logo />
+                        </div>
+                        <h2 className="mt-2 text-3xl font-extrabold text-gray-900 tracking-tight">
+                            Welcome Back
                         </h2>
                         <p className="mt-2 text-sm text-gray-600">
-                            Sign in to access your account
+                            Sign in to your Mel-Agri account
                         </p>
                     </div>
 

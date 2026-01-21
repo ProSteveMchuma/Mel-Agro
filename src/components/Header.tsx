@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import SmartSearch from "./SmartSearch";
 import { useLanguage } from "@/context/LanguageContext";
+import Logo from "./Logo";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -34,11 +35,8 @@ export default function Header() {
       <div className="container-custom py-4 border-b border-gray-100 shadow-sm">
         <div className="flex items-center gap-8 justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-            <div className="w-10 h-10 bg-[#22c55e] rounded-lg flex items-center justify-center text-white font-bold text-xl group-hover:shadow-lg transition-all shadow-md">
-              M
-            </div>
-            <span className="text-2xl font-black text-gray-900 tracking-tighter">Mel-Agri</span>
+          <Link href="/" className="group flex-shrink-0">
+            <Logo />
           </Link>
 
           {/* Search Bar - Desktop */}

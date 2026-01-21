@@ -80,95 +80,87 @@ export default function ProductCard({ id, name, price, image, category }: Produc
 
     return (
         <Link href={`/products/${id}`}>
-            <div className="group bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 hover:border-melagro-primary/30 flex flex-col h-full cursor-pointer">
+            <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-green-200 flex flex-col h-full cursor-pointer relative">
                 {/* Image Section */}
-                <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-                    <Image
+                <div className="relative aspect-square overflow-hidden bg-[#f8fcf9] flex items-center justify-center p-6">
+                    <img
                         src={imageSrc}
                         alt={name}
-                        fill
-                        className="object-contain group-hover:scale-110 transition-transform duration-500 p-3"
+                        className="w-full h-full object-contain group-hover:scale-110 transition-transform duration-700 ease-out"
                     />
 
+                    {/* Quick Action Overlay */}
+                    <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center gap-2">
+                        <button
+                            onClick={handleAddToCart}
+                            className="bg-white text-gray-900 p-3 rounded-full shadow-lg transform translate-y-10 group-hover:translate-y-0 transition-transform duration-500 delay-75 hover:bg-green-500 hover:text-white"
+                            title="Quick Add"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
+                        </button>
+                    </div>
+
                     {/* Discount Badge */}
-                    <div className="absolute top-3 left-3 bg-melagro-accent text-melagro-primary px-2 py-1 rounded-lg text-xs font-bold shadow-md z-10">
-                        -{discountPercent}%
+                    <div className="absolute top-4 left-4 bg-[#22c55e] text-white px-2 py-1 rounded-lg text-[10px] font-black shadow-lg z-10 uppercase tracking-tighter">
+                        -{discountPercent}% OFF
                     </div>
 
                     {/* Wishlist Button */}
                     <button
                         onClick={toggleWishlist}
-                        className={`absolute top-3 right-3 p-2 rounded-full z-10 transition-all duration-300 backdrop-blur-sm ${inWishlist
-                            ? "bg-red-500/90 text-white shadow-lg"
-                            : "bg-white/80 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                        className={`absolute top-4 right-4 p-2.5 rounded-full z-10 transition-all duration-300 backdrop-blur-md ${inWishlist
+                            ? "bg-red-500 text-white shadow-lg scale-110"
+                            : "bg-white/90 text-gray-300 hover:text-red-500 border border-gray-100 opacity-0 group-hover:opacity-100"
                             }`}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill={inWishlist ? "currentColor" : "none"} viewBox="0 0 20 20" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill={inWishlist ? "currentColor" : "none"} viewBox="0 0 20 20" stroke="currentColor">
                             <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                         </svg>
                     </button>
                 </div>
 
                 {/* Content Section */}
-                <div className="p-4 flex flex-col flex-grow">
-                    {/* Category Badge */}
-                    <div className="mb-2">
-                        <span className="inline-block bg-melagro-primary/10 text-melagro-primary text-xs font-semibold px-2 py-1 rounded-full">
-                            {category}
-                        </span>
-                    </div>
+                <div className="p-5 flex flex-col flex-grow">
+                    {/* Category Label */}
+                    <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.1em] mb-1 opacity-70">
+                        {category}
+                    </p>
 
                     {/* Product Name */}
-                    <h3 className="font-semibold text-sm text-gray-900 mb-3 line-clamp-2 leading-snug group-hover:text-melagro-primary transition-colors min-h-[2.5rem]">
+                    <h3 className="font-bold text-gray-900 mb-3 line-clamp-2 leading-tight group-hover:text-green-600 transition-colors min-h-[2.5rem] tracking-tight">
                         {name}
                     </h3>
 
                     {/* Price Section */}
-                    <div className="mb-4 mt-auto">
-                        <div className="flex items-baseline gap-2 mb-1">
-                            <span className="text-xl font-bold text-melagro-primary">
+                    <div className="mb-5 mt-auto">
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xl font-black text-gray-900">
                                 KES {safePrice.toLocaleString()}
                             </span>
-                            <span className="text-gray-400 line-through text-sm">
+                            <span className="text-gray-400 line-through text-xs font-medium">
                                 KES {originalPrice.toLocaleString()}
                             </span>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-gray-100">
+                    {/* Double Buttons */}
+                    <div className="grid grid-cols-2 gap-2">
                         <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                handleAddToCart(e);
-                            }}
+                            onClick={handleAddToCart}
                             disabled={isAdding}
-                            className={`py-2.5 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center justify-center gap-1.5 ${isAdding
-                                ? "bg-green-600 text-white"
-                                : "bg-melagro-primary/10 text-melagro-primary hover:bg-melagro-primary hover:text-white"
+                            className={`py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all duration-300 ${isAdding
+                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                : "bg-gray-900 text-white hover:bg-[#22c55e] shadow-sm hover:shadow-green-200"
                                 }`}
                         >
-                            {isAdding ? (
-                                <>
-                                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                </>
-                            ) : (
-                                <>
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-                                    Add
-                                </>
-                            )}
+                            {isAdding ? "Added!" : "Add Cart"}
                         </button>
 
                         <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                handleBuyNow(e);
-                            }}
-                            className="py-2.5 rounded-lg font-semibold text-sm bg-melagro-accent text-melagro-primary hover:bg-melagro-accent/90 transition-all duration-300 flex items-center justify-center gap-1.5"
+                            onClick={handleBuyNow}
+                            className="py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-widest bg-white border border-gray-200 text-gray-900 hover:border-gray-900 transition-all shadow-sm"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                            Buy
+                            Buy Now
                         </button>
                     </div>
                 </div>

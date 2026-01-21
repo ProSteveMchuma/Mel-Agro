@@ -11,87 +11,128 @@ import FlashSaleStrip from "@/components/FlashSaleStrip";
 import Partners from "@/components/Partners";
 import DualPromoBanners from "@/components/DualPromoBanners";
 import Link from "next/link";
+import { motion } from "framer-motion";
+import WhatsAppButton from "@/components/WhatsAppButton";
+
+const FadeInWhenVisible = ({ children, delay = 0 }: { children: React.ReactNode, delay?: number }) => {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 40 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-100px" }}
+      transition={{ duration: 0.8, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
+    >
+      {children}
+    </motion.div>
+  );
+};
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
+    <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-green-100 selection:text-green-900">
       <JsonLd />
       <Header />
 
-      <main className="flex-grow space-y-8">
+      <main className="flex-grow space-y-12 md:space-y-20 pb-20">
         <Hero />
 
         {/* Mobile Search - Visible only on small screens */}
         <div className="md:hidden container-custom">
-          <div className="relative group">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative group"
+          >
             <input
               type="text"
-              placeholder="Search for seeds, tools, fertilizer..."
-              className="w-full pl-12 pr-4 py-3 rounded-xl text-gray-800 text-sm border border-gray-200 focus:border-melagro-primary/50 focus:outline-none focus:ring-4 focus:ring-melagro-primary/10 transition-all shadow-sm bg-white"
+              placeholder="Search seeds, tools, fertilizers..."
+              className="w-full pl-12 pr-4 py-4 rounded-2xl text-gray-800 text-sm border border-gray-100 focus:border-green-500/50 focus:outline-none focus:ring-4 focus:ring-green-500/10 transition-all shadow-sm bg-gray-50"
             />
-            <svg className="w-5 h-5 text-gray-400 absolute left-4 top-3.5 group-focus-within:text-melagro-primary transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-400 absolute left-4 top-4.5 group-focus-within:text-green-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
             </svg>
-          </div>
+          </motion.div>
         </div>
 
         {/* Categories Section */}
         <section className="container-custom">
-          <div className="flex justify-between items-end mb-4 px-1">
-            <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Shop by Category</h2>
-            <Link href="/products" className="text-sm font-bold text-melagro-primary hover:text-green-700 hover:underline">
-              View All &rarr;
-            </Link>
-          </div>
-          <CategoryIcons />
+          <FadeInWhenVisible>
+            <div className="flex justify-between items-end mb-8 px-2">
+              <div>
+                <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em] mb-2">Explore</p>
+                <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter">Shop by Category</h2>
+              </div>
+              <Link href="/products" className="group flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-green-600 transition-colors">
+                View All <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
+              </Link>
+            </div>
+            <CategoryIcons />
+          </FadeInWhenVisible>
         </section>
 
         {/* Flash Sale Section */}
         <section className="container-custom">
-          <FlashSaleStrip />
+          <FadeInWhenVisible delay={0.1}>
+            <FlashSaleStrip />
+          </FadeInWhenVisible>
         </section>
 
         {/* Featured Products */}
-        <section className="container-custom py-4">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">Featured Products</h2>
-              <Link href="/products?sort=featured" className="text-sm font-bold text-melagro-primary hover:text-green-700 hover:underline">
-                View All &rarr;
-              </Link>
+        <section className="container-custom">
+          <FadeInWhenVisible>
+            <div className="bg-gray-50/50 p-8 md:p-12 rounded-[3rem] border border-gray-100">
+              <div className="flex justify-between items-center mb-10">
+                <div>
+                  <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em] mb-2">Picked for you</p>
+                  <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">Featured Products</h2>
+                </div>
+                <Link href="/products?sort=featured" className="group flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-green-600 transition-colors">
+                  View All <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
+              </div>
+              <ProductRow title="" filter={(p) => p.rating >= 4} />
             </div>
-            <ProductRow title="" filter={(p) => p.rating >= 4} />
-          </div>
+          </FadeInWhenVisible>
         </section>
 
         {/* Dual Promo Banners */}
-        <DualPromoBanners />
+        <FadeInWhenVisible>
+          <DualPromoBanners />
+        </FadeInWhenVisible>
 
         {/* New Arrivals */}
-        <section className="container-custom py-4">
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-black text-gray-800 uppercase tracking-tight">New Arrivals</h2>
-              <Link href="/products?sort=newest" className="text-sm font-bold text-melagro-primary hover:text-green-700 hover:underline">
-                View All &rarr;
-              </Link>
+        <section className="container-custom">
+          <FadeInWhenVisible>
+            <div className="bg-white p-8 md:p-12 rounded-[3rem] border border-gray-100 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-green-50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-50" />
+
+              <div className="flex justify-between items-center mb-10 relative z-10">
+                <div>
+                  <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em] mb-2">Just Landed</p>
+                  <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter">NEW ARRIVALS</h2>
+                </div>
+                <Link href="/products?sort=newest" className="group flex items-center gap-2 text-sm font-bold text-gray-400 hover:text-green-600 transition-colors">
+                  View All <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
+              </div>
+              <ProductRow title="" filter={(p) => true} />
             </div>
-            <ProductRow title="" filter={(p) => true} />
-          </div>
+          </FadeInWhenVisible>
         </section>
 
-        {/* Newsletter Section */}
-        <div className="bg-white border-t border-gray-100 py-12 mt-8">
-          <Newsletter />
-        </div>
-
-        {/* Partners Section */}
-        <div className="bg-gray-50 py-12 border-t border-gray-200">
+        <FadeInWhenVisible>
           <Partners />
-        </div>
+        </FadeInWhenVisible>
+
+        {/* Newsletter Section */}
+        <FadeInWhenVisible>
+          <Newsletter />
+        </FadeInWhenVisible>
+
       </main>
 
       <Footer />
+      <WhatsAppButton />
     </div>
   );
 }
