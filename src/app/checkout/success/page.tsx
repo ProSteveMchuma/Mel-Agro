@@ -13,15 +13,60 @@ function OrderSuccessContent() {
     const orderId = searchParams.get("orderId");
     const { orders } = useOrders();
     const [order, setOrder] = useState<Order | null>(null);
+    const [isNotFound, setIsNotFound] = useState(false);
 
     useEffect(() => {
-        if (orderId && orders.length > 0) {
+        const fetchOrder = async () => {
+            if (!orderId) return;
+
+            // 1. Try local context first
             const foundOrder = orders.find((o) => o.id === orderId);
             if (foundOrder) {
                 setOrder(foundOrder);
+                return;
             }
-        }
+
+            // 2. Fallback to direct fetch from Firestore
+            try {
+                const { doc, getDoc } = await import('firebase/firestore');
+                const { db } = await import('@/lib/firebase');
+                const orderRef = doc(db, 'orders', orderId);
+                const orderSnap = await getDoc(orderRef);
+
+                if (orderSnap.exists()) {
+                    setOrder({ id: orderSnap.id, ...orderSnap.data() } as Order);
+                } else {
+                    // Give it one more try after a delay or mark as not found
+                    setTimeout(async () => {
+                        const retrySnap = await getDoc(orderRef);
+                        if (retrySnap.exists()) {
+                            setOrder({ id: retrySnap.id, ...retrySnap.data() } as Order);
+                        } else {
+                            setIsNotFound(true);
+                        }
+                    }, 2000);
+                }
+            } catch (err) {
+                console.error("Error fetching order in success page:", err);
+            }
+        };
+
+        fetchOrder();
     }, [orderId, orders]);
+
+    if (isNotFound) {
+        return (
+            <div className="flex-grow flex items-center justify-center py-20">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-4">Order Not Found</h2>
+                    <p className="text-gray-500 mb-8">We couldn't find the details for order #{orderId?.slice(0, 8)}</p>
+                    <Link href="/dashboard/user" className="bg-melagro-primary text-white px-8 py-3 rounded-xl font-bold">
+                        Go to Dashboard
+                    </Link>
+                </div>
+            </div>
+        );
+    }
 
     if (!order) {
         return (

@@ -50,9 +50,17 @@ export default function ProductDetails({ id }: { id: string }) {
 
     const { addToCart } = useCart();
 
-    const handleAddToCart = () => {
+    const handleAddToCart = (e?: React.MouseEvent) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
         if (product) {
-            addToCart(product, quantity);
+            addToCart({
+                ...product,
+                inStock: product.inStock ?? true // Defensive
+            }, quantity);
             setShowToast(true);
             setTimeout(() => setShowToast(false), 3000);
         }
@@ -137,10 +145,10 @@ export default function ProductDetails({ id }: { id: string }) {
 
                         {/* Thumbnails */}
                         <div className="flex gap-4 justify-center">
-                            {[product.image, '/placeholder-2.jpg', '/placeholder-3.jpg'].map((img, idx) => (
+                            {[product.image, product.image, product.image].map((img, idx) => (
                                 <button key={idx} className={`w-16 h-16 rounded-lg border-2 overflow-hidden ${idx === 0 ? 'border-green-500' : 'border-transparent hover:border-gray-200'}`}>
                                     <div className="relative w-full h-full bg-gray-50">
-                                        <Image src={product.image} alt="Thumbnail" fill className="object-cover" />
+                                        <Image src={img} alt="Thumbnail" fill className="object-cover" />
                                     </div>
                                 </button>
                             ))}
@@ -205,7 +213,7 @@ export default function ProductDetails({ id }: { id: string }) {
 
                         <div className="flex flex-col gap-3 mb-8">
                             <button
-                                onClick={() => { handleAddToCart(); router.push('/checkout'); }}
+                                onClick={(e) => { handleAddToCart(e); router.push('/checkout'); }}
                                 className="w-full h-12 border-2 border-gray-900 text-gray-900 font-bold rounded-lg hover:bg-gray-50 transition-colors"
                             >
                                 Buy Now

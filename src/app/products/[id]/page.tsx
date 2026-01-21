@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import ProductDetails from '@/components/ProductDetails';
 import { getProductById } from '@/lib/products';
+import { Suspense } from 'react';
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -55,7 +56,9 @@ export default async function Page({ params }: Props) {
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
                 />
             )}
-            <ProductDetails id={id} />
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+                <ProductDetails id={id} />
+            </Suspense>
         </>
     );
 }
