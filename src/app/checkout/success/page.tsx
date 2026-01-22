@@ -9,6 +9,7 @@ import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
+import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 
 function OrderSuccessContent() {
     const searchParams = useSearchParams();
@@ -16,6 +17,7 @@ function OrderSuccessContent() {
     const { orders } = useOrders();
     const [order, setOrder] = useState<Order | null>(null);
     const [isNotFound, setIsNotFound] = useState(false);
+    const [showInvoice, setShowInvoice] = useState(false);
 
     useEffect(() => {
         if (order) {
@@ -94,6 +96,27 @@ function OrderSuccessContent() {
 
     return (
         <main className="flex-grow py-12 px-4">
+            {/* Invoice Overlay */}
+            {showInvoice && (
+                <div className="fixed inset-0 z-[100] bg-white overflow-auto print:overflow-visible">
+                    <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0">
+                        <div className="flex items-center gap-4">
+                            <button onClick={() => setShowInvoice(false)} className="p-2 hover:bg-gray-800 rounded-full transition-colors">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                            </button>
+                            <span className="font-bold">Official Invoice: #{order.id.slice(0, 8)}</span>
+                        </div>
+                        <div className="flex gap-4">
+                            <button onClick={() => window.print()} className="bg-melagro-primary px-4 py-2 rounded-lg hover:bg-melagro-secondary text-sm font-bold">Print / Save PDF</button>
+                            <button onClick={() => setShowInvoice(false)} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600 text-sm font-bold">Close</button>
+                        </div>
+                    </div>
+                    <div className="p-8 print:p-0">
+                        <InvoiceTemplate order={order} />
+                    </div>
+                </div>
+            )}
+
             <div className="max-w-4xl mx-auto">
                 {/* Success Banner */}
                 <motion.div
@@ -128,9 +151,12 @@ function OrderSuccessContent() {
                                 <Link href="/products" className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-200 text-center print:hidden">
                                     Shop More
                                 </Link>
-                                <Link href="/dashboard/user" className="border-2 border-gray-100 text-gray-900 px-8 py-4 rounded-2xl font-black hover:bg-gray-50 transition-all text-center print:hidden">
-                                    Track Order
-                                </Link>
+                                <button
+                                    onClick={() => setShowInvoice(true)}
+                                    className="border-2 border-melagro-primary text-melagro-primary bg-white px-8 py-4 rounded-2xl font-black hover:bg-green-50 transition-all text-center print:hidden flex items-center justify-center gap-2"
+                                >
+                                    <span>📄</span> Official Invoice
+                                </button>
                                 <button
                                     onClick={() => window.print()}
                                     className="border-2 border-gray-900 bg-gray-900 text-white px-8 py-4 rounded-2xl font-black hover:bg-black transition-all text-center print:hidden flex items-center justify-center gap-2"

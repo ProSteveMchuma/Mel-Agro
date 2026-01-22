@@ -1,18 +1,23 @@
 import React from 'react';
 import { Order } from '@/context/OrderContext';
+import { useSettings } from '@/context/SettingsContext';
+import Logo from '../Logo';
 
 interface ReceiptTemplateProps {
     order: Order;
 }
 
 export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({ order }) => {
+    const { general } = useSettings();
+
     return (
         <div className="bg-white p-6 max-w-md mx-auto font-mono text-sm text-gray-900 border border-gray-200" id="receipt-template">
             <div className="text-center mb-6">
-                <h2 className="text-xl font-bold mb-1">MelAgro</h2>
-                <p>Premium Agricultural Solutions</p>
-                <p>Nairobi, Kenya</p>
-                <p>+254 700 000 000</p>
+                <Logo iconOnly className="mx-auto mb-2" />
+                <h2 className="text-xl font-bold mb-1 uppercase tracking-tighter">{general.companyName || "MelAgro Kenya"}</h2>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Premium Agricultural Solutions</p>
+                <p className="text-xs">{general.address || "Nairobi, Kenya"}</p>
+                <p className="text-xs font-bold">{general.supportPhone || "+254 748 970 757"}</p>
             </div>
 
             <div className="border-b border-dashed border-gray-300 pb-4 mb-4">

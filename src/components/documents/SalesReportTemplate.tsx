@@ -1,5 +1,7 @@
 import React from 'react';
 import { Order } from '@/context/OrderContext';
+import { useSettings } from '@/context/SettingsContext';
+import Logo from '../Logo';
 
 interface SalesReportTemplateProps {
     orders: Order[];
@@ -8,6 +10,7 @@ interface SalesReportTemplateProps {
 }
 
 export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders, startDate, endDate }) => {
+    const { general } = useSettings();
     const totalSales = orders.reduce((acc, order) => acc + order.total, 0);
     const totalOrders = orders.length;
     const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
@@ -20,10 +23,18 @@ export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders
 
     return (
         <div className="bg-white p-8 max-w-4xl mx-auto font-sans text-gray-900" id="sales-report-template">
-            <div className="text-center mb-12 border-b-2 border-gray-900 pb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2 uppercase tracking-widest">Sales Report</h1>
-                <p className="text-gray-500">MelAgro Admin System</p>
-                <p className="text-sm text-gray-400 mt-2">Generated on {new Date().toLocaleString()}</p>
+            {/* Branded Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start mb-12 border-b-4 border-gray-900 pb-8 gap-6 text-left">
+                <div>
+                    <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tighter uppercase">Sales Analytics</h1>
+                    <p className="text-gray-500 font-bold">Market Performance Report</p>
+                    <p className="text-xs text-gray-400 mt-2">Generated: {new Date().toLocaleString()}</p>
+                </div>
+                <div className="md:text-right flex flex-col items-end">
+                    <Logo className="mb-4 scale-125 origin-right" />
+                    <div className="text-xl font-black text-gray-900 mb-1">{general.companyName || "MelAgro Kenya"}</div>
+                    <p className="text-gray-500 text-xs">{general.supportEmail || "admin@melagro.com"}</p>
+                </div>
             </div>
 
             {/* Executive Summary */}

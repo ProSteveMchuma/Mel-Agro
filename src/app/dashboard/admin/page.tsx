@@ -9,9 +9,8 @@ import { toast } from "react-hot-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AnalyticsCharts from "@/components/admin/AnalyticsCharts";
+import ReportsCenter from "@/components/admin/ReportsCenter";
 import { collection, query, orderBy, limit, getDocs, QueryDocumentSnapshot } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { Product } from "@/types";
 
 interface SearchTerm {
     term: string;
@@ -31,7 +30,9 @@ export default function AdminDashboard() {
     const { user } = useAuth();
     const { users } = useUsers();
     const router = useRouter();
-    const [showReport, setShowReport] = useState(false);
+
+    // UI State
+    const [showReportsCenter, setShowReportsCenter] = useState(false);
 
     // Analytics State
     const [topSearches, setTopSearches] = useState<SearchTerm[]>([]);
@@ -44,13 +45,6 @@ export default function AdminDashboard() {
         .filter((order: any) => order.paymentStatus === 'Paid')
         .reduce((acc: number, order: any) => acc + order.total, 0);
     const totalUsers = users.length;
-
-    const handlePrintReport = () => {
-        setShowReport(true);
-        setTimeout(() => {
-            window.print();
-        }, 100);
-    };
 
     const handleSeedProducts = async () => {
         if (!confirm("This will add new products from the mock data to your live store. Continue?")) return;
@@ -124,20 +118,12 @@ export default function AdminDashboard() {
 
     return (
         <div className="space-y-8">
-            {/* Print Overlay */}
-            {showReport && (
-                <div className="fixed inset-0 z-[100] bg-white overflow-auto print:overflow-visible">
-                    <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0">
-                        <div className="font-bold">Print Preview: Sales Report</div>
-                        <div className="flex gap-4">
-                            <button onClick={() => window.print()} className="bg-melagro-primary px-4 py-2 rounded-lg hover:bg-melagro-secondary">Print Now</button>
-                            <button onClick={() => setShowReport(false)} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600">Close</button>
-                        </div>
-                    </div>
-                    <div className="p-8 print:p-0">
-                        <SalesReportTemplate orders={orders} />
-                    </div>
-                </div>
+            {/* Reports Center Modal */}
+            {showReportsCenter && (
+                <ReportsCenter
+                    orders={orders}
+                    onClose={() => setShowReportsCenter(false)}
+                />
             )}
 
             <div className="flex justify-between items-end print:hidden">
@@ -146,9 +132,9 @@ export default function AdminDashboard() {
                     <p className="text-gray-500 mt-1">Status: <span className="text-green-600 font-bold">Online</span> • Monitoring Activity</p>
                 </div>
                 <div className="flex gap-3">
-                    <button onClick={handlePrintReport} className="btn-secondary text-sm flex items-center gap-2">
+                    <button onClick={() => setShowReportsCenter(true)} className="btn-secondary text-sm flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        Download Report
+                        Financial Reports
                     </button>
                     <Link href="/dashboard/admin/products/new" className="btn-primary text-sm flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

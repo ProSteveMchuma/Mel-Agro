@@ -1,6 +1,7 @@
 import React from 'react';
 import { Order } from '@/context/OrderContext';
 import { useSettings } from '@/context/SettingsContext';
+import Logo from '../Logo';
 
 interface DeliveryNoteTemplateProps {
     order: Order;
@@ -12,19 +13,17 @@ export const DeliveryNoteTemplate: React.FC<DeliveryNoteTemplateProps> = ({ orde
     return (
         <div className="bg-white p-8 max-w-4xl mx-auto font-sans text-gray-900" id="delivery-note-template">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start mb-12 border-b border-gray-200 pb-8 gap-6">
+            <div className="flex flex-col md:flex-row justify-between items-start mb-12 border-b-4 border-gray-900 pb-8 gap-6">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">DELIVERY NOTE</h1>
-                    <p className="text-gray-500">Order #{order.id}</p>
-                    <p className="text-gray-500">Date: {new Date(order.date).toLocaleDateString()}</p>
+                    <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tighter uppercase">Delivery Note</h1>
+                    <p className="text-gray-400 font-mono text-xs">Order #{order.id}</p>
+                    <p className="text-gray-900 font-bold mt-2">Date: {new Date(order.date).toLocaleDateString()}</p>
                 </div>
-                <div className="md:text-right">
-                    {general.logoUrl && (
-                        <img src={general.logoUrl} alt="Logo" className="h-12 mb-4 ml-auto" />
-                    )}
-                    <div className="text-2xl font-bold text-gray-900 mb-1">{general.companyName}</div>
-                    <p className="text-gray-500 text-sm">Logistics Department</p>
-                    <p className="text-gray-500 text-sm">{general.address}</p>
+                <div className="md:text-right flex flex-col items-end text-right">
+                    <Logo className="mb-4 scale-125 origin-right" />
+                    <div className="text-xl font-black text-gray-900 mb-1">{general.companyName || "MelAgro Kenya"}</div>
+                    <p className="text-gray-500 text-xs uppercase tracking-widest font-black">Logistics Department</p>
+                    <p className="text-gray-500 text-xs max-w-[200px] mt-1">{general.address || "Premium Agricultural Hub"}</p>
                 </div>
             </div>
 

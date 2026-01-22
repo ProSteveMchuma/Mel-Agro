@@ -1,6 +1,7 @@
 import React from 'react';
 import { Order } from '@/context/OrderContext';
 import { useSettings } from '@/context/SettingsContext';
+import Logo from '../Logo';
 
 interface InvoiceTemplateProps {
     order: Order;
@@ -10,8 +11,6 @@ interface InvoiceTemplateProps {
 export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, settings: propSettings }) => {
     const { general } = useSettings();
 
-    // Use prop settings (for preview) or fetch from somewhere else if needed. 
-    // Ideally, we should fetch document settings from context too, but for now we'll rely on props or defaults.
     const docSettings = propSettings || {
         invoiceTitle: "INVOICE",
         footerText: "Thank you for your business!",
@@ -23,19 +22,20 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, setting
     return (
         <div className="bg-white p-8 max-w-4xl mx-auto font-sans text-gray-900" id="invoice-template">
             {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start mb-12 border-b border-gray-200 pb-8 gap-6">
+            <div className="flex flex-col md:flex-row justify-between items-start mb-12 border-b-4 border-gray-900 pb-8 gap-6">
                 <div>
-                    <h1 className="text-4xl font-bold mb-2" style={{ color: docSettings.primaryColor }}>{docSettings.invoiceTitle}</h1>
-                    <p className="text-gray-500">#{order.id}</p>
+                    <h1 className="text-5xl font-black mb-2 tracking-tighter" style={{ color: docSettings.primaryColor }}>{docSettings.invoiceTitle}</h1>
+                    <p className="text-gray-400 font-mono text-xs">#{order.id}</p>
+                    <p className="text-gray-900 font-bold mt-2">Date: {new Date(order.date).toLocaleDateString()}</p>
                 </div>
-                <div className="md:text-right">
-                    {docSettings.showLogo && general.logoUrl && (
-                        <img src={general.logoUrl} alt="Logo" className="h-12 mb-4 ml-auto" />
+                <div className="md:text-right flex flex-col items-end">
+                    {docSettings.showLogo && (
+                        <Logo className="mb-4 scale-125 origin-right" />
                     )}
-                    <div className="text-2xl font-bold text-gray-900 mb-1">{general.companyName}</div>
-                    <p className="text-gray-500 text-sm">{general.address}</p>
-                    <p className="text-gray-500 text-sm">{general.supportEmail}</p>
-                    <p className="text-gray-500 text-sm">{general.supportPhone}</p>
+                    <div className="text-xl font-black text-gray-900 mb-1">{general.companyName || "MelAgro Kenya"}</div>
+                    <p className="text-gray-500 text-xs max-w-[200px]">{general.address || "Premium Agricultural Hub"}</p>
+                    <p className="text-gray-500 text-xs">{general.supportEmail || "support@melagro.com"}</p>
+                    <p className="text-gray-800 text-xs font-bold">{general.supportPhone || "+254 748 970 757"}</p>
                 </div>
             </div>
 
