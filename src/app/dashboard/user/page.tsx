@@ -200,8 +200,13 @@ export default function UserDashboard() {
                                         <p className="text-[10px] text-gray-400 font-medium">{new Date(order.date).toLocaleDateString()}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{order.status}</p>
-                                        <p className="text-sm font-bold text-melagro-primary">KES {order.total.toLocaleString()}</p>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <p className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                                                {order.paymentStatus || 'Unpaid'}
+                                            </p>
+                                            <p className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{order.status}</p>
+                                        </div>
+                                        <p className="text-sm font-bold text-melagro-primary mt-1">KES {order.total.toLocaleString()}</p>
                                     </div>
                                 </div>
                             ))}
@@ -273,6 +278,9 @@ export default function UserDashboard() {
                                                     'bg-yellow-100 text-yellow-700'
                                                 }`}>
                                                 {order.status}
+                                            </span>
+                                            <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
+                                                {order.paymentStatus || 'Unpaid'}
                                             </span>
                                         </div>
                                         <p className="text-xs text-gray-400 font-medium tracking-tight">Placed on {new Date(order.date).toLocaleDateString()}</p>

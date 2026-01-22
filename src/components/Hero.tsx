@@ -121,14 +121,14 @@ export default function Hero() {
                                         {slides[currentSlide].tag}
                                     </motion.span>
 
-                                    <motion.h2
+                                    <motion.h1
                                         initial={{ y: 30, opacity: 0 }}
                                         animate={{ y: 0, opacity: 1 }}
                                         transition={{ delay: 0.3 }}
                                         className="text-4xl md:text-6xl font-black mb-6 leading-[0.9] tracking-tighter"
                                     >
                                         {slides[currentSlide].title}
-                                    </motion.h2>
+                                    </motion.h1>
 
                                     <motion.p
                                         initial={{ y: 40, opacity: 0 }}

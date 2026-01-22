@@ -34,14 +34,23 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL('https://melagro.com'),
   title: {
-    default: "MelAgro - Premium Agricultural Solutions",
-    template: "%s | MelAgro"
+    default: "Mel-Agro | Premium Fertilizers, Certified Seeds & Ag-Tech Kenya",
+    template: "%s | Mel-Agro"
   },
-  description: "Your trusted partner for quality agricultural inputs, certified seeds, fertilizers, and expert advice in Kenya.",
-  keywords: ["agriculture", "farming", "seeds", "fertilizers", "pesticides", "Kenya", "agrochemicals", "MelAgro"],
-  authors: [{ name: "MelAgro Team" }],
-  creator: "MelAgro",
-  publisher: "MelAgro",
+  description: "Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection at Mel-Agro. Kenya's premier digital hub for quality agricultural inputs and expert advice.",
+  keywords: [
+    "maize seeds kenya",
+    "DAP fertilizer price kenya",
+    "agricultural inputs nairobi",
+    "hybrid seeds kenya",
+    "melagro agri-tech",
+    "can fertilizer kenya",
+    "certified agrochemicals kenya",
+    "farming tools nairobi"
+  ],
+  authors: [{ name: "Mel-Agro" }],
+  creator: "Mel-Agro",
+  publisher: "Mel-Agro",
   robots: {
     index: true,
     follow: true,
@@ -57,24 +66,27 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_KE',
     url: 'https://melagro.com',
-    title: 'MelAgro - Premium Agricultural Solutions',
-    description: 'Your trusted partner for quality agricultural inputs, certified seeds, fertilizers, and expert advice in Kenya.',
-    siteName: 'MelAgro',
+    title: 'Mel-Agro | Kenya\'s Premier Agricultural Hub',
+    description: 'Empowering Kenyan farmers with certified seeds, premium fertilizers, and expert agricultural advice.',
+    siteName: 'Mel-Agro',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'MelAgro - Agricultural Solutions',
+        alt: 'Mel-Agro Agricultural Solutions',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'MelAgro - Premium Agricultural Solutions',
-    description: 'Your trusted partner for quality agricultural inputs, certified seeds, fertilizers, and expert advice in Kenya.',
+    title: 'Mel-Agro | Kenya\'s Premier Agricultural Hub',
+    description: 'Empowering Kenyan farmers with certified seeds, premium fertilizers, and expert agricultural advice.',
     images: ['/og-image.jpg'],
   },
+  verification: {
+    google: 'google-site-verification-id', // Needs to be updated with real ID
+  }
 };
 
 export default function RootLayout({

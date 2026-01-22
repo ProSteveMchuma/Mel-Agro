@@ -125,12 +125,18 @@ function OrderSuccessContent() {
                                 We've sent a receipt to your email and our team is preparing your agri-inputs for dispatch.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4">
-                                <Link href="/products" className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-200 text-center">
+                                <Link href="/products" className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-200 text-center print:hidden">
                                     Shop More
                                 </Link>
-                                <Link href="/dashboard/user" className="border-2 border-gray-100 text-gray-900 px-8 py-4 rounded-2xl font-black hover:bg-gray-50 transition-all text-center">
+                                <Link href="/dashboard/user" className="border-2 border-gray-100 text-gray-900 px-8 py-4 rounded-2xl font-black hover:bg-gray-50 transition-all text-center print:hidden">
                                     Track Order
                                 </Link>
+                                <button
+                                    onClick={() => window.print()}
+                                    className="border-2 border-gray-900 bg-gray-900 text-white px-8 py-4 rounded-2xl font-black hover:bg-black transition-all text-center print:hidden flex items-center justify-center gap-2"
+                                >
+                                    <span>🖨️</span> Print Receipt
+                                </button>
                             </div>
                         </div>
                     </div>

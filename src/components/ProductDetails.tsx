@@ -212,6 +212,17 @@ export default function ProductDetails({ id }: { id: string }) {
                             >
                                 Buy Now
                             </button>
+                            <a
+                                href={`https://wa.me/254748970757?text=${encodeURIComponent(`*PRODUCT INQUIRY*\n\nI am interested in buying: *${product.name}*\nPrice: KES ${product.price.toLocaleString()}\n\nIs this available?`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="w-full h-12 bg-[#25D366] text-white font-bold rounded-lg hover:bg-[#128C7E] transition-colors flex items-center justify-center gap-2"
+                            >
+                                <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
+                                    <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.038 3.284l-.54 1.964 2.009-.528c.954.524 1.942.85 3.037.852 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.586-5.772-5.744-5.772zm3.374 8.086c-.1.272-.58.513-.801.551-.237.042-.46.079-.769-.015-.297-.091-.676-.239-1.144-.442-1.99-.861-3.284-2.885-3.383-3.018-.099-.134-.736-.979-.736-1.959 0-.979.512-1.46.694-1.658.183-.198.396-.247.53-.247.13 0 .26.012.37.012.11 0 .26-.041.408.321.148.36.512 1.25.56 1.348.049.099.083.214.016.347-.066.13-.1.214-.2.33-.1.115-.208.261-.297.35-.099.099-.198.198-.083.396.115.198.512.845 1.099 1.366.759.673 1.398.882 1.596.981.198.099.313.082.43-.049.115-.132.512-.596.644-.793.132-.198.26-.165.43-.099.172.066 1.09.514 1.277.613.183.1.312.148.363.23.049.082.049.479-.05.751z" />
+                                </svg>
+                                Inquiry via WhatsApp
+                            </a>
                         </div>
 
                         {/* Delivery Info & Trust */}

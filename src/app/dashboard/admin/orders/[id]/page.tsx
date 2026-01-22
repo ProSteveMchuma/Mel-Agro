@@ -218,17 +218,40 @@ export default function AdminOrderDetailsPage() {
                     </div>
 
                     {/* Shipping Card */}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Shipping Address</h2>
-                        <p className="text-gray-900 font-medium">{order.shippingAddress?.details || 'N/A'}</p>
-                        <p className="text-gray-600">{order.shippingAddress?.county || 'N/A'}</p>
-                        {order.tracking && (
-                            <div className="mt-4 pt-4 border-t border-gray-100">
-                                <p className="text-xs text-gray-500 uppercase font-bold">Tracking Info</p>
-                                <p className="text-sm text-gray-900">{order.tracking.carrier}</p>
-                                <p className="text-sm text-melagro-primary font-mono">{order.tracking.trackingNumber}</p>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-sm font-black text-gray-400 uppercase tracking-[0.2em]">Logistics</h2>
+                            <button
+                                onClick={() => setIsDispatchModalOpen(true)}
+                                className="text-[10px] font-black text-melagro-primary uppercase hover:underline"
+                            >
+                                {order.tracking ? 'Edit Tracking' : 'Add Tracking'}
+                            </button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <p className="text-[10px] font-black text-gray-300 uppercase mb-1">Shipping Address</p>
+                                <p className="text-gray-900 font-medium leading-relaxed">{order.shippingAddress?.details || 'N/A'}</p>
+                                <p className="text-gray-500 text-sm">{order.shippingAddress?.county || 'N/A'}</p>
                             </div>
-                        )}
+
+                            {order.tracking ? (
+                                <div className="mt-4 pt-4 border-t border-gray-50 bg-gray-50/50 p-3 rounded-xl">
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-melagro-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <p className="text-[10px] font-black text-melagro-primary uppercase">Dispatched</p>
+                                    </div>
+                                    <p className="text-sm text-gray-900 font-bold">{order.tracking.carrier}</p>
+                                    <p className="text-xs text-melagro-primary font-mono tracking-wider mt-1">{order.tracking.trackingNumber}</p>
+                                </div>
+                            ) : (
+                                <div className="mt-4 pt-4 border-t border-gray-50">
+                                    <p className="text-[10px] font-black text-gray-300 uppercase italic">Waiting for dispatch details...</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Payment Status Card */}
@@ -303,46 +326,54 @@ export default function AdminOrderDetailsPage() {
 
             {/* Dispatch Modal */}
             {isDispatchModalOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Dispatch Order</h2>
-                        <p className="text-gray-500 text-sm mb-6">Enter tracking details to mark this order as shipped.</p>
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 transform animate-in slide-in-from-bottom-4 duration-300">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-melagro-primary/10 rounded-xl flex items-center justify-center text-melagro-primary">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                                </svg>
+                            </div>
+                            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Dispatch Order</h2>
+                        </div>
 
-                        <div className="space-y-4 mb-6">
+                        <p className="text-gray-500 text-sm mb-8 leading-relaxed">Enter the logistics details to notify the customer that their order is on the way.</p>
+
+                        <div className="space-y-6 mb-8">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Carrier Name</label>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Logistics Carrier</label>
                                 <input
                                     type="text"
-                                    placeholder="e.g. G4S, Wells Fargo"
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    placeholder="e.g. G4S, Wells Fargo, Pickup"
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-100 focus:ring-2 focus:ring-melagro-primary/20 focus:bg-white focus:border-melagro-primary outline-none transition-all font-medium text-gray-900"
                                     value={trackingInfo.carrier}
                                     onChange={(e) => setTrackingInfo({ ...trackingInfo, carrier: e.target.value })}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2">Tracking / Reference Number</label>
                                 <input
                                     type="text"
-                                    placeholder="e.g. TRK-123456789"
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    placeholder="e.g. TRK-99023441"
+                                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border-gray-100 focus:ring-2 focus:ring-melagro-primary/20 focus:bg-white focus:border-melagro-primary outline-none transition-all font-mono text-gray-900"
                                     value={trackingInfo.trackingNumber}
                                     onChange={(e) => setTrackingInfo({ ...trackingInfo, trackingNumber: e.target.value })}
                                 />
                             </div>
                         </div>
 
-                        <div className="flex gap-3">
+                        <div className="flex gap-4">
                             <button
                                 onClick={() => setIsDispatchModalOpen(false)}
-                                className="flex-1 py-2 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors font-medium"
+                                className="flex-1 py-3 text-sm font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
                             >
-                                Cancel
+                                Dismiss
                             </button>
                             <button
                                 onClick={handleDispatch}
-                                className="flex-1 py-2 text-white bg-melagro-primary hover:bg-melagro-secondary rounded-lg transition-colors font-medium"
+                                className="flex-1 py-4 text-xs font-black text-white bg-melagro-primary hover:bg-melagro-secondary rounded-2xl transition-all shadow-lg shadow-melagro-primary/20 uppercase tracking-[0.2em]"
                             >
-                                Confirm Dispatch
+                                Confirm & Update
                             </button>
                         </div>
                     </div>

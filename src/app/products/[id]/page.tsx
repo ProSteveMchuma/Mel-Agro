@@ -18,14 +18,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         };
     }
 
+    const description = (product.description || '').substring(0, 160);
+
     return {
-        title: `${product.name} | MelAgro`,
-        description: (product.description || '').substring(0, 160),
+        title: `${product.name} - Buy High Quality ${product.category}`,
+        description: description,
+        keywords: [product.name, product.category, "Kenya", "Mel-Agro", "Agriculture"],
         openGraph: {
-            title: `${product.name} | MelAgro`,
-            description: (product.description || '').substring(0, 160),
+            title: `${product.name} | Mel-Agro Kenya`,
+            description: description,
             images: [product.image],
+            type: 'article',
         },
+        twitter: {
+            card: 'summary_large_image',
+            title: `${product.name} | Mel-Agro`,
+            description: description,
+            images: [product.image],
+        }
     };
 }
 

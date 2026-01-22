@@ -15,6 +15,12 @@ import { generateWhatsAppMessage, getWhatsAppUrl } from '@/lib/whatsapp';
 import { useBehavior } from '@/context/BehaviorContext';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
+
+const LocationPicker = dynamic(() => import('@/components/checkout/LocationPicker'), {
+    ssr: false,
+    loading: () => <div className="h-[300px] w-full bg-gray-100 animate-pulse rounded-xl flex items-center justify-center text-gray-400">Loading Map...</div>
+});
 
 export default function CheckoutPage() {
     const router = useRouter();
@@ -35,7 +41,9 @@ export default function CheckoutPage() {
         county: 'Nairobi',
         town: '',
         address: '',
-        landmark: ''
+        landmark: '',
+        lat: -1.2921,
+        lng: 36.8219
     });
 
     // Sync shipping data with user profile when user loads
@@ -62,7 +70,16 @@ export default function CheckoutPage() {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
-        setShippingData(prev => ({ ...prev, [name]: value }));
+
+        let processedValue = value;
+        if (name === 'phone') {
+            // Remove non-numeric characters for phone
+            processedValue = value.replace(/\D/g, '');
+            // Limit length for Kenyan numbers
+            processedValue = processedValue.slice(0, 12);
+        }
+
+        setShippingData(prev => ({ ...prev, [name]: processedValue }));
     };
 
     const handleNextStep = () => {
@@ -195,7 +212,31 @@ export default function CheckoutPage() {
                 }
             }
 
-            // Normal flow for non-MPesa
+            if (paymentMethod === 'card') {
+                const loadingToast = toast.loading("Preparing secure checkout...");
+                const response = await fetch('/api/payment/stripe/checkout-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        items: cartItems,
+                        orderId: newOrder.id,
+                        email: shippingData.email
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success && data.url) {
+                    toast.success("Redirecting to secure payment...", { id: loadingToast });
+                    window.location.href = data.url;
+                    return;
+                } else {
+                    toast.error(data.message || "Failed to initiate card payment.", { id: loadingToast });
+                    setIsProcessing(false);
+                    return;
+                }
+            }
+
+            // Normal flow for non-MPesa / non-Card
             clearCart();
             toast.success("Order placed successfully!");
             router.push(`/checkout/success?orderId=${newOrder.id}`);
@@ -381,6 +422,20 @@ export default function CheckoutPage() {
                                                     rows={3}
                                                     className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
                                                 />
+                                            </div>
+
+                                            {/* Map Location Picker */}
+                                            <div className="mt-6">
+                                                <label className="block text-sm font-semibold text-gray-900 mb-4">Pin Your Exact Delivery Location</label>
+                                                <LocationPicker
+                                                    onLocationSelect={(lat, lng) => {
+                                                        setShippingData(prev => ({ ...prev, lat, lng }));
+                                                        toast.success("Location pinned!", { id: 'map-toast' });
+                                                    }}
+                                                    initialLat={shippingData.lat}
+                                                    initialLng={shippingData.lng}
+                                                />
+                                                <p className="text-[10px] text-gray-400 mt-2 italic">Drag the marker to your precise location for faster delivery.</p>
                                             </div>
                                         </div>
 

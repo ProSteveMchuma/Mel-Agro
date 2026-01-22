@@ -1,6 +1,12 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: "Contact Us | Agriculture Support Kenya",
+    description: "Get in touch with Mel-Agro for inquiries about fertilizers, seeds, and bulk orders. Our expert team is ready to support your farm's growth.",
+};
 
 export default function ContactPage() {
     return (

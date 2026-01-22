@@ -69,6 +69,7 @@ export default function OrderManagement() {
                                 <th className="px-6 py-4 font-medium">Date</th>
                                 <th className="px-6 py-4 font-medium">Customer</th>
                                 <th className="px-6 py-4 font-medium">Total</th>
+                                <th className="px-6 py-4 font-medium">Payment</th>
                                 <th className="px-6 py-4 font-medium">Status</th>
                                 <th className="px-6 py-4 font-medium text-right">Actions</th>
                             </tr>
@@ -88,6 +89,12 @@ export default function OrderManagement() {
                                     <td className="px-6 py-4 text-gray-600">{new Date(order.date).toLocaleDateString()}</td>
                                     <td className="px-6 py-4 text-gray-600">{order.userName || `User ${order.userId.substr(0, 5)}...`}</td>
                                     <td className="px-6 py-4 font-bold text-gray-900">KES {order.total.toLocaleString()}</td>
+                                    <td className="px-6 py-4">
+                                        <span className={`text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-wide ${order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'
+                                            }`}>
+                                            {order.paymentStatus || 'Unpaid'}
+                                        </span>
+                                    </td>
                                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                         <select
                                             value={order.status}

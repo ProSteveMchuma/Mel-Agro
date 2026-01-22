@@ -40,7 +40,9 @@ export default function AdminDashboard() {
     const [isSeeding, setIsSeeding] = useState(false);
 
     // Calculate Stats
-    const totalSales = orders.reduce((acc: number, order: any) => acc + order.total, 0);
+    const totalSales = orders
+        .filter((order: any) => order.paymentStatus === 'Paid')
+        .reduce((acc: number, order: any) => acc + order.total, 0);
     const totalUsers = users.length;
 
     const handlePrintReport = () => {
@@ -341,32 +343,65 @@ export default function AdminDashboard() {
                     </div>
                 </div>
 
-                {/* Top Products */}
+                {/* Catalog & Inventory Status */}
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    <div className="p-6 border-b border-gray-100">
-                        <h2 className="font-bold text-gray-900">Inventory Status</h2>
+                    <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                        <h2 className="font-bold text-gray-900">Catalog & Inventory</h2>
+                        <span className="text-[10px] font-black bg-orange-100 text-orange-600 px-2 py-1 rounded-md uppercase tracking-wider">Alerts</span>
                     </div>
                     <div className="divide-y divide-gray-100">
-                        {products.filter(p => !p.inStock || (p.stockQuantity <= (p.lowStockThreshold || 10))).slice(0, 5).map(product => (
-                            <Link href={`/dashboard/admin/products/edit/${product.id}`} key={product.id} className="p-4 block hover:bg-gray-50">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="font-medium text-gray-900">{product.name}</span>
-                                    {!product.inStock ?
-                                        <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">Out of Stock</span> :
-                                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-bold">{product.stockQuantity} Left</span>
-                                    }
+                        {/* Low Stock Alerts */}
+                        {products.filter(p => !p.inStock || (p.stockQuantity <= (p.lowStockThreshold || 10))).length > 0 && (
+                            <div className="p-4 bg-red-50/30">
+                                <h3 className="text-[10px] font-black text-red-500 uppercase tracking-[0.2em] mb-3">Stock Alerts</h3>
+                                <div className="space-y-3">
+                                    {products.filter(p => !p.inStock || (p.stockQuantity <= (p.lowStockThreshold || 10))).slice(0, 3).map(product => (
+                                        <Link href={`/dashboard/admin/products/edit/${product.id}`} key={product.id} className="flex justify-between items-center">
+                                            <span className="text-sm font-medium text-gray-900 truncate pr-4">{product.name}</span>
+                                            {!product.inStock ?
+                                                <span className="text-[10px] bg-red-100 text-red-700 px-2 py-0.5 rounded font-black uppercase">Empty</span> :
+                                                <span className="text-[10px] bg-yellow-100 text-yellow-700 px-2 py-0.5 rounded font-black uppercase">{product.stockQuantity} Left</span>
+                                            }
+                                        </Link>
+                                    ))}
                                 </div>
-                                <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2">
-                                    <div className={`h-1.5 rounded-full ${!product.inStock ? 'bg-red-500 w-0' : 'bg-yellow-500'}`} style={{ width: product.inStock ? '20%' : '0%' }}></div>
-                                </div>
-                            </Link>
-                        ))}
-                        {products.filter(p => !p.inStock || (p.stockQuantity <= (p.lowStockThreshold || 10))).length === 0 && (
-                            <div className="p-8 text-center text-gray-500 text-sm">Inventory looks healthy!</div>
+                            </div>
                         )}
+
+                        {/* Data Completion Checklist */}
+                        <div className="p-4">
+                            <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mb-3">Incomplete Listings</h3>
+                            <div className="space-y-3">
+                                {products.filter(p => !p.brand || !p.specification || !p.howToUse).slice(0, 4).map(product => {
+                                    const missing = [];
+                                    if (!product.brand) missing.push('Brand');
+                                    if (!product.specification) missing.push('Specs');
+                                    if (!product.howToUse) missing.push('Guide');
+
+                                    return (
+                                        <Link href={`/dashboard/admin/products/edit/${product.id}`} key={product.id} className="block group">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <span className="text-sm font-medium text-gray-900 group-hover:text-melagro-primary transition-colors">{product.name}</span>
+                                                <span className="text-[8px] font-black text-gray-300 uppercase italic">Fix Needed</span>
+                                            </div>
+                                            <div className="flex gap-1">
+                                                {missing.map(m => (
+                                                    <span key={m} className="text-[8px] border border-gray-100 text-gray-400 px-1 rounded uppercase">{m}</span>
+                                                ))}
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
+                                {products.filter(p => !p.brand || !p.specification || !p.howToUse).length === 0 && (
+                                    <div className="text-center py-2">
+                                        <p className="text-[10px] text-gray-400 font-bold uppercase">All content verified ✓</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
                     <div className="p-4 border-t border-gray-100 bg-gray-50 text-center">
-                        <Link href="/dashboard/admin/products" className="text-sm text-melagro-primary font-bold hover:underline">Manage Inventory</Link>
+                        <Link href="/dashboard/admin/products" className="text-sm text-melagro-primary font-bold hover:underline">Manage Catalog</Link>
                     </div>
                 </div>
             </div>

@@ -1,8 +1,12 @@
-"use client";
-
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: "Our Heritage & Vision",
+    description: "Learn about Mel-Agro's mission to transform Kenyan agriculture. A subsidiary of Mel-Agri, we bring decades of expertise to your farm.",
+};
 
 export default function AboutPage() {
     return (
