@@ -82,16 +82,16 @@ export default function ProductCard({ id, name, price, image, category }: Produc
         <Link href={`/products/${id}`}>
             <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-green-200 flex flex-col h-full cursor-pointer relative">
                 {/* Image Section */}
-                <div className="relative aspect-square overflow-hidden bg-[#f8fcf9] flex items-center justify-center p-6">
+                <div className="relative aspect-square overflow-hidden bg-[#f8fcf9] flex items-center justify-center p-3 md:p-6 text-center">
                     <Image
                         src={imageSrc}
                         alt={name}
                         fill
-                        className="object-contain p-6 group-hover:scale-110 transition-transform duration-700 ease-out"
+                        className="object-contain p-4 md:p-6 group-hover:scale-110 transition-transform duration-700 ease-out"
                     />
 
-                    {/* Quick Action Overlay */}
-                    <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-center justify-center gap-4">
+                    {/* Quick Action Overlay - Hidden on mobile, shown on md+ hover */}
+                    <div className="hidden md:flex absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 items-center justify-center gap-4">
                         <button
                             onClick={handleAddToCart}
                             className="bg-white text-gray-900 p-3 rounded-full shadow-lg transform translate-y-10 group-hover:translate-y-0 transition-transform duration-500 delay-75 hover:bg-green-500 hover:text-white"
@@ -116,54 +116,54 @@ export default function ProductCard({ id, name, price, image, category }: Produc
                     </div>
 
                     {/* Discount Badge */}
-                    <div className="absolute top-4 left-4 bg-[#22c55e] text-white px-2 py-1 rounded-lg text-[10px] font-black shadow-lg z-10 uppercase tracking-tighter">
+                    <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-[#22c55e] text-white px-1.5 md:px-2 py-0.5 md:py-1 rounded-md md:rounded-lg text-[8px] md:text-[10px] font-black shadow-lg z-10 uppercase tracking-tighter">
                         -{discountPercent}% OFF
                     </div>
 
                     {/* Wishlist Button */}
                     <button
                         onClick={toggleWishlist}
-                        className={`absolute top-4 right-4 p-2.5 rounded-full z-10 transition-all duration-300 backdrop-blur-md ${inWishlist
+                        className={`absolute top-2 right-2 md:top-4 md:right-4 p-2 md:p-2.5 rounded-full z-10 transition-all duration-300 backdrop-blur-md ${inWishlist
                             ? "bg-red-500 text-white shadow-lg scale-110"
-                            : "bg-white/90 text-gray-300 hover:text-red-500 border border-gray-100 opacity-0 group-hover:opacity-100"
+                            : "bg-white/90 text-gray-300 hover:text-red-500 border border-gray-100 opacity-100 md:opacity-0 md:group-hover:opacity-100"
                             }`}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill={inWishlist ? "currentColor" : "none"} viewBox="0 0 20 20" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 md:h-4 md:w-4" fill={inWishlist ? "currentColor" : "none"} viewBox="0 0 20 20" stroke="currentColor">
                             <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                         </svg>
                     </button>
                 </div>
 
                 {/* Content Section */}
-                <div className="p-5 flex flex-col flex-grow">
+                <div className="p-3 md:p-5 flex flex-col flex-grow">
                     {/* Category Label */}
-                    <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.1em] mb-1 opacity-70">
+                    <p className="text-[8px] md:text-[10px] font-black text-green-600 uppercase tracking-[0.1em] mb-1 opacity-70">
                         {category}
                     </p>
 
                     {/* Product Name */}
-                    <h3 className="font-bold text-gray-900 mb-3 line-clamp-2 leading-tight group-hover:text-green-600 transition-colors min-h-[2.5rem] tracking-tight">
+                    <h3 className="font-bold text-gray-900 mb-2 md:mb-3 line-clamp-2 leading-tight group-hover:text-green-600 transition-colors min-h-[2.2rem] md:min-h-[2.5rem] tracking-tight text-xs md:text-sm">
                         {name}
                     </h3>
 
                     {/* Price Section */}
-                    <div className="mb-5 mt-auto">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xl font-black text-gray-900">
+                    <div className="mb-3 md:mb-5 mt-auto">
+                        <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-1">
+                            <span className="text-lg md:text-xl font-black text-gray-900">
                                 KES {safePrice.toLocaleString()}
                             </span>
-                            <span className="text-gray-400 line-through text-xs font-medium">
+                            <span className="text-gray-400 line-through text-[10px] md:text-xs font-medium">
                                 KES {originalPrice.toLocaleString()}
                             </span>
                         </div>
                     </div>
 
                     {/* Double Buttons */}
-                    <div className="grid grid-cols-2 gap-2">
+                    <div className="grid grid-cols-2 gap-1.5 md:gap-2">
                         <button
                             onClick={handleAddToCart}
                             disabled={isAdding}
-                            className={`py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all duration-300 ${isAdding
+                            className={`py-2 md:py-2.5 rounded-lg md:rounded-xl font-bold text-[10px] md:text-[11px] uppercase tracking-widest transition-all duration-300 ${isAdding
                                 ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                                 : "bg-gray-900 text-white hover:bg-[#22c55e] shadow-sm hover:shadow-green-200"
                                 }`}
@@ -173,7 +173,7 @@ export default function ProductCard({ id, name, price, image, category }: Produc
 
                         <button
                             onClick={handleBuyNow}
-                            className="py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-widest bg-white border border-gray-200 text-gray-900 hover:border-gray-900 transition-all shadow-sm"
+                            className="py-2 md:py-2.5 rounded-lg md:rounded-xl font-bold text-[10px] md:text-[11px] uppercase tracking-widest bg-white border border-gray-200 text-gray-900 hover:border-gray-900 transition-all shadow-sm"
                         >
                             Buy Now
                         </button>

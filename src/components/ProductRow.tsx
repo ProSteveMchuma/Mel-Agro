@@ -45,7 +45,7 @@ export default function ProductRow({ title = "", filter }: ProductRowProps) {
                 <div className="flex items-center justify-between mb-8">
                     <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
                     <Link href="/products" className="text-sm font-semibold text-melagro-primary hover:text-melagro-secondary transition-colors flex items-center gap-1 group">
-                        View All 
+                        View All
                         <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
@@ -53,7 +53,7 @@ export default function ProductRow({ title = "", filter }: ProductRowProps) {
                 </div>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {products.map(product => (
                     <ProductCard
                         key={product.id}

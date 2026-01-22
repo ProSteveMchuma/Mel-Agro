@@ -2,6 +2,7 @@
 import { useUsers } from "@/context/UserContext";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 export default function UserManagement() {
     const { users, updateUserRole, deleteUser } = useUsers();
@@ -72,8 +73,17 @@ export default function UserManagement() {
                                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                         <select
                                             value={user.role}
-                                            onChange={(e) => updateUserRole(String(user.id), e.target.value as 'admin' | 'customer')}
-                                            className={`text-xs font-medium px-2 py-1 rounded-full border-0 focus:ring-2 focus:ring-melagro-primary cursor-pointer ${user.role === 'admin' || user.role === 'super-admin' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
+                                            onChange={async (e) => {
+                                                const newRole = e.target.value as 'admin' | 'customer';
+                                                const toastId = toast.loading(`Updating ${user.name}'s role...`);
+                                                try {
+                                                    await updateUserRole(String(user.id), newRole);
+                                                    toast.success("Role updated successfully!", { id: toastId });
+                                                } catch (err) {
+                                                    toast.error("Failed to update role. Please try again.", { id: toastId });
+                                                }
+                                            }}
+                                            className={`text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm focus:ring-2 focus:ring-melagro-primary/20 cursor-pointer transition-all hover:border-melagro-primary/30 outline-none ${user.role === 'admin' || user.role === 'super-admin' ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'
                                                 }`}
                                         >
                                             <option value="customer">Customer</option>

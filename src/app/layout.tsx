@@ -84,6 +84,17 @@ export const metadata: Metadata = {
     description: 'Empowering Kenyan farmers with certified seeds, premium fertilizers, and expert agricultural advice.',
     images: ['/og-image.jpg'],
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Mel-Agro",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  manifest: "/manifest.json",
+  themeColor: "#16a34a",
+  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
   verification: {
     google: 'google-site-verification-id', // Needs to be updated with real ID
   }
@@ -113,7 +124,6 @@ export default function RootLayout({
                               {children}
                               <PWAInstallPrompt />
                               <MobileNav />
-                              <AgroBot />
                               {/* <ChatWidget /> - Replacing basic widget with AI Bot */}
                               <WhatsAppButton />
                               <Toaster position="top-center" toastOptions={{

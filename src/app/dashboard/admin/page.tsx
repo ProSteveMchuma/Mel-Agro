@@ -171,122 +171,160 @@ export default function AdminDashboard() {
 
             {/* LIVE INSIGHTS SECTION */}
             <div className="print:hidden">
-                <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="relative flex h-3 w-3">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-melagro-primary opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-3 w-3 bg-melagro-primary"></span>
-                    </span>
-                    Live Insights
+                <h2 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-3">
+                    <div className="w-10 h-10 bg-melagro-primary/10 rounded-xl flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-melagro-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                    </div>
+                    Live Market Intelligence
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     {/* Top Searches Widget */}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <h3 className="font-bold text-gray-700 mb-4 flex justify-between">
-                            Top Search Terms
-                            <span className="text-xs font-normal text-gray-400">Demand Signals</span>
-                        </h3>
+                    <div className="bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-gray-900/5 hover:shadow-2xl transition-all duration-500">
+                        <div className="flex justify-between items-center mb-8">
+                            <h3 className="font-black text-gray-900 text-sm uppercase tracking-widest">Top Search Terms</h3>
+                            <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg">High Intent</span>
+                        </div>
                         {loadingAnalytics ? (
-                            <div className="space-y-3 animate-pulse">
-                                {[1, 2, 3].map(i => <div key={i} className="h-8 bg-gray-100 rounded"></div>)}
+                            <div className="space-y-4 animate-pulse">
+                                {[1, 2, 3, 4].map(i => <div key={i} className="h-10 bg-gray-100/50 rounded-xl"></div>)}
                             </div>
                         ) : topSearches.length > 0 ? (
-                            <div className="space-y-3">
+                            <div className="space-y-5">
                                 {topSearches.map((term, i) => (
                                     <div key={i} className="flex justify-between items-center group">
-                                        <span className="text-gray-900 font-medium capitalize">{term.term}</span>
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-2 bg-gray-100 w-24 rounded-full overflow-hidden">
-                                                <div className="h-full bg-blue-500" style={{ width: `${Math.min(100, term.count * 10)}%` }}></div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xs">
+                                                {i + 1}
                                             </div>
-                                            <span className="text-xs font-bold text-gray-500 w-8 text-right">{term.count}</span>
+                                            <span className="text-gray-900 font-bold capitalize text-sm">{term.term}</span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-2 bg-gray-100 w-24 md:w-32 rounded-full overflow-hidden">
+                                                <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" style={{ width: `${Math.min(100, (term.count / (topSearches[0]?.count || 1)) * 100)}%` }}></div>
+                                            </div>
+                                            <span className="text-xs font-black text-gray-900 w-8 text-right">{term.count}</span>
                                         </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-8 text-gray-500 text-sm">No searches recorded yet.</div>
+                            <div className="text-center py-12">
+                                <p className="text-sm font-bold text-gray-400 italic">Awaiting first market signals...</p>
+                            </div>
                         )}
                     </div>
 
                     {/* Top Viewed Widget */}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                        <h3 className="font-bold text-gray-700 mb-4 flex justify-between">
-                            Top Viewed Products
-                            <span className="text-xs font-normal text-gray-400">Interest</span>
-                        </h3>
+                    <div className="bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-gray-900/5 hover:shadow-2xl transition-all duration-500">
+                        <div className="flex justify-between items-center mb-8">
+                            <h3 className="font-black text-gray-900 text-sm uppercase tracking-widest">Top Products by Interest</h3>
+                            <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-lg">Popular Now</span>
+                        </div>
                         {loadingAnalytics ? (
-                            <div className="space-y-3 animate-pulse">
-                                {[1, 2, 3].map(i => <div key={i} className="h-8 bg-gray-100 rounded"></div>)}
+                            <div className="space-y-4 animate-pulse">
+                                {[1, 2, 3, 4].map(i => <div key={i} className="h-10 bg-gray-100/50 rounded-xl"></div>)}
                             </div>
                         ) : topViewed.length > 0 ? (
-                            <div className="space-y-3">
+                            <div className="space-y-5">
                                 {topViewed.map((item, i) => (
-                                    <div key={i} className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded bg-gray-100 relative overflow-hidden flex-shrink-0">
+                                    <div key={i} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/dashboard/admin/products/edit/${item.productId}`)}>
+                                        <div className="w-12 h-12 rounded-xl bg-gray-100 relative overflow-hidden flex-shrink-0 group-hover:scale-110 transition-transform duration-300 border border-white shadow-sm">
                                             {item.image && <img src={item.image} className="w-full h-full object-cover" />}
                                         </div>
                                         <div className="flex-grow min-w-0">
-                                            <div className="text-sm font-medium text-gray-900 truncate">{item.name}</div>
+                                            <div className="text-sm font-bold text-gray-900 truncate group-hover:text-melagro-primary transition-colors">{item.name}</div>
+                                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Engagement Rank #{i + 1}</div>
                                         </div>
-                                        <div className="text-xs font-bold bg-gray-100 px-2 py-1 rounded text-gray-600">{item.views} views</div>
+                                        <div className="text-right">
+                                            <div className="text-xs font-black text-gray-900 px-3 py-1 bg-gray-100 rounded-lg">{item.views}</div>
+                                            <div className="text-[8px] text-gray-400 font-bold">VIEWS</div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-8 text-gray-500 text-sm">No views recorded yet.</div>
+                            <div className="text-center py-12">
+                                <p className="text-sm font-bold text-gray-400 italic">No activity data yet.</p>
+                            </div>
                         )}
                     </div>
                 </div>
             </div>
 
-            {/* Stats Grid */}
+            {/* Stats Grid - Premium Glassmorphism */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:hidden">
-                <Link href="/dashboard/admin/orders" className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center text-green-600 group-hover:bg-green-200 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
+                <Link href="/dashboard/admin/orders" className="relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl" />
+                    <div className="relative bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-green-900/5 hover:shadow-2xl hover:shadow-green-900/10 transition-all duration-500 flex flex-col h-full border-t-white/80">
+                        <div className="flex justify-between items-start mb-6">
+                            <div className="p-3 bg-green-500 shadow-lg shadow-green-500/30 rounded-2xl text-white transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <span className="text-[10px] font-black tracking-widest text-green-600 uppercase bg-green-50 px-2 py-1 rounded-lg">Revenue</span>
+                        </div>
+                        <div className="mt-auto">
+                            <div className="text-2xl font-black text-gray-900 mb-1 tracking-tighter">KES {totalSales.toLocaleString()}</div>
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total Sales Volume</div>
                         </div>
                     </div>
-                    <div className="text-3xl font-bold text-gray-900 mb-1">KES {totalSales.toLocaleString()}</div>
-                    <div className="text-sm text-gray-500">Total Revenue</div>
                 </Link>
 
-                <Link href="/dashboard/admin/orders" className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 group-hover:bg-blue-200 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                            </svg>
+                <Link href="/dashboard/admin/orders" className="relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl" />
+                    <div className="relative bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-blue-900/5 hover:shadow-2xl hover:shadow-blue-900/10 transition-all duration-500 flex flex-col h-full border-t-white/80">
+                        <div className="flex justify-between items-start mb-6">
+                            <div className="p-3 bg-blue-500 shadow-lg shadow-blue-500/30 rounded-2xl text-white transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                </svg>
+                            </div>
+                            <span className="text-[10px] font-black tracking-widest text-blue-600 uppercase bg-blue-50 px-2 py-1 rounded-lg">Orders</span>
+                        </div>
+                        <div className="mt-auto">
+                            <div className="text-2xl font-black text-gray-900 mb-1 tracking-tighter">{orders.length.toLocaleString()}</div>
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Successful Shipments</div>
                         </div>
                     </div>
-                    <div className="text-3xl font-bold text-gray-900 mb-1">{orders.length}</div>
-                    <div className="text-sm text-gray-500">Total Orders</div>
                 </Link>
 
-                <Link href="/dashboard/admin/products" className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center text-orange-600 group-hover:bg-orange-200 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
+                <Link href="/dashboard/admin/products" className="relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl" />
+                    <div className="relative bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-orange-900/5 hover:shadow-2xl hover:shadow-orange-900/10 transition-all duration-500 flex flex-col h-full border-t-white/80">
+                        <div className="flex justify-between items-start mb-6">
+                            <div className="p-3 bg-orange-500 shadow-lg shadow-orange-500/30 rounded-2xl text-white transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                </svg>
+                            </div>
+                            <span className="text-[10px] font-black tracking-widest text-orange-600 uppercase bg-orange-50 px-2 py-1 rounded-lg">Products</span>
+                        </div>
+                        <div className="mt-auto">
+                            <div className="text-2xl font-black text-gray-900 mb-1 tracking-tighter">{products.length.toLocaleString()}</div>
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Items in Catalog</div>
                         </div>
                     </div>
-                    <div className="text-3xl font-bold text-gray-900 mb-1">{products.length}</div>
-                    <div className="text-sm text-gray-500">Products in Stock</div>
                 </Link>
 
-                <Link href="/dashboard/admin/users" className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow cursor-pointer group">
-                    <div className="flex justify-between items-start mb-4">
-                        <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600 group-hover:bg-purple-200 transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
+                <Link href="/dashboard/admin/users" className="relative overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-fuchsia-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl" />
+                    <div className="relative bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-purple-900/5 hover:shadow-2xl hover:shadow-purple-900/10 transition-all duration-500 flex flex-col h-full border-t-white/80">
+                        <div className="flex justify-between items-start mb-6">
+                            <div className="p-3 bg-purple-500 shadow-lg shadow-purple-500/30 rounded-2xl text-white transform group-hover:scale-110 group-hover:rotate-3 transition-transform duration-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                            </div>
+                            <span className="text-[10px] font-black tracking-widest text-purple-600 uppercase bg-purple-50 px-2 py-1 rounded-lg">Users</span>
+                        </div>
+                        <div className="mt-auto">
+                            <div className="text-2xl font-black text-gray-900 mb-1 tracking-tighter">{totalUsers.toLocaleString()}</div>
+                            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Registered Farmers</div>
                         </div>
                     </div>
-                    <div className="text-3xl font-bold text-gray-900 mb-1">{totalUsers}</div>
-                    <div className="text-sm text-gray-500">Active Customers</div>
                 </Link>
             </div>
 

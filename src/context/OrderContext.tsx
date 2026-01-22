@@ -3,6 +3,8 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
+import { NotificationService } from '@/lib/notifications';
+import { SmsService } from '@/lib/sms';
 
 import { Order, OrderItem } from '@/types';
 export type { Order, OrderItem };
@@ -194,6 +196,27 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             });
         } catch (error) {
             console.warn("Failed to notify admins, but order was placed:", error);
+        }
+
+        // 5. Trigger Customer Notifications (SMS/WhatsApp)
+        try {
+            if (orderData.phone) {
+                await SmsService.sendOrderUpdate(
+                    orderData.phone,
+                    orderId,
+                    'Processing',
+                    orderData.userName || 'Farmer'
+                );
+            }
+
+            if (orderData.phone && orderData.notificationPreferences?.includes('whatsapp')) {
+                await NotificationService.sendWhatsApp(
+                    orderData.phone,
+                    `Habari ${orderData.userName || 'Farmer'}, your MelAgro order #${orderId.slice(0, 5)} has been received! We are processing it now.`
+                );
+            }
+        } catch (err) {
+            console.error("Failed to send order confirmation SMS:", err);
         }
 
         return {

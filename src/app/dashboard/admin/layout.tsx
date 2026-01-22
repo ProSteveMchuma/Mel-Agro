@@ -6,6 +6,8 @@ import { useAuth } from '@/context/AuthContext';
 import { useOrders } from '@/context/OrderContext';
 import { toast } from 'react-hot-toast';
 
+import Logo from '@/components/Logo';
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { user, logout } = useAuth();
@@ -102,15 +104,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return (
         <div className="min-h-screen bg-gray-100 flex font-sans">
             {/* Sidebar */}
-            <aside className={`bg-gray-900 text-white transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-20'} flex flex-col fixed h-full z-20`}>
+            <aside className={`bg-gradient-to-b from-slate-900 to-slate-950 text-white transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-24'} flex flex-col fixed h-full z-20 shadow-2xl overflow-hidden`}>
                 <div className="p-6 flex items-center justify-between">
                     {isSidebarOpen ? (
-                        <span className="text-2xl font-bold text-melagro-primary">MelAgro<span className="text-white">Admin</span></span>
+                        <Logo light />
                     ) : (
-                        <span className="text-2xl font-bold text-melagro-primary">M</span>
+                        <Logo iconOnly light />
                     )}
-                    <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-gray-400 hover:text-white">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
@@ -149,29 +151,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </aside>
 
             {/* Main Content */}
-            <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-20'}`}>
+            <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-24'}`}>
                 {/* Topbar */}
-                <header className="bg-white shadow-sm border-b border-gray-200 h-16 flex items-center justify-between px-8 sticky top-0 z-10">
-                    <div className="text-gray-500 text-sm">
-                        {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 h-20 flex items-center justify-between px-8 sticky top-0 z-10">
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-2 mb-0.5">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-green-600">System Live</span>
+                        </div>
+                        <div className="text-gray-400 text-xs font-medium">
+                            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <button className="p-2 text-gray-400 hover:text-gray-600 relative">
+
+                    <div className="flex items-center gap-6">
+                        <button className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all relative group">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                             </svg>
                             {unreadNotificationsCount > 0 && (
-                                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 rounded-full border border-white text-[10px] text-white flex items-center justify-center">
+                                <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[10px] font-bold text-white flex items-center justify-center animate-bounce">
                                     {unreadNotificationsCount}
                                 </span>
                             )}
+                            {/* Simple tooltip */}
+                            <span className="absolute top-full right-0 mt-2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Notifications</span>
                         </button>
-                        <div className="flex items-center gap-3 pl-4 border-l border-gray-200">
+
+                        <div className="flex items-center gap-4 pl-6 border-l border-gray-100">
                             <div className="text-right hidden md:block">
-                                <div className="text-sm font-bold text-gray-900">{user?.name || 'Admin'}</div>
-                                <div className="text-xs text-gray-500">Administrator</div>
+                                <div className="text-sm font-black text-gray-900 leading-none mb-1">{user?.name || 'Admin'}</div>
+                                <div className="text-[10px] font-bold text-melagro-primary uppercase tracking-tighter">{user?.role || 'Administrator'}</div>
                             </div>
-                            <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-500 font-bold">
+                            <div className="w-11 h-11 bg-gradient-to-tr from-gray-100 to-gray-200 rounded-xl flex items-center justify-center text-gray-600 font-black shadow-inner border border-white">
                                 {user?.name?.charAt(0) || 'A'}
                             </div>
                         </div>

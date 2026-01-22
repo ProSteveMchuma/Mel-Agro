@@ -140,29 +140,46 @@ export default function UserDashboard() {
                 <p className="text-gray-600">Here's what's happening with your farm inputs today.</p>
             </div>
 
-            {/* Tracking Widget */}
-            <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-gray-900 mb-4">Track Your Order</h3>
-                <form onSubmit={handleTrackOrder} className="flex gap-3">
-                    <input
-                        type="text"
-                        placeholder="Enter Order ID (e.g. #12345)"
-                        value={trackOrderId}
-                        onChange={(e) => setTrackOrderId(e.target.value)}
-                        className="flex-grow px-4 py-3 bg-gray-50 border-none rounded-xl focus:ring-2 focus:ring-melagro-primary/20"
-                    />
-                    <button type="submit" className="bg-gray-900 text-white px-6 py-3 rounded-xl font-bold hover:scale-[1.02] transition-all">Track</button>
-                </form>
-            </div>
+            {/* Active Order Progress - Difference Maker */}
+            {orders.filter(o => o.status === 'Processing' || o.status === 'Shipped').slice(0, 1).map(activeOrder => (
+                <div key={activeOrder.id} className="bg-white rounded-3xl p-8 border border-melagro-primary/20 shadow-xl shadow-melagro-primary/5 animate-in slide-in-from-bottom-4 duration-700">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-melagro-primary mb-1">Active Tracking</h3>
+                            <p className="text-xl font-black text-gray-900 leading-none">Order #{activeOrder.id.slice(0, 8)}</p>
+                        </div>
+                        <Link href="/dashboard/user" onClick={() => { setSelectedOrder(activeOrder); }} className="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-xl hover:scale-105 transition-all">Full Tracking</Link>
+                    </div>
+                    <OrderTimeline status={activeOrder.status} />
+                </div>
+            ))}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {statsData.map((stat, idx) => (
-                    <div key={idx} className={`${stat.color} rounded-2xl p-6 border border-gray-100 shadow-sm hover:shadow-md transition-all`}>
-                        <div className="text-3xl mb-3">{stat.icon}</div>
-                        <p className="text-sm font-semibold text-gray-500 mb-1">{stat.label}</p>
-                        <p className="text-2xl font-bold">{stat.value}</p>
+                    <div key={idx} className={`${stat.color} rounded-3xl p-8 border border-white shadow-sm hover:shadow-xl hover:scale-[1.02] transition-all duration-500`}>
+                        <div className="text-4xl mb-4 transform group-hover:scale-110 transition-transform">{stat.icon}</div>
+                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">{stat.label}</p>
+                        <p className="text-2xl font-black text-gray-900">{stat.value}</p>
                     </div>
                 ))}
+            </div>
+
+            {/* Farmer Tip of the Day */}
+            <div className="bg-gradient-to-r from-green-600 to-melagro-primary rounded-3xl p-10 text-white relative overflow-hidden shadow-2xl shadow-green-900/10">
+                <div className="absolute top-0 right-0 p-8 opacity-10 transform scale-150 rotate-12">🚜</div>
+                <div className="relative z-10 max-w-xl">
+                    <div className="flex items-center gap-2 mb-4">
+                        <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Farmer's Pro-Tip</span>
+                    </div>
+                    <h3 className="text-2xl font-black mb-3 leading-tight">Maximized Maize Yields 🌽</h3>
+                    <p className="text-white/80 text-sm font-medium leading-relaxed">
+                        Top-dressing with CAN when your maize reaches knee-height (4-6 weeks after planting) can specifically target grain development and increase your harvest by up to 30%.
+                    </p>
+                    <button onClick={() => router.push('/products')} className="mt-6 flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white text-green-700 px-6 py-3 rounded-xl hover:bg-green-50 transition-all">
+                        View Relevant Inputs
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

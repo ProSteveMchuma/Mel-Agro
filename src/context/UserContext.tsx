@@ -70,15 +70,31 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     }, [user]);
 
     const updateUserRole = async (userId: string, role: 'admin' | 'customer') => {
-        const userRef = doc(db, "users", userId);
-        await updateDoc(userRef, { role });
-        setUsers((prev: User[]) => prev.map((u: User) => u.id === userId ? { ...u, role: role as any } : u));
+        try {
+            const userRef = doc(db, "users", userId);
+            await updateDoc(userRef, {
+                role,
+                updatedAt: new Date().toISOString()
+            });
+            setUsers((prev: User[]) => prev.map((u: User) => u.id === userId ? { ...u, role: role as any } : u));
+        } catch (error) {
+            console.error("Error updating user role:", error);
+            throw error;
+        }
     };
 
     const updateUserStatus = async (userId: string, status: 'active' | 'suspended') => {
-        const userRef = doc(db, "users", userId);
-        await updateDoc(userRef, { status });
-        setUsers((prev: User[]) => prev.map((u: User) => u.id === userId ? { ...u, status } : u));
+        try {
+            const userRef = doc(db, "users", userId);
+            await updateDoc(userRef, {
+                status,
+                updatedAt: new Date().toISOString()
+            });
+            setUsers((prev: User[]) => prev.map((u: User) => u.id === userId ? { ...u, status } : u));
+        } catch (error) {
+            console.error("Error updating user status:", error);
+            throw error;
+        }
     };
 
     const deleteUser = async (userId: string) => {
