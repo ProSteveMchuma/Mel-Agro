@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 
 interface SidebarProps {
