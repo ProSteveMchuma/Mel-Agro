@@ -11,6 +11,8 @@ import { useRouter } from "next/navigation";
 import AnalyticsCharts from "@/components/admin/AnalyticsCharts";
 import ReportsCenter from "@/components/admin/ReportsCenter";
 import { collection, query, orderBy, limit, getDocs, QueryDocumentSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { Product } from "@/types";
 
 interface SearchTerm {
     term: string;
