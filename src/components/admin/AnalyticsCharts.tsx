@@ -20,14 +20,34 @@ export default function AnalyticsCharts({ orders }: AnalyticsChartsProps) {
 
         return last7Days.map(date => {
             const dayOrders = orders.filter(o => {
-                // Handle Firestore Timestamp or Date object or string
-                const orderDate = o.createdAt?.seconds ? new Date(o.createdAt.seconds * 1000) : new Date(o.createdAt);
-                return orderDate.toISOString().split('T')[0] === date;
+                try {
+                    // Try 'date' first (ISO string from OrderContext), then fall back to 'createdAt'
+                    const rawDate = o.date || o.createdAt;
+                    if (!rawDate) return false;
+
+                    let orderDate: Date;
+
+                    if (rawDate?.seconds) {
+                        // Handle Firestore Timestamp
+                        orderDate = new Date(rawDate.seconds * 1000);
+                    } else {
+                        // Handle Date object or ISO string
+                        orderDate = new Date(rawDate);
+                    }
+
+                    // Check if date is valid before calling toISOString
+                    if (isNaN(orderDate.getTime())) return false;
+
+                    return orderDate.toISOString().split('T')[0] === date;
+                } catch (e) {
+                    console.error("Error parsing order date:", e);
+                    return false;
+                }
             });
 
             return {
                 date: new Date(date).toLocaleDateString('en-US', { weekday: 'short' }),
-                sales: dayOrders.reduce((acc, o) => acc + o.total, 0),
+                sales: dayOrders.reduce((acc, o) => acc + (o.total || 0), 0),
                 orders: dayOrders.length
             };
         });
