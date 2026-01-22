@@ -8,8 +8,12 @@ export async function getAccessToken() {
 
     const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
 
+    const baseUrl = process.env.MPESA_ENV === 'production'
+        ? 'https://api.safaricom.co.ke'
+        : 'https://sandbox.safaricom.co.ke';
+
     try {
-        const response = await fetch('https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials', {
+        const response = await fetch(`${baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
             headers: {
                 Authorization: `Basic ${auth}`,
             },

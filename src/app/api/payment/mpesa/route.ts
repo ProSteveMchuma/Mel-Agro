@@ -26,7 +26,11 @@ export async function POST(request: Request) {
         const { password, timestamp, shortcode } = generatePassword();
         const callbackUrl = process.env.MPESA_CALLBACK_URL || `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/mpesa/callback`;
 
-        const stkPushResponse = await fetch('https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest', {
+        const baseUrl = process.env.MPESA_ENV === 'production'
+            ? 'https://api.safaricom.co.ke'
+            : 'https://sandbox.safaricom.co.ke';
+
+        const stkPushResponse = await fetch(`${baseUrl}/mpesa/stkpush/v1/processrequest`, {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${accessToken}`,

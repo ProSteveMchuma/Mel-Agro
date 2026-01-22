@@ -135,7 +135,7 @@ export default function FlashSaleStrip() {
                                     ease: "linear"
                                 }
                             }}
-                            whileHover={{ pause: true }}
+                            whileHover={{ scale: 1.01 }}
                         >
                             {marqueeProducts.map((product, idx) => (
                                 <div key={`${product.id}-${idx}`} className="min-w-[280px] max-w-[280px]">

@@ -34,10 +34,20 @@ export default function Header() {
       {/* Main Header */}
       <div className="container-custom py-4 border-b border-gray-100 shadow-sm">
         <div className="flex items-center gap-8 justify-between">
-          {/* Logo */}
-          <Link href="/" className="group flex-shrink-0">
-            <Logo />
-          </Link>
+          {/* Logo & Mobile Menu Toggle */}
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+              </svg>
+            </button>
+            <Link href="/" className="group flex-shrink-0">
+              <Logo />
+            </Link>
+          </div>
 
           {/* Search Bar - Desktop */}
           <div className="hidden md:flex flex-grow max-w-2xl relative justify-center">
@@ -56,6 +66,11 @@ export default function Header() {
                 <p className="text-sm font-black text-gray-900 flex items-center gap-1">Account <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg></p>
               </div>
             </div>
+
+            {/* Mobile Account Icon (Visible only on mobile) */}
+            <Link href={userLink} className="lg:hidden p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+            </Link>
 
             {/* Help */}
             <div className="hidden lg:flex items-center gap-2 group cursor-pointer hover:text-[#22c55e] transition-colors">
@@ -78,6 +93,75 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      {isMenuOpen && (
+        <div className="lg:hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setIsMenuOpen(false)}>
+          <div
+            className="absolute top-0 left-0 w-[80%] max-w-sm h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-left duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-900 text-white">
+              <Logo />
+              <button onClick={() => setIsMenuOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+
+            <nav className="flex-grow py-6 px-6 overflow-y-auto">
+              <div className="space-y-1 mb-8">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-3 mb-2">Main Menu</p>
+                <Link href="/" className="block px-3 py-3 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>Home</Link>
+                <Link href="/products" className="block px-3 py-3 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>Shop All</Link>
+                <Link href="/dashboard/user" className="block px-3 py-3 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>My Orders</Link>
+                <Link href="/wishlist" className="block px-3 py-3 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>Wishlist</Link>
+              </div>
+
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-3 mb-2">Categories</p>
+                {["Seeds", "Fertilizers", "Tools", "Animal Feeds", "Irrigation"].map((cat) => (
+                  <Link
+                    key={cat}
+                    href={`/products?category=${cat}`}
+                    className="block px-3 py-3 text-sm font-bold text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl"
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {cat}
+                  </Link>
+                ))}
+              </div>
+            </nav>
+
+            <div className="p-6 border-t border-gray-100 bg-gray-50">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border border-gray-200 text-gray-400">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                </div>
+                <div>
+                  <p className="text-xs font-black text-gray-900">{user ? user.name : 'Guest User'}</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{user ? user.role : 'Welcome to MelAgro'}</p>
+                </div>
+              </div>
+              {user ? (
+                <button
+                  onClick={() => { logout(); setIsMenuOpen(false); }}
+                  className="w-full py-4 bg-red-50 text-red-600 text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-red-100 transition-all border border-red-100"
+                >
+                  Log Out
+                </button>
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="block w-full py-4 bg-green-600 text-white text-center text-xs font-black uppercase tracking-widest rounded-2xl hover:bg-green-700 transition-all shadow-lg shadow-green-200"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Sign In
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
