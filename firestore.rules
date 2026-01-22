@@ -5,20 +5,21 @@ service cloud.firestore {
     // Helper function to check if user is admin or super-admin
     function isAdmin() {
       return request.auth != null && (
-        request.auth.token.email in ['admin@melagro.com', 'james.wambua@makamithi.com', 'proinnovationtech@gmail.com'] || 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super-admin']
+        request.auth.token.email in ['proinnovationtech@gmail.com', 'admin@melagro.com', 'james.wambua@makamithi.com'] ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super-admin'])
       );
     }
 
     // Products: Public read, Admin write
     match /products/{productId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if isAdmin() || (request.auth != null && request.auth.token.email == 'proinnovationtech@gmail.com');
     }
 
     // Inventory History: Admin only
     match /inventory_history/{historyId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAdmin() || (request.auth != null && request.auth.token.email == 'proinnovationtech@gmail.com');
     }
 
     // Orders: Users can read/create their own, Admin can read/write all

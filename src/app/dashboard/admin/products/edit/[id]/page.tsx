@@ -27,9 +27,12 @@ export default function EditProductPage() {
         try {
             await updateProduct(id, data);
             router.push('/dashboard/admin/products');
-        } catch (error) {
+        } catch (error: any) {
             console.error("Failed to update product:", error);
-            alert("Failed to update product. Please try again.");
+            const errorMsg = error.code === 'permission-denied'
+                ? "Permission Denied: You don't have authorization to edit products."
+                : (error.message || "Please try again.");
+            alert(`Failed to update product: ${errorMsg}`);
             setIsSubmitting(false);
         }
     };
