@@ -46,8 +46,8 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
                 } as Product);
             });
 
-            // Client-side sort by name
-            productList.sort((a, b) => a.name.localeCompare(b.name));
+            // Client-side sort by name, safely
+            productList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
             if (productList.length === 0 && !loading) {
                 // Only seed if we're sure it's empty and not just initial load
@@ -67,8 +67,36 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
         return () => unsubscribe();
     }, []);
 
-    const addProduct = async (product: Omit<Product, 'id'>) => {
-        await addDoc(collection(db, "products"), product);
+    const addProduct = async (productData: Omit<Product, 'id'>) => {
+        try {
+            // Ensure numeric values are actually numbers and not NaN
+            const product = {
+                ...productData,
+                price: Number(productData.price) || 0,
+                stockQuantity: Number(productData.stockQuantity) || 0,
+                lowStockThreshold: Number(productData.lowStockThreshold) || 10,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+
+            const docRef = await addDoc(collection(db, "products"), product);
+
+            // Log Inventory History for the new product
+            await addDoc(collection(db, "inventory_history"), {
+                productId: docRef.id,
+                productName: product.name,
+                previousStock: 0,
+                newStock: product.stockQuantity,
+                change: product.stockQuantity,
+                type: 'initial',
+                updatedBy: authUser?.email || 'System',
+                updatedAt: new Date().toISOString(),
+                note: 'Product created'
+            });
+        } catch (error) {
+            console.error("Error adding product context:", error);
+            throw error;
+        }
     };
 
     const updateProduct = async (id: number | string, updates: Partial<Product>) => {
@@ -76,7 +104,12 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
             const productRef = doc(db, "products", String(id));
             const oldProduct = products.find((p: Product) => String(p.id) === String(id));
 
-            await updateDoc(productRef, updates);
+            const sanitizedUpdates = {
+                ...updates,
+                updatedAt: new Date().toISOString()
+            };
+
+            await updateDoc(productRef, sanitizedUpdates);
 
             // Log Inventory History if stock changed
             if (updates.stockQuantity !== undefined && oldProduct && updates.stockQuantity !== oldProduct.stockQuantity) {
@@ -85,7 +118,8 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
                     productName: oldProduct.name,
                     previousStock: oldProduct.stockQuantity,
                     newStock: updates.stockQuantity,
-                    change: updates.stockQuantity - oldProduct.stockQuantity,
+                    change: Number(updates.stockQuantity) - Number(oldProduct.stockQuantity),
+                    type: 'adjustment',
                     updatedBy: authUser?.email || 'System',
                     updatedAt: new Date().toISOString()
                 });

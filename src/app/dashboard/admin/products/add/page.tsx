@@ -58,14 +58,17 @@ export default function AddProductPage() {
                 imageUrl = await uploadImage(imageFile, path);
             }
 
+            const price = Number(formData.price) || 0;
+            const stockQty = Number(formData.stockQuantity) || 0;
+
             await addProduct({
                 name: formData.name,
-                price: Number(formData.price),
+                price: price,
                 category: formData.category,
                 description: formData.description,
                 image: imageUrl,
-                inStock: Number(formData.stockQuantity) > 0,
-                stockQuantity: Number(formData.stockQuantity),
+                inStock: stockQty > 0,
+                stockQuantity: stockQty,
                 lowStockThreshold: 10,
                 rating: 0,
                 reviews: 0

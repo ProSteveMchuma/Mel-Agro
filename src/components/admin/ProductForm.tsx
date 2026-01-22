@@ -52,20 +52,28 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        const price = Number(formData.price);
         const stockQty = Number(formData.stockQuantity);
+        const threshold = Number(formData.lowStockThreshold);
+
+        if (isNaN(price) || isNaN(stockQty)) {
+            alert("Please enter valid numbers for price and stock.");
+            return;
+        }
 
         await onSubmit({
             name: formData.name,
-            price: Number(formData.price),
+            price: price,
             category: formData.category,
             description: formData.description,
             image: formData.image || 'https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?q=80&w=1000&auto=format&fit=crop',
             stockQuantity: stockQty,
-            lowStockThreshold: Number(formData.lowStockThreshold),
-            inStock: stockQty > 0, // Derived from quantity
+            lowStockThreshold: threshold,
+            inStock: stockQty > 0,
             rating: initialData?.rating || 0,
             reviews: initialData?.reviews || 0
-        } as any);
+        });
     };
 
     return (

@@ -3,7 +3,7 @@ import { useProducts } from "@/context/ProductContext";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import ProductForm from "@/components/admin/ProductForm";
-import { Product } from "@/lib/mockData";
+import { Product } from "@/types";
 
 export default function AddProductPage() {
     const { addProduct } = useProducts();
