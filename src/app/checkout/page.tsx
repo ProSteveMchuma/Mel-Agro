@@ -28,15 +28,31 @@ export default function CheckoutPage() {
     const [validationErrorCount, setValidationErrorCount] = useState(0);
 
     const [shippingData, setShippingData] = useState({
-        firstName: user?.name?.split(' ')[0] || '',
-        lastName: user?.name?.split(' ')[1] || '',
-        email: user?.email || '',
-        phone: user?.phone || '',
-        county: user?.county || 'Nairobi',
-        town: user?.city || '',
-        address: user?.address || '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        county: 'Nairobi',
+        town: '',
+        address: '',
         landmark: ''
     });
+
+    // Sync shipping data with user profile when user loads
+    useEffect(() => {
+        if (user) {
+            setShippingData(prev => ({
+                ...prev,
+                firstName: prev.firstName || user.name?.split(' ')[0] || '',
+                lastName: prev.lastName || user.name?.split(' ')[1] || '',
+                email: prev.email || user.email || '',
+                phone: prev.phone || user.phone || '',
+                county: prev.county || user.county || 'Nairobi',
+                town: prev.town || user.city || '',
+                address: prev.address || user.address || ''
+            }));
+        }
+    }, [user]);
 
     const [shippingMethod, setShippingMethod] = useState('standard');
     const [paymentMethod, setPaymentMethod] = useState('mpesa');
@@ -184,9 +200,21 @@ export default function CheckoutPage() {
             toast.success("Order placed successfully!");
             router.push(`/checkout/success?orderId=${newOrder.id}`);
 
-        } catch (error) {
-            console.error("Failed to place order:", error);
-            toast.error("Failed to place order. Please try again.");
+        } catch (error: any) {
+            console.error("Order Failure Details:", {
+                message: error.message,
+                code: error.code,
+                stack: error.stack
+            });
+
+            // Handle specific transaction errors (e.g., from OrderContext)
+            if (error.message?.includes("stock") || error.message?.includes("exist")) {
+                toast.error(error.message);
+            } else if (error.code === 'permission-denied') {
+                toast.error("Operation not permitted. Please contact support.");
+            } else {
+                toast.error("Failed to place order. " + (error.message || "Please try again."));
+            }
             setIsProcessing(false);
         }
     };
