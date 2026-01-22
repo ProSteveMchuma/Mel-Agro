@@ -21,7 +21,7 @@ export async function POST(request: Request) {
         }
 
         const stripe = new Stripe(stripeSecretKey, {
-            apiVersion: '2025-11-17.clover', // Use latest or pinned version
+            apiVersion: '2025-11-17.clover' as any, // Use latest or pinned version
         });
 
         const paymentIntent = await stripe.paymentIntents.create({

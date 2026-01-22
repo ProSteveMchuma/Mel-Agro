@@ -3,9 +3,10 @@ import Stripe from 'stripe';
 import { db } from '@/lib/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
+const stripe = stripeSecretKey ? new Stripe(stripeSecretKey, {
     apiVersion: '2025-11-17.clover' as any,
-});
+}) : null;
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -16,6 +17,11 @@ export async function POST(request: Request) {
     let event: Stripe.Event;
 
     try {
+        if (!stripe) {
+            console.error("❌ Stripe is not initialized (Missing Secret Key)");
+            return NextResponse.json({ message: "Stripe configuration missing" }, { status: 500 });
+        }
+
         if (!webhookSecret) {
             console.warn("⚠️ Stripe Webhook Secret is missing. Skipping signature verification (Not for production!)");
             event = JSON.parse(body);

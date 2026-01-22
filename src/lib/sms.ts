@@ -14,47 +14,41 @@ export const SmsService = {
         let formattedPhone = phoneNumber.replace(/\s/g, '');
         if (formattedPhone.startsWith('0')) {
             formattedPhone = '+254' + formattedPhone.substring(1);
+        } else if (!formattedPhone.startsWith('+')) {
+            formattedPhone = '+' + formattedPhone;
         }
 
         const message = `Habari ${name || 'Farmer'}, your MelAgro order #${orderId.slice(0, 5)} is now ${status}. Thank you for farming with us!`;
 
-
-
         // Real Implementation with Fallback
         try {
-            // Check for credentials
-            const apiKey = process.env.AT_API_KEY;
-            const username = process.env.AT_USERNAME; // 'sandbox' for dev
+            // Check for credentials - using consistent naming
+            const apiKey = process.env.AFRICASTALKING_API_KEY || process.env.AT_API_KEY;
+            const username = process.env.AFRICASTALKING_USERNAME || process.env.AT_USERNAME || 'sandbox';
 
-            if (!apiKey || !username) {
-                console.warn("Missing Africa's Talking credentials (AT_API_KEY, AT_USERNAME). Falling back to mock.");
-                console.log("---------------------------------------------------");
-                console.log(`[SMS MOCK] To: ${formattedPhone}`);
-                console.log(`[SMS MOCK] Message: ${message}`);
-                console.log("---------------------------------------------------");
-                return { success: true, message: "Mock SMS sent (Missing Creds)" };
+            if (!apiKey || apiKey === 'undefined' || apiKey === 'null') {
+                console.warn("SMS: No API key found. Logging to console (Mock Mode).");
+                console.log(`[SMS MOCK] To: ${formattedPhone}, Msg: ${message}`);
+                return { success: true, message: "Mock SMS logged" };
             }
 
-            const credentials = { apiKey, username };
-
+            // ONLY require and initialize if we have what we need
             // eslint-disable-next-line @typescript-eslint/no-require-imports
-            const AfricasTalking = require('africastalking')(credentials);
-            const sms = AfricasTalking.SMS;
+            const AfricasTalking = require('africastalking');
+            const atClient = AfricasTalking({ apiKey, username });
+            const sms = atClient.SMS;
 
             const response = await sms.send({
                 to: formattedPhone,
                 message: message,
-                // from: 'MELAGRO' // Shortcode if available
             });
 
-            console.log("SMS Sent:", response);
+            console.log("SMS Sent successfully via Africa's Talking");
             return { success: true, details: response };
         } catch (error) {
             console.error("SMS Failed:", error);
-            // Fallback to mock logs in development if it fails (e.g. network)
             if (MOCK_MODE) {
-                console.log(`[SMS FAIL-SAFE MOCK] To: ${formattedPhone}`);
-                console.log(`[SMS FAIL-SAFE MOCK] Message: ${message}`);
+                console.log(`[SMS FAIL-SAFE MOCK] To: ${formattedPhone}, Msg: ${message}`);
             }
             return { success: false, error };
         }
