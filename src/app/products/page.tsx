@@ -4,11 +4,11 @@ import React, { Suspense, useState, useEffect, useMemo } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
-import ProductRow from "@/components/ProductRow";
 import ProductCard from "@/components/ProductCard";
 import { Product, getProductsPage } from "@/lib/products";
 import { fuzzySearch } from "@/components/SmartSearch";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function ProductsPage() {
     const searchParams = useSearchParams();
@@ -16,8 +16,9 @@ export default function ProductsPage() {
 
     // State for filters - initialize from URL
     const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get("category") || "");
-    const [priceRange, setPriceRange] = useState<[number, number]>([0, 100000]);
+    const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
     const [sortBy, setSortBy] = useState("best-selling");
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Sync state with URL changes
     useEffect(() => {
@@ -36,6 +37,7 @@ export default function ProductsPage() {
         }
         router.push(`/products?${params.toString()}`);
         setSelectedCategory(category);
+        setIsSidebarOpen(false); // Close sidebar on mobile after selection
     };
 
     const categories = ["Seeds", "Fertilizers", "Crop Protection Products", "Animal Feeds", "Veterinary Products", "Farm Tools", "Irrigation"];
@@ -45,57 +47,95 @@ export default function ProductsPage() {
             <Header />
 
             <main className="flex-grow">
-                {/* Breadcrumb */}
-                <div className="bg-white border-b border-gray-200 sticky top-16 z-30 shadow-sm">
-                    <div className="container-custom px-4 md:px-8 py-3">
-                        <nav className="flex items-center gap-2 text-sm">
-                            <Link href="/" className="text-gray-600 hover:text-melagro-primary transition-colors">Home</Link>
-                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                            <Link href="/products" className="text-gray-600 hover:text-melagro-primary transition-colors">Shop</Link>
-                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                            <span className="text-melagro-primary font-semibold">
-                                {selectedCategory || "All Products"}
+                {/* Breadcrumb & Mobile Filter Toggle */}
+                <div className="bg-white border-b border-gray-100 sticky top-16 z-30 shadow-sm">
+                    <div className="container-custom px-4 md:px-8 py-3 flex items-center justify-between">
+                        <nav className="flex items-center gap-2 text-[10px] md:text-sm">
+                            <Link href="/" className="text-gray-400 hover:text-melagro-primary transition-colors font-bold uppercase tracking-widest">Home</Link>
+                            <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                            <Link href="/products" className="text-gray-400 hover:text-melagro-primary transition-colors font-bold uppercase tracking-widest">Shop</Link>
+                            <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                            <span className="text-melagro-primary font-black uppercase tracking-widest">
+                                {selectedCategory || "Catalogue"}
                             </span>
                         </nav>
+
+                        {/* Mobile Filter Toggle */}
+                        <button
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="lg:hidden flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-gray-600 border border-gray-100"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                            Filters
+                        </button>
                     </div>
                 </div>
 
-                {/* Main Content with Sidebar */}
-                <div className="flex flex-col lg:flex-row container-custom py-8 gap-8 px-4">
-                    {/* Sidebar Filter */}
-                    <div className="w-full lg:w-64 flex-shrink-0">
-                        <Sidebar
-                            categories={categories}
-                            onCategoryChange={handleCategoryChange}
-                            onPriceChange={setPriceRange}
+                {/* Main Content */}
+                <div className="flex flex-col lg:flex-row container-custom py-8 gap-8 px-4 relative">
+                    {/* Sidebar Overlay (Mobile) */}
+                    {isSidebarOpen && (
+                        <div
+                            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] lg:hidden"
+                            onClick={() => setIsSidebarOpen(false)}
                         />
+                    )}
+
+                    {/* Sidebar Filter */}
+                    <div className={`
+                        fixed inset-y-0 left-0 w-[280px] bg-white z-[70] transform transition-transform duration-500 ease-in-out lg:relative lg:translate-x-0 lg:z-0 lg:w-64 flex-shrink-0
+                        ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+                    `}>
+                        <div className="h-full overflow-y-auto lg:h-auto lg:overflow-visible p-4 lg:p-0">
+                            <div className="flex items-center justify-between mb-6 lg:hidden">
+                                <h2 className="text-xl font-black uppercase tracking-tighter">Filters</h2>
+                                <button onClick={() => setIsSidebarOpen(false)} className="p-2 bg-gray-50 rounded-full">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                            <Sidebar
+                                categories={categories}
+                                onCategoryChange={handleCategoryChange}
+                                onPriceChange={setPriceRange}
+                            />
+                        </div>
                     </div>
 
                     <div className="flex-1">
                         {/* Page Title & Controls */}
-                        <div className="mb-8">
-                            <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-3 tracking-tighter uppercase">
-                                {selectedCategory || "All Products"}
-                            </h1>
-                            <p className="text-gray-600 mb-6 font-medium">Browse our wide range of quality agricultural inputs.</p>
+                        <div className="mb-8 group">
+                            <div className="flex items-center gap-4 mb-3">
+                                <span className="h-1 w-12 bg-melagro-primary rounded-full group-hover:w-20 transition-all duration-500"></span>
+                                <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter uppercase">
+                                    {selectedCategory || "Global Catalogue"}
+                                </h1>
+                            </div>
+                            <p className="text-gray-500 mb-8 font-medium max-w-2xl leading-relaxed">
+                                Curating the finest agricultural inputs for the modern farmer. Certified quality, delivered to your farm.
+                            </p>
 
                             {/* Sort and Filter Bar */}
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">
-                                    Quality Inputs for Productive Farming
-                                </p>
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/50">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-melagro-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                    </div>
+                                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">
+                                        Verified Inventory
+                                    </p>
+                                </div>
                                 <div className="flex items-center gap-4 w-full sm:w-auto">
-                                    <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider whitespace-nowrap">
-                                        <span className="text-gray-400">Sort By:</span>
+                                    <label className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest whitespace-nowrap bg-gray-50 pl-4 pr-1 py-1 rounded-2xl border border-gray-100">
+                                        <span className="text-gray-400">Sort:</span>
                                         <select
                                             value={sortBy}
                                             onChange={(e) => setSortBy(e.target.value)}
-                                            className="px-4 py-2 bg-gray-50 border-none rounded-xl text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-melagro-primary/50 cursor-pointer hover:bg-gray-100 transition-all font-black"
+                                            className="px-4 py-2 bg-white border-none rounded-xl text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20 cursor-pointer transition-all font-black shadow-sm"
                                         >
-                                            <option value="best-selling">Best Selling</option>
-                                            <option value="price-low">Price: Low to High</option>
-                                            <option value="price-high">Price: High to Low</option>
-                                            <option value="newest">Newest</option>
+                                            <option value="best-selling">Popularity</option>
+                                            <option value="price-low">Lowest Price</option>
+                                            <option value="price-high">Highest Price</option>
+                                            <option value="newest">Latest Stock</option>
                                             <option value="rating">Top Rated</option>
                                         </select>
                                     </label>
