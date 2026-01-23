@@ -58,7 +58,10 @@ export async function getProductsPage(
         } else if (sortBy === 'price-high') {
             constraints.push(orderBy("price", "desc"));
         } else if (sortBy === 'newest') {
+            // Note: If some products lack 'createdAt', they will be hidden from this view.
+            // We include name as a stable secondary sort.
             constraints.push(orderBy("createdAt", "desc"));
+            constraints.push(orderBy("name", "asc"));
         } else {
             constraints.push(orderBy("name", "asc"));
         }

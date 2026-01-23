@@ -16,6 +16,7 @@ import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplate";
 import WeatherWidget from "@/components/dashboard/WeatherWidget";
 import { toast } from "react-hot-toast";
+import AddressBook from "@/components/dashboard/AddressBook";
 
 type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses' | 'payments';
 
@@ -118,7 +119,7 @@ export default function UserDashboard() {
 
     const statsData = [
         { label: "Total Orders", value: orders.length.toString(), icon: "📦", color: "bg-blue-50 text-blue-600" },
-        { label: "Active Orders", value: orders.filter((o: Order) => o.status === 'Processing' || o.status === 'Shipped').length.toString(), icon: "🕒", color: "bg-yellow-50 text-yellow-600" },
+        { label: "Loyalty Points", value: (user?.loyaltyPoints || 0).toString(), icon: "⭐", color: "bg-purple-50 text-purple-600" },
         { label: "Total Spent", value: `KES ${orders.reduce((acc: number, curr: Order) => acc + curr.total, 0).toLocaleString()}`, icon: "💰", color: "bg-green-50 text-green-600" }
     ];
 
@@ -164,7 +165,6 @@ export default function UserDashboard() {
                 ))}
             </div>
 
-            {/* Farmer Tip of the Day */}
             <div className="bg-gradient-to-r from-green-600 to-melagro-primary rounded-3xl p-10 text-white relative overflow-hidden shadow-2xl shadow-green-900/10">
                 <div className="absolute top-0 right-0 p-8 opacity-10 transform scale-150 rotate-12">🚜</div>
                 <div className="relative z-10 max-w-xl">
@@ -179,6 +179,37 @@ export default function UserDashboard() {
                         View Relevant Inputs
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                     </button>
+                </div>
+            </div>
+
+            {/* Loyalty & Rewards Card */}
+            <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl p-10 text-white relative overflow-hidden shadow-2xl shadow-purple-900/20 group">
+                <div className="absolute -right-10 -bottom-10 p-20 opacity-10 transform scale-150 group-hover:rotate-12 transition-transform duration-700">⭐</div>
+                <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-6">
+                        <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Mel-Agro Rewards</span>
+                    </div>
+                    <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
+                        <div>
+                            <h3 className="text-4xl font-black mb-2 leading-tight">{user.loyaltyPoints || 0} Points</h3>
+                            <p className="text-white/80 text-sm font-medium max-w-md">
+                                You've earned points on every purchase! Redeem them for discounts on fertilizers, seeds, and equipment during your next checkout.
+                            </p>
+                        </div>
+                        <Link href="/products" className="flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white text-purple-700 px-6 py-3 rounded-xl hover:bg-purple-50 transition-all w-fit">
+                            Redeem Points
+                        </Link>
+                    </div>
+                    {/* Points Progress */}
+                    <div className="mt-8 pt-6 border-t border-white/10">
+                        <div className="flex justify-between items-end mb-2">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Next Tier Progress</p>
+                            <p className="text-xs font-bold">{Math.min(100, Math.floor(((user.loyaltyPoints || 0) % 500) / 5))}%</p>
+                        </div>
+                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                            <div className="h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.5)] transition-all duration-1000" style={{ width: `${Math.min(100, Math.floor(((user.loyaltyPoints || 0) % 500) / 5))}%` }}></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -511,6 +542,7 @@ export default function UserDashboard() {
                                     { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
                                     { id: 'orders', label: 'My Orders', icon: '📦' },
                                     { id: 'wishlist', label: 'Wishlist', icon: '❤️' },
+                                    { id: 'addresses', label: 'Addresses', icon: '📍' },
                                     { id: 'returns', label: 'Returns', icon: '🔄' },
                                     { id: 'notifications', label: 'Alerts', icon: '🔔' },
                                     { id: 'profile', label: 'Settings', icon: '⚙️' },
@@ -547,6 +579,7 @@ export default function UserDashboard() {
                         {activeTab === 'wishlist' && renderWishlist()}
                         {activeTab === 'notifications' && renderNotifications()}
                         {activeTab === 'returns' && renderReturns()}
+                        {activeTab === 'addresses' && <AddressBook />}
                         {activeTab === 'support' && renderSupport()}
                         {activeTab === 'profile' && (
                             <div className="max-w-2xl bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">

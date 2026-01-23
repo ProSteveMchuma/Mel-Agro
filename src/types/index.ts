@@ -12,6 +12,16 @@ export interface User {
     joinDate?: string;
     createdAt?: string;
     status?: 'active' | 'suspended';
+    savedAddresses?: SavedAddress[];
+}
+
+export interface SavedAddress {
+    id: string;
+    label: string; // e.g., "Home", "Farm 1"
+    county: string;
+    city: string;
+    details: string;
+    isPrimary: boolean;
 }
 
 export interface Product {
@@ -70,6 +80,12 @@ export interface Order {
     notificationPreferences?: string[];
     returnStatus?: 'Requested' | 'Approved' | 'Rejected';
     returnReason?: string;
+    internalNotes?: string;
+    internalHistory?: {
+        date: string;
+        note: string;
+        author: string;
+    }[];
 }
 
 export interface OrderItem {

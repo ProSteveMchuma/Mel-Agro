@@ -66,7 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     phone: userData.phone || firebaseUser.phoneNumber || undefined,
                     address: userData.address,
                     city: userData.city,
-                    county: userData.county
+                    county: userData.county,
+                    loyaltyPoints: userData.loyaltyPoints || 0,
+                    savedAddresses: userData.savedAddresses || []
                 });
                 setIsAuthenticated(true);
             } else {
@@ -105,7 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     phone: updatedUser.phone || null,
                     address: updatedUser.address || null,
                     city: updatedUser.city || null,
-                    county: updatedUser.county || null
+                    county: updatedUser.county || null,
+                    loyaltyPoints: updatedUser.loyaltyPoints || 0,
+                    savedAddresses: updatedUser.savedAddresses || []
                 }, { merge: true });
             } catch (error) {
                 console.error("Error updating user profile:", error);

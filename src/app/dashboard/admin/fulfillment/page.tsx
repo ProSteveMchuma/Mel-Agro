@@ -156,6 +156,8 @@ export default function FulfillmentPage() {
                                         </Link>
                                     </div>
                                 </div>
+
+                                <InternalNotes orderId={selectedOrder.id} initialNote={selectedOrder.internalNotes || ''} history={selectedOrder.internalHistory || []} />
                             </div>
                         </div>
                     ) : (
@@ -165,6 +167,60 @@ export default function FulfillmentPage() {
                     )}
                 </div>
             </div>
+        </div>
+    );
+}
+
+function InternalNotes({ orderId, initialNote, history }: { orderId: string, initialNote: string, history: any[] }) {
+    const { addInternalNote } = useOrders();
+    const [note, setNote] = useState(initialNote);
+    const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        setNote(initialNote);
+    }, [initialNote]);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            await addInternalNote(orderId, note);
+            toast.success("Internal note saved");
+        } catch (error) {
+            toast.error("Failed to save note");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="space-y-3 pt-4 border-t border-gray-50">
+            <p className="text-xs font-bold text-gray-400 tracking-widest uppercase">Internal Notes</p>
+            <textarea
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                className="w-full text-xs rounded-xl border-gray-200 focus:ring-melagro-primary/20 p-3 min-h-[80px]"
+                placeholder="Add logistics or status notes here..."
+            />
+            <button
+                disabled={isSaving || note === initialNote}
+                onClick={handleSave}
+                className="w-full py-2 bg-gray-100 text-gray-600 text-[10px] font-black uppercase rounded-lg hover:bg-gray-200 transition-all disabled:opacity-50"
+            >
+                {isSaving ? 'Saving...' : 'Save Note'}
+            </button>
+            {history.length > 0 && (
+                <div className="mt-4 space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
+                    {history.slice().reverse().map((h, i) => (
+                        <div key={i} className="p-2 bg-gray-50/50 rounded-lg text-[9px] border border-gray-50">
+                            <div className="flex justify-between items-center mb-1">
+                                <span className="font-bold text-gray-900">{h.author}</span>
+                                <span className="text-gray-400">{new Date(h.date).toLocaleDateString()}</span>
+                            </div>
+                            <p className="text-gray-600 italic">"{h.note}"</p>
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

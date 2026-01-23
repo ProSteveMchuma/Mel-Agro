@@ -28,6 +28,7 @@ interface OrderContextType {
     updateReturnStatus: (orderId: string, status: 'Approved' | 'Rejected') => Promise<void>;
     handleConfirmReceipt: (orderId: string) => Promise<void>;
     markNotificationRead: (id: string) => Promise<void>;
+    addInternalNote: (orderId: string, note: string) => Promise<void>;
     unreadNotificationsCount: number;
 }
 
@@ -101,7 +102,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         return () => unsubscribe();
     }, [user]);
 
-    const addOrder = async (orderData: Omit<Order, 'id' | 'date' | 'status'>) => {
+    const addOrder = async (orderData: Omit<Order, 'id' | 'date' | 'status'>, pointsToRedeem: number = 0) => {
         const orderId = doc(collection(db, "orders")).id;
         const date = new Date().toISOString();
 
@@ -177,6 +178,14 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                     updatedBy: 'System (Atomic Order)',
                     updatedAt: date,
                     orderId: orderId
+                });
+            }
+
+            // 5. Deduct Loyalty Points if any
+            if (pointsToRedeem > 0) {
+                const userRef = doc(db, 'users', orderData.userId);
+                transaction.update(userRef, {
+                    loyaltyPoints: increment(-pointsToRedeem)
                 });
             }
         });
@@ -394,6 +403,26 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         await updateDoc(notifRef, { read: true });
     };
 
+    const addInternalNote = async (orderId: string, note: string) => {
+        const orderRef = doc(db, "orders", orderId);
+        const order = orders.find(o => o.id === orderId);
+        if (!order) return;
+
+        const newHistory = [
+            ...(order.internalHistory || []),
+            {
+                date: new Date().toISOString(),
+                note,
+                author: user?.name || 'Admin'
+            }
+        ];
+
+        await updateDoc(orderRef, {
+            internalNotes: note,
+            internalHistory: newHistory
+        });
+    };
+
     const unreadNotificationsCount = notifications.filter(n => !n.read).length;
 
     return (
@@ -407,6 +436,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             updateReturnStatus,
             handleConfirmReceipt,
             markNotificationRead,
+            addInternalNote,
             unreadNotificationsCount
         }}>
             {children}

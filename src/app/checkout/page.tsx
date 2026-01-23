@@ -32,6 +32,8 @@ export default function CheckoutPage() {
     const [currentStep, setCurrentStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
     const [isProcessing, setIsProcessing] = useState(false);
     const [validationErrorCount, setValidationErrorCount] = useState(0);
+    const [usePoints, setUsePoints] = useState(false);
+    const [pointsRedeemed, setPointsRedeemed] = useState(0);
 
     const [shippingData, setShippingData] = useState({
         firstName: '',
@@ -66,7 +68,8 @@ export default function CheckoutPage() {
     const [paymentMethod, setPaymentMethod] = useState('mpesa');
 
     const shippingCost = shippingMethod === 'standard' ? 400 : 100;
-    const total = cartTotal + shippingCost;
+    const discountFromPoints = usePoints ? Math.min(cartTotal, user?.loyaltyPoints || 0) : 0;
+    const total = cartTotal + shippingCost - discountFromPoints;
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
@@ -114,6 +117,8 @@ export default function CheckoutPage() {
                 userName: `${shippingData.firstName} ${shippingData.lastName}`,
                 userEmail: shippingData.email,
                 items: cartItems,
+                subtotal: cartTotal,
+                discountAmount: discountFromPoints,
                 total: total,
                 shippingAddress: {
                     county: shippingData.county,
@@ -127,7 +132,7 @@ export default function CheckoutPage() {
                 shippingCost: shippingCost
             };
 
-            const newOrder = await addOrder(orderData);
+            const newOrder = await addOrder(orderData, discountFromPoints);
 
             if (paymentMethod === 'whatsapp') {
                 const message = generateWhatsAppMessage({
@@ -323,6 +328,32 @@ export default function CheckoutPage() {
                                         className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm"
                                     >
                                         <h2 className="text-2xl font-bold mb-8 text-gray-900">Contact Information</h2>
+
+                                        {user?.savedAddresses && user.savedAddresses.length > 0 && (
+                                            <div className="mb-8 p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                                                <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Quick Select: Saved Addresses</p>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                    {user.savedAddresses.map(addr => (
+                                                        <button
+                                                            key={addr.id}
+                                                            onClick={() => {
+                                                                setShippingData(prev => ({
+                                                                    ...prev,
+                                                                    county: addr.county,
+                                                                    town: addr.city,
+                                                                    address: addr.details
+                                                                }));
+                                                                toast.success(`Loaded "${addr.label}"`);
+                                                            }}
+                                                            className="text-left p-3 bg-white rounded-xl border border-gray-100 hover:border-melagro-primary hover:shadow-md transition-all group"
+                                                        >
+                                                            <p className="font-bold text-gray-900 text-sm group-hover:text-melagro-primary">{addr.label}</p>
+                                                            <p className="text-[10px] text-gray-400 line-clamp-1">{addr.details}</p>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
 
                                         <div className="space-y-6">
                                             {/* Email */}
@@ -787,6 +818,25 @@ export default function CheckoutPage() {
                                 <h3 className="font-bold text-gray-900 mb-6 text-lg">Order Summary</h3>
 
                                 <div className="space-y-3 mb-6 pb-6 border-b">
+                                    {(user?.loyaltyPoints || 0) > 0 && (
+                                        <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mb-4">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <p className="text-xs font-bold text-purple-700 uppercase tracking-tight">Available Points: {user?.loyaltyPoints}</p>
+                                                <div className="relative inline-block w-8 h-4 align-middle select-none transition duration-200 ease-in">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={usePoints}
+                                                        onChange={(e) => setUsePoints(e.target.checked)}
+                                                        className="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-4 appearance-none cursor-pointer"
+                                                        style={{ right: usePoints ? '0' : 'auto', borderColor: usePoints ? '#7c3aed' : '#d1d5db' }}
+                                                    />
+                                                    <label className={`toggle-label block overflow-hidden h-4 rounded-full cursor-pointer ${usePoints ? 'bg-purple-300' : 'bg-gray-300'}`}></label>
+                                                </div>
+                                            </div>
+                                            <p className="text-[10px] text-purple-600 font-medium">Redeem points for a KES {Math.min(cartTotal, user?.loyaltyPoints || 0).toLocaleString()} discount!</p>
+                                        </div>
+                                    )}
+
                                     {cartItems.map(item => (
                                         <div key={item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id)} className="flex gap-3">
                                             <img
