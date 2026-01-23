@@ -22,6 +22,9 @@ export default function ProductDetails({ id }: { id: string }) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
+    const [selectedImage, setSelectedImage] = useState<string>("");
+    const [selectedVariant, setSelectedVariant] = useState<any>(null);
+
     const userCity = user?.city || user?.county;
 
     useEffect(() => {
@@ -30,6 +33,10 @@ export default function ProductDetails({ id }: { id: string }) {
             const p = await getProductById(id);
             setProduct(p);
             if (p) {
+                setSelectedImage(p.image);
+                if (p.variants && p.variants.length > 0) {
+                    setSelectedVariant(p.variants[0]);
+                }
                 import('@/lib/analytics').then(({ AnalyticsService }) => {
                     AnalyticsService.logView(String(p.id));
                 });
@@ -51,11 +58,14 @@ export default function ProductDetails({ id }: { id: string }) {
         }
 
         if (product) {
-            addToCart({
+            const productToCart = {
                 ...product,
-                inStock: product.inStock ?? true // Defensive
-            }, quantity);
-            toast.success(`${product.name} added to cart!`);
+                inStock: product.inStock ?? true,
+                price: selectedVariant?.price || product.price,
+                name: selectedVariant ? `${product.name} (${selectedVariant.name})` : product.name
+            };
+            addToCart(productToCart, quantity);
+            toast.success(`${productToCart.name} added to cart!`);
         }
     };
 
@@ -89,8 +99,11 @@ export default function ProductDetails({ id }: { id: string }) {
         );
     }
 
-    const safeImage = (typeof product?.image === 'string' && product.image.startsWith('http'))
-        ? product.image
+    const images = product.images && product.images.length > 0 ? product.images : [product.image];
+    const displayImage = selectedImage || product.image;
+
+    const safeImage = (typeof displayImage === 'string' && displayImage.startsWith('http'))
+        ? displayImage
         : "https://placehold.co/400x400?text=No+Image";
 
     return (
@@ -127,15 +140,21 @@ export default function ProductDetails({ id }: { id: string }) {
                         </div>
 
                         {/* Thumbnails */}
-                        <div className="flex gap-4 justify-center">
-                            {[safeImage, safeImage, safeImage].map((img, idx) => (
-                                <button key={idx} className={`w-16 h-16 rounded-lg border-2 overflow-hidden ${idx === 0 ? 'border-green-500' : 'border-transparent hover:border-gray-200'}`}>
-                                    <div className="relative w-full h-full bg-gray-50">
-                                        <Image src={img} alt="Thumbnail" fill className="object-cover" unoptimized={img.includes('firebasestorage')} />
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
+                        {images.length > 1 && (
+                            <div className="flex gap-4 justify-center overflow-x-auto pb-2">
+                                {images.map((img, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={() => setSelectedImage(img)}
+                                        className={`w-16 h-16 flex-shrink-0 rounded-lg border-2 overflow-hidden transition-all ${selectedImage === img ? 'border-green-500 scale-110' : 'border-transparent hover:border-gray-200'}`}
+                                    >
+                                        <div className="relative w-full h-full bg-gray-50">
+                                            <Image src={img} alt="Thumbnail" fill className="object-cover" unoptimized={img.includes('firebasestorage')} />
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
 
                     {/* Right Column: Info */}
@@ -153,6 +172,27 @@ export default function ProductDetails({ id }: { id: string }) {
                             </button>
                         </div>
 
+                        {/* Variants Case: Sizes/Weight */}
+                        {product.variants && product.variants.length > 0 && (
+                            <div className="mb-6">
+                                <label className="text-xs font-black text-gray-400 uppercase tracking-widest block mb-3">Select Size/Weight</label>
+                                <div className="flex flex-wrap gap-2">
+                                    {product.variants.map((v) => (
+                                        <button
+                                            key={v.id}
+                                            onClick={() => setSelectedVariant(v)}
+                                            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${selectedVariant?.id === v.id
+                                                ? 'bg-melagro-primary text-white border-melagro-primary shadow-lg shadow-green-100'
+                                                : 'bg-white text-gray-600 border-gray-200 hover:border-melagro-primary'
+                                                }`}
+                                        >
+                                            {v.name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Rating */}
                         <div className="flex items-center gap-2 mb-6">
                             <div className="flex text-green-500">
@@ -168,8 +208,8 @@ export default function ProductDetails({ id }: { id: string }) {
                         {/* Price & Stock Urgency */}
                         <div className="flex flex-col gap-2 mb-6">
                             <div className="flex items-center gap-3">
-                                <span className="text-4xl font-black text-[#22c55e]">KES {product.price.toLocaleString()}</span>
-                                <span className="text-lg text-gray-400 line-through font-medium">KES {(product.price * 1.15).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                                <span className="text-4xl font-black text-[#22c55e]">KES {(selectedVariant?.price || product.price).toLocaleString()}</span>
+                                <span className="text-lg text-gray-400 line-through font-medium">KES {((selectedVariant?.price || product.price) * 1.15).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
                                 <span className="bg-green-100 text-green-700 text-[10px] font-black px-2 py-1 rounded uppercase tracking-tighter">Save 15%</span>
                             </div>
 

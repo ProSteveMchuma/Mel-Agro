@@ -23,6 +23,7 @@ export interface Product {
     supplier?: string;
     brand?: string;
     image: string;
+    images?: string[]; // Multiple images support
     rating: number;
     reviews: number;
     inStock: boolean;
@@ -33,7 +34,15 @@ export interface Product {
     features?: string[];
     specification?: string;
     howToUse?: string;
+    variants?: ProductVariant[];
     stock?: number; // Legacy/Compat
+}
+
+export interface ProductVariant {
+    id: string;
+    name: string; // e.g., "50kg", "10kg"
+    price?: number; // Override price
+    stockQuantity: number;
 }
 
 export interface Order {

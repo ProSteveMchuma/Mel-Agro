@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
 import ProductCard from "@/components/ProductCard";
-import { Product, getProductsPage, getUniqueBrands } from "@/lib/products";
+import { Product, getProductsPage, getUniqueBrands, getUniqueCategories } from "@/lib/products";
 import { fuzzySearch } from "@/components/SmartSearch";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -18,13 +18,15 @@ export default function ProductsClient() {
     const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get("category") || "");
     const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
     const [availableBrands, setAvailableBrands] = useState<string[]>([]);
+    const [availableCategories, setAvailableCategories] = useState<string[]>([]);
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
     const [sortBy, setSortBy] = useState("newest");
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    // Fetch unique brands on mount
+    // Fetch dynamic filters on mount
     useEffect(() => {
         getUniqueBrands().then(setAvailableBrands);
+        getUniqueCategories().then(setAvailableCategories);
     }, []);
 
     // Sync state with URL changes
@@ -55,7 +57,7 @@ export default function ProductsClient() {
         );
     };
 
-    const categories = ["Seeds", "Fertilizers", "Crop Protection Products", "Animal Feeds", "Veterinary Products", "Farm Tools"];
+
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
@@ -109,7 +111,7 @@ export default function ProductsClient() {
                                 </button>
                             </div>
                             <Sidebar
-                                categories={categories}
+                                categories={availableCategories}
                                 onCategoryChange={handleCategoryChange}
                                 onPriceChange={setPriceRange}
                                 brands={availableBrands}
@@ -202,7 +204,8 @@ function ProductsGrid({ category, priceRange, sortBy, selectedBrands }: { catego
                 12,
                 isInitial ? null : lastVisible,
                 categoryFilter,
-                sortBy
+                sortBy,
+                selectedBrands
             );
 
             if (isInitial) {
@@ -222,7 +225,7 @@ function ProductsGrid({ category, priceRange, sortBy, selectedBrands }: { catego
 
     useEffect(() => {
         loadProducts(true);
-    }, [category, sortBy]);
+    }, [category, sortBy, selectedBrands]);
 
     const filteredProducts = useMemo(() => {
         let filtered = [...products];

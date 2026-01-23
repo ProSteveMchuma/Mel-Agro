@@ -38,13 +38,18 @@ export async function getProductsPage(
     pageSize: number = 12,
     lastVisible?: any,
     category?: string,
-    sortBy: string = 'newest'
+    sortBy: string = 'newest',
+    brands?: string[]
 ): Promise<{ products: Product[], lastVisible: any }> {
     try {
         const constraints: QueryConstraint[] = [];
 
         if (category && category !== 'All') {
             constraints.push(where("category", "==", category));
+        }
+
+        if (brands && brands.length > 0) {
+            constraints.push(where("brand", "in", brands));
         }
 
         // Sorting Logic
@@ -93,6 +98,23 @@ export async function getUniqueBrands(): Promise<string[]> {
         return Array.from(brands).sort();
     } catch (error) {
         console.error("Error fetching unique brands:", error);
+        return [];
+    }
+}
+
+export async function getUniqueCategories(): Promise<string[]> {
+    try {
+        const snapshot = await getDocs(collection(db, "products"));
+        const categories = new Set<string>();
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.category && typeof data.category === 'string') {
+                categories.add(data.category);
+            }
+        });
+        return Array.from(categories).sort();
+    } catch (error) {
+        console.error("Error fetching unique categories:", error);
         return [];
     }
 }
