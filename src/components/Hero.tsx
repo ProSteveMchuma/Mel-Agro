@@ -6,7 +6,24 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useContent } from "@/context/ContentContext";
 import Image from "next/image";
 
-export default function Hero() {
+interface HeroProps {
+    categories?: string[];
+}
+
+const CATEGORY_ICONS: Record<string, string> = {
+    "Animal Feeds": "🐄",
+    "Fertilizers": "📦",
+    "Seeds": "🌱",
+    "Seeds & Seedlings": "🌱",
+    "Crop Protection": "🛡️",
+    "Crop Protection Products": "🛡️",
+    "Farm Tools": "🛠️",
+    "Veterinary Products": "💊",
+    "Veterinary": "💊",
+    "Bulk Orders": "🚛"
+};
+
+export default function Hero({ categories: dynamicCategories = [] }: HeroProps) {
     const { banners } = useContent();
     const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -49,15 +66,17 @@ export default function Hero() {
         return () => clearInterval(timer);
     }, [slides.length]);
 
-    const categories = [
-        { name: "Seeds & Seedlings", icon: "🌱" },
-        { name: "Fertilizers", icon: "📦" },
-        { name: "Crop Protection", icon: "🛡️" },
-        { name: "Farm Tools", icon: "🛠️" },
-        { name: "Animal Feeds", icon: "🐄" },
-        { name: "Veterinary Products", icon: "💊" },
-        { name: "Bulk Orders", icon: "🚛" }
-    ];
+    const categories = dynamicCategories.length > 0
+        ? dynamicCategories.map(name => ({ name, icon: CATEGORY_ICONS[name] || "🌾" }))
+        : [
+            { name: "Seeds & Seedlings", icon: "🌱" },
+            { name: "Fertilizers", icon: "📦" },
+            { name: "Crop Protection", icon: "🛡️" },
+            { name: "Farm Tools", icon: "🛠️" },
+            { name: "Animal Feeds", icon: "🐄" },
+            { name: "Veterinary Products", icon: "💊" },
+            { name: "Bulk Orders", icon: "🚛" }
+        ];
 
     return (
         <section className="bg-white py-4 md:py-6">

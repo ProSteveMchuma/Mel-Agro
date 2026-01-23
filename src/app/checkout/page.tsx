@@ -133,7 +133,7 @@ export default function CheckoutPage() {
                 const message = generateWhatsAppMessage({
                     orderId: newOrder.id,
                     items: cartItems.map(item => ({
-                        name: item.name,
+                        name: item.selectedVariant ? `${item.name} (${item.selectedVariant.name})` : item.name,
                         quantity: item.quantity,
                         price: item.price
                     })),
@@ -733,9 +733,14 @@ export default function CheckoutPage() {
                                                 <h3 className="font-bold text-gray-900 mb-4">Order Items ({cartItems.length})</h3>
                                                 <div className="space-y-3">
                                                     {cartItems.map(item => (
-                                                        <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                                                        <div key={item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id)} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                                                             <div className="flex-1">
                                                                 <p className="font-semibold text-gray-900">{item.name}</p>
+                                                                {item.selectedVariant && (
+                                                                    <p className="text-xs text-melagro-primary font-bold uppercase tracking-widest mt-0.5">
+                                                                        Size/Weight: {item.selectedVariant.name}
+                                                                    </p>
+                                                                )}
                                                                 <p className="text-sm text-gray-500">Quantity: {item.quantity}</p>
                                                             </div>
                                                             <p className="font-bold text-gray-900">KES {(item.price * item.quantity).toLocaleString()}</p>
@@ -783,7 +788,7 @@ export default function CheckoutPage() {
 
                                 <div className="space-y-3 mb-6 pb-6 border-b">
                                     {cartItems.map(item => (
-                                        <div key={item.id} className="flex gap-3">
+                                        <div key={item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id)} className="flex gap-3">
                                             <img
                                                 src={item.image}
                                                 alt={item.name}
@@ -791,6 +796,11 @@ export default function CheckoutPage() {
                                             />
                                             <div className="flex-1">
                                                 <p className="text-sm font-semibold text-gray-900 line-clamp-2">{item.name}</p>
+                                                {item.selectedVariant && (
+                                                    <p className="text-[10px] font-bold text-melagro-primary uppercase tracking-tighter mt-1">
+                                                        {item.selectedVariant.name}
+                                                    </p>
+                                                )}
                                                 <p className="text-xs text-gray-500 mt-1">Qty: {item.quantity}</p>
                                                 <p className="text-sm font-bold text-melagro-primary mt-1">KES {(item.price * item.quantity).toLocaleString()}</p>
                                             </div>

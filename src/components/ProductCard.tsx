@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ProductVariant } from "@/types";
 
 interface ProductCardProps {
     id: string | number;
@@ -13,9 +14,10 @@ interface ProductCardProps {
     price: number;
     image?: string;
     category: string;
+    variants?: ProductVariant[];
 }
 
-export default function ProductCard({ id, name, price, image, category }: ProductCardProps) {
+export default function ProductCard({ id, name, price, image, category, variants = [] }: ProductCardProps) {
     const { addToCart } = useCart();
     const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
     const [isAdding, setIsAdding] = useState(false);
@@ -150,6 +152,9 @@ export default function ProductCard({ id, name, price, image, category }: Produc
                     {/* Price Section */}
                     <div className="mb-3 md:mb-5 mt-auto">
                         <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-1">
+                            {variants.length > 0 && variants.some(v => v.price && v.price !== price) && (
+                                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block w-full">From</span>
+                            )}
                             <span className="text-lg md:text-xl font-black text-gray-900">
                                 KES {safePrice.toLocaleString()}
                             </span>

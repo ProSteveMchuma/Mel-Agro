@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { CartItem, Product } from '@/types';
+import { CartItem, Product, ProductVariant } from '@/types';
 import { toast } from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
@@ -9,9 +9,9 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface CartContextType {
     cartItems: CartItem[];
-    addToCart: (product: Product, quantity?: number) => void;
-    removeFromCart: (id: string) => void;
-    updateQuantity: (id: string, quantity: number) => void;
+    addToCart: (product: Product, quantity?: number, variant?: ProductVariant) => void;
+    removeFromCart: (cartItemId: string) => void;
+    updateQuantity: (cartItemId: string, quantity: number) => void;
     clearCart: () => void;
     cartTotal: number;
     cartCount: number;
@@ -86,38 +86,52 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
     }, [cartItems, user, isInitialLoad]);
 
-    const addToCart = (product: Product, quantity = 1) => {
+    const addToCart = (product: Product, quantity = 1, variant?: ProductVariant) => {
         // Log analytics
         import('@/lib/analytics').then(({ AnalyticsService }) => {
             AnalyticsService.logAddToCart(String(product.id));
         });
 
+        const cartItemId = variant ? `${product.id}-${variant.id}` : String(product.id);
+        const itemPrice = variant?.price || product.price;
+        const itemName = variant ? `${product.name} (${variant.name})` : product.name;
+
         setCartItems(prev => {
-            const existing = prev.find(item => item.id === product.id);
+            const existing = prev.find(item => {
+                const id = item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id);
+                return id === cartItemId;
+            });
+
             if (existing) {
-                toast.success(`Updated quantity for ${product.name}`);
-                return prev.map(item =>
-                    item.id === product.id
+                toast.success(`Updated quantity for ${itemName}`);
+                return prev.map(item => {
+                    const id = item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id);
+                    return id === cartItemId
                         ? { ...item, quantity: item.quantity + quantity }
-                        : item
-                );
+                        : item;
+                });
             }
-            toast.success(`Added ${product.name} to cart`);
-            return [...prev, { ...product, quantity }];
+
+            toast.success(`Added ${itemName} to cart`);
+            return [...prev, { ...product, quantity, selectedVariant: variant, price: itemPrice }];
         });
         setIsCartOpen(true); // Open drawer on add
     };
 
-    const removeFromCart = (id: string) => {
-        setCartItems(prev => prev.filter(item => String(item.id) !== String(id)));
+    const removeFromCart = (cartItemId: string) => {
+        setCartItems(prev => prev.filter(item => {
+            const id = item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id);
+            return id !== cartItemId;
+        }));
         toast.success('Removed from cart');
     };
 
-    const updateQuantity = (id: string, quantity: number) => {
+    const updateQuantity = (cartItemId: string, quantity: number) => {
         if (quantity < 1) return;
-        setCartItems(prev => prev.map(item =>
-            String(item.id) === String(id) ? { ...item, quantity } : item
-        ));
+        setCartItems(prev => prev.map(item => {
+            const id = item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id);
+            return id === cartItemId ? { ...item, quantity } : item;
+        }));
     };
 
     const clearCart = () => {

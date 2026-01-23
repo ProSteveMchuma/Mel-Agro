@@ -78,8 +78,10 @@ export interface OrderItem {
     price: number;
     quantity: number;
     image?: string;
+    selectedVariant?: ProductVariant;
 }
 
 export interface CartItem extends Product {
     quantity: number;
+    selectedVariant?: ProductVariant;
 }

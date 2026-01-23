@@ -3,20 +3,43 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 
-const CATEGORIES = [
-    { name: 'Animal Feeds', image: 'https://images.unsplash.com/photo-1563205764-6e929f62334d?q=80&w=400&auto=format&fit=crop', link: '/products?category=Animal%20Feeds', icon: "🐄" },
-    { name: 'Fertilizers', image: 'https://images.unsplash.com/photo-1628352081506-83c43123ed6d?q=80&w=400&auto=format&fit=crop', link: '/products?category=Fertilizers', icon: "📦" },
-    { name: 'Seeds', image: 'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?q=80&w=400&auto=format&fit=crop', link: '/products?category=Seeds', icon: "🌱" },
-    { name: 'Crop Protection', image: 'https://images.unsplash.com/photo-1615485925763-867862f80930?q=80&w=400&auto=format&fit=crop', link: '/products?category=Crop%20Protection%20Products', icon: "🛡️" },
-    { name: 'Veterinary', image: 'https://images.unsplash.com/photo-1591130219388-ae3d1c17431b?q=80&w=400&auto=format&fit=crop', link: '/products?category=Veterinary%20Products', icon: "💊" },
-];
+const FALLBACK_CATEGORY_IMAGE = "https://images.unsplash.com/photo-1599408428178-c0b875ea4f03?q=80&w=400&auto=format&fit=crop";
 
-export default function CategoryIcons() {
+const CATEGORY_MAP: Record<string, { image: string, icon: string }> = {
+    'Animal Feeds': { image: 'https://images.unsplash.com/photo-1563205764-6e929f62334d?q=80&w=400&auto=format&fit=crop', icon: "🐄" },
+    'Fertilizers': { image: 'https://images.unsplash.com/photo-1628352081506-83c43123ed6d?q=80&w=400&auto=format&fit=crop', icon: "📦" },
+    'Seeds': { image: 'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?q=80&w=400&auto=format&fit=crop', icon: "🌱" },
+    'Seeds & Seedlings': { image: 'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?q=80&w=400&auto=format&fit=crop', icon: "🌱" },
+    'Crop Protection Products': { image: 'https://images.unsplash.com/photo-1615485925763-867862f80930?q=80&w=400&auto=format&fit=crop', icon: "🛡️" },
+    'Veterinary': { image: 'https://images.unsplash.com/photo-1591130219388-ae3d1c17431b?q=80&w=400&auto=format&fit=crop', icon: "💊" },
+    'Veterinary Products': { image: 'https://images.unsplash.com/photo-1591130219388-ae3d1c17431b?q=80&w=400&auto=format&fit=crop', icon: "💊" },
+    'Farm Tools': { image: 'https://images.unsplash.com/photo-1589923188900-85dae523342b?q=80&w=400&auto=format&fit=crop', icon: "🛠️" },
+};
+
+interface CategoryIconsProps {
+    categories?: string[];
+}
+
+export default function CategoryIcons({ categories: dynamicCategories = [] }: CategoryIconsProps) {
+    const categories = dynamicCategories.length > 0
+        ? dynamicCategories.slice(0, 5).map(name => ({
+            name,
+            link: `/products?category=${encodeURIComponent(name)}`,
+            image: CATEGORY_MAP[name]?.image || FALLBACK_CATEGORY_IMAGE,
+            icon: CATEGORY_MAP[name]?.icon || "🌾"
+        }))
+        : [
+            { name: 'Animal Feeds', image: 'https://images.unsplash.com/photo-1563205764-6e929f62334d?q=80&w=400&auto=format&fit=crop', link: '/products?category=Animal%20Feeds', icon: "🐄" },
+            { name: 'Fertilizers', image: 'https://images.unsplash.com/photo-1628352081506-83c43123ed6d?q=80&w=400&auto=format&fit=crop', link: '/products?category=Fertilizers', icon: "📦" },
+            { name: 'Seeds', image: 'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?q=80&w=400&auto=format&fit=crop', link: '/products?category=Seeds', icon: "🌱" },
+            { name: 'Crop Protection', image: 'https://images.unsplash.com/photo-1615485925763-867862f80930?q=80&w=400&auto=format&fit=crop', link: '/products?category=Crop%20Protection%20Products', icon: "🛡️" },
+            { name: 'Veterinary', image: 'https://images.unsplash.com/photo-1591130219388-ae3d1c17431b?q=80&w=400&auto=format&fit=crop', link: '/products?category=Veterinary%20Products', icon: "💊" },
+        ];
     return (
         <section className="py-12 bg-white rounded-t-[3rem] -mt-8 relative z-30">
             <div className="container-custom">
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
-                    {CATEGORIES.map((cat, idx) => (
+                    {categories.map((cat, idx) => (
                         <motion.div
                             key={idx}
                             whileHover={{ y: -8 }}

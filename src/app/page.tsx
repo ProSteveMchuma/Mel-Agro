@@ -29,14 +29,27 @@ const FadeInWhenVisible = ({ children, delay = 0 }: { children: React.ReactNode,
   );
 };
 
+import { getUniqueCategories, getUniqueBrands } from "@/lib/products";
+import { useState, useEffect } from "react";
+
 export default function Home() {
+  const [categories, setCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchDynamicData = async () => {
+      const cats = await getUniqueCategories();
+      setCategories(cats);
+    };
+    fetchDynamicData();
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-green-100 selection:text-green-900">
       <JsonLd />
       <Header />
 
       <main className="flex-grow space-y-12 md:space-y-20 pb-20">
-        <Hero />
+        <Hero categories={categories} />
 
         {/* Mobile Search - Visible only on small screens */}
         <div className="md:hidden container-custom">
@@ -78,7 +91,7 @@ export default function Home() {
                 View All <span className="text-xl group-hover:translate-x-1 transition-transform">→</span>
               </Link>
             </div>
-            <CategoryIcons />
+            <CategoryIcons categories={categories} />
           </FadeInWhenVisible>
         </section>
 

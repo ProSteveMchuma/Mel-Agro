@@ -62,6 +62,7 @@ export default function ProductRow({ title = "", filter }: ProductRowProps) {
                         price={product.price}
                         image={product.image}
                         category={product.category}
+                        variants={product.variants}
                     />
                 ))}
             </div>

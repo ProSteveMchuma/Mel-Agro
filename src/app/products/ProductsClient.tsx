@@ -292,6 +292,7 @@ function ProductsGrid({ category, priceRange, sortBy, selectedBrands }: { catego
                         price={product.price}
                         image={product.image}
                         category={product.category}
+                        variants={product.variants}
                     />
                 ))}
             </div>

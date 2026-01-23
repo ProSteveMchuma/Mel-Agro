@@ -58,14 +58,7 @@ export default function ProductDetails({ id }: { id: string }) {
         }
 
         if (product) {
-            const productToCart = {
-                ...product,
-                inStock: product.inStock ?? true,
-                price: selectedVariant?.price || product.price,
-                name: selectedVariant ? `${product.name} (${selectedVariant.name})` : product.name
-            };
-            addToCart(productToCart, quantity);
-            toast.success(`${productToCart.name} added to cart!`);
+            addToCart(product, quantity, selectedVariant || undefined);
         }
     };
 
@@ -406,6 +399,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                 price={p.price}
                                 image={p.image}
                                 category={p.category}
+                                variants={p.variants}
                             />
                         )) : (
                             [...Array(4)].map((_, i) => (
