@@ -1,0 +1,10 @@
+PRODUCT: Priaxor® 225 EC
+ID: 2
+IMAGE: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1769146879450_Priaxor%20225%20EC%201Ltr.jpg?alt=media&token=f222be7a-d071-4d77-afca-61f2d1d86f01
+CATEGORY: Crop Protection Products
+---
+PRODUCT: SC Duma 43 Hybrid Maize Seeds
+ID: LYimjLySGakGCVAAUoiT
+IMAGE: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1769147351498_SC-DUMA-43-2.jpg?alt=media&token=cc8adbdf-bd1a-4259-aea5-95b5478f8d96
+CATEGORY: Seeds
+---

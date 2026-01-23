@@ -34,7 +34,12 @@ export async function getProducts(options: {
     }
 }
 
-export async function getProductsPage(pageSize: number = 12, lastVisible?: any, category?: string): Promise<{ products: Product[], lastVisible: any }> {
+export async function getProductsPage(
+    pageSize: number = 12,
+    lastVisible?: any,
+    category?: string,
+    sortBy: string = 'newest'
+): Promise<{ products: Product[], lastVisible: any }> {
     try {
         const constraints: QueryConstraint[] = [];
 
@@ -42,7 +47,17 @@ export async function getProductsPage(pageSize: number = 12, lastVisible?: any, 
             constraints.push(where("category", "==", category));
         }
 
-        constraints.push(orderBy("name"));
+        // Sorting Logic
+        if (sortBy === 'price-low') {
+            constraints.push(orderBy("price", "asc"));
+        } else if (sortBy === 'price-high') {
+            constraints.push(orderBy("price", "desc"));
+        } else if (sortBy === 'newest') {
+            constraints.push(orderBy("createdAt", "desc"));
+        } else {
+            constraints.push(orderBy("name", "asc"));
+        }
+
         constraints.push(limit(pageSize));
 
         if (lastVisible) {
@@ -62,6 +77,23 @@ export async function getProductsPage(pageSize: number = 12, lastVisible?: any, 
     } catch (error) {
         console.error("Error fetching products page:", error);
         return { products: [], lastVisible: null };
+    }
+}
+
+export async function getUniqueBrands(): Promise<string[]> {
+    try {
+        const snapshot = await getDocs(collection(db, "products"));
+        const brands = new Set<string>();
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.brand && typeof data.brand === 'string') {
+                brands.add(data.brand);
+            }
+        });
+        return Array.from(brands).sort();
+    } catch (error) {
+        console.error("Error fetching unique brands:", error);
+        return [];
     }
 }
 

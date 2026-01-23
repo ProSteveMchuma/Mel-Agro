@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
 import ProductCard from "@/components/ProductCard";
-import { Product, getProductsPage } from "@/lib/products";
+import { Product, getProductsPage, getUniqueBrands } from "@/lib/products";
 import { fuzzySearch } from "@/components/SmartSearch";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -16,9 +16,16 @@ export default function ProductsClient() {
 
     // State for filters - initialize from URL
     const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get("category") || "");
+    const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+    const [availableBrands, setAvailableBrands] = useState<string[]>([]);
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
-    const [sortBy, setSortBy] = useState("best-selling");
+    const [sortBy, setSortBy] = useState("newest");
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+    // Fetch unique brands on mount
+    useEffect(() => {
+        getUniqueBrands().then(setAvailableBrands);
+    }, []);
 
     // Sync state with URL changes
     useEffect(() => {
@@ -26,7 +33,7 @@ export default function ProductsClient() {
         if (cat !== selectedCategory) {
             setSelectedCategory(cat || "");
         }
-    }, [searchParams]);
+    }, [searchParams, selectedCategory]);
 
     const handleCategoryChange = (category: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -40,7 +47,15 @@ export default function ProductsClient() {
         setIsSidebarOpen(false); // Close sidebar on mobile after selection
     };
 
-    const categories = ["Seeds", "Fertilizers", "Crop Protection Products", "Animal Feeds", "Veterinary Products", "Farm Tools", "Irrigation"];
+    const handleBrandChange = (brand: string) => {
+        setSelectedBrands(prev =>
+            prev.includes(brand)
+                ? prev.filter(b => b !== brand)
+                : [...prev, brand]
+        );
+    };
+
+    const categories = ["Seeds", "Fertilizers", "Crop Protection Products", "Animal Feeds", "Veterinary Products", "Farm Tools"];
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
@@ -97,6 +112,9 @@ export default function ProductsClient() {
                                 categories={categories}
                                 onCategoryChange={handleCategoryChange}
                                 onPriceChange={setPriceRange}
+                                brands={availableBrands}
+                                selectedBrands={selectedBrands}
+                                onBrandChange={handleBrandChange}
                             />
                         </div>
                     </div>
@@ -155,6 +173,7 @@ export default function ProductsClient() {
                                 category={selectedCategory}
                                 priceRange={priceRange}
                                 sortBy={sortBy}
+                                selectedBrands={selectedBrands}
                             />
                         </Suspense>
                     </div>
@@ -166,7 +185,7 @@ export default function ProductsClient() {
     );
 }
 
-function ProductsGrid({ category, priceRange, sortBy }: { category: string, priceRange: [number, number], sortBy: string }) {
+function ProductsGrid({ category, priceRange, sortBy, selectedBrands }: { category: string, priceRange: [number, number], sortBy: string, selectedBrands: string[] }) {
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [lastVisible, setLastVisible] = useState<any>(null);
@@ -182,7 +201,8 @@ function ProductsGrid({ category, priceRange, sortBy }: { category: string, pric
             const { products: newProducts, lastVisible: newLastVisible } = await getProductsPage(
                 12,
                 isInitial ? null : lastVisible,
-                categoryFilter
+                categoryFilter,
+                sortBy
             );
 
             if (isInitial) {
@@ -202,7 +222,7 @@ function ProductsGrid({ category, priceRange, sortBy }: { category: string, pric
 
     useEffect(() => {
         loadProducts(true);
-    }, [category]);
+    }, [category, sortBy]);
 
     const filteredProducts = useMemo(() => {
         let filtered = [...products];
@@ -214,6 +234,10 @@ function ProductsGrid({ category, priceRange, sortBy }: { category: string, pric
 
         if (priceRange) {
             filtered = filtered.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
+        }
+
+        if (selectedBrands.length > 0) {
+            filtered = filtered.filter(p => p.brand && selectedBrands.includes(p.brand));
         }
 
         // Sorting

@@ -199,7 +199,13 @@ export default function SmartSearch() {
                                     >
                                         <div className="w-10 h-10 bg-gray-100 rounded-lg relative overflow-hidden flex-shrink-0">
                                             {product.image ? (
-                                                <Image src={product.image} alt={product.name} fill className="object-cover" />
+                                                <Image
+                                                    src={product.image}
+                                                    alt={product.name}
+                                                    fill
+                                                    className="object-cover"
+                                                    unoptimized={typeof product.image === 'string' && product.image.includes('firebasestorage')}
+                                                />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">No Img</div>
                                             )}

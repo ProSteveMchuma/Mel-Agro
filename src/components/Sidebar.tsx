@@ -8,6 +8,9 @@ interface SidebarProps {
     categories?: string[];
     onCategoryChange?: (category: string) => void;
     onPriceChange?: (range: [number, number]) => void;
+    brands?: string[];
+    selectedBrands?: string[];
+    onBrandChange?: (brand: string) => void;
 }
 
 const defaultCategories = [
@@ -15,10 +18,18 @@ const defaultCategories = [
     "Fertilizers",
     "Seeds",
     "Crop Protection Products",
-    "Veterinary Products"
+    "Veterinary Products",
+    "Farm Tools"
 ];
 
-export default function Sidebar({ categories = defaultCategories, onCategoryChange, onPriceChange }: SidebarProps) {
+export default function Sidebar({
+    categories = defaultCategories,
+    onCategoryChange,
+    onPriceChange,
+    brands = [],
+    selectedBrands = [],
+    onBrandChange
+}: SidebarProps) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const activeCategory = searchParams.get("category");
@@ -35,7 +46,7 @@ export default function Sidebar({ categories = defaultCategories, onCategoryChan
         }, 500);
 
         return () => clearTimeout(timer);
-    }, [minPrice, maxPrice]);
+    }, [minPrice, maxPrice, onPriceChange]);
 
     const handleCategoryClick = (category: string) => {
         onCategoryChange?.(category);
@@ -114,25 +125,29 @@ export default function Sidebar({ categories = defaultCategories, onCategoryChan
                 </div>
 
                 {/* Brands */}
-                <div>
-                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-6 flex items-center justify-between">
-                        Popular Brands
-                        <span className="w-8 h-[1px] bg-gray-100 flex-grow ml-4"></span>
-                    </h3>
-                    <div className="space-y-3">
-                        {["Syngenta", "Bayer", "Osho", "Kenya Seed Co."].map((brand, idx) => (
-                            <label key={idx} className="flex items-center gap-4 cursor-pointer group">
-                                <div className="relative flex items-center">
-                                    <input
-                                        type="checkbox"
-                                        className="peer w-5 h-5 rounded-lg border-gray-200 text-melagro-primary focus:ring-melagro-primary/20 transition-all cursor-pointer accent-melagro-primary"
-                                    />
-                                </div>
-                                <span className="text-sm font-bold text-gray-600 group-hover:text-melagro-primary transition-colors">{brand}</span>
-                            </label>
-                        ))}
+                {brands.length > 0 && (
+                    <div>
+                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-gray-400 mb-6 flex items-center justify-between">
+                            Popular Brands
+                            <span className="w-8 h-[1px] bg-gray-100 flex-grow ml-4"></span>
+                        </h3>
+                        <div className="space-y-3">
+                            {brands.map((brand, idx) => (
+                                <label key={idx} className="flex items-center gap-4 cursor-pointer group">
+                                    <div className="relative flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedBrands.includes(brand)}
+                                            onChange={() => onBrandChange?.(brand)}
+                                            className="peer w-5 h-5 rounded-lg border-gray-200 text-melagro-primary focus:ring-melagro-primary/20 transition-all cursor-pointer accent-melagro-primary"
+                                        />
+                                    </div>
+                                    <span className="text-sm font-bold text-gray-600 group-hover:text-melagro-primary transition-colors">{brand}</span>
+                                </label>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Bulk Order Card */}
                 <div className="pt-8 border-t border-gray-50">

@@ -136,7 +136,6 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                 <option value="Crop Protection Products">Crop Protection Products</option>
                                 <option value="Veterinary Products">Veterinary Products</option>
                                 <option value="Farm Tools">Farm Tools</option>
-                                <option value="Irrigation">Irrigation</option>
                             </select>
                         </div>
                         <div>

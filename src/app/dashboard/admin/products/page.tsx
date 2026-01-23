@@ -165,7 +165,13 @@ export default function ProductManagement() {
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 bg-gray-100 rounded-lg relative overflow-hidden flex-shrink-0 border border-gray-200">
-                                                    <Image src={product.image} alt={product.name} fill className="object-cover" />
+                                                    <Image
+                                                        src={(typeof product.image === 'string' && product.image.startsWith('http')) ? product.image : "https://placehold.co/100x100?text=No+Image"}
+                                                        alt={product.name}
+                                                        fill
+                                                        className="object-cover"
+                                                        unoptimized={typeof product.image === 'string' && product.image.includes('firebasestorage')}
+                                                    />
                                                 </div>
                                                 <div className="font-medium text-gray-900">{product.name}</div>
                                             </div>

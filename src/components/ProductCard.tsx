@@ -88,6 +88,7 @@ export default function ProductCard({ id, name, price, image, category }: Produc
                         alt={name}
                         fill
                         className="object-contain p-4 md:p-6 group-hover:scale-110 transition-transform duration-700 ease-out"
+                        unoptimized={imageSrc.includes('firebasestorage')}
                     />
 
                     {/* Quick Action Overlay - Hidden on mobile, shown on md+ hover */}

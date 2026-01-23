@@ -89,6 +89,10 @@ export default function ProductDetails({ id }: { id: string }) {
         );
     }
 
+    const safeImage = (typeof product?.image === 'string' && product.image.startsWith('http'))
+        ? product.image
+        : "https://placehold.co/400x400?text=No+Image";
+
     return (
         <div className="min-h-screen flex flex-col bg-white font-sans text-gray-900">
             <Header />
@@ -113,20 +117,21 @@ export default function ProductDetails({ id }: { id: string }) {
                             </div>
 
                             <Image
-                                src={product.image}
+                                src={safeImage}
                                 alt={product.name}
                                 fill
                                 className="object-contain p-8 hover:scale-105 transition-transform duration-500"
                                 priority
+                                unoptimized={safeImage.includes('firebasestorage')}
                             />
                         </div>
 
                         {/* Thumbnails */}
                         <div className="flex gap-4 justify-center">
-                            {[product.image, product.image, product.image].map((img, idx) => (
+                            {[safeImage, safeImage, safeImage].map((img, idx) => (
                                 <button key={idx} className={`w-16 h-16 rounded-lg border-2 overflow-hidden ${idx === 0 ? 'border-green-500' : 'border-transparent hover:border-gray-200'}`}>
                                     <div className="relative w-full h-full bg-gray-50">
-                                        <Image src={img} alt="Thumbnail" fill className="object-cover" />
+                                        <Image src={img} alt="Thumbnail" fill className="object-cover" unoptimized={img.includes('firebasestorage')} />
                                     </div>
                                 </button>
                             ))}

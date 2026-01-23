@@ -35,9 +35,9 @@ export default function Hero() {
             image: "https://images.unsplash.com/photo-1589923188900-85dae523342b?q=80&w=1740&auto=format&fit=crop",
             tag: "NEW ARRIVALS",
             title: "Modern Tools for Higher Efficiency",
-            description: "Upgrade your farm with our latest high-performance irrigation and tilling tools.",
+            description: "Upgrade your farm with our latest high-performance tilling and harvesting tools.",
             primaryBtn: "View Tools",
-            primaryLink: "/products?category=Tools"
+            primaryLink: "/products?category=Farm%20Tools"
         }
     ];
 
@@ -54,9 +54,8 @@ export default function Hero() {
         { name: "Fertilizers", icon: "📦" },
         { name: "Crop Protection", icon: "🛡️" },
         { name: "Farm Tools", icon: "🛠️" },
-        { name: "Irrigation", icon: "💧" },
         { name: "Animal Feeds", icon: "🐄" },
-        { name: "Vet Products", icon: "💊" },
+        { name: "Veterinary Products", icon: "💊" },
         { name: "Bulk Orders", icon: "🚛" }
     ];
 
