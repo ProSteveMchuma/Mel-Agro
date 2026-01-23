@@ -25,9 +25,12 @@ export default function BulkUploadButton() {
             const result = await uploadProductsFromExcel(formData);
 
             if (result.success) {
-                toast.success(`Successfully uploaded ${result.count} products!`, { id: loadingToast });
+                toast.success(
+                    `Done! Created: ${result.createdCount}, Updated: ${result.updatedCount}`,
+                    { id: loadingToast, duration: 5000 }
+                );
                 // Refresh the page to show new products
-                window.location.reload();
+                setTimeout(() => window.location.reload(), 1500);
             } else {
                 toast.error(`Upload failed: ${result.error}`, { id: loadingToast });
             }
@@ -51,8 +54,8 @@ export default function BulkUploadButton() {
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploading}
                 className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-lg active:scale-95 ${isUploading
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                        : "bg-white text-gray-900 border border-gray-200 hover:border-green-500 hover:text-green-600 shadow-gray-200/50"
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                    : "bg-white text-gray-900 border border-gray-200 hover:border-green-500 hover:text-green-600 shadow-gray-200/50"
                     }`}
             >
                 {isUploading ? (
