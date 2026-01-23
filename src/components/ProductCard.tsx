@@ -27,9 +27,10 @@ export default function ProductCard({ id, name, price, image, category, variants
     const inWishlist = isInWishlist(id);
     const router = useRouter();
 
-    const handleBuyNow = (e: React.MouseEvent) => {
-        handleAddToCart(e);
-        router.push('/checkout');
+    const handleView = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        router.push(`/products/${id}`);
     };
 
     const handleAddToCart = (e: React.MouseEvent) => {
@@ -103,18 +104,11 @@ export default function ProductCard({ id, name, price, image, category, variants
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
                         </button>
                         <button
-                            onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                const msg = encodeURIComponent(`*PRODUCT INQUIRY*\n\nI am interested in: *${name}*\nPrice: KES ${safePrice.toLocaleString()}\n\nIs this available?`);
-                                window.open(`https://wa.me/254748970757?text=${msg}`, '_blank');
-                            }}
-                            className="bg-[#25D366] text-white p-3 rounded-full shadow-lg transform translate-y-10 group-hover:translate-y-0 transition-transform duration-500 delay-150 hover:bg-[#128C7E]"
-                            title="WhatsApp Inquiry"
+                            onClick={handleView}
+                            className="bg-white text-gray-900 p-3 rounded-full shadow-lg transform translate-y-10 group-hover:translate-y-0 transition-transform duration-500 delay-150 hover:bg-green-500 hover:text-white"
+                            title="View Details"
                         >
-                            <svg className="w-5 h-5 fill-current" viewBox="0 0 24 24">
-                                <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.038 3.284l-.54 1.964 2.009-.528c.954.524 1.942.85 3.037.852 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.586-5.772-5.744-5.772zm3.374 8.086c-.1.272-.58.513-.801.551-.237.042-.46.079-.769-.015-.297-.091-.676-.239-1.144-.442-1.99-.861-3.284-2.885-3.383-3.018-.099-.134-.736-.979-.736-1.959 0-.979.512-1.46.694-1.658.183-.198.396-.247.53-.247.13 0 .26.012.37.012.11 0 .26-.041.408.321.148.36.512 1.25.56 1.348.049.099.083.214.016.347-.066.13-.1.214-.2.33-.1.115-.208.261-.297.35-.099.099-.198.198-.083.396.115.198.512.845 1.099 1.366.759.673 1.398.882 1.596.981.198.099.313.082.43-.049.115-.132.512-.596.644-.793.132-.198.26-.165.43-.099.172.066 1.09.514 1.277.613.183.1.312.148.363.23.049.082.049.479-.05.751z" />
-                            </svg>
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                         </button>
                     </div>
 
@@ -178,10 +172,10 @@ export default function ProductCard({ id, name, price, image, category, variants
                         </button>
 
                         <button
-                            onClick={handleBuyNow}
+                            onClick={handleView}
                             className="py-2 md:py-2.5 rounded-lg md:rounded-xl font-bold text-[10px] md:text-[11px] uppercase tracking-widest bg-white border border-gray-200 text-gray-900 hover:border-gray-900 transition-all shadow-sm"
                         >
-                            Buy Now
+                            View
                         </button>
                     </div>
                 </div>

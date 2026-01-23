@@ -29,7 +29,8 @@
     "react-leaflet": "^5.0.0",
     "recharts": "^3.5.1",
     "stripe": "^20.0.0",
-    "twilio": "^5.10.6"
+    "twilio": "^5.10.6",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -17,7 +17,7 @@ import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 
-const LocationPicker = dynamic(() => import('@/components/checkout/LocationPicker'), {
+const LocationPicker = dynamic(() => import('../../components/checkout/LocationPicker'), {
     ssr: false,
     loading: () => <div className="h-[300px] w-full bg-gray-100 animate-pulse rounded-xl flex items-center justify-center text-gray-400">Loading Map...</div>
 });
@@ -273,6 +273,12 @@ export default function CheckoutPage() {
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
+            <link
+                rel="stylesheet"
+                href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+                integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+                crossOrigin=""
+            />
             <Header />
 
             <main className="flex-grow py-8 px-4">

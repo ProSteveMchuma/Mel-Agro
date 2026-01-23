@@ -1,0 +1,21 @@
+﻿--- HEADERS ---
+0: PRODUCT CODE
+1: PRODUCT NAME
+2: PRODUCT DISCRIPTION
+3: SPECIFICATION
+4: HOW TO USE
+5: PRODUCT PRICE
+6: CATEGORY
+7: SUB CATEGORY
+8: SUPPLIER 
+9: PHOTO
+--- SAMPLE ROW 1 ---
+1: Tatua Demand 10CS 62.5ml
+2: Tatua Demand 10CS is a highly effective insecticide developed by Syngenta, designed to provide robust protection against a wide range of crawling and flying pests. This product is particularly beneficial for both residential and agricultural use, ensuring a pest-free environment for homes, farms, and commercial spaces. Tatua Demand 10CS is well-regarded for its advanced microencapsulated formulation and long-lasting efficacy. It contains Lambda-Cyhalothrin as its active ingredient, a syntetic pyrethroid.
+3: 62.5ml, 25ml
+4: Mix the 62.5ml pack in 8-10 litres of water or the 25ml pack in 4 litres of water. Application Rate: Apply the solution on walls and all possible infestation areas using knapsack sprayers. The application rate may vary depending on the severity of the infestation
+5: 62.5ml Kes 750,  25ml Kes 350
+6: Public Health
+7: Public Health
+8: Syngenta
+9: ..\..\Downloads\Tatua Demand.jpg

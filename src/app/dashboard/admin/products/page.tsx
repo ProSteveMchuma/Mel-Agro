@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import BulkUploadButton from "@/components/admin/BulkUploadButton";
 
 export default function ProductManagement() {
     const { products, deleteProduct } = useProducts();
@@ -67,7 +68,7 @@ export default function ProductManagement() {
                     <h1 className="text-2xl font-bold text-gray-900">Products</h1>
                     <p className="text-gray-500 text-sm">Manage your inventory and catalog.</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex items-center gap-3">
                     {selectedProducts.length > 0 && (
                         <button
                             onClick={handleBulkDelete}
@@ -79,6 +80,7 @@ export default function ProductManagement() {
                             Delete ({selectedProducts.length})
                         </button>
                     )}
+                    <BulkUploadButton />
                     <Link href="/dashboard/admin/products/new" className="btn-primary flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

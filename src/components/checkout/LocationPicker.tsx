@@ -1,20 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { MapContainer, TileLayer, Marker, useMapEvents, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import { useState, useEffect, useRef } from 'react';
 import L from 'leaflet';
 
-// Fix for default marker icon in Leaflet with Next.js
-const icon = L.icon({
-    iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-    iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-    shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
-    shadowSize: [41, 41]
-});
+// Leaflet CSS is handled via CDN link in the page or global import
+// We use L directly to avoid react-leaflet build issues in this environment
 
 interface LocationPickerProps {
     onLocationSelect: (lat: number, lng: number, address?: string) => void;
@@ -22,59 +12,65 @@ interface LocationPickerProps {
     initialLng?: number;
 }
 
-function LocationMarker({ position, setPosition, onLocationSelect }: any) {
-    const markerRef = useRef<L.Marker>(null);
-
-    useMapEvents({
-        click(e) {
-            setPosition(e.latlng);
-            onLocationSelect(e.latlng.lat, e.latlng.lng);
-        },
-    });
-
-    const eventHandlers = useMemo(
-        () => ({
-            dragend() {
-                const marker = markerRef.current;
-                if (marker) {
-                    const newPos = marker.getLatLng();
-                    setPosition(newPos);
-                    onLocationSelect(newPos.lat, newPos.lng);
-                }
-            },
-        }),
-        [onLocationSelect, setPosition],
-    );
-
-    return position === null ? null : (
-        <Marker
-            position={position}
-            icon={icon}
-            draggable={true}
-            // @ts-ignore
-            eventHandlers={eventHandlers}
-            ref={markerRef}
-        >
-            <Popup>Delivery Location</Popup>
-        </Marker>
-    );
-}
-
 export default function LocationPicker({ onLocationSelect, initialLat = -1.2921, initialLng = 36.8219 }: LocationPickerProps) {
-    // Default to Nairobi
-    const [position, setPosition] = useState<L.LatLng | null>(new L.LatLng(initialLat, initialLng));
+    const mapContainerRef = useRef<HTMLDivElement>(null);
+    const mapRef = useRef<L.Map | null>(null);
+    const markerRef = useRef<L.Marker | null>(null);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        if (!mapContainerRef.current) return;
+
+        // Initialize Map
+        if (!mapRef.current) {
+            mapRef.current = L.map(mapContainerRef.current).setView([initialLat, initialLng], 13);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(mapRef.current);
+
+            // Create Marker
+            const icon = L.icon({
+                iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+                iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+                shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+
+            markerRef.current = L.marker([initialLat, initialLng], {
+                icon,
+                draggable: true
+            }).addTo(mapRef.current);
+
+            markerRef.current.on('dragend', () => {
+                if (markerRef.current) {
+                    const pos = markerRef.current.getLatLng();
+                    onLocationSelect(pos.lat, pos.lng);
+                }
+            });
+
+            mapRef.current.on('click', (e: L.LeafletMouseEvent) => {
+                if (markerRef.current) {
+                    markerRef.current.setLatLng(e.latlng);
+                    onLocationSelect(e.latlng.lat, e.latlng.lng);
+                }
+            });
+        }
+
         // Try to get user's current location
-        if (navigator.geolocation) {
+        if (navigator.geolocation && !markerRef.current?.getLatLng().lat) {
             setLoading(true);
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     const { latitude, longitude } = pos.coords;
-                    const newPos = new L.LatLng(latitude, longitude);
-                    setPosition(newPos);
-                    onLocationSelect(latitude, longitude);
+                    if (mapRef.current && markerRef.current) {
+                        mapRef.current.setView([latitude, longitude], 15);
+                        markerRef.current.setLatLng([latitude, longitude]);
+                        onLocationSelect(latitude, longitude);
+                    }
                     setLoading(false);
                 },
                 (err) => {
@@ -83,7 +79,14 @@ export default function LocationPicker({ onLocationSelect, initialLat = -1.2921,
                 }
             );
         }
-    }, [onLocationSelect]);
+
+        return () => {
+            if (mapRef.current) {
+                mapRef.current.remove();
+                mapRef.current = null;
+            }
+        };
+    }, [onLocationSelect, initialLat, initialLng]);
 
     return (
         <div className="h-[300px] w-full rounded-xl overflow-hidden border border-gray-200 relative z-0">
@@ -92,18 +95,7 @@ export default function LocationPicker({ onLocationSelect, initialLat = -1.2921,
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-melagro-primary"></div>
                 </div>
             )}
-            <MapContainer
-                center={[initialLat, initialLng]}
-                zoom={13}
-                scrollWheelZoom={false}
-                style={{ height: '100%', width: '100%' }}
-            >
-                <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <LocationMarker position={position} setPosition={setPosition} onLocationSelect={onLocationSelect} />
-            </MapContainer>
+            <div ref={mapContainerRef} style={{ height: '100%', width: '100%' }} />
         </div>
     );
 }

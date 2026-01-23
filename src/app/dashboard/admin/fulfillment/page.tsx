@@ -4,6 +4,7 @@ import { useOrders } from '@/context/OrderContext';
 import { useProducts } from '@/context/ProductContext';
 import { Order } from '@/types';
 import Link from 'next/link';
+import { toast } from 'react-hot-toast';
 
 export default function FulfillmentPage() {
     const { orders, updateOrderStatus } = useOrders();
