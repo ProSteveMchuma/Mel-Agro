@@ -21,7 +21,7 @@ export interface Notification {
 interface OrderContextType {
     orders: Order[];
     notifications: Notification[];
-    addOrder: (order: Omit<Order, 'id' | 'date' | 'status'>) => Promise<Order>;
+    addOrder: (order: Omit<Order, 'id' | 'date' | 'status'>, pointsToRedeem?: number) => Promise<Order>;
     updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
     updateOrderPaymentStatus: (orderId: string, paymentStatus: 'Paid' | 'Unpaid') => Promise<void>;
     requestReturn: (orderId: string, reason: string) => Promise<void>;

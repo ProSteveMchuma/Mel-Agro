@@ -37,7 +37,7 @@ export async function getProductReviews(productId: string): Promise<Review[]> {
     }
 }
 
-export async function addReview(review: Omit<Review, 'id' | 'date'>) {
+export async function addReview(review: Omit<Review, 'id' | 'date' | 'status'>) {
     try {
         await addDoc(collection(db, 'reviews'), {
             ...review,
