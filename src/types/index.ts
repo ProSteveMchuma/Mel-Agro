@@ -98,6 +98,7 @@ export interface OrderItem {
 }
 
 export interface CartItem extends Product {
+    cartItemId: string; // Unique identifier for this specific cart item (product + variant)
     quantity: number;
     selectedVariant?: ProductVariant;
 }

@@ -50,9 +50,8 @@ export default function CartPage() {
                             {/* Cart Items */}
                             <div className="lg:w-2/3 space-y-4">
                                 {cartItems.map((item) => {
-                                    const cartItemId = item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id);
                                     return (
-                                        <div key={cartItemId} className="bg-white p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-center gap-6 border border-gray-100">
+                                        <div key={item.cartItemId} className="bg-white p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-center gap-6 border border-gray-100">
                                             <div className="w-24 h-24 bg-gray-100 rounded-xl flex-shrink-0 overflow-hidden relative border border-gray-200">
                                                 {item.image ? (
                                                     <Image src={item.image} alt={item.name} fill className="object-cover" />
@@ -79,14 +78,14 @@ export default function CartPage() {
                                             <div className="flex items-center gap-4">
                                                 <div className="flex items-center border border-gray-200 rounded-lg">
                                                     <button
-                                                        onClick={() => updateQuantity(cartItemId, item.quantity - 1)}
+                                                        onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                                                         className="w-10 h-10 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-l-lg transition-colors font-bold"
                                                     >
                                                         -
                                                     </button>
                                                     <span className="w-12 text-center font-medium">{item.quantity}</span>
                                                     <button
-                                                        onClick={() => updateQuantity(cartItemId, item.quantity + 1)}
+                                                        onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                                                         className="w-10 h-10 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-r-lg transition-colors font-bold"
                                                     >
                                                         +
@@ -94,7 +93,7 @@ export default function CartPage() {
                                                 </div>
 
                                                 <button
-                                                    onClick={() => removeFromCart(cartItemId)}
+                                                    onClick={() => removeFromCart(item.cartItemId)}
                                                     className="w-10 h-10 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
                                                     title="Remove Item"
                                                 >

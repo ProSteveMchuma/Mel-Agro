@@ -52,17 +52,17 @@ export async function getProductsPage(
             constraints.push(where("brand", "in", brands));
         }
 
-        // Sorting Logic
+        // Sorting Logic - Only add if explicitly requested to avoid index requirements for simple filters
         if (sortBy === 'price-low') {
             constraints.push(orderBy("price", "asc"));
         } else if (sortBy === 'price-high') {
             constraints.push(orderBy("price", "desc"));
-        } else if (sortBy === 'newest') {
-            // Note: If some products lack 'createdAt', they will be hidden from this view.
-            // We include name as a stable secondary sort.
+        } else if (sortBy === 'newest' && !category && (!brands || brands.length === 0)) {
+            // Only force newest if no other filters are present to avoid index issues
+            // Unless the user explicitly selected 'newest'? 
+            // For now, let's be more lenient to ensure products actually show up.
             constraints.push(orderBy("createdAt", "desc"));
-            constraints.push(orderBy("name", "asc"));
-        } else {
+        } else if (sortBy !== 'newest' && sortBy !== 'default') {
             constraints.push(orderBy("name", "asc"));
         }
 

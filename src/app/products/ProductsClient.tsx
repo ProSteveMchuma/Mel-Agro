@@ -145,7 +145,11 @@ export default function ProductsClient() {
                                 </div>
                                 <div className="flex items-center gap-4 w-full sm:w-auto">
                                     <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100 italic">
-                                        Showing All Results
+                                        {searchParams.get("search")
+                                            ? `Results for "${searchParams.get("search")}"`
+                                            : selectedCategory
+                                                ? `Collection: ${selectedCategory}`
+                                                : "Full Catalogue"}
                                     </p>
                                 </div>
                             </div>

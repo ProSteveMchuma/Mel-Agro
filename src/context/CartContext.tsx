@@ -97,41 +97,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const itemName = variant ? `${product.name} (${variant.name})` : product.name;
 
         setCartItems(prev => {
-            const existing = prev.find(item => {
-                const id = item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id);
-                return id === cartItemId;
-            });
+            const existing = prev.find(item => item.cartItemId === cartItemId);
 
             if (existing) {
                 toast.success(`Updated quantity for ${itemName}`);
-                return prev.map(item => {
-                    const id = item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id);
-                    return id === cartItemId
+                return prev.map(item =>
+                    item.cartItemId === cartItemId
                         ? { ...item, quantity: item.quantity + quantity }
-                        : item;
-                });
+                        : item
+                );
             }
 
             toast.success(`Added ${itemName} to cart`);
-            return [...prev, { ...product, quantity, selectedVariant: variant, price: itemPrice }];
+            return [...prev, { ...product, cartItemId, quantity, selectedVariant: variant, price: itemPrice }];
         });
         setIsCartOpen(true); // Open drawer on add
     };
 
     const removeFromCart = (cartItemId: string) => {
-        setCartItems(prev => prev.filter(item => {
-            const id = item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id);
-            return id !== cartItemId;
-        }));
+        setCartItems(prev => prev.filter(item => item.cartItemId !== cartItemId));
         toast.success('Removed from cart');
     };
 
     const updateQuantity = (cartItemId: string, quantity: number) => {
         if (quantity < 1) return;
-        setCartItems(prev => prev.map(item => {
-            const id = item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id);
-            return id === cartItemId ? { ...item, quantity } : item;
-        }));
+        setCartItems(prev => prev.map(item =>
+            item.cartItemId === cartItemId ? { ...item, quantity } : item
+        ));
     };
 
     const clearCart = () => {

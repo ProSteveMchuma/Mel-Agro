@@ -93,7 +93,7 @@ export default function CartDrawer() {
                         </div>
                     ) : (
                         cartItems.map((item) => (
-                            <div key={item.id} className="flex gap-4">
+                            <div key={item.cartItemId} className="flex gap-4">
                                 <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden relative border border-gray-200">
                                     {item.image ? (
                                         <Image src={item.image} alt={item.name} fill className="object-cover" />
@@ -109,7 +109,7 @@ export default function CartDrawer() {
                                     <div className="flex justify-between items-start mb-1">
                                         <h3 className="font-bold text-gray-900 line-clamp-2 text-sm">{item.name}</h3>
                                         <button
-                                            onClick={() => removeFromCart(String(item.id))}
+                                            onClick={() => removeFromCart(item.cartItemId)}
                                             className="text-gray-400 hover:text-red-500 transition-colors"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -120,14 +120,14 @@ export default function CartDrawer() {
                                     <p className="text-melagro-primary font-bold text-sm mb-2">KES {item.price.toLocaleString()}</p>
                                     <div className="flex items-center border border-gray-200 rounded-lg w-24">
                                         <button
-                                            onClick={() => updateQuantity(String(item.id), item.quantity - 1)}
+                                            onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
                                             className="w-8 h-7 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-l-lg transition-colors"
                                         >
                                             -
                                         </button>
                                         <span className="flex-1 text-center text-sm font-medium">{item.quantity}</span>
                                         <button
-                                            onClick={() => updateQuantity(String(item.id), item.quantity + 1)}
+                                            onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
                                             className="w-8 h-7 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-r-lg transition-colors"
                                         >
                                             +
