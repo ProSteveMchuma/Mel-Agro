@@ -31,6 +31,7 @@ const FadeInWhenVisible = ({ children, delay = 0 }: { children: React.ReactNode,
 import { getUniqueCategories } from "@/lib/products";
 import { useState, useEffect } from "react";
 import SidebarCategories, { CATEGORY_ICONS } from "@/components/SidebarCategories";
+import EnhancedSearch from "@/components/EnhancedSearch";
 
 export default function Home() {
   const [categories, setCategories] = useState<string[]>([]);
@@ -70,58 +71,44 @@ export default function Home() {
             </div>
 
             {/* Main Content Area (Right) */}
-            <div className="flex-grow w-full lg:w-3/4 space-y-12">
+            <div className="flex-grow w-full lg:w-3/4 space-y-16">
 
-              {/* Featured Products Slider (Top) */}
+              {/* Enhanced Search Block */}
               <FadeInWhenVisible>
-                <FeaturedSlider />
-              </FadeInWhenVisible>
-
-              {/* Integrated Search Bar */}
-              <FadeInWhenVisible delay={0.1}>
-                <div className="bg-gray-900 p-8 md:p-12 rounded-[2.5rem] shadow-2xl relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                  <div className="relative z-10">
-                    <h2 className="text-2xl md:text-3xl font-black text-white mb-6 tracking-tight uppercase">Find your farm inputs</h2>
-                    <form onSubmit={handleSearch} className="relative group">
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search seeds, fertilizers, veterinary products..."
-                        className="w-full pl-14 pr-6 py-5 rounded-2xl bg-white text-gray-900 text-lg border-none focus:ring-4 focus:ring-green-500/50 transition-all shadow-lg placeholder:text-gray-400"
-                      />
-                      <button type="submit" className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-green-600 transition-colors">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                      </button>
-                    </form>
-                    <div className="flex flex-wrap gap-2 mt-4">
-                      {['Hybrid Maize', 'DAP Fertilizer', 'Knapsack Sprayer'].map(tag => (
-                        <button
-                          key={tag}
-                          onClick={() => { setSearchQuery(tag); }}
-                          className="text-[10px] font-bold text-gray-400 hover:text-white transition-colors uppercase tracking-widest border border-white/10 px-3 py-1 rounded-full"
-                        >
-                          {tag}
-                        </button>
-                      ))}
+                <div className="relative py-12 px-8 rounded-[3rem] overflow-hidden bg-gray-50 border border-gray-100">
+                  <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1932&auto=format&fit=crop')] bg-cover bg-center opacity-10" />
+                  <div className="relative z-10 text-center space-y-8">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.4em]">Premium Agricultural Marketplace</p>
+                      <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter uppercase leading-[0.9]">Find your farm inputs</h1>
                     </div>
+                    <EnhancedSearch />
                   </div>
                 </div>
               </FadeInWhenVisible>
 
-              {/* Featured Products Grid */}
+              {/* Featured Products Slider */}
+              <FadeInWhenVisible delay={0.1}>
+                <FeaturedSlider />
+              </FadeInWhenVisible>
+
+              {/* Recommended Products - Elevated & Refined */}
               <FadeInWhenVisible delay={0.2}>
-                <div className="bg-gray-50/50 p-8 md:p-12 rounded-[3rem] border border-gray-100">
-                  <div className="flex justify-between items-center mb-10">
-                    <div>
-                      <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em] mb-2">Popular Picks</p>
-                      <h2 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tighter uppercase">Recommended for you</h2>
+                <div className="space-y-10">
+                  <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em]">Commercial Selection</p>
+                      <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">Recommended for you</h2>
+                      <p className="text-sm text-gray-500 font-medium max-w-md">Top-rated products trusted by successful farmers across the country.</p>
                     </div>
+                    <Link href="/products" className="bg-gray-900 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-xl shadow-gray-900/10">
+                      View Catalog →
+                    </Link>
                   </div>
-                  <ProductRow title="" filter={(p) => p.rating >= 4} />
+                  <div className="bg-white p-8 md:p-12 rounded-[3.5rem] border border-gray-100 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-3xl" />
+                    <ProductRow title="" filter={(p) => p.rating >= 4} />
+                  </div>
                 </div>
               </FadeInWhenVisible>
 
