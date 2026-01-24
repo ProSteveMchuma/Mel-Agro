@@ -31,6 +31,14 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport = {
+  themeColor: "#16a34a",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: 0,
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL('https://melagro.com'),
   title: {
@@ -93,8 +101,6 @@ export const metadata: Metadata = {
     telephone: false,
   },
   manifest: "/manifest.json",
-  themeColor: "#16a34a",
-  viewport: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0",
   verification: {
     google: 'google-site-verification-id', // Needs to be updated with real ID
   }

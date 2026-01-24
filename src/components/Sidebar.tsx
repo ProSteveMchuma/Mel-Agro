@@ -23,13 +23,14 @@ const defaultCategories = [
 ];
 
 export default function Sidebar({
-    categories = defaultCategories,
+    categories = [],
     onCategoryChange,
     onPriceChange,
     brands = [],
     selectedBrands = [],
     onBrandChange
 }: SidebarProps) {
+    const categoriesToDisplay = categories.length > 0 ? categories : defaultCategories;
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const activeCategory = searchParams.get("category");
@@ -73,7 +74,7 @@ export default function Sidebar({
                             <span className={`w-1.5 h-1.5 rounded-full ${!activeCategory ? "bg-white" : "bg-gray-300"}`} />
                             All Products
                         </button>
-                        {categories.map((category, idx) => {
+                        {categoriesToDisplay.map((category, idx) => {
                             const isActive = activeCategory === category;
                             return (
                                 <button

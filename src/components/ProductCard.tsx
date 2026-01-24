@@ -13,17 +13,22 @@ interface ProductCardProps {
     name: string;
     price: number;
     image?: string;
+    images?: string[]; // Fallback gallery images
     category: string;
     variants?: ProductVariant[];
 }
 
-export default function ProductCard({ id, name, price, image, category, variants = [] }: ProductCardProps) {
+export default function ProductCard({ id, name, price, image, images = [], category, variants = [] }: ProductCardProps) {
     const { addToCart } = useCart();
     const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
     const [isAdding, setIsAdding] = useState(false);
 
     const safePrice = typeof price === 'number' ? price : 0;
-    const imageSrc = (typeof image === 'string' && image.startsWith('http')) ? image : "https://placehold.co/400x400?text=No+Image";
+
+    // Use image if provided, otherwise first image from gallery, otherwise placeholder
+    const rawImage = image || (images.length > 0 ? images[0] : "");
+    const imageSrc = (typeof rawImage === 'string' && rawImage.startsWith('http')) ? rawImage : "https://placehold.co/400x400?text=No+Image";
+
     const inWishlist = isInWishlist(id);
     const router = useRouter();
 

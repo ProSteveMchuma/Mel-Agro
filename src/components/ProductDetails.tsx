@@ -398,6 +398,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                 name={p.name}
                                 price={p.price}
                                 image={p.image}
+                                images={p.images}
                                 category={p.category}
                                 variants={p.variants}
                             />
