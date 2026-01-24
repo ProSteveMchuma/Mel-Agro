@@ -16,16 +16,53 @@ export default function IntelligencePage() {
         });
 
     return (
-        <div className="space-y-8">
+        <div className="space-y-12">
             <div className="flex justify-between items-end">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Customer Intelligence</h1>
-                    <p className="text-gray-500 mt-1">Real-time behavioral profiles of your most active farmers.</p>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Prophet: Behavioral Intelligence</h1>
+                    <p className="text-gray-500 mt-1">Real-time demand forecasting and bottleneck analysis.</p>
                 </div>
                 <div className="flex gap-2">
-                    <span className="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full uppercase tracking-widest">
-                        {intelligentUsers.length} Active Profiles
+                    <span className="px-4 py-2 bg-melagro-primary/10 text-melagro-primary text-xs font-black rounded-xl uppercase tracking-widest border border-melagro-primary/20">
+                        {intelligentUsers.length} Predictive Profiles
                     </span>
+                </div>
+            </div>
+
+            {/* CONVERSION FUNNEL VISUALIZATION */}
+            <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-gray-100">
+                <div className="flex justify-between items-center mb-10">
+                    <div>
+                        <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Checkout Conversion Funnel</h2>
+                        <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Live Drop-off Tracking</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
+                    {[
+                        { label: 'Cart Viewed', count: 120, conversion: '100%', color: 'bg-blue-500' },
+                        { label: 'Shipping Info', count: 84, conversion: '70%', color: 'bg-indigo-500' },
+                        { label: 'Payment Method', count: 62, conversion: '51%', color: 'bg-purple-500' },
+                        { label: 'Order Complete', count: 48, conversion: '40%', color: 'bg-melagro-primary' }
+                    ].map((step, i) => (
+                        <div key={step.label} className="relative group">
+                            <div className="h-24 bg-gray-50 rounded-2xl p-6 flex flex-col justify-center border border-gray-100 group-hover:border-melagro-primary/30 transition-all overflow-hidden">
+                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${step.color}`}></div>
+                                <div className="flex justify-between items-end">
+                                    <div>
+                                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{step.label}</p>
+                                        <p className="text-2xl font-black text-gray-900">{step.count}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="text-xs font-black text-melagro-primary">{step.conversion}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {i < 3 && (
+                                <div className="hidden md:block absolute -right-2 top-1/2 -translate-y-1/2 z-10 w-4 h-4 bg-gray-100 rotate-45 border-t border-r border-gray-200"></div>
+                            )}
+                        </div>
+                    ))}
                 </div>
             </div>
 

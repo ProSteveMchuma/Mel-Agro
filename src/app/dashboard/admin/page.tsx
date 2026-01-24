@@ -135,28 +135,46 @@ export default function AdminDashboard() {
                         <div className="absolute top-0 right-0 w-64 h-64 bg-melagro-primary/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
 
                         <div className="relative z-10">
-                            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-melagro-primary mb-6">Automated Insights</h3>
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-melagro-primary">Prophet: Demand Forecasting</h3>
+                                <span className="px-3 py-1 bg-melagro-primary/20 text-melagro-primary text-[10px] font-black rounded-full uppercase truncate">Live Market Sync</span>
+                            </div>
 
                             <div className="space-y-6">
+                                {/* Demand Surge Card */}
                                 {topSearches.length > 0 && (
-                                    <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
-                                        <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold">Trending Interest: "{topSearches[0].term}"</p>
-                                            <p className="text-[10px] text-gray-400">Consider creating a specialized bundle or discount for this category.</p>
+                                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm group hover:border-melagro-primary/50 transition-all">
+                                        <div className="flex items-start gap-4">
+                                            <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-400 group-hover:scale-110 transition-transform">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+                                            </div>
+                                            <div className="flex-grow">
+                                                <p className="text-lg font-black tracking-tight">Demand Surge: {topSearches[0].term}</p>
+                                                <p className="text-xs text-gray-400 mt-1 italic">Interest has increased by ~40% in the last 24hrs. Supply check recommended.</p>
+
+                                                <div className="mt-4 flex gap-2">
+                                                    <button className="px-3 py-1.5 bg-melagro-primary text-white text-[10px] font-black uppercase rounded-lg">Create Bundle</button>
+                                                    <button className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg">Run Campaign</button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
-                                    <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center text-green-400">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold">Checkout Optimization Opportunity</p>
-                                        <p className="text-[10px] text-gray-400">Multiple users stalled at checkout delivery today. A "Free Shipping over 10k" banner might resolve this.</p>
+                                {/* Potential Bottleneck Card */}
+                                <div className="p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm group hover:border-red-500/50 transition-all">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                        </div>
+                                        <div className="flex-grow">
+                                            <p className="text-lg font-black tracking-tight">Checkout Bottleneck Detected</p>
+                                            <p className="text-xs text-gray-400 mt-1">Conversion drop-off at "Shipping Details" is 15% higher than usual.</p>
+
+                                            <div className="mt-4 flex gap-2">
+                                                <Link href="/dashboard/admin/intelligence" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg">Analyze Funnel</Link>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

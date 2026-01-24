@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 interface BehaviorContextType {
     trackAction: (action: string, metadata?: any) => void;
@@ -27,6 +27,8 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [searchFailures, setSearchFailures] = useState(0);
     const [hasShownCheckoutHelp, setHasShownCheckoutHelp] = useState(false);
 
+    const { user } = useAuth();
+
     // Initial Load from Persistent Storage
     useEffect(() => {
         const savedAffinity = localStorage.getItem('melagro_behavior_affinity');
@@ -39,14 +41,11 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     }, []);
 
-    const { user } = useAuth();
-
     // Save to Persistent Storage & Firestore on change
     useEffect(() => {
         if (Object.keys(affinityIndex).length > 0) {
             localStorage.setItem('melagro_behavior_affinity', JSON.stringify(affinityIndex));
 
-            // Sync to Firestore if user is logged in
             if (user?.uid) {
                 const syncData = async () => {
                     try {
@@ -64,35 +63,44 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     }, [affinityIndex, user?.uid]);
 
-    const trackAction = (action: string, metadata?: any) => {
-        setLastAction(action);
-
-        // --- Affinity Engine Logic ---
-        if (action === 'product_view' && metadata?.category) {
-            updateAffinity(metadata.category, 5); // Viewing a product is high intent
-        }
-        if (action === 'category_view' && metadata?.category) {
-            updateAffinity(metadata.category, 2); // Browsing a category is moderate intent
-        }
-        if (action === 'cart_add' && metadata?.category) {
-            updateAffinity(metadata.category, 10); // Adding to cart is very high intent
-        }
-
-        // --- Intent & Assistance Triggers ---
-        if (action === 'empty_search') {
-            setSearchFailures(prev => prev + 1);
-            if (searchFailures >= 1) {
-                showProactiveHelp("Can't find what you're looking for? Our team can help you source it via WhatsApp!");
-            }
-        }
-
-        if (action === 'checkout_validation_frustration') {
-            showProactiveHelp("Having trouble with the form? Feel free to contact us or use 'WhatsApp Order' to checkout faster!");
-        }
-
-        if (action === 'checkout_start') {
-            resetInactivityTimer(120000); // 2 minutes for checkout assistance
-        }
+    const showProactiveHelp = (message: string, action?: { label: string, onClick: () => void }) => {
+        toast((t) => (
+            <div className="flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                    <span className="text-xl">👋</span>
+                    <p className="text-sm font-bold text-gray-100">{message}</p>
+                </div>
+                {action && (
+                    <div className="flex justify-end gap-2">
+                        <button
+                            onClick={() => {
+                                action.onClick();
+                                toast.dismiss(t.id);
+                            }}
+                            className="px-3 py-1.5 bg-green-600 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-green-700 transition-colors shadow-lg shadow-green-900/40"
+                        >
+                            {action.label}
+                        </button>
+                        <button
+                            onClick={() => toast.dismiss(t.id)}
+                            className="px-3 py-1.5 bg-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-white/20 transition-colors"
+                        >
+                            Dismiss
+                        </button>
+                    </div>
+                )}
+            </div>
+        ), {
+            duration: action ? 10000 : 6000,
+            style: {
+                borderRadius: '1.25rem',
+                background: '#111827',
+                color: '#fff',
+                padding: '1rem',
+                border: '1px solid #374151',
+                maxWidth: '400px'
+            },
+        });
     };
 
     const updateAffinity = (category: string, score: number) => {
@@ -100,26 +108,6 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             ...prev,
             [category]: (prev[category] || 0) + score
         }));
-    };
-
-    const getTopAffinity = () => {
-        if (Object.keys(affinityIndex).length === 0) return 'General';
-        return Object.entries(affinityIndex).reduce((a, b) => a[1] > b[1] ? a : b)[0];
-    };
-
-    const showProactiveHelp = (message: string) => {
-        toast(message, {
-            duration: 6000,
-            icon: '👋',
-            style: {
-                borderRadius: '1rem',
-                background: '#111827',
-                color: '#fff',
-                fontWeight: 'bold',
-                fontSize: '14px',
-                border: '1px solid #374151'
-            },
-        });
     };
 
     const resetInactivityTimer = (delay: number = 60000) => {
@@ -131,18 +119,101 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     const handleInactivity = () => {
         if (pathname === '/checkout' && !hasShownCheckoutHelp) {
-            showProactiveHelp("Need help completing your order? Our support team is one click away.");
+            showProactiveHelp(
+                "Need help completing your order? Our support team is one click away via WhatsApp.",
+                {
+                    label: "Get Help",
+                    onClick: () => window.open('https://wa.me/254748970757?text=Hello,%20I%20am%20having%20some%20trouble%20completing%20my%20order.', '_blank')
+                }
+            );
             setHasShownCheckoutHelp(true);
         }
     };
 
-    // Track page changes
+    const trackAction = (action: string, metadata?: any) => {
+        setLastAction(action);
+
+        if (action === 'product_view' && metadata?.category) {
+            updateAffinity(metadata.category, 5);
+        }
+        if (action === 'category_view' && metadata?.category) {
+            updateAffinity(metadata.category, 2);
+        }
+        if (action === 'cart_add' && metadata?.category) {
+            updateAffinity(metadata.category, 10);
+        }
+
+        if (action === 'empty_search') {
+            setSearchFailures(prev => prev + 1);
+            if (searchFailures >= 1) {
+                showProactiveHelp(
+                    "Can't find what you're looking for? Our team can help you source it via WhatsApp!",
+                    {
+                        label: "WhatsApp Support",
+                        onClick: () => window.open('https://wa.me/254748970757?text=Hello,%20I%20am%20looking%20for%20something%20I%20can%20not%20find%20on%20the%20website.', '_blank')
+                    }
+                );
+            }
+        }
+
+        if (action === 'checkout_validation_frustration') {
+            showProactiveHelp(
+                "Having trouble with the form? Feel free to contact us or use 'WhatsApp Order' to checkout faster!",
+                {
+                    label: "Order via WhatsApp",
+                    onClick: () => window.open('https://wa.me/254748970757?text=Hello,%20I%20need%20help%20completing%20my%20order.', '_blank')
+                }
+            );
+        }
+
+        if (action === 'checkout_start') {
+            resetInactivityTimer(120000);
+            logFunnelEvent('start');
+        }
+
+        if (action === 'checkout_step' && metadata?.step) {
+            logFunnelEvent(metadata.step);
+        }
+
+        if (action === 'checkout_complete') {
+            logFunnelEvent('complete');
+        }
+    };
+
+    const logFunnelEvent = async (step: string) => {
+        if (!user?.uid) return;
+        try {
+            const funnelRef = doc(db, 'analytics_funnels', user.uid);
+            await setDoc(funnelRef, {
+                userId: user.uid,
+                lastStep: step,
+                timestamp: serverTimestamp(),
+                steps: {
+                    [step]: serverTimestamp()
+                }
+            }, { merge: true });
+        } catch (e) {
+            console.error("Failed to log funnel event", e);
+        }
+    };
+
+    const getTopAffinity = () => {
+        if (Object.keys(affinityIndex).length === 0) return 'General';
+        let top = 'General';
+        let max = -1;
+        Object.entries(affinityIndex).forEach(([cat, score]) => {
+            if (score > max) {
+                max = score;
+                top = cat;
+            }
+        });
+        return top;
+    };
+
     useEffect(() => {
         trackAction('page_view', { path: pathname });
-
-        // Specific page triggers
         if (pathname === '/checkout') {
-            resetInactivityTimer(120000); // Trigger help after 2 mins on checkout
+            resetInactivityTimer(120000);
         } else {
             if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
         }

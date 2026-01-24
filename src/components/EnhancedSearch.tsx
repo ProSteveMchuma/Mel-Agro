@@ -24,24 +24,44 @@ export default function EnhancedSearch() {
     const router = useRouter();
     const { getTopAffinity } = useBehavior();
 
+    const [suggestions, setSuggestions] = useState<Product[]>([]);
+    const [allProducts, setAllProducts] = useState<Product[]>([]);
+
     useEffect(() => {
         const fetchData = async () => {
             const topAffinity = getTopAffinity();
 
-            // Prioritize fetching products from the top affinity category
-            const products = await getProducts({
-                category: topAffinity !== 'General' ? topAffinity : undefined,
-                limitCount: 3
-            });
-            setPopularProducts(products);
+            // Fetch a larger set of products for fuzzy matching
+            const products = await getProducts({ limitCount: 50 });
+            setAllProducts(products);
+
+            // Prioritize fetching products from the top affinity category for the initial view
+            const affinityProducts = products
+                .filter(p => topAffinity !== 'General' ? p.category === topAffinity : true)
+                .slice(0, 3);
+            setPopularProducts(affinityProducts);
 
             // Get some categories for quick access
-            const allProducts = await getProducts({ limitCount: 20 });
-            const cats = Array.from(new Set(allProducts.map(p => p.category))).slice(0, 4);
+            const cats = Array.from(new Set(products.map(p => p.category))).slice(0, 4);
             setCategories(cats);
         };
         fetchData();
     }, [getTopAffinity]);
+
+    useEffect(() => {
+        if (searchQuery.trim().length > 1) {
+            import("fuse.js").then((Fuse) => {
+                const fuse = new Fuse.default(allProducts, {
+                    keys: ['name', 'category', 'tags'],
+                    threshold: 0.3
+                });
+                const results = fuse.search(searchQuery).map(r => r.item).slice(0, 3);
+                setSuggestions(results);
+            });
+        } else {
+            setSuggestions([]);
+        }
+    }, [searchQuery, allProducts]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -166,11 +186,13 @@ export default function EnhancedSearch() {
                                 </div>
                             </div>
 
-                            {/* Right Column: Popular Products */}
+                            {/* Right Column: Popular Products or Fuzzy Suggestions */}
                             <div className="md:col-span-8">
-                                <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-4 md:mb-6">Popular Right Now</h4>
+                                <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-4 md:mb-6">
+                                    {(searchQuery.length > 1 && suggestions.length > 0) ? "Intelligent Suggestions" : "Popular Right Now"}
+                                </h4>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
-                                    {popularProducts.map((product) => (
+                                    {(searchQuery.length > 1 && suggestions.length > 0 ? suggestions : popularProducts).map((product) => (
                                         <Link
                                             key={product.id}
                                             href={`/products/${product.id}`}

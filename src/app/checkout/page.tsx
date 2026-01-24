@@ -96,6 +96,7 @@ export default function CheckoutPage() {
                 return;
             }
         }
+        trackAction('checkout_step', { step: currentStep === 1 ? 'payment' : 'review' });
         trackAction('checkout_step_advance', { from: currentStep, to: currentStep + 1 });
         if (currentStep < 3) setCurrentStep(currentStep + 1);
     };
@@ -264,6 +265,7 @@ export default function CheckoutPage() {
             }
 
             // Normal flow for non-MPesa / non-Card
+            trackAction('checkout_complete', { orderId: newOrder.id });
             clearCart();
             toast.success("Order placed successfully!");
             router.push(`/checkout/success?orderId=${newOrder.id}`);
