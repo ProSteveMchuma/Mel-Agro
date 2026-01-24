@@ -27,23 +27,18 @@ export const PaymentService = {
         }
     },
 
-    // Stripe Payment Intent
-    processCardPayment: async (cardDetails: any, amount: number): Promise<PaymentResult> => {
+    // Paystack Card Payment
+    processPaystackPayment: async (email: string, amount: number, orderId: string, items: any[]): Promise<any> => {
         try {
-            const response = await fetch('/api/payment/stripe', {
+            const response = await fetch('/api/payment/paystack/initialize', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount, currency: 'kes' }),
+                body: JSON.stringify({ email, amount, orderId, items }),
             });
-            const data = await response.json();
-            return {
-                success: data.success,
-                message: data.success ? "Payment Intent Created" : data.message,
-                clientSecret: data.clientSecret
-            };
+            return await response.json();
         } catch (error) {
-            console.error("Stripe Payment Error:", error);
-            return { success: false, message: "Failed to process card payment." };
+            console.error("Paystack Payment Error:", error);
+            return { success: false, message: "Failed to process paystack payment." };
         }
     }
 };

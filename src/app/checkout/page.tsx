@@ -239,19 +239,21 @@ export default function CheckoutPage() {
 
             if (paymentMethod === 'card') {
                 const loadingToast = toast.loading("Preparing secure checkout...");
-                const response = await fetch('/api/payment/stripe/checkout-session', {
+                const response = await fetch('/api/payment/paystack/initialize', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         items: cartItems,
                         orderId: newOrder.id,
-                        email: shippingData.email
+                        email: shippingData.email,
+                        amount: total
                     })
                 });
 
                 const data = await response.json();
                 if (data.success && data.url) {
                     toast.success("Redirecting to secure payment...", { id: loadingToast });
+                    clearCart();
                     window.location.href = data.url;
                     return;
                 } else {
