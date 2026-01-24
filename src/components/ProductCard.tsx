@@ -82,9 +82,8 @@ export default function ProductCard({ id, name, price, image, images = [], categ
         }
     };
 
-    // Mock discount for visual parity with reference image
-    const originalPrice = Math.round(safePrice * 1.15); // 15% mockup
-    const discountPercent = 15;
+    const originalPrice = safePrice;
+    const discountPercent = 0;
 
     return (
         <Link href={`/products/${id}`}>
@@ -117,10 +116,6 @@ export default function ProductCard({ id, name, price, image, images = [], categ
                         </button>
                     </div>
 
-                    {/* Discount Badge */}
-                    <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-[#22c55e] text-white px-1.5 md:px-2 py-0.5 md:py-1 rounded-md md:rounded-lg text-[8px] md:text-[10px] font-black shadow-lg z-10 uppercase tracking-tighter">
-                        -{discountPercent}% OFF
-                    </div>
 
                     {/* Wishlist Button */}
                     <button
@@ -156,9 +151,6 @@ export default function ProductCard({ id, name, price, image, images = [], categ
                             )}
                             <span className="text-lg md:text-xl font-black text-gray-900">
                                 KES {safePrice.toLocaleString()}
-                            </span>
-                            <span className="text-gray-400 line-through text-[10px] md:text-xs font-medium">
-                                KES {originalPrice.toLocaleString()}
                             </span>
                         </div>
                     </div>

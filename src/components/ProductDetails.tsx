@@ -118,8 +118,7 @@ export default function ProductDetails({ id }: { id: string }) {
                     <div className="space-y-6">
                         <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-square mx-auto max-w-lg lg:max-w-none">
                             <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
-                                <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">Best Seller</span>
-                                <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm">-10%</span>
+                                <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">In Stock</span>
                             </div>
 
                             <Image
@@ -202,8 +201,7 @@ export default function ProductDetails({ id }: { id: string }) {
                         <div className="flex flex-col gap-2 mb-6">
                             <div className="flex items-center gap-3">
                                 <span className="text-4xl font-black text-[#22c55e]">KES {(selectedVariant?.price || product.price).toLocaleString()}</span>
-                                <span className="text-lg text-gray-400 line-through font-medium">KES {((selectedVariant?.price || product.price) * 1.15).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                                <span className="bg-green-100 text-green-700 text-[10px] font-black px-2 py-1 rounded uppercase tracking-tighter">Save 15%</span>
+                                <span className="bg-green-50 text-green-700 text-[10px] font-black px-2 py-1 rounded uppercase tracking-tighter">Guaranteed Quality</span>
                             </div>
 
                             {product.stockQuantity > 0 && product.stockQuantity <= 50 && (
