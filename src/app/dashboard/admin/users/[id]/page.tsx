@@ -55,11 +55,25 @@ export default function UserProfilePage() {
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
                         <p className="text-gray-500 text-sm">{user.email}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${(user.role === 'admin' || user.role === 'super-admin') ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                                {user.role}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        <div className="flex items-center gap-2 mt-2">
+                            <select
+                                value={user.role}
+                                onChange={async (e) => {
+                                    const newRole = e.target.value as 'admin' | 'customer';
+                                    try {
+                                        await updateUserRole(user.id, newRole);
+                                        setUser({ ...user, role: newRole });
+                                        alert(`${user.name} is now an ${newRole}.`);
+                                    } catch (err) {
+                                        alert("Failed to update role.");
+                                    }
+                                }}
+                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm focus:ring-2 focus:ring-melagro-primary/20 cursor-pointer outline-none ${(user.role === 'admin' || user.role === 'super-admin') ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}
+                            >
+                                <option value="customer">Customer</option>
+                                <option value="admin">Admin</option>
+                            </select>
+                            <span className={`px-2 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest ${user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                                 {user.status}
                             </span>
                         </div>

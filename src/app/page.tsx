@@ -75,8 +75,11 @@ export default function Home() {
 
               {/* Enhanced Search Block */}
               <FadeInWhenVisible>
-                <div className="relative py-12 px-8 rounded-[3rem] overflow-hidden bg-gray-50 border border-gray-100">
-                  <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1932&auto=format&fit=crop')] bg-cover bg-center opacity-10" />
+                <div className="relative py-12 px-8 rounded-[3rem] bg-gray-50 border border-gray-100 shadow-sm">
+                  {/* Background clipping container */}
+                  <div className="absolute inset-0 overflow-hidden rounded-[3rem]">
+                    <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1932&auto=format&fit=crop')] bg-cover bg-center opacity-10" />
+                  </div>
                   <div className="relative z-10 text-center space-y-8">
                     <div className="space-y-2">
                       <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.4em]">Premium Agricultural Marketplace</p>

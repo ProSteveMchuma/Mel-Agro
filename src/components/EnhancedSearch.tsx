@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getProducts, Product } from "@/lib/products";
 import { CATEGORY_ICONS } from "./SidebarCategories";
+import { useBehavior } from "@/context/BehaviorContext";
 
 const TRENDING_SEARCHES = [
     { term: "Hybrid Maize Seeds", icon: "🌱" },
@@ -14,7 +15,6 @@ const TRENDING_SEARCHES = [
     { term: "Knapsack Sprayer", icon: "🚿" },
     { term: "Chicken Feed", icon: "🐔" },
 ];
-
 export default function EnhancedSearch() {
     const [isFocused, setIsFocused] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -22,10 +22,17 @@ export default function EnhancedSearch() {
     const [categories, setCategories] = useState<string[]>([]);
     const searchRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
+    const { getTopAffinity } = useBehavior();
 
     useEffect(() => {
         const fetchData = async () => {
-            const products = await getProducts({ limitCount: 3 });
+            const topAffinity = getTopAffinity();
+
+            // Prioritize fetching products from the top affinity category
+            const products = await getProducts({
+                category: topAffinity !== 'General' ? topAffinity : undefined,
+                limitCount: 3
+            });
             setPopularProducts(products);
 
             // Get some categories for quick access
@@ -34,7 +41,7 @@ export default function EnhancedSearch() {
             setCategories(cats);
         };
         fetchData();
-    }, []);
+    }, [getTopAffinity]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -61,17 +68,17 @@ export default function EnhancedSearch() {
     };
 
     return (
-        <div ref={searchRef} className="relative max-w-4xl mx-auto z-50">
+        <div ref={searchRef} className="relative w-full max-w-4xl mx-auto z-50">
             {/* Search Input Area */}
             <div className={`
-                relative transition-all duration-500 ease-out border
+                relative transition-all duration-300 ease-out border
                 ${isFocused
-                    ? "bg-white shadow-2xl rounded-t-[2rem] border-green-500/20"
-                    : "bg-gray-900/40 backdrop-blur-xl rounded-[2.5rem] border-white/10 hover:border-white/20 shadow-lg"}
+                    ? "bg-white shadow-2xl rounded-t-[1.5rem] md:rounded-t-[2.5rem] rounded-b-none border-green-500/30"
+                    : "bg-gray-900/40 backdrop-blur-xl rounded-[1.5rem] md:rounded-[2.5rem] border-white/20 hover:border-white/30 shadow-lg"}
             `}>
-                <form onSubmit={handleSearch} className="relative flex items-center p-2">
-                    <div className="flex-grow relative pl-6">
-                        <svg className={`w-6 h-6 absolute left-6 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isFocused ? "text-green-600" : "text-white/40"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <form onSubmit={handleSearch} className="relative flex items-center p-1.5 md:p-2">
+                    <div className="flex-grow relative pl-2 md:pl-6">
+                        <svg className={`w-5 h-5 md:w-6 md:h-6 absolute left-4 md:left-6 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isFocused ? "text-green-600" : "text-white/40"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                         <input
@@ -81,7 +88,7 @@ export default function EnhancedSearch() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="What are you planting today?"
                             className={`
-                                w-full pl-10 pr-6 py-5 bg-transparent border-none focus:ring-0 text-lg transition-colors duration-300
+                                w-full pl-10 md:pl-10 pr-4 md:pr-6 py-3.5 md:py-5 bg-transparent border-none focus:ring-0 text-base md:text-lg transition-colors duration-300
                                 ${isFocused ? "text-gray-900 placeholder:text-gray-400" : "text-white placeholder:text-white/40"}
                             `}
                         />
@@ -103,7 +110,7 @@ export default function EnhancedSearch() {
                     <button
                         type="submit"
                         className={`
-                            px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all
+                            px-4 md:px-8 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-black text-[10px] md:text-xs uppercase tracking-widest transition-all mr-1
                             ${isFocused
                                 ? "bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-500/20"
                                 : "bg-white text-gray-900 hover:scale-105"}
@@ -122,22 +129,22 @@ export default function EnhancedSearch() {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.2 }}
-                        className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-b-[2rem] border-x border-b border-green-500/10 overflow-hidden"
+                        className="absolute top-full left-0 right-0 bg-white shadow-2xl rounded-b-[1.5rem] md:rounded-b-[2.5rem] border-x border-b border-green-500/20 overflow-hidden"
                     >
-                        <div className="p-8 grid grid-cols-1 md:grid-cols-12 gap-10">
+                        <div className="p-4 md:p-8 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 max-h-[70vh] md:max-h-none overflow-y-auto">
                             {/* Left Column: Trending & Categories */}
-                            <div className="md:col-span-4 space-y-10">
+                            <div className="md:col-span-4 space-y-6 md:space-y-10">
                                 <div>
-                                    <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-4">Trending Now</h4>
-                                    <div className="space-y-3">
+                                    <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-3 md:mb-4">Trending Now</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-1 gap-2 md:gap-3">
                                         {TRENDING_SEARCHES.map((item) => (
                                             <button
                                                 key={item.term}
                                                 onClick={() => handleQuickSearch(item.term)}
-                                                className="flex items-center gap-3 w-full text-left p-3 rounded-xl hover:bg-gray-50 transition-colors group"
+                                                className="flex items-center gap-2 md:gap-3 w-full text-left p-2 md:p-3 rounded-xl hover:bg-gray-50 transition-colors group border border-gray-50 md:border-transparent"
                                             >
-                                                <span className="text-xl group-hover:scale-125 transition-transform">{item.icon}</span>
-                                                <span className="text-sm font-bold text-gray-700">{item.term}</span>
+                                                <span className="text-lg md:text-xl group-hover:scale-125 transition-transform">{item.icon}</span>
+                                                <span className="text-xs md:text-sm font-bold text-gray-700 truncate">{item.term}</span>
                                             </button>
                                         ))}
                                     </div>
@@ -161,8 +168,8 @@ export default function EnhancedSearch() {
 
                             {/* Right Column: Popular Products */}
                             <div className="md:col-span-8">
-                                <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-6">Popular Right Now</h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                                <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-4 md:mb-6">Popular Right Now</h4>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6">
                                     {popularProducts.map((product) => (
                                         <Link
                                             key={product.id}

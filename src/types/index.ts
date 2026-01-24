@@ -13,6 +13,9 @@ export interface User {
     createdAt?: string;
     status?: 'active' | 'suspended';
     savedAddresses?: SavedAddress[];
+    affinityIndex?: Record<string, number>;
+    intentScore?: number;
+    lastBehavioralSync?: string;
 }
 
 export interface SavedAddress {

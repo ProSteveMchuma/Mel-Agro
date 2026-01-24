@@ -115,86 +115,70 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* LIVE INSIGHTS SECTION */}
+            {/* AI MARKET INTELLIGENCE STRIP */}
             <div className="print:hidden">
-                <h2 className="text-xl font-black text-gray-900 mb-6 flex items-center gap-3">
-                    <div className="w-10 h-10 bg-melagro-primary/10 rounded-xl flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-melagro-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 bg-melagro-primary/10 rounded-2xl flex items-center justify-center border border-melagro-primary/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-melagro-primary animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </div>
-                    Live Market Intelligence
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Top Searches Widget */}
-                    <div className="bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-gray-900/5 hover:shadow-2xl transition-all duration-500">
-                        <div className="flex justify-between items-center mb-8">
-                            <h3 className="font-black text-gray-900 text-sm uppercase tracking-widest">Top Search Terms</h3>
-                            <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg">High Intent</span>
-                        </div>
-                        {loadingAnalytics ? (
-                            <div className="space-y-4 animate-pulse">
-                                {[1, 2, 3, 4].map(i => <div key={i} className="h-10 bg-gray-100/50 rounded-xl"></div>)}
-                            </div>
-                        ) : topSearches.length > 0 ? (
-                            <div className="space-y-5">
-                                {topSearches.map((term, i) => (
-                                    <div key={i} className="flex justify-between items-center group">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-bold text-xs">
-                                                {i + 1}
-                                            </div>
-                                            <span className="text-gray-900 font-bold capitalize text-sm">{term.term}</span>
+                    <div>
+                        <h2 className="text-xl font-black text-gray-900 tracking-tight">AI Market Intelligence</h2>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Behavioral Patterns & Intent Signals</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Market Opportunity Widget */}
+                    <div className="lg:col-span-2 bg-gradient-to-br from-slate-900 to-slate-950 p-8 rounded-[2rem] text-white shadow-2xl relative overflow-hidden border border-slate-800">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-melagro-primary/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
+
+                        <div className="relative z-10">
+                            <h3 className="text-sm font-black uppercase tracking-[0.2em] text-melagro-primary mb-6">Automated Insights</h3>
+
+                            <div className="space-y-6">
+                                {topSearches.length > 0 && (
+                                    <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
+                                        <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                                         </div>
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-2 bg-gray-100 w-24 md:w-32 rounded-full overflow-hidden">
-                                                <div className="h-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" style={{ width: `${Math.min(100, (term.count / (topSearches[0]?.count || 1)) * 100)}%` }}></div>
-                                            </div>
-                                            <span className="text-xs font-black text-gray-900 w-8 text-right">{term.count}</span>
+                                        <div>
+                                            <p className="text-sm font-bold">Trending Interest: "{topSearches[0].term}"</p>
+                                            <p className="text-[10px] text-gray-400">Consider creating a specialized bundle or discount for this category.</p>
                                         </div>
                                     </div>
-                                ))}
+                                )}
+
+                                <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm">
+                                    <div className="w-10 h-10 bg-green-500/20 rounded-xl flex items-center justify-center text-green-400">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-bold">Checkout Optimization Opportunity</p>
+                                        <p className="text-[10px] text-gray-400">Multiple users stalled at checkout delivery today. A "Free Shipping over 10k" banner might resolve this.</p>
+                                    </div>
+                                </div>
                             </div>
-                        ) : (
-                            <div className="text-center py-12">
-                                <p className="text-sm font-bold text-gray-400 italic">Awaiting first market signals...</p>
-                            </div>
-                        )}
+                        </div>
                     </div>
 
-                    {/* Top Viewed Widget */}
-                    <div className="bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-gray-900/5 hover:shadow-2xl transition-all duration-500">
-                        <div className="flex justify-between items-center mb-8">
-                            <h3 className="font-black text-gray-900 text-sm uppercase tracking-widest">Top Products by Interest</h3>
-                            <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-1 rounded-lg">Popular Now</span>
-                        </div>
-                        {loadingAnalytics ? (
-                            <div className="space-y-4 animate-pulse">
-                                {[1, 2, 3, 4].map(i => <div key={i} className="h-10 bg-gray-100/50 rounded-xl"></div>)}
-                            </div>
-                        ) : topViewed.length > 0 ? (
-                            <div className="space-y-5">
-                                {topViewed.map((item, i) => (
-                                    <div key={i} className="flex items-center gap-4 group cursor-pointer" onClick={() => router.push(`/dashboard/admin/products/edit/${item.productId}`)}>
-                                        <div className="w-12 h-12 rounded-xl bg-gray-100 relative overflow-hidden flex-shrink-0 group-hover:scale-110 transition-transform duration-300 border border-white shadow-sm">
-                                            {item.image && <img src={item.image} className="w-full h-full object-cover" />}
-                                        </div>
-                                        <div className="flex-grow min-w-0">
-                                            <div className="text-sm font-bold text-gray-900 truncate group-hover:text-melagro-primary transition-colors">{item.name}</div>
-                                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Engagement Rank #{i + 1}</div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className="text-xs font-black text-gray-900 px-3 py-1 bg-gray-100 rounded-lg">{item.views}</div>
-                                            <div className="text-[8px] text-gray-400 font-bold">VIEWS</div>
-                                        </div>
+                    {/* Quick Market Stats */}
+                    <div className="bg-white/60 backdrop-blur-xl p-8 rounded-[2rem] border border-white shadow-xl flex flex-col justify-between">
+                        <div>
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-6">High-Intent Traffic</h3>
+                            <div className="space-y-4">
+                                {topViewed.slice(0, 3).map((item, i) => (
+                                    <div key={i} className="flex items-center justify-between">
+                                        <span className="text-sm font-bold text-gray-800 truncate pr-4">{item.name}</span>
+                                        <span className="text-xs font-black text-melagro-primary">{item.views} Views</span>
                                     </div>
                                 ))}
                             </div>
-                        ) : (
-                            <div className="text-center py-12">
-                                <p className="text-sm font-bold text-gray-400 italic">No activity data yet.</p>
-                            </div>
-                        )}
+                        </div>
+                        <Link href="/dashboard/admin/intelligence" className="mt-8 py-3 bg-gray-900 text-white rounded-2xl text-xs font-bold text-center hover:bg-black transition-colors">
+                            View Customer Intel →
+                        </Link>
                     </div>
                 </div>
             </div>

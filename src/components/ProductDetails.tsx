@@ -313,16 +313,20 @@ export default function ProductDetails({ id }: { id: string }) {
                     <div className="lg:col-span-2">
                         {/* Tab Headers */}
                         <div className="flex gap-8 border-b border-gray-200 mb-8 overflow-x-auto">
-                            {['Description', 'Specifications', 'Usage Guide'].map((tab) => (
+                            {[
+                                { id: 'description', label: 'Description' },
+                                { id: 'specifications', label: 'Specifications' },
+                                { id: 'usage', label: 'Usage Guide' }
+                            ].map((tab) => (
                                 <button
-                                    key={tab}
-                                    onClick={() => setActiveTab(tab.toLowerCase() as any)}
-                                    className={`pb-4 text-sm font-bold capitalize whitespace-nowrap transition-colors border-b-2 ${activeTab === tab.toLowerCase()
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as any)}
+                                    className={`pb-4 text-sm font-bold capitalize whitespace-nowrap transition-colors border-b-2 ${activeTab === tab.id
                                         ? 'text-[#22c55e] border-[#22c55e]'
                                         : 'text-gray-400 border-transparent hover:text-gray-600'
                                         }`}
                                 >
-                                    {tab}
+                                    {tab.label}
                                 </button>
                             ))}
                         </div>

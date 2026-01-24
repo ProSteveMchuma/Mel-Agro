@@ -11,6 +11,7 @@ import Logo from "./Logo";
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { cartCount, toggleCart } = useCart();
   const { user, isAdmin, logout } = useAuth();
   const { language, setLanguage, t } = useLanguage();
@@ -47,6 +48,18 @@ export default function Header() {
             <Link href="/" className="group flex-shrink-0">
               <Logo />
             </Link>
+          </div>
+
+          {/* Search Toggle - Mobile */}
+          <div className="md:hidden flex-grow flex justify-end pr-2">
+            <button
+              onClick={() => setIsSearchOpen(!isSearchOpen)}
+              className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
           </div>
 
           {/* Search Bar - Desktop */}
@@ -93,6 +106,40 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Search Overlay */}
+      {isSearchOpen && (
+        <div className="md:hidden fixed inset-0 z-[70] bg-white animate-in slide-in-from-top duration-300 overflow-hidden flex flex-col">
+          <div className="p-4 border-b border-gray-100 flex items-center gap-4">
+            <div className="flex-grow">
+              <SmartSearch />
+            </div>
+            <button
+              onClick={() => setIsSearchOpen(false)}
+              className="px-4 py-2 text-xs font-black text-gray-400 uppercase tracking-widest"
+            >
+              Close
+            </button>
+          </div>
+          <div className="flex-grow bg-gray-50/50 p-6">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Quick Suggestions</p>
+            <div className="flex flex-wrap gap-2">
+              {['Maize Seeds', 'Fertilizer', 'Tools', 'Irrigation'].map(term => (
+                <button
+                  key={term}
+                  onClick={() => {
+                    router.push(`/products?search=${encodeURIComponent(term)}`);
+                    setIsSearchOpen(false);
+                  }}
+                  className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-700 shadow-sm"
+                >
+                  {term}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mobile Menu Overlay */}
       {isMenuOpen && (

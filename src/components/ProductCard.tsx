@@ -7,6 +7,7 @@ import { useWishlist } from "@/context/WishlistContext";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProductVariant } from "@/types";
+import { useBehavior } from "@/context/BehaviorContext";
 
 interface ProductCardProps {
     id: string | number;
@@ -31,10 +32,12 @@ export default function ProductCard({ id, name, price, image, images = [], categ
 
     const inWishlist = isInWishlist(id);
     const router = useRouter();
+    const { trackAction } = useBehavior();
 
     const handleView = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+        trackAction('product_view', { id, name, category });
         router.push(`/products/${id}`);
     };
 
@@ -42,6 +45,7 @@ export default function ProductCard({ id, name, price, image, images = [], categ
         e.preventDefault();
         e.stopPropagation();
         setIsAdding(true);
+        trackAction('cart_add', { id, name, category, price: safePrice });
 
         const productForCart = {
             id: String(id),
