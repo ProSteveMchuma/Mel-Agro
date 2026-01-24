@@ -13,6 +13,7 @@ import dynamic from 'next/dynamic';
 
 const Newsletter = dynamic(() => import("@/components/Newsletter"), { ssr: false });
 const Partners = dynamic(() => import("@/components/Partners"), { ssr: false });
+const FeaturedSlider = dynamic(() => import("@/components/FeaturedSlider"), { ssr: false });
 
 const FadeInWhenVisible = ({ children, delay = 0 }: { children: React.ReactNode, delay?: number }) => {
   return (
@@ -71,9 +72,9 @@ export default function Home() {
             {/* Main Content Area (Right) */}
             <div className="flex-grow w-full lg:w-3/4 space-y-12">
 
-              {/* Hero Slider */}
+              {/* Featured Products Slider (Top) */}
               <FadeInWhenVisible>
-                <Hero />
+                <FeaturedSlider />
               </FadeInWhenVisible>
 
               {/* Integrated Search Bar */}
@@ -155,6 +156,15 @@ export default function Home() {
         <FadeInWhenVisible>
           <Partners />
         </FadeInWhenVisible>
+
+        {/* Hero Slider (Moved to Bottom) */}
+        <section className="container-custom">
+          <FadeInWhenVisible>
+            <div className="bg-white rounded-[3rem] overflow-hidden border border-gray-100 p-2">
+              <Hero />
+            </div>
+          </FadeInWhenVisible>
+        </section>
 
         {/* Newsletter Section */}
         <FadeInWhenVisible>

@@ -138,7 +138,7 @@ function OrderSuccessContent() {
                         {/* Farmer Image */}
                         <div className="md:w-1/3 relative h-64">
                             <Image
-                                src="https://images.unsplash.com/photo-1595113316349-9fa4ee24f884?q=80&w=800&auto=format&fit=crop"
+                                src="/assets/images/happy-farmer.png"
                                 alt="Happy Farmer"
                                 fill
                                 className="rounded-2xl object-cover shadow-lg"

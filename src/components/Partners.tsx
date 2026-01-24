@@ -3,12 +3,12 @@
 import { motion } from "framer-motion";
 
 const PARTNERS = [
-    { name: "Bayer", logo: "https://Mel-Agri4.vercel.app/assets/partners/Bayer.png", url: "https://www.bayer.com" },
-    { name: "Syngenta", logo: "https://Mel-Agri4.vercel.app/assets/partners/syngenta.png", url: "https://www.syngenta.com" },
-    { name: "Corteva", logo: "https://Mel-Agri4.vercel.app/assets/partners/Corteva.png", url: "https://www.corteva.com" },
-    { name: "Seed Co", logo: "https://Mel-Agri4.vercel.app/assets/partners/seedco.png", url: "https://www.seedcogroup.com" },
-    { name: "Unga PLC", logo: "https://Mel-Agri4.vercel.app/assets/partners/Unga-plc.png", url: "https://www.unga-group.com" },
-    { name: "Osho Chemicals", logo: "https://Mel-Agri4.vercel.app/assets/partners/Osha.png", url: "https://www.oshochemicals.com" },
+    { name: "Bayer", logo: "/assets/partners/bayer.png", url: "https://www.bayer.com" },
+    { name: "Syngenta", logo: "/assets/partners/syngenta.png", url: "https://www.syngenta.com" },
+    { name: "Corteva", logo: "/assets/partners/corteva.png", url: "https://www.corteva.com" },
+    { name: "Seed Co", logo: "/assets/partners/seedco.png", url: "https://www.seedcogroup.com" },
+    { name: "Unga PLC", logo: "/assets/partners/unga.png", url: "https://www.unga-group.com" },
+    { name: "Osho Chemicals", logo: "/assets/partners/osho.png", url: "https://www.oshochemicals.com" },
 ];
 
 export default function Partners() {
