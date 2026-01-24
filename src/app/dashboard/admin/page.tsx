@@ -40,7 +40,6 @@ export default function AdminDashboard() {
     const [topSearches, setTopSearches] = useState<SearchTerm[]>([]);
     const [topViewed, setTopViewed] = useState<ViewedProduct[]>([]);
     const [loadingAnalytics, setLoadingAnalytics] = useState(true);
-    const [isSeeding, setIsSeeding] = useState(false);
 
     // Calculate Stats
     const totalSales = orders
@@ -48,37 +47,6 @@ export default function AdminDashboard() {
         .reduce((acc: number, order: any) => acc + order.total, 0);
     const totalUsers = users.length;
 
-    const handleSeedProducts = async () => {
-        if (!confirm("This will add new products from the mock data to your live store. Continue?")) return;
-
-        setIsSeeding(true);
-        const toastId = toast.loading("Seeding new products...");
-
-        try {
-            const { products: mockProducts } = await import("@/lib/mockData");
-            const productsCollection = collection(db, "products");
-            const existingProductsSnap = await getDocs(productsCollection);
-            const existingNames = new Set(existingProductsSnap.docs.map(doc => doc.data().name));
-
-            let addedCount = 0;
-            const { addDoc } = await import("firebase/firestore");
-
-            for (const p of mockProducts) {
-                if (!existingNames.has(p.name)) {
-                    const { id, ...rest } = p;
-                    await addDoc(productsCollection, rest);
-                    addedCount++;
-                }
-            }
-
-            toast.success(`Successfully added ${addedCount} new products!`, { id: toastId });
-        } catch (err) {
-            console.error("Seeding error:", err);
-            toast.error("Failed to seed products.", { id: toastId });
-        } finally {
-            setIsSeeding(false);
-        }
-    };
 
     // Fetch Analytics Data
     useEffect(() => {
@@ -144,16 +112,6 @@ export default function AdminDashboard() {
                         </svg>
                         Add Product
                     </Link>
-                    <button
-                        onClick={handleSeedProducts}
-                        disabled={isSeeding}
-                        className="bg-purple-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-purple-700 transition-all disabled:opacity-50 flex items-center gap-2"
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                        {isSeeding ? "Seeding..." : "Seed Products"}
-                    </button>
                 </div>
             </div>
 

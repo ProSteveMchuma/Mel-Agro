@@ -20,7 +20,6 @@ export default function ProductsClient() {
     const [availableBrands, setAvailableBrands] = useState<string[]>([]);
     const [availableCategories, setAvailableCategories] = useState<string[]>([]);
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
-    const [sortBy, setSortBy] = useState("newest");
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     // Fetch dynamic filters on mount
@@ -145,20 +144,9 @@ export default function ProductsClient() {
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-4 w-full sm:w-auto">
-                                    <label className="flex items-center gap-3 text-[10px] font-black uppercase tracking-widest whitespace-nowrap bg-gray-50 pl-4 pr-1 py-1 rounded-2xl border border-gray-100">
-                                        <span className="text-gray-400">Sort:</span>
-                                        <select
-                                            value={sortBy}
-                                            onChange={(e) => setSortBy(e.target.value)}
-                                            className="px-4 py-2 bg-white border-none rounded-xl text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20 cursor-pointer transition-all font-black shadow-sm"
-                                        >
-                                            <option value="best-selling">Popularity</option>
-                                            <option value="price-low">Lowest Price</option>
-                                            <option value="price-high">Highest Price</option>
-                                            <option value="newest">Latest Stock</option>
-                                            <option value="rating">Top Rated</option>
-                                        </select>
-                                    </label>
+                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100 italic">
+                                        Showing All Results
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -174,7 +162,6 @@ export default function ProductsClient() {
                             <ProductsGrid
                                 category={selectedCategory}
                                 priceRange={priceRange}
-                                sortBy={sortBy}
                                 selectedBrands={selectedBrands}
                             />
                         </Suspense>
@@ -187,7 +174,7 @@ export default function ProductsClient() {
     );
 }
 
-function ProductsGrid({ category, priceRange, sortBy, selectedBrands }: { category: string, priceRange: [number, number], sortBy: string, selectedBrands: string[] }) {
+function ProductsGrid({ category, priceRange, selectedBrands }: { category: string, priceRange: [number, number], selectedBrands: string[] }) {
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [lastVisible, setLastVisible] = useState<any>(null);
@@ -204,7 +191,7 @@ function ProductsGrid({ category, priceRange, sortBy, selectedBrands }: { catego
                 12,
                 isInitial ? null : lastVisible,
                 categoryFilter,
-                sortBy,
+                "newest",
                 selectedBrands
             );
 
@@ -225,7 +212,7 @@ function ProductsGrid({ category, priceRange, sortBy, selectedBrands }: { catego
 
     useEffect(() => {
         loadProducts(true);
-    }, [category, sortBy, selectedBrands]);
+    }, [category, selectedBrands]);
 
     const filteredProducts = useMemo(() => {
         let filtered = [...products];
@@ -243,25 +230,8 @@ function ProductsGrid({ category, priceRange, sortBy, selectedBrands }: { catego
             filtered = filtered.filter(p => p.brand && selectedBrands.includes(p.brand));
         }
 
-        // Sorting
-        filtered.sort((a, b) => {
-            switch (sortBy) {
-                case "price-low":
-                    return a.price - b.price;
-                case "price-high":
-                    return b.price - a.price;
-                case "newest":
-                    return 0;
-                case "rating":
-                    return (b.rating || 0) - (a.rating || 0);
-                case "best-selling":
-                default:
-                    return (b.reviews || 0) - (a.reviews || 0);
-            }
-        });
-
         return filtered;
-    }, [products, searchParams, priceRange, sortBy]);
+    }, [products, searchParams, priceRange]);
 
     if (isLoading && products.length === 0) return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -291,6 +261,7 @@ function ProductsGrid({ category, priceRange, sortBy, selectedBrands }: { catego
                         name={product.name}
                         price={product.price}
                         image={product.image}
+                        images={product.images}
                         category={product.category}
                         variants={product.variants}
                     />

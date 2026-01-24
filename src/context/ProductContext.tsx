@@ -3,8 +3,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
-import { products as MOCK_PRODUCTS } from '@/lib/mockData';
-
 import { Product } from '@/types';
 export type { Product };
 
@@ -23,16 +21,6 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const { user: authUser } = useAuth();
 
-    const seedProducts = async () => {
-        try {
-            for (const p of MOCK_PRODUCTS) {
-                const { id, ...rest } = p;
-                await addDoc(collection(db, "products"), rest);
-            }
-        } catch (e) {
-            console.error("Error seeding products:", e);
-        }
-    };
 
     useEffect(() => {
         const q = query(collection(db, "products"));
