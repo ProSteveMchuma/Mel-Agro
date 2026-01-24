@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 
-const FALLBACK_CATEGORY_IMAGE = "https://images.unsplash.com/photo-1599408428178-c0b875ea4f03?q=80&w=400&auto=format&fit=crop";
+const FALLBACK_CATEGORY_IMAGE = "https://images.unsplash.com/photo-1595113316349-9fa4ee24f884?q=80&w=400&auto=format&fit=crop";
 
 const CATEGORY_MAP: Record<string, { image: string, icon: string }> = {
     'Animal Feeds': { image: 'https://images.unsplash.com/photo-1563205764-6e929f62334d?q=80&w=400&auto=format&fit=crop', icon: "🐄" },
@@ -11,6 +11,10 @@ const CATEGORY_MAP: Record<string, { image: string, icon: string }> = {
     'Seeds': { image: 'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?q=80&w=400&auto=format&fit=crop', icon: "🌱" },
     'Seeds & Seedlings': { image: 'https://images.unsplash.com/photo-1596733430284-f7437764b1a9?q=80&w=400&auto=format&fit=crop', icon: "🌱" },
     'Crop Protection Products': { image: 'https://images.unsplash.com/photo-1615485925763-867862f80930?q=80&w=400&auto=format&fit=crop', icon: "🛡️" },
+    'Crop Protection': { image: 'https://images.unsplash.com/photo-1628352081506-83c43123ed6d?q=80&w=400&auto=format&fit=crop', icon: "🛡️" },
+    'Pesticides': { image: 'https://images.unsplash.com/photo-1615485925763-867862f80930?q=80&w=400&auto=format&fit=crop', icon: "🛡️" },
+    'Equipment': { image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=400&auto=format&fit=crop', icon: "🚜" },
+    'Machinery': { image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=400&auto=format&fit=crop', icon: "🚜" },
     'Veterinary': { image: 'https://images.unsplash.com/photo-1591130219388-ae3d1c17431b?q=80&w=400&auto=format&fit=crop', icon: "💊" },
     'Veterinary Products': { image: 'https://images.unsplash.com/photo-1591130219388-ae3d1c17431b?q=80&w=400&auto=format&fit=crop', icon: "💊" },
     'Farm Tools': { image: 'https://images.unsplash.com/photo-1589923188900-85dae523342b?q=80&w=400&auto=format&fit=crop', icon: "🛠️" },

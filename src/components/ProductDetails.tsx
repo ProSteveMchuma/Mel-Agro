@@ -269,7 +269,19 @@ export default function ProductDetails({ id }: { id: string }) {
                                         <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                                         <span className="text-sm font-bold text-gray-900">Delivery to {userCity || 'Your Location'}</span>
                                     </div>
-                                    <button className="text-xs font-bold text-green-600 hover:underline">Change</button>
+                                    <button
+                                        onClick={() => {
+                                            const newCounty = prompt("Enter your county (e.g., Nairobi, Machakos):", userCity || "Nairobi");
+                                            if (newCounty) {
+                                                // Normally update user profile, but for now just local feedback
+                                                toast.success(`Delivery location updated to ${newCounty}`);
+                                                // Logic depends on how user city is synced (profile update needed)
+                                            }
+                                        }}
+                                        className="text-xs font-bold text-green-600 hover:underline"
+                                    >
+                                        Change
+                                    </button>
                                 </div>
                                 <p className="text-xs text-gray-600 leading-normal">
                                     Order now for delivery by <span className="font-bold text-gray-900">tomorrow</span>. Free delivery on orders over KES 10,000.
@@ -342,9 +354,17 @@ export default function ProductDetails({ id }: { id: string }) {
                                     >
                                         <h3 className="text-lg font-bold text-gray-900 mb-4">Detailed Specifications</h3>
                                         <div className="bg-white border border-gray-200 rounded-xl p-6">
-                                            <p className="text-gray-600 text-sm leading-relaxed">
-                                                {product.specification || "No detailed specifications provided for this product."}
-                                            </p>
+                                            {Array.isArray(product.specification) ? (
+                                                <ul className="list-disc list-inside space-y-2">
+                                                    {product.specification.map((spec, i) => (
+                                                        <li key={i} className="text-gray-600 text-sm">{spec}</li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <p className="text-gray-600 text-sm leading-relaxed">
+                                                    {product.specification || "No detailed specifications provided for this product."}
+                                                </p>
+                                            )}
                                         </div>
                                     </motion.div>
                                 )}
@@ -359,9 +379,17 @@ export default function ProductDetails({ id }: { id: string }) {
                                     >
                                         <h3 className="text-lg font-bold text-gray-900">Usage Instructions</h3>
                                         <div className="bg-green-50 p-6 rounded-xl border border-green-100">
-                                            <p className="text-sm text-gray-700">
-                                                {product.howToUse || "Follow standard agricultural practices for application. Refer to product packaging for specific instructions."}
-                                            </p>
+                                            {Array.isArray(product.howToUse) ? (
+                                                <ul className="list-decimal list-inside space-y-3">
+                                                    {product.howToUse.map((step, i) => (
+                                                        <li key={i} className="text-sm text-gray-700">{step}</li>
+                                                    ))}
+                                                </ul>
+                                            ) : (
+                                                <p className="text-sm text-gray-700">
+                                                    {product.howToUse || "Follow standard agricultural practices for application. Refer to product packaging for specific instructions."}
+                                                </p>
+                                            )}
                                         </div>
                                     </motion.div>
                                 )}

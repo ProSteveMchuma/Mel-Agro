@@ -2,9 +2,9 @@
 import { useOrders } from "@/context/OrderContext";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
+import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 
-export default function ReceiptPage() {
+export default function InvoicePage() {
     const { orders } = useOrders();
     const params = useParams();
     const [order, setOrder] = useState<any>(null);
@@ -17,21 +17,21 @@ export default function ReceiptPage() {
     }, [params.id, orders]);
 
     if (!order) {
-        return <div className="p-8 text-center">Loading receipt...</div>;
+        return <div className="p-8 text-center">Loading invoice...</div>;
     }
 
     return (
         <div className="min-h-screen bg-gray-100 p-8 print:bg-white print:p-0">
-            <div className="max-w-md mx-auto bg-white shadow-sm print:shadow-none p-4">
-                <ReceiptTemplate order={order} />
+            <div className="max-w-4xl mx-auto bg-white shadow-sm print:shadow-none">
+                <InvoiceTemplate order={order} />
 
                 {/* Print Button (Hidden when printing) */}
                 <div className="pb-12 text-center print:hidden">
                     <button
                         onClick={() => window.print()}
-                        className="bg-melagro-primary text-white px-8 py-3 rounded-lg shadow-lg hover:bg-melagro-secondary transition-colors font-bold"
+                        className="bg-slate-900 text-white px-8 py-3 rounded-lg shadow-lg hover:bg-slate-800 transition-colors font-bold"
                     >
-                        Print Receipt
+                        Print Invoice
                     </button>
                 </div>
             </div>

@@ -10,6 +10,8 @@ import Image from "next/image";
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
+import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
+import { format } from "date-fns";
 
 function OrderSuccessContent() {
     const searchParams = useSearchParams();
@@ -17,7 +19,7 @@ function OrderSuccessContent() {
     const { orders } = useOrders();
     const [order, setOrder] = useState<Order | null>(null);
     const [isNotFound, setIsNotFound] = useState(false);
-    const [showInvoice, setShowInvoice] = useState(false);
+    const [activeDocument, setActiveDocument] = useState<'invoice' | 'receipt' | null>(null);
 
     useEffect(() => {
         if (order) {
@@ -96,23 +98,29 @@ function OrderSuccessContent() {
 
     return (
         <main className="flex-grow py-12 px-4">
-            {/* Invoice Overlay */}
-            {showInvoice && (
+            {/* Document Overlay (Invoice or Receipt) */}
+            {activeDocument && (
                 <div className="fixed inset-0 z-[100] bg-white overflow-auto print:overflow-visible">
                     <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0">
                         <div className="flex items-center gap-4">
-                            <button onClick={() => setShowInvoice(false)} className="p-2 hover:bg-gray-800 rounded-full transition-colors">
+                            <button onClick={() => setActiveDocument(null)} className="p-2 hover:bg-gray-800 rounded-full transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                             </button>
-                            <span className="font-bold">Official Invoice: #{order.id.slice(0, 8)}</span>
+                            <span className="font-bold">
+                                {activeDocument === 'invoice' ? 'Official Invoice' : 'Receipt'}: #{order.id.slice(0, 8)}
+                            </span>
                         </div>
                         <div className="flex gap-4">
                             <button onClick={() => window.print()} className="bg-melagro-primary px-4 py-2 rounded-lg hover:bg-melagro-secondary text-sm font-bold">Print / Save PDF</button>
-                            <button onClick={() => setShowInvoice(false)} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600 text-sm font-bold">Close</button>
+                            <button onClick={() => setActiveDocument(null)} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600 text-sm font-bold">Close</button>
                         </div>
                     </div>
                     <div className="p-8 print:p-0">
-                        <InvoiceTemplate order={order} />
+                        {activeDocument === 'invoice' ? (
+                            <InvoiceTemplate order={order} />
+                        ) : (
+                            <ReceiptTemplate order={order} />
+                        )}
                     </div>
                 </div>
             )}
@@ -128,11 +136,12 @@ function OrderSuccessContent() {
 
                     <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
                         {/* Farmer Image */}
-                        <div className="md:w-1/3">
-                            <img
-                                src="https://images.unsplash.com/photo-1552679552-cb6ebb75f5b1?q=80&w=400&auto=format&fit=crop"
+                        <div className="md:w-1/3 relative h-64">
+                            <Image
+                                src="https://images.unsplash.com/photo-1595113316349-9fa4ee24f884?q=80&w=800&auto=format&fit=crop"
                                 alt="Happy Farmer"
-                                className="rounded-2xl w-full h-64 object-cover shadow-lg"
+                                fill
+                                className="rounded-2xl object-cover shadow-lg"
                             />
                         </div>
 
@@ -145,20 +154,20 @@ function OrderSuccessContent() {
                             <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Success!</h1>
                             <p className="text-gray-600 mb-8 text-lg leading-relaxed">
                                 Thank you for your order <span className="font-black text-gray-900">#{order.id.slice(0, 8)}</span>.
-                                We've sent a receipt to your email and our team is preparing your agri-inputs for dispatch.
+                                We've sent an <strong>Email, SMS and WhatsApp</strong> confirmation to your registered contacts.
                             </p>
                             <div className="flex flex-col sm:flex-row gap-4">
                                 <Link href="/products" className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-200 text-center print:hidden">
                                     Shop More
                                 </Link>
                                 <button
-                                    onClick={() => setShowInvoice(true)}
+                                    onClick={() => setActiveDocument('invoice')}
                                     className="border-2 border-melagro-primary text-melagro-primary bg-white px-8 py-4 rounded-2xl font-black hover:bg-green-50 transition-all text-center print:hidden flex items-center justify-center gap-2"
                                 >
                                     <span>📄</span> Official Invoice
                                 </button>
                                 <button
-                                    onClick={() => window.print()}
+                                    onClick={() => setActiveDocument('receipt')}
                                     className="border-2 border-gray-900 bg-gray-900 text-white px-8 py-4 rounded-2xl font-black hover:bg-black transition-all text-center print:hidden flex items-center justify-center gap-2"
                                 >
                                     <span>🖨️</span> Print Receipt
@@ -215,24 +224,54 @@ function OrderSuccessContent() {
                     {/* Delivery Info */}
                     <div className="space-y-6">
                         {/* Order Status */}
-                        <div className="bg-white rounded-2xl p-6 border border-gray-200">
-                            <h3 className="font-bold text-gray-900 mb-4">Order Status</h3>
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-6 h-6 rounded-full bg-melagro-primary flex items-center justify-center text-white text-xs font-bold">✓</div>
+                        {/* Order Timeline */}
+                        <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
+                            <h3 className="font-black text-gray-900 text-xs uppercase tracking-widest mb-8">Shipment Progress</h3>
+                            <div className="space-y-8 relative">
+                                {/* Vertical Line */}
+                                <div className="absolute left-[11px] top-2 bottom-2 w-0.5 bg-gray-100"></div>
+
+                                {/* Step 1: Placed */}
+                                <div className="flex items-start gap-4 relative">
+                                    <div className="w-6 h-6 rounded-full bg-melagro-primary flex items-center justify-center text-white z-10 shadow-lg shadow-green-500/20">
+                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                                    </div>
                                     <div>
-                                        <p className="text-sm font-semibold text-gray-900">Order Placed</p>
-                                        <p className="text-xs text-gray-500">{new Date(order.date).toLocaleDateString()}</p>
+                                        <p className="text-sm font-black text-gray-900">Order Placed</p>
+                                        <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase">{format(new Date(order.date), "MMM d, yyyy • h:mm a")}</p>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-3">
-                                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${order.status !== 'Cancelled' ? 'bg-melagro-primary border-melagro-primary' : 'border-gray-300'}`}>
-                                        <div className={`w-2 h-2 rounded-full ${order.status !== 'Cancelled' ? 'bg-white' : 'bg-gray-300'}`}></div>
+                                {/* Step 2: Processing */}
+                                <div className="flex items-start gap-4 relative">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 ${order.status === 'Processing' ? 'bg-melagro-primary animate-pulse shadow-lg shadow-green-500/20' : 'bg-melagro-primary'}`}>
+                                        <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
                                     </div>
                                     <div>
-                                        <p className="text-sm font-semibold text-gray-900">Processing</p>
-                                        <p className="text-xs text-gray-500">We are preparing your items</p>
+                                        <p className="text-sm font-black text-gray-900">Processing</p>
+                                        <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase">Prepping for dispatch</p>
+                                    </div>
+                                </div>
+
+                                {/* Step 3: Shipped */}
+                                <div className="flex items-start gap-4 relative">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 bg-gray-100`}>
+                                        <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
+                                    </div>
+                                    <div className="opacity-40">
+                                        <p className="text-sm font-black text-gray-900">Shipped</p>
+                                        <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase">Pending Transit</p>
+                                    </div>
+                                </div>
+
+                                {/* Step 4: Delivered */}
+                                <div className="flex items-start gap-4 relative">
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 bg-gray-100`}>
+                                        <div className="w-1.5 h-1.5 bg-gray-300 rounded-full"></div>
+                                    </div>
+                                    <div className="opacity-40">
+                                        <p className="text-sm font-black text-gray-900">Delivered</p>
+                                        <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase">Pending Arrival</p>
                                     </div>
                                 </div>
                             </div>

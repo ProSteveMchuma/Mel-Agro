@@ -5,6 +5,7 @@ import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onS
 import { useAuth } from './AuthContext';
 import { NotificationService } from '@/lib/notifications';
 import { SmsService } from '@/lib/sms';
+import { CommunicationTemplates } from '@/lib/communication-templates';
 
 import { Order, OrderItem } from '@/types';
 export type { Order, OrderItem };
@@ -207,25 +208,24 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             console.warn("Failed to notify admins, but order was placed:", error);
         }
 
-        // 5. Trigger Customer Notifications (SMS/WhatsApp)
+        // 5. Trigger Unified Customer Notifications (Email, SMS, WhatsApp)
         try {
-            if (orderData.phone) {
-                await SmsService.sendOrderUpdate(
-                    orderData.phone,
-                    orderId,
-                    'Processing',
-                    orderData.userName || 'Farmer'
-                );
-            }
+            const preferences = orderData.notificationPreferences || ['sms'];
+            const contact = {
+                email: orderData.userEmail,
+                phone: orderData.phone
+            };
 
-            if (orderData.phone && orderData.notificationPreferences?.includes('whatsapp')) {
-                await NotificationService.sendWhatsApp(
-                    orderData.phone,
-                    `Habari ${orderData.userName || 'Farmer'}, your MelAgro order #${orderId.slice(0, 5)} has been received! We are processing it now.`
-                );
-            }
+            const message = CommunicationTemplates.getOrderConfirmation({
+                ...orderData,
+                id: orderId,
+                date,
+                status: 'Processing'
+            } as Order);
+
+            await NotificationService.notify(preferences, contact, message);
         } catch (err) {
-            console.error("Failed to send order confirmation SMS:", err);
+            console.error("Unified Communications Error:", err);
         }
 
         return {
@@ -310,16 +310,17 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                 console.error("Error creating status update notification:", error);
             }
 
-            // Send SMS Notification
-            if (order.phone) {
-                import('@/lib/sms').then(({ SmsService }) => {
-                    SmsService.sendOrderUpdate(
-                        order.phone!,
-                        orderId,
-                        status,
-                        order.userName || "Customer"
-                    );
-                });
+            // Trigger Unified Communications for Status Update
+            try {
+                const preferences = order.notificationPreferences || ['sms'];
+                const contact = {
+                    email: order.userEmail,
+                    phone: order.phone
+                };
+                const updateMessage = CommunicationTemplates.getStatusUpdate(order, status);
+                await NotificationService.notify(preferences, contact, updateMessage);
+            } catch (error) {
+                console.error("Unified Communications Status Update Error:", error);
             }
         }
     };

@@ -3,12 +3,12 @@
 import { motion } from "framer-motion";
 
 const PARTNERS = [
-    { name: "Bayer", logo: "https://Mel-Agri4.vercel.app/assets/partners/Bayer.png" },
-    { name: "Syngenta", logo: "https://Mel-Agri4.vercel.app/assets/partners/syngenta.png" },
-    { name: "Corteva", logo: "https://Mel-Agri4.vercel.app/assets/partners/Corteva.png" },
-    { name: "Seed Co", logo: "https://Mel-Agri4.vercel.app/assets/partners/seedco.png" },
-    { name: "Unga PLC", logo: "https://Mel-Agri4.vercel.app/assets/partners/Unga-plc.png" },
-    { name: "Osho Chemicals", logo: "https://Mel-Agri4.vercel.app/assets/partners/Osha.png" },
+    { name: "Bayer", logo: "https://Mel-Agri4.vercel.app/assets/partners/Bayer.png", url: "https://www.bayer.com" },
+    { name: "Syngenta", logo: "https://Mel-Agri4.vercel.app/assets/partners/syngenta.png", url: "https://www.syngenta.com" },
+    { name: "Corteva", logo: "https://Mel-Agri4.vercel.app/assets/partners/Corteva.png", url: "https://www.corteva.com" },
+    { name: "Seed Co", logo: "https://Mel-Agri4.vercel.app/assets/partners/seedco.png", url: "https://www.seedcogroup.com" },
+    { name: "Unga PLC", logo: "https://Mel-Agri4.vercel.app/assets/partners/Unga-plc.png", url: "https://www.unga-group.com" },
+    { name: "Osho Chemicals", logo: "https://Mel-Agri4.vercel.app/assets/partners/Osha.png", url: "https://www.oshochemicals.com" },
 ];
 
 export default function Partners() {
@@ -47,17 +47,20 @@ export default function Partners() {
                     >
                         {/* Repeat twice for seamless loop */}
                         {[...PARTNERS, ...PARTNERS, ...PARTNERS].map((partner, index) => (
-                            <motion.div
+                            <motion.a
                                 key={index}
-                                whileHover={{ scale: 1.1, filter: "grayscale(0%)" }}
-                                className="relative w-40 h-16 opacity-40 hover:opacity-100 transition-all duration-500 grayscale group"
+                                href={partner.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                whileHover={{ scale: 1.1 }}
+                                className="relative w-40 h-16 opacity-80 hover:opacity-100 transition-all duration-500 group cursor-pointer"
                             >
                                 <img
                                     src={partner.logo}
                                     alt={partner.name}
-                                    className="w-full h-full object-contain filter "
+                                    className="w-full h-full object-contain"
                                 />
-                            </motion.div>
+                            </motion.a>
                         ))}
                     </motion.div>
                 </div>

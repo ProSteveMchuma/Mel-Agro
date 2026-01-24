@@ -112,25 +112,45 @@ export default function CheckoutPage() {
 
         setIsProcessing(true);
         try {
-            const orderData = {
+            // Helper to remove undefined values recursively for Firestore compatibility
+            const cleanObject = (obj: any): any => {
+                if (Array.isArray(obj)) return obj.map(cleanObject);
+                if (obj !== null && typeof obj === 'object') {
+                    return Object.entries(obj)
+                        .filter(([_, v]) => v !== undefined)
+                        .reduce((acc, [k, v]) => ({ ...acc, [k]: cleanObject(v) }), {});
+                }
+                return obj;
+            };
+
+            const orderData = cleanObject({
                 userId: user.uid,
-                userName: `${shippingData.firstName} ${shippingData.lastName}`,
+                userName: `${shippingData.firstName} ${shippingData.lastName}`.trim(),
                 userEmail: shippingData.email,
-                items: cartItems,
+                items: cartItems.map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    price: item.price,
+                    quantity: item.quantity,
+                    image: item.image || null,
+                    selectedVariant: item.selectedVariant || null
+                })),
                 subtotal: cartTotal,
                 discountAmount: discountFromPoints,
                 total: total,
                 shippingAddress: {
                     county: shippingData.county,
                     details: `${shippingData.address}, ${shippingData.town}`,
-                    method: shippingMethod
+                    method: shippingMethod,
+                    lat: shippingData.lat,
+                    lng: shippingData.lng
                 },
                 phone: shippingData.phone,
                 paymentMethod: paymentMethod,
-                paymentStatus: paymentMethod === 'whatsapp' ? 'Pending WhatsApp' : 'Unpaid' as any,
+                paymentStatus: paymentMethod === 'whatsapp' ? 'Pending WhatsApp' : 'Unpaid',
                 shippingMethod: shippingMethod,
                 shippingCost: shippingCost
-            };
+            });
 
             const newOrder = await addOrder(orderData, discountFromPoints);
 

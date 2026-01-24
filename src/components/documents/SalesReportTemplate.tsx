@@ -11,9 +11,10 @@ interface SalesReportTemplateProps {
 
 export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders, startDate, endDate }) => {
     const { general } = useSettings();
-    const totalSales = orders.reduce((acc, order) => acc + order.total, 0);
+    const paidOrders = orders.filter(o => o.paymentStatus === 'Paid');
+    const totalSales = paidOrders.reduce((acc, order) => acc + order.total, 0);
     const totalOrders = orders.length;
-    const averageOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
+    const averageOrderValue = paidOrders.length > 0 ? totalSales / paidOrders.length : 0;
 
     // Group by status
     const statusCounts = orders.reduce((acc, order) => {
@@ -42,7 +43,7 @@ export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders
                 <h2 className="text-xl font-bold text-gray-900 mb-6 border-l-4 border-melagro-primary pl-4">Executive Summary</h2>
                 <div className="grid grid-cols-3 gap-6">
                     <div className="bg-gray-50 p-6 rounded-xl text-center">
-                        <div className="text-sm text-gray-500 mb-1">Total Revenue</div>
+                        <div className="text-sm text-gray-500 mb-1">Total Revenue (Paid)</div>
                         <div className="text-2xl font-bold text-gray-900">KES {totalSales.toLocaleString()}</div>
                     </div>
                     <div className="bg-gray-50 p-6 rounded-xl text-center">
