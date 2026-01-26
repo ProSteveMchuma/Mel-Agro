@@ -204,7 +204,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                 <span className="bg-green-50 text-green-700 text-[10px] font-black px-2 py-1 rounded uppercase tracking-tighter">Guaranteed Quality</span>
                             </div>
 
-                            {product.stockQuantity > 0 && product.stockQuantity <= 50 && (
+                            {((selectedVariant?.stockQuantity ?? product.stockQuantity) > 0 && (selectedVariant?.stockQuantity ?? product.stockQuantity) <= 50) && (
                                 <motion.div
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
@@ -214,7 +214,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                                     </span>
-                                    Only {product.stockQuantity} items left in stock!
+                                    Only {selectedVariant?.stockQuantity ?? product.stockQuantity} items left in stock!
                                 </motion.div>
                             )}
                         </div>
@@ -233,11 +233,11 @@ export default function ProductDetails({ id }: { id: string }) {
 
                             <button
                                 onClick={handleAddToCart}
-                                disabled={!product.inStock}
-                                className="h-12 flex-1 bg-[#22c55e] hover:bg-green-600 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-green-200"
+                                disabled={!(selectedVariant ? selectedVariant.stockQuantity > 0 : product.inStock)}
+                                className={`h-12 flex-1 font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg ${(selectedVariant ? selectedVariant.stockQuantity > 0 : product.inStock) ? 'bg-[#22c55e] hover:bg-green-600 text-white shadow-green-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'}`}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                                Add to Cart
+                                {(selectedVariant ? selectedVariant.stockQuantity > 0 : product.inStock) ? 'Add to Cart' : 'Out of Stock'}
                             </button>
                         </div>
 
@@ -441,7 +441,7 @@ export default function ProductDetails({ id }: { id: string }) {
                 </div>
 
 
-            </main>
+            </main >
 
             <Footer />
 

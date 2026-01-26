@@ -146,8 +146,9 @@ export default function ProductManagement() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {filteredProducts.map(product => {
-                                const isLowStock = product.stockQuantity <= (product.lowStockThreshold || 10);
-                                const isOutOfStock = product.stockQuantity === 0;
+                                const totalStock = product.stockQuantity + (product.variants?.reduce((acc, v) => acc + (v.stockQuantity || 0), 0) || 0);
+                                const isLowStock = totalStock <= (product.lowStockThreshold || 10);
+                                const isOutOfStock = totalStock === 0;
                                 const isSelected = selectedProducts.includes(String(product.id));
 
                                 return (
@@ -188,10 +189,15 @@ export default function ProductManagement() {
                                             <div className="flex items-center gap-2">
                                                 <div className={`w-2 h-2 rounded-full ${isOutOfStock ? 'bg-red-500' : isLowStock ? 'bg-yellow-500' : 'bg-green-500'}`}></div>
                                                 <span className={`font-medium ${isOutOfStock ? 'text-red-700' : isLowStock ? 'text-yellow-700' : 'text-green-700'}`}>
-                                                    {product.stockQuantity} Units
+                                                    {totalStock} Units
                                                 </span>
                                                 {isLowStock && !isOutOfStock && (
                                                     <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">Low</span>
+                                                )}
+                                                {product.variants && product.variants.length > 0 && (
+                                                    <span className="text-[10px] text-gray-400 bg-gray-50 px-1.5 rounded" title="Includes Variants">
+                                                        {product.variants.length}V
+                                                    </span>
                                                 )}
                                             </div>
                                         </td>

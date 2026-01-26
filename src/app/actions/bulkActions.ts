@@ -2,8 +2,23 @@
 
 import * as XLSX from 'xlsx';
 import { adminDb } from '@/lib/firebase-admin';
-import admin from 'firebase-admin';
+import * as admin from 'firebase-admin';
 import { ProductVariant } from '@/types';
+
+/**
+ * Helper to get a value from a row using case-insensitive and trimmed keys
+ */
+function getRowValue(row: any, ...keys: string[]): any {
+    const rowKeys = Object.keys(row);
+    for (const targetKey of keys) {
+        const normalizedTarget = targetKey.toLowerCase().trim();
+        const foundKey = rowKeys.find(k => k.toLowerCase().trim() === normalizedTarget);
+        if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null) {
+            return row[foundKey];
+        }
+    }
+    return undefined;
+}
 
 export async function uploadProductsFromExcel(formData: FormData) {
     const file = formData.get('file') as File;
@@ -12,11 +27,14 @@ export async function uploadProductsFromExcel(formData: FormData) {
     }
 
     try {
-        const buffer = await file.arrayBuffer();
+        const arrayBuffer = await file.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
         const workbook = XLSX.read(buffer, { type: 'buffer' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const data = XLSX.utils.sheet_to_json(worksheet);
+
+        console.log(`Processing ${data.length} rows from Excel`);
 
         // 1. Fetch existing products for intelligent deduplication
         const existingSnapshot = await adminDb.collection('products').get();
@@ -36,60 +54,70 @@ export async function uploadProductsFromExcel(formData: FormData) {
         let updatedCount = 0;
 
         for (const row of data as any[]) {
-            const name = row['PRODUCT NAME'];
-            if (!name) continue;
+            const name = getRowValue(row, 'PRODUCT NAME', 'NAME');
+            if (!name) {
+                console.warn(`Row ${count} skipped: Missing name column`);
+                continue;
+            }
 
             const trimmedName = String(name).trim();
             const lowerName = trimmedName.toLowerCase();
 
             // 2. Parsing Price & Variants
-            const priceStr = String(row['PRODUCT PRICE'] || "");
+            const rawPrice = getRowValue(row, 'PRODUCT PRICE', 'PRICE');
+            const priceStr = String(rawPrice || "");
             const variantParts = priceStr.split(',').map(s => s.trim()).filter(Boolean);
 
             let basePrice = 0;
             const variants: ProductVariant[] = [];
 
-            variantParts.forEach((part, index) => {
-                const kesMatch = part.match(/Kes\s*([\d,]+)/i);
-                const numMatch = part.match(/([\d,]+)/);
+            if (variantParts.length > 0) {
+                variantParts.forEach((part, index) => {
+                    const kesMatch = part.match(/Kes\s*([\d,.]+)/i);
+                    const numMatch = part.match(/([\d,.]+)/);
 
-                const price = kesMatch
-                    ? parseInt(kesMatch[1].replace(/,/g, ''))
-                    : (numMatch ? parseInt(numMatch[1].replace(/,/g, '')) : 0);
+                    const price = kesMatch
+                        ? parseFloat(kesMatch[1].replace(/,/g, ''))
+                        : (numMatch ? parseFloat(numMatch[1].replace(/,/g, '')) : 0);
 
-                let variantName = part.split(/Kes/i)[0].trim();
-                if ((!variantName || variantName === numMatch?.[0]) && numMatch) {
-                    variantName = part.replace(numMatch[0], '').trim();
-                }
-                if (!variantName || variantName === numMatch?.[0]) variantName = "Standard";
+                    let variantName = part.split(/Kes/i)[0].trim();
+                    if ((!variantName || variantName === numMatch?.[0]) && numMatch) {
+                        variantName = part.replace(numMatch[0], '').trim();
+                    }
+                    if (!variantName || variantName === numMatch?.[0]) variantName = "Standard";
 
-                if (index === 0) basePrice = price;
+                    if (index === 0) basePrice = price;
 
-                variants.push({
-                    id: `v-${Date.now()}-${index}`,
-                    name: variantName,
-                    price: price,
-                    stockQuantity: 100
+                    variants.push({
+                        id: `v-${Date.now()}-${index}`,
+                        name: variantName,
+                        price: price,
+                        stockQuantity: 100
+                    });
                 });
-            });
+            }
 
             // 3. Prepare Product Data
+            const category = getRowValue(row, 'CATEGORY') || "Uncategorized";
+            const subCategory = getRowValue(row, 'SUB CATEGORY') || "";
+            const photo = getRowValue(row, 'PHOTO', 'IMAGE');
+
             const productData: any = {
                 name: trimmedName,
-                description: row['PRODUCT DISCRIPTION'] || "",
-                specification: row['SPECIFICATION'] || "",
-                howToUse: row['HOW TO USE'] || "",
+                description: getRowValue(row, 'PRODUCT DISCRIPTION', 'DESCRIPTION', 'PRODUCT DESCRIPTION') || "",
+                specification: getRowValue(row, 'SPECIFICATION') || "",
+                howToUse: getRowValue(row, 'HOW TO USE', 'DIRECTIONS') || "",
                 price: basePrice,
-                category: row['CATEGORY'] || "Uncategorized",
-                subCategory: row['SUB CATEGORY'] || "",
-                brand: row['SUPPLIER '] || row['SUPPLIER'] || "MEL-AGRI",
-                image: row['PHOTO'] && String(row['PHOTO']).startsWith('http') ? row['PHOTO'] : "https://placehold.co/600x600?text=No+Image",
+                category: category,
+                subCategory: subCategory,
+                brand: getRowValue(row, 'SUPPLIER', 'SUPPLIER ', 'BRAND') || "MEL-AGRI",
+                image: photo && String(photo).startsWith('http') ? photo : "https://placehold.co/600x600?text=No+Image",
                 inStock: true,
                 stockQuantity: 100,
                 lowStockThreshold: 10,
                 variants: variants.length > 1 ? variants : [],
-                tags: [row['CATEGORY'], row['SUB CATEGORY']].filter(Boolean).map(t => String(t)),
-                lastUpdated: admin.firestore.Timestamp.now()
+                tags: [category, subCategory].filter(Boolean).map(t => String(t)),
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp()
             };
 
             // 4. Intelligent Write (Update if exists, Set if new)
@@ -100,7 +128,7 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 updatedCount++;
             } else {
                 const docRef = productsRef.doc();
-                productData.createdAt = admin.firestore.Timestamp.now();
+                productData.createdAt = admin.firestore.FieldValue.serverTimestamp();
                 productData.rating = 5;
                 productData.reviews = 0;
                 batch.set(docRef, productData);
@@ -114,10 +142,12 @@ export async function uploadProductsFromExcel(formData: FormData) {
         }
 
         await batch.commit();
+        console.log(`Bulk upload successful: ${count} total, ${createdCount} created, ${updatedCount} updated`);
         return { success: true, count, createdCount, updatedCount };
 
     } catch (error: any) {
-        console.error("Bulk upload error:", error);
-        return { success: false, error: error.message };
+        console.error("Bulk upload action error:", error);
+        return { success: false, error: error.message || "An error occurred during upload" };
     }
 }
+
