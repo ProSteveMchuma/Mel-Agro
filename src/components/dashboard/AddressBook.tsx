@@ -97,7 +97,7 @@ export default function AddressBook() {
                 {!isAdding && (
                     <button
                         onClick={() => setIsAdding(true)}
-                        className="px-4 py-2 bg-melagro-primary text-white text-xs font-bold rounded-xl hover:scale-105 transition-all shadow-lg shadow-melagro-primary/20"
+                        className="px-4 py-2 bg-melagri-primary text-white text-xs font-bold rounded-xl hover:scale-105 transition-all shadow-lg shadow-melagri-primary/20"
                     >
                         + Add New
                     </button>
@@ -114,7 +114,7 @@ export default function AddressBook() {
                                 type="text"
                                 value={formData.label}
                                 onChange={(e) => setFormData({ ...formData, label: e.target.value })}
-                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagro-primary/20"
+                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagri-primary/20"
                                 placeholder="Home"
                             />
                         </div>
@@ -125,7 +125,7 @@ export default function AddressBook() {
                                 type="text"
                                 value={formData.county}
                                 onChange={(e) => setFormData({ ...formData, county: e.target.value })}
-                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagro-primary/20"
+                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagri-primary/20"
                                 placeholder="e.g. Kiambu"
                             />
                         </div>
@@ -136,7 +136,7 @@ export default function AddressBook() {
                                 type="text"
                                 value={formData.city}
                                 onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagro-primary/20"
+                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagri-primary/20"
                                 placeholder="e.g. Ruiru"
                             />
                         </div>
@@ -146,7 +146,7 @@ export default function AddressBook() {
                                 required
                                 value={formData.details}
                                 onChange={(e) => setFormData({ ...formData, details: e.target.value })}
-                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagro-primary/20 p-3 h-20"
+                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagri-primary/20 p-3 h-20"
                                 placeholder="Near the dairy plant, Green Gate"
                             />
                         </div>
@@ -157,7 +157,7 @@ export default function AddressBook() {
                             id="isPrimary"
                             checked={formData.isPrimary}
                             onChange={(e) => setFormData({ ...formData, isPrimary: e.target.checked })}
-                            className="rounded border-gray-300 text-melagro-primary focus:ring-melagro-primary/20"
+                            className="rounded border-gray-300 text-melagri-primary focus:ring-melagri-primary/20"
                         />
                         <label htmlFor="isPrimary" className="text-xs font-bold text-gray-600">Set as primary delivery address</label>
                     </div>
@@ -175,15 +175,15 @@ export default function AddressBook() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {addresses.map((address) => (
-                        <div key={address.id} className={`bg-white p-6 rounded-3xl border transition-all ${address.isPrimary ? 'border-melagro-primary ring-1 ring-melagro-primary shadow-lg shadow-melagro-primary/5' : 'border-gray-100 shadow-sm'}`}>
+                        <div key={address.id} className={`bg-white p-6 rounded-3xl border transition-all ${address.isPrimary ? 'border-melagri-primary ring-1 ring-melagri-primary shadow-lg shadow-melagri-primary/5' : 'border-gray-100 shadow-sm'}`}>
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-3">
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${address.isPrimary ? 'bg-melagro-primary/10 text-melagro-primary' : 'bg-gray-50 text-gray-400'}`}>
+                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${address.isPrimary ? 'bg-melagri-primary/10 text-melagri-primary' : 'bg-gray-50 text-gray-400'}`}>
                                         📍
                                     </div>
                                     <div>
                                         <p className="font-bold text-gray-900">{address.label}</p>
-                                        {address.isPrimary && <span className="text-[8px] font-black text-melagro-primary uppercase tracking-widest bg-melagro-primary/10 px-1.5 py-0.5 rounded">Primary</span>}
+                                        {address.isPrimary && <span className="text-[8px] font-black text-melagri-primary uppercase tracking-widest bg-melagri-primary/10 px-1.5 py-0.5 rounded">Primary</span>}
                                     </div>
                                 </div>
                                 <div className="flex gap-1">

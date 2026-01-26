@@ -186,7 +186,7 @@ export default function Header() {
                 </div>
                 <div>
                   <p className="text-xs font-black text-gray-900">{user ? user.name : 'Guest User'}</p>
-                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{user ? user.role : 'Welcome to MelAgro'}</p>
+                  <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">{user ? user.role : 'Welcome to Mel-Agri'}</p>
                 </div>
               </div>
               {user ? (

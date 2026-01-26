@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     if (!product) {
         return {
-            title: 'Product Not Found | MelAgro',
+            title: 'Product Not Found | Mel-Agri',
             description: 'The product you are looking for is not available.',
         };
     }
@@ -25,9 +25,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
         title: `${product.name} - Buy High Quality ${product.category}`,
         description: description,
-        keywords: [product.name, product.category, "Kenya", "Mel-Agro", "Agriculture"],
+        keywords: [product.name, product.category, "Kenya", "Mel-Agri", "Agriculture"],
         openGraph: {
-            title: `${product.name} | Mel-Agro Kenya`,
+            title: `${product.name} | Mel-Agri Kenya`,
             description: description,
             images: [
                 {
@@ -38,15 +38,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
                 }
             ],
             type: 'website',
-            siteName: 'Mel-Agro',
+            siteName: 'Mel-Agri',
             locale: 'en_KE',
         },
         twitter: {
             card: 'summary_large_image',
-            title: `${product.name} | Mel-Agro`,
+            title: `${product.name} | Mel-Agri`,
             description: description,
             images: [ogImage],
-            site: '@melagro',
+            site: '@melagri',
         },
         other: {
             'product:price:amount': product.price.toString(),
@@ -73,7 +73,7 @@ export default async function Page({ params }: Props) {
             price: product.price,
             priceCurrency: 'KES',
             availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            url: `https://melagro.com/products/${id}`,
+            url: `https://mel-agri.com/products/${id}`,
         },
     } : null;
 
@@ -85,19 +85,19 @@ export default async function Page({ params }: Props) {
                 '@type': 'ListItem',
                 position: 1,
                 name: 'Home',
-                item: 'https://melagro.com',
+                item: 'https://mel-agri.com',
             },
             {
                 '@type': 'ListItem',
                 position: 2,
                 name: 'Products',
-                item: 'https://melagro.com/products',
+                item: 'https://mel-agri.com/products',
             },
             {
                 '@type': 'ListItem',
                 position: 3,
                 name: product?.name || 'Product',
-                item: `https://melagro.com/products/${id}`,
+                item: `https://mel-agri.com/products/${id}`,
             },
         ],
     };

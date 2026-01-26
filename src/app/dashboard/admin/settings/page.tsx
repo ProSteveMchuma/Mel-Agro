@@ -54,7 +54,7 @@ export default function SettingsPage() {
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="bg-melagro-primary text-white px-6 py-2 rounded-lg hover:bg-melagro-secondary disabled:opacity-50 transition-colors font-medium"
+                    className="bg-melagri-primary text-white px-6 py-2 rounded-lg hover:bg-melagri-secondary disabled:opacity-50 transition-colors font-medium"
                 >
                     {saving ? "Saving..." : "Save Changes"}
                 </button>
@@ -70,7 +70,7 @@ export default function SettingsPage() {
                             className={`
                                 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize
                                 ${activeTab === tab
-                                    ? 'border-melagro-primary text-melagro-primary'
+                                    ? 'border-melagri-primary text-melagri-primary'
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'}
                             `}
                         >
@@ -91,7 +91,7 @@ export default function SettingsPage() {
                                     type="text"
                                     value={generalForm.companyName}
                                     onChange={(e) => setGeneralForm({ ...generalForm, companyName: e.target.value })}
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                 />
                             </div>
                             <div>
@@ -100,7 +100,7 @@ export default function SettingsPage() {
                                     type="email"
                                     value={generalForm.supportEmail}
                                     onChange={(e) => setGeneralForm({ ...generalForm, supportEmail: e.target.value })}
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                 />
                             </div>
                             <div>
@@ -109,7 +109,7 @@ export default function SettingsPage() {
                                     type="text"
                                     value={generalForm.supportPhone}
                                     onChange={(e) => setGeneralForm({ ...generalForm, supportPhone: e.target.value })}
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                 />
                             </div>
                             <div>
@@ -118,7 +118,7 @@ export default function SettingsPage() {
                                     value={generalForm.address}
                                     onChange={(e) => setGeneralForm({ ...generalForm, address: e.target.value })}
                                     rows={3}
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                 />
                             </div>
                         </div>
@@ -133,7 +133,7 @@ export default function SettingsPage() {
                                 id="taxEnabled"
                                 checked={taxForm.enabled}
                                 onChange={(e) => setTaxForm({ ...taxForm, enabled: e.target.checked })}
-                                className="w-4 h-4 text-melagro-primary rounded focus:ring-melagro-primary"
+                                className="w-4 h-4 text-melagri-primary rounded focus:ring-melagri-primary"
                             />
                             <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-900">Enable Tax Calculation</label>
                         </div>
@@ -144,7 +144,7 @@ export default function SettingsPage() {
                                     type="number"
                                     value={taxForm.taxRate}
                                     onChange={(e) => setTaxForm({ ...taxForm, taxRate: parseFloat(e.target.value) })}
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                 />
                             </div>
                             <div>
@@ -153,7 +153,7 @@ export default function SettingsPage() {
                                     type="text"
                                     value={taxForm.taxId}
                                     onChange={(e) => setTaxForm({ ...taxForm, taxId: e.target.value })}
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                 />
                             </div>
                         </div>
@@ -169,7 +169,7 @@ export default function SettingsPage() {
                                     id="emailEnabled"
                                     checked={notifForm.emailEnabled}
                                     onChange={(e) => setNotifForm({ ...notifForm, emailEnabled: e.target.checked })}
-                                    className="w-4 h-4 text-melagro-primary rounded focus:ring-melagro-primary"
+                                    className="w-4 h-4 text-melagri-primary rounded focus:ring-melagri-primary"
                                 />
                                 <label htmlFor="emailEnabled" className="text-sm font-medium text-gray-900">Enable Email Notifications</label>
                             </div>
@@ -179,7 +179,7 @@ export default function SettingsPage() {
                                     id="smsEnabled"
                                     checked={notifForm.smsEnabled}
                                     onChange={(e) => setNotifForm({ ...notifForm, smsEnabled: e.target.checked })}
-                                    className="w-4 h-4 text-melagro-primary rounded focus:ring-melagro-primary"
+                                    className="w-4 h-4 text-melagri-primary rounded focus:ring-melagri-primary"
                                 />
                                 <label htmlFor="smsEnabled" className="text-sm font-medium text-gray-900">Enable SMS Notifications</label>
                             </div>
@@ -194,7 +194,7 @@ export default function SettingsPage() {
                                         value={notifForm.orderConfirmationTemplate}
                                         onChange={(e) => setNotifForm({ ...notifForm, orderConfirmationTemplate: e.target.value })}
                                         rows={3}
-                                        className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none text-sm font-mono"
+                                        className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none text-sm font-mono"
                                     />
                                     <p className="text-xs text-gray-500 mt-1">Available variables: {'{orderId}'}, {'{total}'}, {'{customerName}'}</p>
                                 </div>
@@ -232,7 +232,7 @@ export default function SettingsPage() {
                                                     type="number"
                                                     value={zone.price}
                                                     onChange={(e) => handleZonePriceChange(index, parseFloat(e.target.value))}
-                                                    className="w-32 p-2 text-right rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                                    className="w-32 p-2 text-right rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                                 />
                                             </td>
                                         </tr>

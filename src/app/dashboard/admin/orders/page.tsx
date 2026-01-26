@@ -41,7 +41,7 @@ export default function OrderManagement() {
                     <input
                         type="text"
                         placeholder="Search orders..."
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-melagro-primary focus:ring-1 focus:ring-melagro-primary outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary focus:ring-1 focus:ring-melagri-primary outline-none transition-all"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -49,7 +49,7 @@ export default function OrderManagement() {
                 <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="rounded-lg border border-gray-200 focus:border-melagro-primary focus:ring-1 focus:ring-melagro-primary outline-none transition-all"
+                    className="rounded-lg border border-gray-200 focus:border-melagri-primary focus:ring-1 focus:ring-melagri-primary outline-none transition-all"
                 >
                     <option value="All">All Statuses</option>
                     <option value="Processing">Processing</option>
@@ -82,7 +82,7 @@ export default function OrderManagement() {
                                     onClick={() => router.push(`/dashboard/admin/orders/${order.id}`)}
                                 >
                                     <td className="px-6 py-4 font-medium text-gray-900">
-                                        <Link href={`/dashboard/admin/orders/${order.id}`} className="hover:text-melagro-primary hover:underline">
+                                        <Link href={`/dashboard/admin/orders/${order.id}`} className="hover:text-melagri-primary hover:underline">
                                             {order.id}
                                         </Link>
                                     </td>
@@ -99,7 +99,7 @@ export default function OrderManagement() {
                                         <select
                                             value={order.status}
                                             onChange={(e) => updateOrderStatus(order.id, e.target.value as any)}
-                                            className={`text-xs font-bold px-2 py-1 rounded-full border-0 focus:ring-2 focus:ring-melagro-primary cursor-pointer ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
+                                            className={`text-xs font-bold px-2 py-1 rounded-full border-0 focus:ring-2 focus:ring-melagri-primary cursor-pointer ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
                                                 order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
                                                     order.status === 'Processing' ? 'bg-yellow-100 text-yellow-700' :
                                                         'bg-red-100 text-red-700'
@@ -113,12 +113,12 @@ export default function OrderManagement() {
                                     </td>
                                     <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                                         <div className="flex justify-end gap-2">
-                                            <Link href={`/orders/${order.id}/receipt`} className="text-gray-500 hover:text-melagro-primary" title="Print Receipt">
+                                            <Link href={`/orders/${order.id}/receipt`} className="text-gray-500 hover:text-melagri-primary" title="Print Receipt">
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                                 </svg>
                                             </Link>
-                                            <Link href={`/orders/${order.id}/delivery-note`} className="text-gray-500 hover:text-melagro-primary" title="Delivery Note">
+                                            <Link href={`/orders/${order.id}/delivery-note`} className="text-gray-500 hover:text-melagri-primary" title="Delivery Note">
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                 </svg>

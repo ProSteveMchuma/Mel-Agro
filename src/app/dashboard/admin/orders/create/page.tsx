@@ -96,7 +96,7 @@ export default function CreateOrderPage() {
                     <select
                         value={selectedUser}
                         onChange={(e) => setSelectedUser(e.target.value)}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagri-primary/20"
                         required
                     >
                         <option value="">Select a customer...</option>
@@ -113,7 +113,7 @@ export default function CreateOrderPage() {
                     <h2 className="font-bold text-lg mb-4">2. Add Products</h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                         {products.map(product => (
-                            <div key={product.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:border-melagro-primary transition-colors">
+                            <div key={product.id} className="flex items-center justify-between p-3 border border-gray-100 rounded-lg hover:border-melagri-primary transition-colors">
                                 <div>
                                     <div className="font-medium">{product.name}</div>
                                     <div className="text-sm text-gray-500">KES {product.price.toLocaleString()}</div>
@@ -121,7 +121,7 @@ export default function CreateOrderPage() {
                                 <button
                                     type="button"
                                     onClick={() => handleAddToCart(String(product.id))}
-                                    className="px-3 py-1 text-sm bg-gray-100 hover:bg-melagro-primary hover:text-white rounded-lg transition-colors"
+                                    className="px-3 py-1 text-sm bg-gray-100 hover:bg-melagri-primary hover:text-white rounded-lg transition-colors"
                                 >
                                     Add
                                 </button>
@@ -181,7 +181,7 @@ export default function CreateOrderPage() {
                                 type="text"
                                 value={shippingDetails.county}
                                 onChange={(e) => setShippingDetails({ ...shippingDetails, county: e.target.value })}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagri-primary/20"
                                 required
                             />
                         </div>
@@ -191,7 +191,7 @@ export default function CreateOrderPage() {
                                 type="text"
                                 value={shippingDetails.details}
                                 onChange={(e) => setShippingDetails({ ...shippingDetails, details: e.target.value })}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagri-primary/20"
                                 required
                             />
                         </div>
@@ -202,7 +202,7 @@ export default function CreateOrderPage() {
                                 min="0"
                                 value={shippingCost}
                                 onChange={(e) => setShippingCost(parseInt(e.target.value) || 0)}
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagri-primary/20"
                             />
                         </div>
                     </div>

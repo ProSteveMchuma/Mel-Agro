@@ -21,7 +21,7 @@ export interface Product {
     price: number;
     category: string;
     subCategory?: string;
-    supplier?: string;
+    productCode?: string;
     image: string;
     rating: number;
     reviews: number;

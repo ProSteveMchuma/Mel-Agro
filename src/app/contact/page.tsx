@@ -5,7 +5,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: "Contact Us | Agriculture Support Kenya",
-    description: "Get in touch with Mel-Agro for inquiries about fertilizers, seeds, and bulk orders. Our expert team is ready to support your farm's growth.",
+    description: "Get in touch with Mel-Agri for inquiries about fertilizers, seeds, and bulk orders. Our expert team is ready to support your farm's growth.",
 };
 
 export default function ContactPage() {
@@ -33,7 +33,7 @@ export default function ContactPage() {
                                         <input
                                             type="text"
                                             placeholder="Enter your name"
-                                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                                         />
                                     </div>
                                     <div>
@@ -41,7 +41,7 @@ export default function ContactPage() {
                                         <input
                                             type="email"
                                             placeholder="Enter your email"
-                                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                                         />
                                     </div>
                                 </div>
@@ -51,13 +51,13 @@ export default function ContactPage() {
                                     <input
                                         type="tel"
                                         placeholder="+254 712 345 678"
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                                     />
                                 </div>
 
                                 <div>
                                     <label className="block text-sm font-bold text-gray-900 mb-2">Subject</label>
-                                    <select className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50">
+                                    <select className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50">
                                         <option>General Inquiry</option>
                                         <option>Order Issue</option>
                                         <option>Partnership</option>
@@ -70,11 +70,11 @@ export default function ContactPage() {
                                     <textarea
                                         rows={5}
                                         placeholder="How can we help you today?"
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50 resize-none"
+                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50 resize-none"
                                     />
                                 </div>
 
-                                <button type="submit" className="w-full bg-melagro-primary hover:bg-melagro-secondary text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                                <button type="submit" className="w-full bg-melagri-primary hover:bg-melagri-secondary text-white font-bold py-3 px-6 rounded-lg transition-colors">
                                     Send Message
                                 </button>
                             </form>
@@ -89,7 +89,7 @@ export default function ContactPage() {
                                 <div className="space-y-6">
                                     {/* Phone */}
                                     <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-melagro-primary/10 flex items-center justify-center flex-shrink-0">
+                                        <div className="w-10 h-10 rounded-full bg-melagri-primary/10 flex items-center justify-center flex-shrink-0">
                                             <span className="text-lg">📞</span>
                                         </div>
                                         <div>
@@ -100,7 +100,7 @@ export default function ContactPage() {
 
                                     {/* Email */}
                                     <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-melagro-primary/10 flex items-center justify-center flex-shrink-0">
+                                        <div className="w-10 h-10 rounded-full bg-melagri-primary/10 flex items-center justify-center flex-shrink-0">
                                             <span className="text-lg">✉️</span>
                                         </div>
                                         <div>
@@ -111,7 +111,7 @@ export default function ContactPage() {
 
                                     {/* Address */}
                                     <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-melagro-primary/10 flex items-center justify-center flex-shrink-0">
+                                        <div className="w-10 h-10 rounded-full bg-melagri-primary/10 flex items-center justify-center flex-shrink-0">
                                             <span className="text-lg">📍</span>
                                         </div>
                                         <div>
@@ -153,7 +153,7 @@ export default function ContactPage() {
                         <div className="text-center mb-12">
                             <h2 className="text-3xl font-bold text-gray-900 mb-2">Frequently Asked Questions</h2>
                             <p className="text-gray-600">Find quick answers to common questions</p>
-                            <Link href="/help" className="text-melagro-primary hover:underline font-semibold text-sm mt-2 inline-block">
+                            <Link href="/help" className="text-melagri-primary hover:underline font-semibold text-sm mt-2 inline-block">
                                 Visit FAQ Center →
                             </Link>
                         </div>
@@ -186,11 +186,11 @@ export default function ContactPage() {
                     </div>
 
                     {/* Support Section */}
-                    <div className="mt-16 bg-gradient-to-r from-melagro-primary to-melagro-secondary rounded-2xl p-12 text-white text-center">
+                    <div className="mt-16 bg-gradient-to-r from-melagri-primary to-melagri-secondary rounded-2xl p-12 text-white text-center">
                         <h2 className="text-3xl font-bold mb-4">Still need help?</h2>
                         <p className="text-lg mb-8 opacity-90">Our support team is available Monday - Sunday, 8am - 8pm</p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <Link href="https://wa.me/254748970757" target="_blank" className="bg-white text-melagro-primary px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors">
+                            <Link href="https://wa.me/254748970757" target="_blank" className="bg-white text-melagri-primary px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors">
                                 💬 WhatsApp
                             </Link>
                             <Link href="tel:+254748970757" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">

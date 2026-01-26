@@ -325,9 +325,27 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const updateOrderPaymentStatus = async (orderId: string, paymentStatus: 'Paid' | 'Unpaid') => {
+    const updateOrderPaymentStatus = async (orderId: string, paymentStatus: 'Paid' | 'Unpaid', transactionDetails?: { amount: number, reference: string, date: string, method: string }) => {
         const orderRef = doc(db, "orders", orderId);
-        await updateDoc(orderRef, { paymentStatus });
+        const updateData: any = { paymentStatus };
+
+        if (transactionDetails) {
+            updateData.transactionId = transactionDetails.reference;
+            updateData.paymentMethod = transactionDetails.method;
+
+            // Log to transactions collection
+            await addDoc(collection(db, "transactions"), {
+                orderId,
+                amount: transactionDetails.amount,
+                reference: transactionDetails.reference,
+                method: transactionDetails.method,
+                date: transactionDetails.date,
+                status: 'Success',
+                recordedBy: user?.uid || 'System'
+            });
+        }
+
+        await updateDoc(orderRef, updateData);
     };
 
     const requestReturn = async (orderId: string, reason: string) => {

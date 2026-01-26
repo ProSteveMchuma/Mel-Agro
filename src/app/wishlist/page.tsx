@@ -57,7 +57,7 @@ export default function WishlistPage() {
                                     </button>
                                 </div>
                                 <div className="p-6">
-                                    <div className="text-sm text-melagro-primary font-medium mb-1">{product.category}</div>
+                                    <div className="text-sm text-melagri-primary font-medium mb-1">{product.category}</div>
                                     <h3 className="font-bold text-gray-900 text-lg mb-2">{product.name}</h3>
                                     <div className="flex items-center justify-between mt-4">
                                         <span className="text-xl font-bold text-gray-900">KES {product.price.toLocaleString()}</span>

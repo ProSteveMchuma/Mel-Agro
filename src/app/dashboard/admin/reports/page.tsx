@@ -24,7 +24,7 @@ export default function ReportsPage() {
                 </div>
                 <button
                     onClick={() => window.print()}
-                    className="bg-melagro-primary text-white px-6 py-2.5 rounded-xl shadow-lg shadow-melagro-primary/20 hover:bg-melagro-secondary transition-all font-bold text-sm flex items-center gap-2"
+                    className="bg-melagri-primary text-white px-6 py-2.5 rounded-xl shadow-lg shadow-melagri-primary/20 hover:bg-melagri-secondary transition-all font-bold text-sm flex items-center gap-2"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -39,7 +39,7 @@ export default function ReportsPage() {
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Start Date</label>
                     <input
                         type="date"
-                        className="p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-melagro-primary"
+                        className="p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-melagri-primary"
                         value={dateRange.start}
                         onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
                     />
@@ -48,7 +48,7 @@ export default function ReportsPage() {
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">End Date</label>
                     <input
                         type="date"
-                        className="p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-melagro-primary"
+                        className="p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-melagri-primary"
                         value={dateRange.end}
                         onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
                     />

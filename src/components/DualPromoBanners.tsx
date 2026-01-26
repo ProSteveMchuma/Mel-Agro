@@ -59,7 +59,7 @@ export default function DualPromoBanners() {
                         <p className="text-green-50 mb-8 text-sm max-w-sm font-medium leading-relaxed">
                             Reach millions of farmers across Africa. Join our network of verified suppliers today.
                         </p>
-                        <Link href="/dashboard/admin/products/add" className="group relative bg-gray-900 text-white px-8 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest w-fit overflow-hidden">
+                        <Link href="/dashboard/admin/products/new" className="group relative bg-gray-900 text-white px-8 py-3 rounded-xl font-black text-[11px] uppercase tracking-widest w-fit overflow-hidden">
                             <span className="relative z-10">Start Selling</span>
                             <div className="absolute inset-0 bg-white translate-y-full group-hover:translate-y-0 transition-transform duration-300 opacity-20"></div>
                         </Link>

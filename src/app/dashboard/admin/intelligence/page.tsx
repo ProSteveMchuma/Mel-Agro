@@ -23,7 +23,7 @@ export default function IntelligencePage() {
                     <p className="text-gray-500 mt-1">Real-time demand forecasting and bottleneck analysis.</p>
                 </div>
                 <div className="flex gap-2">
-                    <span className="px-4 py-2 bg-melagro-primary/10 text-melagro-primary text-xs font-black rounded-xl uppercase tracking-widest border border-melagro-primary/20">
+                    <span className="px-4 py-2 bg-melagri-primary/10 text-melagri-primary text-xs font-black rounded-xl uppercase tracking-widest border border-melagri-primary/20">
                         {intelligentUsers.length} Predictive Profiles
                     </span>
                 </div>
@@ -33,8 +33,10 @@ export default function IntelligencePage() {
             <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-gray-100">
                 <div className="flex justify-between items-center mb-10">
                     <div>
-                        <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Checkout Conversion Funnel</h2>
-                        <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Live Drop-off Tracking</p>
+                        <Link href="/dashboard/admin/intelligence/abandoned-carts" className="group">
+                            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight group-hover:text-melagri-primary transition-colors">Checkout Conversion Funnel</h2>
+                            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Live Drop-off Tracking • <span className="text-melagri-primary">Recover Sales →</span></p>
+                        </Link>
                     </div>
                 </div>
 
@@ -43,10 +45,10 @@ export default function IntelligencePage() {
                         { label: 'Cart Viewed', count: 120, conversion: '100%', color: 'bg-blue-500' },
                         { label: 'Shipping Info', count: 84, conversion: '70%', color: 'bg-indigo-500' },
                         { label: 'Payment Method', count: 62, conversion: '51%', color: 'bg-purple-500' },
-                        { label: 'Order Complete', count: 48, conversion: '40%', color: 'bg-melagro-primary' }
+                        { label: 'Order Complete', count: 48, conversion: '40%', color: 'bg-melagri-primary' }
                     ].map((step, i) => (
                         <div key={step.label} className="relative group">
-                            <div className="h-24 bg-gray-50 rounded-2xl p-6 flex flex-col justify-center border border-gray-100 group-hover:border-melagro-primary/30 transition-all overflow-hidden">
+                            <div className="h-24 bg-gray-50 rounded-2xl p-6 flex flex-col justify-center border border-gray-100 group-hover:border-melagri-primary/30 transition-all overflow-hidden">
                                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${step.color}`}></div>
                                 <div className="flex justify-between items-end">
                                     <div>
@@ -54,7 +56,7 @@ export default function IntelligencePage() {
                                         <p className="text-2xl font-black text-gray-900">{step.count}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xs font-black text-melagro-primary">{step.conversion}</p>
+                                        <p className="text-xs font-black text-melagri-primary">{step.conversion}</p>
                                     </div>
                                 </div>
                             </div>
@@ -80,7 +82,7 @@ export default function IntelligencePage() {
                         <div key={user.uid} className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all group">
                             <div className="flex justify-between items-start mb-6">
                                 <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center text-xl font-black text-gray-700 shadow-inner group-hover:from-melagro-primary group-hover:to-melagro-secondary group-hover:text-white transition-all duration-500">
+                                    <div className="w-14 h-14 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center text-xl font-black text-gray-700 shadow-inner group-hover:from-melagri-primary group-hover:to-melagri-secondary group-hover:text-white transition-all duration-500">
                                         {user.name.charAt(0)}
                                     </div>
                                     <div>
@@ -98,10 +100,10 @@ export default function IntelligencePage() {
                                     <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Top Affinities</h4>
                                     <div className="flex flex-wrap gap-3">
                                         {topCategories.map(([cat, score]) => (
-                                            <div key={cat} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 group-hover:border-melagro-primary/20 transition-colors">
+                                            <div key={cat} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 group-hover:border-melagri-primary/20 transition-colors">
                                                 <span className="text-lg">{CATEGORY_ICONS[cat as keyof typeof CATEGORY_ICONS] || '📦'}</span>
                                                 <span className="text-xs font-bold text-gray-700">{cat}</span>
-                                                <span className="text-[10px] font-black text-melagro-primary ml-1">{score}pts</span>
+                                                <span className="text-[10px] font-black text-melagri-primary ml-1">{score}pts</span>
                                             </div>
                                         ))}
                                     </div>
@@ -113,7 +115,7 @@ export default function IntelligencePage() {
                                     </div>
                                     <Link
                                         href={`/dashboard/admin/users/${user.uid}`}
-                                        className="text-melagro-primary font-bold hover:underline py-1"
+                                        className="text-melagri-primary font-bold hover:underline py-1"
                                     >
                                         Full Profile →
                                     </Link>

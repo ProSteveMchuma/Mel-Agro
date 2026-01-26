@@ -15,9 +15,9 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --color-melagro-primary: var(--primary-green);
-  --color-melagro-secondary: var(--secondary-green);
-  --color-melagro-accent: var(--accent-orange);
+  --color-melagri-primary: var(--primary-green);
+  --color-melagri-secondary: var(--secondary-green);
+  --color-melagri-accent: var(--accent-orange);
   --animate-marquee: marquee 25s linear infinite;
 }
 
@@ -37,11 +37,11 @@
   }
 
   .btn-primary {
-    @apply bg-melagro-primary text-white px-8 py-3 rounded-full font-medium transition-all duration-300 hover:bg-melagro-secondary hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl;
+    @apply bg-melagri-primary text-white px-8 py-3 rounded-full font-medium transition-all duration-300 hover:bg-melagri-secondary hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl;
   }
 
   .btn-secondary {
-    @apply bg-white text-melagro-primary border border-melagro-primary px-8 py-3 rounded-full font-medium transition-all duration-300 hover:bg-gray-50 hover:scale-105 active:scale-95;
+    @apply bg-white text-melagri-primary border border-melagri-primary px-8 py-3 rounded-full font-medium transition-all duration-300 hover:bg-gray-50 hover:scale-105 active:scale-95;
   }
 
   .card-hover {

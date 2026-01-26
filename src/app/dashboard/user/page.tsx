@@ -115,7 +115,7 @@ export default function UserDashboard() {
         }
     };
 
-    if (isLoading || !user) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagro-primary"></div></div>;
+    if (isLoading || !user) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagri-primary"></div></div>;
 
     const statsData = [
         { label: "Total Orders", value: orders.length.toString(), icon: "📦", color: "bg-blue-50 text-blue-600" },
@@ -143,10 +143,10 @@ export default function UserDashboard() {
 
             {/* Active Order Progress - Difference Maker */}
             {orders.filter(o => o.status === 'Processing' || o.status === 'Shipped').slice(0, 1).map(activeOrder => (
-                <div key={activeOrder.id} className="bg-white rounded-3xl p-8 border border-melagro-primary/20 shadow-xl shadow-melagro-primary/5 animate-in slide-in-from-bottom-4 duration-700">
+                <div key={activeOrder.id} className="bg-white rounded-3xl p-8 border border-melagri-primary/20 shadow-xl shadow-melagri-primary/5 animate-in slide-in-from-bottom-4 duration-700">
                     <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h3 className="text-sm font-black uppercase tracking-widest text-melagro-primary mb-1">Active Tracking</h3>
+                            <h3 className="text-sm font-black uppercase tracking-widest text-melagri-primary mb-1">Active Tracking</h3>
                             <p className="text-xl font-black text-gray-900 leading-none">Order #{activeOrder.id.slice(0, 8)}</p>
                         </div>
                         <Link href="/dashboard/user" onClick={() => { setSelectedOrder(activeOrder); }} className="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-xl hover:scale-105 transition-all">Full Tracking</Link>
@@ -165,7 +165,7 @@ export default function UserDashboard() {
                 ))}
             </div>
 
-            <div className="bg-gradient-to-r from-green-600 to-melagro-primary rounded-3xl p-10 text-white relative overflow-hidden shadow-2xl shadow-green-900/10">
+            <div className="bg-gradient-to-r from-green-600 to-melagri-primary rounded-3xl p-10 text-white relative overflow-hidden shadow-2xl shadow-green-900/10">
                 <div className="absolute top-0 right-0 p-8 opacity-10 transform scale-150 rotate-12">🚜</div>
                 <div className="relative z-10 max-w-xl">
                     <div className="flex items-center gap-2 mb-4">
@@ -187,7 +187,7 @@ export default function UserDashboard() {
                 <div className="absolute -right-10 -bottom-10 p-20 opacity-10 transform scale-150 group-hover:rotate-12 transition-transform duration-700">⭐</div>
                 <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-6">
-                        <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Mel-Agro Rewards</span>
+                        <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Mel-Agri Rewards</span>
                     </div>
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                         <div>
@@ -218,7 +218,7 @@ export default function UserDashboard() {
                 <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
                     <h3 className="font-bold text-gray-900 mb-6">Quick Actions</h3>
                     <div className="grid grid-cols-2 gap-4">
-                        <Link href="/products" className="p-4 bg-melagro-primary text-white rounded-2xl flex flex-col items-center gap-2 hover:scale-[1.05] transition-all group shadow-lg shadow-melagro-primary/20">
+                        <Link href="/products" className="p-4 bg-melagri-primary text-white rounded-2xl flex flex-col items-center gap-2 hover:scale-[1.05] transition-all group shadow-lg shadow-melagri-primary/20">
                             <span className="text-2xl">🚜</span>
                             <span className="text-xs font-bold uppercase">Shop Now</span>
                         </Link>
@@ -237,12 +237,12 @@ export default function UserDashboard() {
                 <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
                     <div className="flex items-center justify-between mb-6">
                         <h3 className="font-bold text-gray-900">Recent Orders</h3>
-                        <button onClick={() => setActiveTab('orders')} className="text-melagro-primary hover:underline text-sm font-semibold">View All</button>
+                        <button onClick={() => setActiveTab('orders')} className="text-melagri-primary hover:underline text-sm font-semibold">View All</button>
                     </div>
                     {orders.length > 0 ? (
                         <div className="space-y-3">
                             {orders.slice(0, 3).map((order: Order) => (
-                                <div key={order.id} onClick={() => { setSelectedOrder(order); }} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-melagro-primary/10">
+                                <div key={order.id} onClick={() => { setSelectedOrder(order); }} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer border border-transparent hover:border-melagri-primary/10">
                                     <div>
                                         <p className="text-sm font-bold text-gray-900">#{order.id.slice(0, 8)}</p>
                                         <p className="text-[10px] text-gray-400 font-medium">{new Date(order.date).toLocaleDateString()}</p>
@@ -254,7 +254,7 @@ export default function UserDashboard() {
                                             </p>
                                             <p className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{order.status}</p>
                                         </div>
-                                        <p className="text-sm font-bold text-melagro-primary mt-1">KES {order.total.toLocaleString()}</p>
+                                        <p className="text-sm font-bold text-melagri-primary mt-1">KES {order.total.toLocaleString()}</p>
                                     </div>
                                 </div>
                             ))}
@@ -288,14 +288,14 @@ export default function UserDashboard() {
                                     stockQuantity: 100,
                                     lowStockThreshold: 10
                                 }, 1)}>
-                                    <div className="aspect-square bg-gray-50 rounded-xl relative overflow-hidden mb-2 border border-gray-100 group-hover:border-melagro-primary transition-colors">
+                                    <div className="aspect-square bg-gray-50 rounded-xl relative overflow-hidden mb-2 border border-gray-100 group-hover:border-melagri-primary transition-colors">
                                         {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                            <span className="text-white text-xs font-bold bg-melagro-primary px-3 py-1 rounded-full">+ Add</span>
+                                            <span className="text-white text-xs font-bold bg-melagri-primary px-3 py-1 rounded-full">+ Add</span>
                                         </div>
                                     </div>
                                     <p className="text-[10px] font-bold text-gray-800 truncate">{item.name}</p>
-                                    <p className="text-[10px] text-melagro-primary font-bold">KES {item.price.toLocaleString()}</p>
+                                    <p className="text-[10px] text-melagri-primary font-bold">KES {item.price.toLocaleString()}</p>
                                 </div>
                             ))}
                     </div>
@@ -334,8 +334,8 @@ export default function UserDashboard() {
                                         <p className="text-xs text-gray-400 font-medium tracking-tight">Placed on {new Date(order.date).toLocaleDateString()}</p>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <button onClick={() => setSelectedOrder(order)} className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-melagro-primary transition-colors">Details</button>
-                                        <button onClick={() => handleReorder(order)} className="px-4 py-2 bg-melagro-primary text-white text-xs font-bold rounded-lg hover:bg-melagro-secondary transition-all">Reorder</button>
+                                        <button onClick={() => setSelectedOrder(order)} className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-melagri-primary transition-colors">Details</button>
+                                        <button onClick={() => handleReorder(order)} className="px-4 py-2 bg-melagri-primary text-white text-xs font-bold rounded-lg hover:bg-melagri-secondary transition-all">Reorder</button>
                                     </div>
                                 </div>
                                 <div className="flex gap-4 overflow-x-auto pb-2">
@@ -381,7 +381,7 @@ export default function UserDashboard() {
                                     </span>
                                 </div>
                                 <p className="text-sm text-gray-600 mb-4">Reason: {order.returnReason || 'N/A'}</p>
-                                <button onClick={() => setSelectedOrder(order)} className="text-melagro-primary text-sm font-bold hover:underline">View Details</button>
+                                <button onClick={() => setSelectedOrder(order)} className="text-melagri-primary text-sm font-bold hover:underline">View Details</button>
                             </div>
                         ))}
                     </div>
@@ -395,7 +395,7 @@ export default function UserDashboard() {
             <div className="flex justify-between items-center">
                 <h2 className="text-2xl font-bold text-gray-900">Notifications</h2>
                 {unreadNotificationsCount > 0 && (
-                    <button onClick={() => notifications.forEach((n: Notification) => markNotificationRead(n.id))} className="text-sm font-bold text-melagro-primary hover:underline">Mark all as read</button>
+                    <button onClick={() => notifications.forEach((n: Notification) => markNotificationRead(n.id))} className="text-sm font-bold text-melagri-primary hover:underline">Mark all as read</button>
                 )}
             </div>
             {notifications.length === 0 ? (
@@ -408,7 +408,7 @@ export default function UserDashboard() {
                     <div className="divide-y divide-gray-50">
                         {notifications.map((n: Notification) => (
                             <div key={n.id} onClick={() => markNotificationRead(n.id)} className={`p-6 flex gap-4 cursor-pointer hover:bg-gray-50 transition-colors ${!n.read ? 'bg-blue-50/30' : ''}`}>
-                                <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!n.read ? 'bg-melagro-primary' : 'bg-transparent'}`}></div>
+                                <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${!n.read ? 'bg-melagri-primary' : 'bg-transparent'}`}></div>
                                 <div>
                                     <p className={`text-sm ${!n.read ? 'font-bold text-gray-900' : 'text-gray-600'}`}>{n.message}</p>
                                     <p className="text-[10px] text-gray-400 mt-1">{new Date(n.date).toLocaleString()}</p>
@@ -441,7 +441,7 @@ export default function UserDashboard() {
                                 </button>
                             </div>
                             <h3 className="font-bold text-gray-900 truncate">{product.name}</h3>
-                            <p className="text-melagro-primary font-black mb-4">KES {product.price.toLocaleString()}</p>
+                            <p className="text-melagri-primary font-black mb-4">KES {product.price.toLocaleString()}</p>
                             <button onClick={() => addToCart(product, 1)} className="w-full py-2 bg-gray-900 text-white rounded-xl text-xs font-bold hover:bg-black transition-all">Add to Cart</button>
                         </div>
                     ))}
@@ -461,13 +461,13 @@ export default function UserDashboard() {
                 <div className="relative flex items-center justify-between">
                     <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1.5 bg-gray-100 -z-10 rounded-full"></div>
                     <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 bg-melagro-primary -z-10 transition-all duration-700 ease-out rounded-full"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 bg-melagri-primary -z-10 transition-all duration-700 ease-out rounded-full"
                         style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
                     ></div>
 
                     {steps.map((step, index) => (
                         <div key={step} className="flex flex-col items-center bg-transparent px-2 group">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 shadow-lg ${index <= currentStepIndex ? 'bg-melagro-primary text-white scale-110 shadow-melagro-primary/30' : 'bg-white text-gray-400 border-2 border-gray-100'
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 shadow-lg ${index <= currentStepIndex ? 'bg-melagri-primary text-white scale-110 shadow-melagri-primary/30' : 'bg-white text-gray-400 border-2 border-gray-100'
                                 }`}>
                                 {index < currentStepIndex ? (
                                     <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
@@ -498,7 +498,7 @@ export default function UserDashboard() {
                         <p className="text-[10px] text-gray-400">Fastest response</p>
                     </div>
                 </a>
-                <a href="mailto:support@melagro.com" className="p-6 bg-white border border-gray-100 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                <a href="mailto:support@Mel-Agri.com" className="p-6 bg-white border border-gray-100 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
                     <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     </div>
@@ -524,7 +524,7 @@ export default function UserDashboard() {
                     <div className="lg:col-span-1">
                         <div className="bg-white rounded-3xl p-6 border border-gray-100 sticky top-24 shadow-sm">
                             <div className="flex items-center gap-4 mb-8">
-                                <div className="w-16 h-16 bg-gradient-to-tr from-melagro-primary to-green-400 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg ring-4 ring-melagro-primary/10">
+                                <div className="w-16 h-16 bg-gradient-to-tr from-melagri-primary to-green-400 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg ring-4 ring-melagri-primary/10">
                                     {user.name?.charAt(0)}
                                 </div>
                                 <div className="overflow-hidden">
@@ -552,8 +552,8 @@ export default function UserDashboard() {
                                         key={item.id}
                                         onClick={() => setActiveTab(item.id as Tab)}
                                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all duration-300 ${activeTab === item.id
-                                            ? 'bg-melagro-primary text-white shadow-[0_10px_20px_-5px_rgba(34,197,94,0.4)] translate-x-1'
-                                            : 'text-gray-500 hover:bg-gray-50 hover:text-melagro-primary hover:translate-x-1'
+                                            ? 'bg-melagri-primary text-white shadow-[0_10px_20px_-5px_rgba(34,197,94,0.4)] translate-x-1'
+                                            : 'text-gray-500 hover:bg-gray-50 hover:text-melagri-primary hover:translate-x-1'
                                             }`}
                                     >
                                         <span className="text-lg">{item.icon}</span>
@@ -588,7 +588,7 @@ export default function UserDashboard() {
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Full Name</label>
-                                            <input type="text" value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} disabled={!isEditingProfile} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-melagro-primary/20 disabled:opacity-50 font-medium" />
+                                            <input type="text" value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} disabled={!isEditingProfile} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-melagri-primary/20 disabled:opacity-50 font-medium" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Email Address</label>
@@ -607,7 +607,7 @@ export default function UserDashboard() {
                                         {isEditingProfile ? (
                                             <div className="flex gap-3">
                                                 <button type="button" onClick={() => setIsEditingProfile(false)} className="px-6 py-3 font-bold text-gray-500">Cancel</button>
-                                                <button type="submit" className="px-8 py-3 bg-melagro-primary text-white rounded-2xl font-bold shadow-lg shadow-melagro-primary/20 hover:scale-105 transition-all">Save Changes</button>
+                                                <button type="submit" className="px-8 py-3 bg-melagri-primary text-white rounded-2xl font-bold shadow-lg shadow-melagri-primary/20 hover:scale-105 transition-all">Save Changes</button>
                                             </div>
                                         ) : (
                                             <button type="button" onClick={() => setIsEditingProfile(true)} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-bold hover:scale-105 transition-all">Edit Profile</button>
@@ -639,7 +639,7 @@ export default function UserDashboard() {
                             <div className="flex gap-4 mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase">Status</p>
-                                    <p className="font-black text-melagro-primary uppercase">{selectedOrder.status}</p>
+                                    <p className="font-black text-melagri-primary uppercase">{selectedOrder.status}</p>
                                 </div>
                                 <div className="ml-auto text-right">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase">Total Amount</p>
@@ -674,7 +674,7 @@ export default function UserDashboard() {
                         <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0 z-50">
                             <span className="font-bold">Preview: {printMode.toUpperCase()}</span>
                             <div className="flex gap-2">
-                                <button onClick={() => window.print()} className="bg-melagro-primary px-6 py-2 rounded-xl text-sm font-bold hover:bg-melagro-secondary transition-all">Print Document</button>
+                                <button onClick={() => window.print()} className="bg-melagri-primary px-6 py-2 rounded-xl text-sm font-bold hover:bg-melagri-secondary transition-all">Print Document</button>
                                 <button onClick={() => { setPrintMode(null); setPrintOrder(null); }} className="bg-gray-700 px-6 py-2 rounded-xl text-sm font-bold hover:bg-gray-600 transition-all">Close</button>
                             </div>
                         </div>
@@ -716,7 +716,7 @@ function MessageForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
             <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Subject</label>
-                <select value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium focus:ring-2 focus:ring-melagro-primary/20">
+                <select value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium focus:ring-2 focus:ring-melagri-primary/20">
                     <option>Order Inquiry</option>
                     <option>Product Question</option>
                     <option>Technical Support</option>
@@ -725,9 +725,9 @@ function MessageForm() {
             </div>
             <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase mb-2">Message</label>
-                <textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium focus:ring-2 focus:ring-melagro-primary/20" placeholder="How can we help you?" required></textarea>
+                <textarea rows={4} value={message} onChange={(e) => setMessage(e.target.value)} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium focus:ring-2 focus:ring-melagri-primary/20" placeholder="How can we help you?" required></textarea>
             </div>
-            <button type="submit" disabled={status === 'sending' || status === 'success'} className={`w-full py-4 rounded-2xl font-bold text-white transition-all shadow-lg ${status === 'success' ? 'bg-green-500' : 'bg-melagro-primary hover:scale-[1.02]'}`}>
+            <button type="submit" disabled={status === 'sending' || status === 'success'} className={`w-full py-4 rounded-2xl font-bold text-white transition-all shadow-lg ${status === 'success' ? 'bg-green-500' : 'bg-melagri-primary hover:scale-[1.02]'}`}>
                 {status === 'sending' ? 'Sending...' : status === 'success' ? 'Message Sent!' : 'Send Message'}
             </button>
         </form>

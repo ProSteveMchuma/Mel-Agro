@@ -127,7 +127,7 @@ export default function LogisticsPage() {
                                     required
                                     type="text"
                                     placeholder="e.g. Nairobi Region"
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                     value={formData.name}
                                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                                 />
@@ -142,7 +142,7 @@ export default function LogisticsPage() {
                                                 type="checkbox"
                                                 checked={formData.regions.includes(county)}
                                                 onChange={() => handleRegionToggle(county)}
-                                                className="rounded text-melagro-primary focus:ring-melagro-primary"
+                                                className="rounded text-melagri-primary focus:ring-melagri-primary"
                                             />
                                             <span className="text-sm text-gray-600">{county}</span>
                                         </label>
@@ -154,7 +154,7 @@ export default function LogisticsPage() {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Rate Type</label>
                                 <select
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                     value={formData.rates.type}
                                     onChange={e => setFormData({ ...formData, rates: { ...formData.rates, type: e.target.value as any } })}
                                 >
@@ -169,7 +169,7 @@ export default function LogisticsPage() {
                                     required
                                     type="number"
                                     placeholder="0"
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                     value={formData.rates.baseRate}
                                     onChange={e => setFormData({ ...formData, rates: { ...formData.rates, baseRate: Number(e.target.value) } })}
                                 />
@@ -180,7 +180,7 @@ export default function LogisticsPage() {
                                 <input
                                     type="number"
                                     placeholder="0 (No free shipping)"
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                     value={formData.rates.freeShippingThreshold}
                                     onChange={e => setFormData({ ...formData, rates: { ...formData.rates, freeShippingThreshold: Number(e.target.value) } })}
                                 />
@@ -191,7 +191,7 @@ export default function LogisticsPage() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="bg-melagro-primary text-white px-6 py-2 rounded-lg hover:bg-melagro-secondary transition-colors font-bold"
+                                className="bg-melagri-primary text-white px-6 py-2 rounded-lg hover:bg-melagri-secondary transition-colors font-bold"
                             >
                                 {loading ? 'Saving...' : 'Create Zone'}
                             </button>

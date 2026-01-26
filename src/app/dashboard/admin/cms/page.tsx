@@ -132,7 +132,7 @@ export default function CMSPage() {
                                     type="text"
                                     value={editingBanner.title}
                                     onChange={e => setEditingBanner({ ...editingBanner, title: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagri-primary/20"
                                     placeholder="e.g., Summer Sale"
                                 />
                             </div>
@@ -142,7 +142,7 @@ export default function CMSPage() {
                                     type="text"
                                     value={editingBanner.subtitle}
                                     onChange={e => setEditingBanner({ ...editingBanner, subtitle: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagri-primary/20"
                                     placeholder="e.g., Up to 50% off"
                                 />
                             </div>
@@ -151,7 +151,7 @@ export default function CMSPage() {
                                 <textarea
                                     value={editingBanner.description || ''}
                                     onChange={e => setEditingBanner({ ...editingBanner, description: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagri-primary/20"
                                     placeholder="Banner description..."
                                     rows={3}
                                 />
@@ -162,7 +162,7 @@ export default function CMSPage() {
                                     type="text"
                                     value={editingBanner.image}
                                     onChange={e => setEditingBanner({ ...editingBanner, image: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagri-primary/20"
                                     placeholder="https://..."
                                 />
                             </div>
@@ -172,7 +172,7 @@ export default function CMSPage() {
                                     type="text"
                                     value={editingBanner.link}
                                     onChange={e => setEditingBanner({ ...editingBanner, link: e.target.value })}
-                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                                    className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagri-primary/20"
                                     placeholder="/products/seeds"
                                 />
                             </div>
@@ -182,7 +182,7 @@ export default function CMSPage() {
                                     checked={editingBanner.active}
                                     onChange={e => setEditingBanner({ ...editingBanner, active: e.target.checked })}
                                     id="activeCheck"
-                                    className="rounded border-gray-300 text-melagro-primary focus:ring-melagro-primary"
+                                    className="rounded border-gray-300 text-melagri-primary focus:ring-melagri-primary"
                                 />
                                 <label htmlFor="activeCheck" className="text-sm font-medium text-gray-700">Active</label>
                             </div>

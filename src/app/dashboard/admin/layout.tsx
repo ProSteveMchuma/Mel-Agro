@@ -32,7 +32,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     if (isLoading) {
         return <div className="min-h-screen flex items-center justify-center bg-gray-100">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagro-primary"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagri-primary"></div>
         </div>;
     }
 
@@ -134,7 +134,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 <Link
                                     href={item.href}
                                     className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${pathname === item.href
-                                        ? 'bg-melagro-primary text-white shadow-lg shadow-melagro-primary/20'
+                                        ? 'bg-melagri-primary text-white shadow-lg shadow-melagri-primary/20'
                                         : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                                         }`}
                                 >
@@ -202,7 +202,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <div className="flex items-center gap-4 pl-6 border-l border-gray-100">
                             <div className="text-right hidden md:block">
                                 <div className="text-sm font-black text-gray-900 leading-none mb-1">{user?.name || 'Admin'}</div>
-                                <div className="text-[10px] font-bold text-melagro-primary uppercase tracking-tighter">{user?.role || 'Administrator'}</div>
+                                <div className="text-[10px] font-bold text-melagri-primary uppercase tracking-tighter">{user?.role || 'Administrator'}</div>
                             </div>
                             <div className="w-11 h-11 bg-gradient-to-tr from-gray-100 to-gray-200 rounded-xl flex items-center justify-center text-gray-600 font-black shadow-inner border border-white">
                                 {user?.name?.charAt(0) || 'A'}

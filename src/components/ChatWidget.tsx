@@ -53,7 +53,7 @@ export default function ChatWidget() {
             {!isOpen && (
                 <button
                     onClick={() => setIsOpen(true)}
-                    className="w-16 h-16 bg-melagro-primary hover:bg-melagro-secondary text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105"
+                    className="w-16 h-16 bg-melagri-primary hover:bg-melagri-secondary text-white rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -65,9 +65,9 @@ export default function ChatWidget() {
             {isOpen && (
                 <div className="w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 flex flex-col h-[500px] overflow-hidden animate-in slide-in-from-bottom-6 duration-300">
                     {/* Header */}
-                    <div className="bg-melagro-primary p-4 flex justify-between items-center text-white">
+                    <div className="bg-melagri-primary p-4 flex justify-between items-center text-white">
                         <div>
-                            <div className="font-bold">MelAgro Support</div>
+                            <div className="font-bold">Mel-Agri Support</div>
                             <div className="text-xs text-green-100 flex items-center gap-1">
                                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                                 Online
@@ -111,7 +111,7 @@ export default function ChatWidget() {
                                             </button>
                                         </div>
                                     ) : (
-                                        <div className={`p-3 rounded-2xl text-sm ${isMe ? 'bg-melagro-primary text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none'}`}>
+                                        <div className={`p-3 rounded-2xl text-sm ${isMe ? 'bg-melagri-primary text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none'}`}>
                                             {msg.content}
                                         </div>
                                     )}
@@ -131,12 +131,12 @@ export default function ChatWidget() {
                             value={inputText}
                             onChange={(e) => setInputText(e.target.value)}
                             placeholder="Type a message..."
-                            className="flex-grow px-4 py-2 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                            className="flex-grow px-4 py-2 bg-gray-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                         />
                         <button
                             type="submit"
                             disabled={!inputText.trim()}
-                            className="w-10 h-10 bg-melagro-primary text-white rounded-full flex items-center justify-center hover:bg-melagro-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-10 h-10 bg-melagri-primary text-white rounded-full flex items-center justify-center hover:bg-melagri-secondary disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

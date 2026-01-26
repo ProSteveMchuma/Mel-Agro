@@ -67,7 +67,7 @@ export default function AgroBot() {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-40 md:bottom-24 right-6 bg-melagro-primary text-white w-14 h-14 rounded-full shadow-xl hover:scale-105 transition-transform flex items-center justify-center z-40 animate-bounce-slow"
+                className="fixed bottom-40 md:bottom-24 right-6 bg-melagri-primary text-white w-14 h-14 rounded-full shadow-xl hover:scale-105 transition-transform flex items-center justify-center z-40 animate-bounce-slow"
                 aria-label="Open AgroBot"
             >
                 <span className="text-2xl">🤖</span>
@@ -82,7 +82,7 @@ export default function AgroBot() {
     return (
         <div className="fixed bottom-40 md:bottom-24 right-6 w-80 md:w-96 bg-white rounded-2xl shadow-2xl z-50 flex flex-col border border-gray-100 overflow-hidden text-sm font-sans max-h-[500px]">
             {/* Header */}
-            <div className="bg-melagro-primary p-4 flex justify-between items-center text-white">
+            <div className="bg-melagri-primary p-4 flex justify-between items-center text-white">
                 <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">🤖</div>
                     <div>
@@ -105,7 +105,7 @@ export default function AgroBot() {
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div className={`max-w-[85%] p-3 rounded-2xl ${msg.sender === 'user'
-                            ? 'bg-melagro-primary text-white rounded-tr-none'
+                            ? 'bg-melagri-primary text-white rounded-tr-none'
                             : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm'
                             }`}>
                             <p>{msg.text}</p>
@@ -120,7 +120,7 @@ export default function AgroBot() {
                                             )}
                                             <div className="text-left">
                                                 <div className="font-bold text-xs line-clamp-1">{p.name}</div>
-                                                <div className="text-melagro-primary text-xs">KES {p.price}</div>
+                                                <div className="text-melagri-primary text-xs">KES {p.price}</div>
                                             </div>
                                         </Link>
                                     ))}
@@ -134,7 +134,7 @@ export default function AgroBot() {
                                         <button
                                             key={opt}
                                             onClick={() => handleOptionClick(opt)}
-                                            className="text-xs bg-gray-100 hover:bg-melagro-primary hover:text-white px-3 py-1.5 rounded-full border border-gray-200 transition-colors"
+                                            className="text-xs bg-gray-100 hover:bg-melagri-primary hover:text-white px-3 py-1.5 rounded-full border border-gray-200 transition-colors"
                                         >
                                             {opt}
                                         </button>
@@ -170,12 +170,12 @@ export default function AgroBot() {
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         placeholder="Type a message..."
-                        className="flex-grow bg-gray-100 border-none rounded-xl px-4 py-2 focus:ring-2 focus:ring-melagro-primary/20 outline-none"
+                        className="flex-grow bg-gray-100 border-none rounded-xl px-4 py-2 focus:ring-2 focus:ring-melagri-primary/20 outline-none"
                     />
                     <button
                         type="submit"
                         disabled={!inputValue.trim() || isTyping}
-                        className="bg-melagro-primary text-white p-2 rounded-xl hover:bg-melagro-secondary disabled:opacity-50 transition-colors"
+                        className="bg-melagri-primary text-white p-2 rounded-xl hover:bg-melagri-secondary disabled:opacity-50 transition-colors"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                             <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z" />

@@ -93,7 +93,7 @@ export default function ShopLayout({ showBreadcrumbs = true }: { showBreadcrumbs
                             placeholder="Search products..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-melagro-primary/50 focus:border-melagro-primary outline-none"
+                            className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-melagri-primary/50 focus:border-melagri-primary outline-none"
                         />
                     </div>
 
@@ -105,8 +105,8 @@ export default function ShopLayout({ showBreadcrumbs = true }: { showBreadcrumbs
                                     key={category}
                                     onClick={() => setActiveCategory(category)}
                                     className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${activeCategory === category
-                                        ? "bg-melagro-primary text-white font-medium shadow-sm"
-                                        : "text-gray-600 hover:bg-gray-50 hover:text-melagro-primary"
+                                        ? "bg-melagri-primary text-white font-medium shadow-sm"
+                                        : "text-gray-600 hover:bg-gray-50 hover:text-melagri-primary"
                                         }`}
                                 >
                                     {category}
@@ -120,7 +120,7 @@ export default function ShopLayout({ showBreadcrumbs = true }: { showBreadcrumbs
                         <select
                             value={sortBy}
                             onChange={(e) => setSortBy(e.target.value)}
-                            className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-melagro-primary/50 focus:border-melagro-primary outline-none"
+                            className="w-full p-2.5 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-melagri-primary/50 focus:border-melagri-primary outline-none"
                         >
                             <option value="featured">Featured</option>
                             <option value="price-low">Price: Low to High</option>
@@ -157,7 +157,7 @@ export default function ShopLayout({ showBreadcrumbs = true }: { showBreadcrumbs
                             <p className="text-gray-500 text-lg">No products found.</p>
                             <button
                                 onClick={() => { setActiveCategory("All"); setSearchTerm(""); }}
-                                className="mt-4 text-melagro-primary font-medium hover:underline"
+                                className="mt-4 text-melagri-primary font-medium hover:underline"
                             >
                                 Clear Filters
                             </button>

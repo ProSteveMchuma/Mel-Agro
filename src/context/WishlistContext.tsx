@@ -30,7 +30,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
             });
             return () => unsubscribe();
         } else {
-            const saved = localStorage.getItem('melagro_wishlist');
+            const saved = localStorage.getItem('Mel-Agri_wishlist');
             if (saved) {
                 setWishlist(JSON.parse(saved));
             }
@@ -39,7 +39,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
 
     // Sync to localStorage as backup/cache
     useEffect(() => {
-        localStorage.setItem('melagro_wishlist', JSON.stringify(wishlist));
+        localStorage.setItem('Mel-Agri_wishlist', JSON.stringify(wishlist));
     }, [wishlist]);
 
     const addToWishlist = async (product: Product) => {

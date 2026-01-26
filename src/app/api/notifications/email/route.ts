@@ -13,7 +13,7 @@ export async function POST(request: Request) {
         const smtpPort = process.env.SMTP_PORT;
         const smtpUser = process.env.SMTP_USER;
         const smtpPass = process.env.SMTP_PASS;
-        const fromEmail = process.env.SMTP_FROM || '"MelAgro" <noreply@melagro.com>';
+        const fromEmail = process.env.SMTP_FROM || '"Mel-Agri" <noreply@Mel-Agri.com>';
 
         if (!smtpHost || !smtpUser || !smtpPass) {
             console.warn("Missing SMTP environment variables. Logging email instead.");

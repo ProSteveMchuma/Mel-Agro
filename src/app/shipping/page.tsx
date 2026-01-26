@@ -24,10 +24,10 @@ export default function ShippingPage() {
                         {/* Sidebar */}
                         <div className="md:col-span-1">
                             <nav className="sticky top-24 space-y-4">
-                                <a href="#delivery-times" className="block text-melagro-primary font-bold">Delivery Times</a>
-                                <a href="#shipping-costs" className="block text-gray-500 hover:text-melagro-primary transition-colors">Shipping Costs</a>
-                                <a href="#tracking" className="block text-gray-500 hover:text-melagro-primary transition-colors">Order Tracking</a>
-                                <a href="#returns" className="block text-gray-500 hover:text-melagro-primary transition-colors">Returns & Exchanges</a>
+                                <a href="#delivery-times" className="block text-melagri-primary font-bold">Delivery Times</a>
+                                <a href="#shipping-costs" className="block text-gray-500 hover:text-melagri-primary transition-colors">Shipping Costs</a>
+                                <a href="#tracking" className="block text-gray-500 hover:text-melagri-primary transition-colors">Order Tracking</a>
+                                <a href="#returns" className="block text-gray-500 hover:text-melagri-primary transition-colors">Returns & Exchanges</a>
                             </nav>
                         </div>
 
@@ -43,15 +43,15 @@ export default function ShippingPage() {
                                     <ul className="space-y-4">
                                         <li className="flex justify-between border-b border-gray-200 pb-2">
                                             <span className="text-gray-600">Nairobi & Environs</span>
-                                            <span className="font-bold text-melagro-primary text-sm">Same Day / 24 Hours</span>
+                                            <span className="font-bold text-melagri-primary text-sm">Same Day / 24 Hours</span>
                                         </li>
                                         <li className="flex justify-between border-b border-gray-200 pb-2">
                                             <span className="text-gray-600">Major Towns (Nakuru, Kisumu, Eldoret, etc.)</span>
-                                            <span className="font-bold text-melagro-primary text-sm">24 - 48 Hours</span>
+                                            <span className="font-bold text-melagri-primary text-sm">24 - 48 Hours</span>
                                         </li>
                                         <li className="flex justify-between">
                                             <span className="text-gray-600">Remote / Field Locations</span>
-                                            <span className="font-bold text-melagro-primary text-sm">48 - 72 Hours</span>
+                                            <span className="font-bold text-melagri-primary text-sm">48 - 72 Hours</span>
                                         </li>
                                     </ul>
                                 </div>
@@ -69,7 +69,7 @@ export default function ShippingPage() {
                                     Our shipping rates are calculated based on the weight of the items and the delivery distance. You will see the final shipping cost at checkout before you complete your purchase.
                                 </p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                                    <div className="p-6 rounded-2xl border-2 border-melagro-primary/10 bg-melagro-primary/[0.02]">
+                                    <div className="p-6 rounded-2xl border-2 border-melagri-primary/10 bg-melagri-primary/[0.02]">
                                         <h4 className="font-bold text-gray-900 mb-2">Free Delivery</h4>
                                         <p className="text-sm text-gray-600">On all orders above KSh 20,000 within Nairobi.</p>
                                     </div>

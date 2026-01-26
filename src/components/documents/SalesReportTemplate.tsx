@@ -33,14 +33,14 @@ export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders
                 </div>
                 <div className="md:text-right flex flex-col items-end">
                     <Logo className="mb-4 scale-125 origin-right" />
-                    <div className="text-xl font-black text-gray-900 mb-1">{general.companyName || "MelAgro Kenya"}</div>
-                    <p className="text-gray-500 text-xs">{general.supportEmail || "admin@melagro.com"}</p>
+                    <div className="text-xl font-black text-gray-900 mb-1">{general.companyName || "Mel-Agri Kenya"}</div>
+                    <p className="text-gray-500 text-xs">{general.supportEmail || "admin@Mel-Agri.com"}</p>
                 </div>
             </div>
 
             {/* Executive Summary */}
             <div className="mb-12">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 border-l-4 border-melagro-primary pl-4">Executive Summary</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-6 border-l-4 border-melagri-primary pl-4">Executive Summary</h2>
                 <div className="grid grid-cols-3 gap-6">
                     <div className="bg-gray-50 p-6 rounded-xl text-center">
                         <div className="text-sm text-gray-500 mb-1">Total Revenue (Paid)</div>
@@ -59,7 +59,7 @@ export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders
 
             {/* Order Status Breakdown */}
             <div className="mb-12">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 border-l-4 border-melagro-primary pl-4">Order Status Breakdown</h2>
+                <h2 className="text-xl font-bold text-gray-900 mb-6 border-l-4 border-melagri-primary pl-4">Order Status Breakdown</h2>
                 <table className="w-full border border-gray-200">
                     <thead className="bg-gray-100">
                         <tr>
@@ -80,30 +80,43 @@ export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders
                 </table>
             </div>
 
-            {/* Recent Transactions */}
+            {/* Recent Transactions & Audit Trail */}
             <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-6 border-l-4 border-melagro-primary pl-4">Recent Transactions</h2>
-                <table className="w-full border border-gray-200 text-sm">
+                <div className="flex justify-between items-center mb-6 border-l-4 border-melagri-primary pl-4">
+                    <h2 className="text-xl font-bold text-gray-900">Transaction Audit Trail</h2>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Financial Transparency Mode</span>
+                </div>
+                <table className="w-full border border-gray-200 text-[11px]">
                     <thead className="bg-gray-100">
                         <tr>
-                            <th className="text-left py-3 px-4 font-bold text-gray-900">Date</th>
-                            <th className="text-left py-3 px-4 font-bold text-gray-900">Order ID</th>
-                            <th className="text-left py-3 px-4 font-bold text-gray-900">Customer</th>
-                            <th className="text-right py-3 px-4 font-bold text-gray-900">Amount</th>
+                            <th className="text-left py-3 px-4 font-bold text-gray-900 uppercase tracking-wider">Stamp</th>
+                            <th className="text-left py-3 px-4 font-bold text-gray-900 uppercase tracking-wider">Order ID</th>
+                            <th className="text-left py-3 px-4 font-bold text-gray-900 uppercase tracking-wider">Method</th>
+                            <th className="text-left py-3 px-4 font-bold text-gray-900 uppercase tracking-wider">Provenance</th>
+                            <th className="text-right py-3 px-4 font-bold text-gray-900 uppercase tracking-wider">Settlement</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                        {orders.slice(0, 20).map(order => (
-                            <tr key={order.id}>
+                        {orders.slice(0, 30).map(order => (
+                            <tr key={order.id} className="hover:bg-gray-50 transition-colors">
                                 <td className="py-2 px-4 text-gray-600">{new Date(order.date).toLocaleDateString()}</td>
-                                <td className="py-2 px-4 text-gray-900 font-mono">#{order.id.slice(0, 8)}</td>
-                                <td className="py-2 px-4 text-gray-600 truncate max-w-[200px]">{order.userEmail}</td>
-                                <td className="py-2 px-4 text-right font-medium">KES {order.total.toLocaleString()}</td>
+                                <td className="py-2 px-4 text-gray-900 font-black tracking-tight">#{order.id.slice(0, 8)}</td>
+                                <td className="py-2 px-4">
+                                    <span className="bg-gray-100 px-2 py-0.5 rounded text-[9px] font-bold text-gray-500 uppercase">
+                                        {order.paymentMethod || 'STK Push'}
+                                    </span>
+                                </td>
+                                <td className="py-2 px-4 italic text-gray-500">
+                                    {order.paymentMethod === 'M-Pesa' || order.paymentMethod === 'M-Pesa Checkout'
+                                        ? 'System Verified'
+                                        : (order.paymentStatus === 'Paid' ? 'Admin Recorded' : 'Pending Settlement')}
+                                </td>
+                                <td className="py-2 px-4 text-right font-black text-gray-900">KES {order.total.toLocaleString()}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
-                <p className="text-center text-xs text-gray-400 mt-4">Showing last 20 transactions only.</p>
+                <p className="text-center text-[10px] text-gray-400 mt-6 italic">This report contains sensitive financial data. Authorized Mel-Agri personnel only.</p>
             </div>
         </div>
     );

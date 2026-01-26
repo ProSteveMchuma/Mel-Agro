@@ -31,7 +31,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     // Initial Load from Persistent Storage
     useEffect(() => {
-        const savedAffinity = localStorage.getItem('melagro_behavior_affinity');
+        const savedAffinity = localStorage.getItem('Mel-Agri_behavior_affinity');
         if (savedAffinity) {
             try {
                 setAffinityIndex(JSON.parse(savedAffinity));
@@ -44,7 +44,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Save to Persistent Storage & Firestore on change
     useEffect(() => {
         if (Object.keys(affinityIndex).length > 0) {
-            localStorage.setItem('melagro_behavior_affinity', JSON.stringify(affinityIndex));
+            localStorage.setItem('Mel-Agri_behavior_affinity', JSON.stringify(affinityIndex));
 
             if (user?.uid) {
                 const syncData = async () => {

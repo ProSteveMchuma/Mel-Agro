@@ -5,7 +5,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: "Our Heritage & Vision",
-    description: "Learn about Mel-Agro's mission to transform Kenyan agriculture. A subsidiary of Mel-Agri, we bring decades of expertise to your farm.",
+    description: "Learn about Mel-Agri's mission to transform Kenyan agriculture. A subsidiary of Mel-Agri, we bring decades of expertise to your farm.",
 };
 
 export default function AboutPage() {
@@ -16,20 +16,20 @@ export default function AboutPage() {
             <main className="flex-grow">
                 {/* Hero Section */}
                 <section className="relative py-32 lg:py-48 bg-gray-900 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-melagro-primary/40 via-transparent to-melagro-secondary/20 z-0"></div>
-                    <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-melagro-primary/20 rounded-full blur-[120px] -mr-48 -mt-48 animate-pulse"></div>
-                    <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-melagro-secondary/10 rounded-full blur-[80px] -ml-24 -mb-24"></div>
+                    <div className="absolute inset-0 bg-gradient-to-tr from-melagri-primary/40 via-transparent to-melagri-secondary/20 z-0"></div>
+                    <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-melagri-primary/20 rounded-full blur-[120px] -mr-48 -mt-48 animate-pulse"></div>
+                    <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-melagri-secondary/10 rounded-full blur-[80px] -ml-24 -mb-24"></div>
 
                     <div className="container-custom relative z-10">
                         <div className="max-w-4xl">
-                            <span className="inline-block px-4 py-2 bg-melagro-primary/10 border border-melagro-primary/20 rounded-full text-melagro-primary text-xs font-black tracking-widest uppercase mb-6 animate-fade-in">
+                            <span className="inline-block px-4 py-2 bg-melagri-primary/10 border border-melagri-primary/20 rounded-full text-melagri-primary text-xs font-black tracking-widest uppercase mb-6 animate-fade-in">
                                 Established for Excellence
                             </span>
                             <h1 className="text-5xl md:text-8xl font-black text-white mb-8 tracking-tighter leading-[0.9]">
-                                Cultivating the <span className="text-transparent bg-clip-text bg-gradient-to-r from-melagro-primary to-green-300">Future</span> of Agri-Tech
+                                Cultivating the <span className="text-transparent bg-clip-text bg-gradient-to-r from-melagri-primary to-green-300">Future</span> of Agri-Tech
                             </h1>
                             <p className="text-xl md:text-2xl text-gray-400 font-medium leading-relaxed max-w-2xl">
-                                Mel-Agro is redefining the agricultural landscape in Africa through innovation and quality inputs.
+                                Mel-Agri is redefining the agricultural landscape in Africa through innovation and quality inputs.
                             </p>
                         </div>
                     </div>
@@ -46,11 +46,11 @@ export default function AboutPage() {
                                         Our Heritage
                                     </div>
                                     <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 tracking-tight">
-                                        A Proud Subsidiary of <span className="text-melagro-primary">Mel-Agri</span>
+                                        A Proud Subsidiary of <span className="text-melagri-primary">Mel-Agri</span>
                                     </h2>
                                     <div className="space-y-6 text-gray-600 text-lg leading-relaxed">
                                         <p>
-                                            Mel-Agro operates as a specialized digital arm of <strong>Mel-Agri</strong>, leveraging decades of on-field expertise and supply chain mastery.
+                                            Mel-Agri operates as a specialized digital arm of <strong>Mel-Agri</strong>, leveraging decades of on-field expertise and supply chain mastery.
                                         </p>
                                         <p>
                                             Our ecosystem is built on the foundation of research and development, ensuring that every product on our platform meets the highest standards of agricultural efficacy.
@@ -58,21 +58,21 @@ export default function AboutPage() {
                                     </div>
                                     <div className="mt-10 grid grid-cols-2 md:grid-cols-3 gap-8">
                                         <div>
-                                            <div className="text-3xl font-black text-melagro-primary">20+</div>
+                                            <div className="text-3xl font-black text-melagri-primary">20+</div>
                                             <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Years Experience</div>
                                         </div>
                                         <div>
-                                            <div className="text-3xl font-black text-melagro-primary">50k+</div>
+                                            <div className="text-3xl font-black text-melagri-primary">50k+</div>
                                             <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Farmers Served</div>
                                         </div>
                                         <div>
-                                            <div className="text-3xl font-black text-melagro-primary">100%</div>
+                                            <div className="text-3xl font-black text-melagri-primary">100%</div>
                                             <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quality Assurance</div>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="lg:w-1/2 relative">
-                                    <div className="aspect-square bg-gradient-to-br from-melagro-primary to-green-200 rounded-[3rem] overflow-hidden shadow-2xl transform lg:rotate-3 hover:rotate-0 transition-transform duration-700">
+                                    <div className="aspect-square bg-gradient-to-br from-melagri-primary to-green-200 rounded-[3rem] overflow-hidden shadow-2xl transform lg:rotate-3 hover:rotate-0 transition-transform duration-700">
                                         <div className="absolute inset-0 bg-black/10"></div>
                                         <div className="p-12 h-full flex flex-col justify-end text-white">
                                             <div className="text-6xl font-black mb-4">"</div>
@@ -92,8 +92,8 @@ export default function AboutPage() {
                     <div className="container-custom">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="group relative p-10 bg-white rounded-[2.5rem] shadow-sm border border-gray-100 hover:shadow-xl hover:-translate-y-2 transition-all duration-500">
-                                <div className="absolute -top-6 -right-6 w-32 h-32 bg-melagro-primary/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                                <div className="w-20 h-20 bg-melagro-primary/10 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform text-melagro-primary">
+                                <div className="absolute -top-6 -right-6 w-32 h-32 bg-melagri-primary/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                                <div className="w-20 h-20 bg-melagri-primary/10 rounded-3xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform text-melagri-primary">
                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                                     </svg>
@@ -125,17 +125,17 @@ export default function AboutPage() {
                 <section className="py-32 bg-white">
                     <div className="container-custom">
                         <div className="text-center mb-20">
-                            <span className="text-xs font-black text-melagro-primary uppercase tracking-[0.2em] mb-4 block">The Mel-Agro DNA</span>
+                            <span className="text-xs font-black text-white uppercase tracking-[0.2em] mb-4 block">The Mel-Agri DNA</span>
                             <h2 className="text-4xl md:text-6xl font-black text-gray-900 tracking-tighter">Our Core Values</h2>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                             {[
                                 { title: "Integrity", desc: "Honesty in every seed we sell and every advice we give.", color: "bg-green-500" },
-                                { title: "Innovation", desc: "Constant pursuit of digital solutions for simple problems.", color: "bg-melagro-primary" },
+                                { title: "Innovation", desc: "Constant pursuit of digital solutions for simple problems.", color: "bg-melagri-primary" },
                                 { title: "Resilience", desc: "Standing by our farmers through every season and storm.", color: "bg-orange-500" },
                                 { title: "Excellence", desc: "Uncompromising quality in products and customer service.", color: "bg-blue-600" }
                             ].map((val, i) => (
-                                <div key={i} className="p-8 rounded-[2rem] bg-gray-50 border border-gray-100 hover:bg-white hover:border-melagro-primary/20 hover:shadow-2xl transition-all group">
+                                <div key={i} className="p-8 rounded-[2rem] bg-gray-50 border border-gray-100 hover:bg-white hover:border-melagri-primary/20 hover:shadow-2xl transition-all group">
                                     <div className={`w-3 h-3 rounded-full mb-6 ${val.color}`}></div>
                                     <h4 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">{val.title}</h4>
                                     <p className="text-sm text-gray-500 font-medium leading-relaxed">{val.desc}</p>
@@ -155,7 +155,7 @@ export default function AboutPage() {
                         </p>
                         <Link
                             href="/products"
-                            className="inline-flex items-center gap-3 bg-melagro-primary text-white px-12 py-5 rounded-2xl font-black text-lg hover:bg-melagro-secondary transition-all shadow-2xl shadow-melagro-primary/40 active:scale-95"
+                            className="inline-flex items-center gap-3 bg-melagri-primary text-white px-12 py-5 rounded-2xl font-black text-lg hover:bg-melagri-secondary transition-all shadow-2xl shadow-melagri-primary/40 active:scale-95"
                         >
                             Explore Marketplace
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">

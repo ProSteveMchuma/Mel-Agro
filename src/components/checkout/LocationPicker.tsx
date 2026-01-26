@@ -126,7 +126,7 @@ export default function LocationPicker({ onLocationSelect, initialLat = -1.2921,
         <div className="h-[300px] w-full rounded-xl overflow-hidden border border-gray-200 relative z-0">
             {(loading || isGeocoding) && (
                 <div className="absolute inset-0 bg-white/60 z-[1000] flex flex-col items-center justify-center gap-2">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-melagro-primary"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-melagri-primary"></div>
                     <p className="text-[10px] font-bold text-gray-900 uppercase tracking-widest">
                         {isGeocoding ? "Detecting Address..." : "Getting Location..."}
                     </p>

@@ -31,11 +31,8 @@ const FadeInWhenVisible = ({ children, delay = 0 }: { children: React.ReactNode,
 import { getUniqueCategories } from "@/lib/products";
 import { useState, useEffect } from "react";
 import SidebarCategories, { CATEGORY_ICONS } from "@/components/SidebarCategories";
-import EnhancedSearch from "@/components/EnhancedSearch";
-
 export default function Home() {
   const [categories, setCategories] = useState<string[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchDynamicData = async () => {
@@ -44,13 +41,6 @@ export default function Home() {
     };
     fetchDynamicData();
   }, []);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      window.location.href = `/products?search=${encodeURIComponent(searchQuery.trim())}`;
-    }
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-green-100 selection:text-green-900">
@@ -73,22 +63,6 @@ export default function Home() {
             {/* Main Content Area (Right) */}
             <div className="flex-grow w-full lg:w-3/4 space-y-16">
 
-              {/* Enhanced Search Block */}
-              <FadeInWhenVisible>
-                <div className="relative py-12 px-8 rounded-[3rem] bg-gray-50 border border-gray-100 shadow-sm">
-                  {/* Background clipping container */}
-                  <div className="absolute inset-0 overflow-hidden rounded-[3rem]">
-                    <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1932&auto=format&fit=crop')] bg-cover bg-center opacity-10" />
-                  </div>
-                  <div className="relative z-10 text-center space-y-8">
-                    <div className="space-y-2">
-                      <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.4em]">Premium Agricultural Marketplace</p>
-                      <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter uppercase leading-[0.9]">Find your farm inputs</h1>
-                    </div>
-                    <EnhancedSearch />
-                  </div>
-                </div>
-              </FadeInWhenVisible>
 
               {/* Featured Products Slider */}
               <FadeInWhenVisible delay={0.1}>

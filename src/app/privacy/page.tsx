@@ -10,7 +10,7 @@ export default function PrivacyPolicy() {
                 <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm max-w-4xl mx-auto">
                     <h1 className="text-3xl font-black text-gray-900 mb-6">Privacy Policy</h1>
                     <div className="prose prose-green max-w-none text-gray-600">
-                        <p className="mb-4">At Mel-Agro, we take your privacy seriously. This policy outlines how we collect, use, and protect your personal information.</p>
+                        <p className="mb-4">At Mel-Agri, we take your privacy seriously. This policy outlines how we collect, use, and protect your personal information.</p>
 
                         <h2 className="text-xl font-bold text-gray-800 mt-6 mb-3">1. Information We Collect</h2>
                         <p className="mb-4">We collect information you provide directly to us, such as when you create an account, make a purchase, or contact customer support.</p>

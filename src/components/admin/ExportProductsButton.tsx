@@ -26,7 +26,7 @@ export default function ExportProductsButton() {
                         : `Kes ${p.price}`;
 
                     return {
-                        'PRODUCT CODE': p.id.toString().substring(0, 8),
+                        'PRODUCT CODE': p.productCode || p.id.toString().substring(0, 8),
                         'PRODUCT NAME': p.name,
                         'PRODUCT DISCRIPTION': p.description,
                         'SPECIFICATION': p.specification || "",
@@ -34,7 +34,7 @@ export default function ExportProductsButton() {
                         'PRODUCT PRICE': variantStr,
                         'CATEGORY': p.category,
                         'SUB CATEGORY': p.subCategory || "",
-                        'SUPPLIER ': p.brand || "MEL-AGRI",
+                        'BRAND': p.brand || "MEL-AGRI",
                         'PHOTO': p.image
                     };
                 });
@@ -45,7 +45,7 @@ export default function ExportProductsButton() {
                 XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
 
                 // Download
-                XLSX.writeFile(workbook, `MelAgro_Catalog_${new Date().toISOString().split('T')[0]}.xlsx`);
+                XLSX.writeFile(workbook, `Mel-Agri_Catalog_${new Date().toISOString().split('T')[0]}.xlsx`);
 
                 toast.success('Catalog exported successfully!', { id: loadingToast });
             } else {
@@ -65,7 +65,7 @@ export default function ExportProductsButton() {
             disabled={isExporting}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm transition-all shadow-lg active:scale-95 ${isExporting
                 ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-white text-melagro-primary border border-melagro-primary/20 hover:bg-melagro-primary/5 shadow-melagro-primary/10"
+                : "bg-white text-melagri-primary border border-melagri-primary/20 hover:bg-melagri-primary/5 shadow-melagri-primary/10"
                 }`}
         >
             {isExporting ? (

@@ -67,8 +67,8 @@ export default function Sidebar({
                         <button
                             onClick={() => handleCategoryClick("")}
                             className={`w-full text-left px-4 py-3 rounded-2xl transition-all text-sm font-bold flex items-center gap-3 ${!activeCategory
-                                ? "bg-melagro-primary text-white shadow-lg shadow-green-100"
-                                : "text-gray-600 hover:text-melagro-primary hover:bg-green-50"
+                                ? "bg-melagri-primary text-white shadow-lg shadow-green-100"
+                                : "text-gray-600 hover:text-melagri-primary hover:bg-green-50"
                                 }`}
                         >
                             <span className={`w-1.5 h-1.5 rounded-full ${!activeCategory ? "bg-white" : "bg-gray-300"}`} />
@@ -81,8 +81,8 @@ export default function Sidebar({
                                     key={idx}
                                     onClick={() => handleCategoryClick(category)}
                                     className={`w-full text-left px-4 py-3 rounded-2xl transition-all text-sm font-bold flex items-center gap-3 ${isActive
-                                        ? "bg-melagro-primary text-white shadow-lg shadow-green-100"
-                                        : "text-gray-600 hover:text-melagro-primary hover:bg-green-50"
+                                        ? "bg-melagri-primary text-white shadow-lg shadow-green-100"
+                                        : "text-gray-600 hover:text-melagri-primary hover:bg-green-50"
                                         }`}
                                 >
                                     <span className={`w-1.5 h-1.5 rounded-full ${isActive ? "bg-white" : "bg-gray-300"}`} />
@@ -108,7 +108,7 @@ export default function Sidebar({
                                     placeholder="0"
                                     value={minPrice}
                                     onChange={(e) => setMinPrice(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-melagro-primary/20 transition-all placeholder:text-gray-300"
+                                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-melagri-primary/20 transition-all placeholder:text-gray-300"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -118,7 +118,7 @@ export default function Sidebar({
                                     placeholder="Any"
                                     value={maxPrice}
                                     onChange={(e) => setMaxPrice(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-melagro-primary/20 transition-all placeholder:text-gray-300"
+                                    className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl text-sm font-bold focus:ring-2 focus:ring-melagri-primary/20 transition-all placeholder:text-gray-300"
                                 />
                             </div>
                         </div>
@@ -140,10 +140,10 @@ export default function Sidebar({
                                             type="checkbox"
                                             checked={selectedBrands.includes(brand)}
                                             onChange={() => onBrandChange?.(brand)}
-                                            className="peer w-5 h-5 rounded-lg border-gray-200 text-melagro-primary focus:ring-melagro-primary/20 transition-all cursor-pointer accent-melagro-primary"
+                                            className="peer w-5 h-5 rounded-lg border-gray-200 text-melagri-primary focus:ring-melagri-primary/20 transition-all cursor-pointer accent-melagri-primary"
                                         />
                                     </div>
-                                    <span className="text-sm font-bold text-gray-600 group-hover:text-melagro-primary transition-colors">{brand}</span>
+                                    <span className="text-sm font-bold text-gray-600 group-hover:text-melagri-primary transition-colors">{brand}</span>
                                 </label>
                             ))}
                         </div>
@@ -152,11 +152,11 @@ export default function Sidebar({
 
                 {/* Bulk Order Card */}
                 <div className="pt-8 border-t border-gray-50">
-                    <div className="bg-gradient-to-br from-melagro-primary to-green-700 p-6 rounded-[2.5rem] shadow-xl shadow-green-100 relative overflow-hidden group">
+                    <div className="bg-gradient-to-br from-melagri-primary to-green-700 p-6 rounded-[2.5rem] shadow-xl shadow-green-100 relative overflow-hidden group">
                         <div className="relative z-10">
                             <p className="text-[9px] font-black text-green-100 mb-2 uppercase tracking-widest">Global Supply</p>
                             <p className="text-base font-black text-white leading-tight mb-4">Bulk orders available for cooperatives</p>
-                            <Link href="/bulk-orders" className="inline-block px-5 py-2.5 bg-white text-melagro-primary text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-green-50 transition-all shadow-sm">
+                            <Link href="/bulk-orders" className="inline-block px-5 py-2.5 bg-white text-melagri-primary text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-green-50 transition-all shadow-sm">
                                 View Pricing
                             </Link>
                         </div>

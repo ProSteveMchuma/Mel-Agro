@@ -151,13 +151,20 @@ export default function CheckoutPage() {
                     lng: shippingData.lng
                 },
                 phone: shippingData.phone,
-                paymentMethod: paymentMethod,
+                paymentMethod: paymentMethod === 'whatsapp' ? 'WhatsApp Order' : (paymentMethod === 'cod' ? 'Cash on Delivery' : 'M-Pesa'),
                 paymentStatus: paymentMethod === 'whatsapp' ? 'Pending WhatsApp' : 'Unpaid',
                 shippingMethod: shippingMethod,
                 shippingCost: shippingCost
             });
 
             const newOrder = await addOrder(orderData, discountFromPoints);
+
+            // Mark cart as converted for analytics
+            await updateDoc(doc(db, 'carts', user.uid), {
+                status: 'converted',
+                convertedAt: new Date().toISOString(),
+                lastOrderId: newOrder.id
+            }).catch(() => { }); // Non-blocking
 
             if (paymentMethod === 'whatsapp') {
                 const message = generateWhatsAppMessage({
@@ -314,9 +321,9 @@ export default function CheckoutPage() {
                     {/* Breadcrumb */}
                     <div className="mb-8">
                         <nav className="flex items-center gap-2 text-sm text-gray-600">
-                            <Link href="/cart" className="hover:text-melagro-primary transition-colors">Cart</Link>
+                            <Link href="/cart" className="hover:text-melagri-primary transition-colors">Cart</Link>
                             <span className="text-gray-400">/</span>
-                            <span className="text-melagro-primary font-semibold">Secure Checkout</span>
+                            <span className="text-melagri-primary font-semibold">Secure Checkout</span>
                         </nav>
                     </div>
 
@@ -327,20 +334,20 @@ export default function CheckoutPage() {
                                 <div key={step.id} className="flex-1">
                                     <div className="flex items-center">
                                         <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${currentStep >= step.id
-                                            ? 'bg-melagro-primary text-white'
+                                            ? 'bg-melagri-primary text-white'
                                             : 'bg-gray-200 text-gray-500'
                                             }`}>
                                             {currentStep > step.id ? '✓' : step.id}
                                         </div>
                                         <div className="ml-3 flex-1">
-                                            <p className={`text-sm font-semibold transition-all ${currentStep >= step.id ? 'text-melagro-primary' : 'text-gray-500'
+                                            <p className={`text-sm font-semibold transition-all ${currentStep >= step.id ? 'text-melagri-primary' : 'text-gray-500'
                                                 }`}>
                                                 {step.label}
                                             </p>
                                         </div>
                                     </div>
                                     {idx < steps.length - 1 && (
-                                        <div className={`ml-5 mt-2 h-1 transition-all ${currentStep > step.id ? 'bg-melagro-primary' : 'bg-gray-200'
+                                        <div className={`ml-5 mt-2 h-1 transition-all ${currentStep > step.id ? 'bg-melagri-primary' : 'bg-gray-200'
                                             }`}></div>
                                     )}
                                 </div>
@@ -379,9 +386,9 @@ export default function CheckoutPage() {
                                                                 }));
                                                                 toast.success(`Loaded "${addr.label}"`);
                                                             }}
-                                                            className="text-left p-3 bg-white rounded-xl border border-gray-100 hover:border-melagro-primary hover:shadow-md transition-all group"
+                                                            className="text-left p-3 bg-white rounded-xl border border-gray-100 hover:border-melagri-primary hover:shadow-md transition-all group"
                                                         >
-                                                            <p className="font-bold text-gray-900 text-sm group-hover:text-melagro-primary">{addr.label}</p>
+                                                            <p className="font-bold text-gray-900 text-sm group-hover:text-melagri-primary">{addr.label}</p>
                                                             <p className="text-[10px] text-gray-400 line-clamp-1">{addr.details}</p>
                                                         </button>
                                                     ))}
@@ -399,7 +406,7 @@ export default function CheckoutPage() {
                                                     value={shippingData.email}
                                                     onChange={handleInputChange}
                                                     placeholder="john@example.com"
-                                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                                                 />
                                             </div>
 
@@ -412,7 +419,7 @@ export default function CheckoutPage() {
                                                     value={shippingData.phone}
                                                     onChange={handleInputChange}
                                                     placeholder="748 970 757"
-                                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                                                 />
                                             </div>
 
@@ -430,7 +437,7 @@ export default function CheckoutPage() {
                                                         value={shippingData.firstName}
                                                         onChange={handleInputChange}
                                                         placeholder="John"
-                                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                                                     />
                                                 </div>
                                                 <div>
@@ -441,7 +448,7 @@ export default function CheckoutPage() {
                                                         value={shippingData.lastName}
                                                         onChange={handleInputChange}
                                                         placeholder="Doe"
-                                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                                                     />
                                                 </div>
                                             </div>
@@ -453,7 +460,7 @@ export default function CheckoutPage() {
                                                     name="county"
                                                     value={shippingData.county}
                                                     onChange={handleInputChange}
-                                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                                                 >
                                                     <option>Nairobi</option>
                                                     <option>Mombasa</option>
@@ -472,7 +479,7 @@ export default function CheckoutPage() {
                                                     value={shippingData.town}
                                                     onChange={handleInputChange}
                                                     placeholder="e.g. Westlands, Kilimani, Langata"
-                                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                                                 />
                                             </div>
 
@@ -485,7 +492,7 @@ export default function CheckoutPage() {
                                                     onChange={handleInputChange}
                                                     placeholder="e.g. Apartment, Building, Floor"
                                                     rows={3}
-                                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                                                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                                                 />
                                             </div>
 
@@ -519,7 +526,7 @@ export default function CheckoutPage() {
                                             <h3 className="text-lg font-bold text-gray-900 mb-4">Shipping Method</h3>
                                             <div className="space-y-3">
                                                 <label className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${shippingMethod === 'standard'
-                                                    ? 'border-melagro-primary bg-melagro-primary/5'
+                                                    ? 'border-melagri-primary bg-melagri-primary/5'
                                                     : 'border-gray-200 hover:border-gray-300'
                                                     }`}>
                                                     <div className="flex items-center gap-3">
@@ -529,14 +536,14 @@ export default function CheckoutPage() {
                                                             value="standard"
                                                             checked={shippingMethod === 'standard'}
                                                             onChange={(e) => setShippingMethod(e.target.value)}
-                                                            className="w-4 h-4 accent-melagro-primary"
+                                                            className="w-4 h-4 accent-melagri-primary"
                                                         />
                                                         <div className="flex-1">
                                                             <p className="font-semibold text-gray-900">Standard Delivery</p>
                                                             <p className="text-sm text-gray-500">Arrives in 1-3 business days</p>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="font-bold text-melagro-primary">
+                                                            <p className="font-bold text-melagri-primary">
                                                                 {shippingCost === 0 ? "FREE" : `KES ${shippingCost.toLocaleString()}`}
                                                             </p>
                                                             {shippingMethod === 'standard' && (
@@ -547,7 +554,7 @@ export default function CheckoutPage() {
                                                 </label>
 
                                                 <label className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${shippingMethod === 'pickup'
-                                                    ? 'border-melagro-primary bg-melagro-primary/5'
+                                                    ? 'border-melagri-primary bg-melagri-primary/5'
                                                     : 'border-gray-200 hover:border-gray-300'
                                                     }`}>
                                                     <div className="flex items-center gap-3">
@@ -557,13 +564,13 @@ export default function CheckoutPage() {
                                                             value="pickup"
                                                             checked={shippingMethod === 'pickup'}
                                                             onChange={(e) => setShippingMethod(e.target.value)}
-                                                            className="w-4 h-4 accent-melagro-primary"
+                                                            className="w-4 h-4 accent-melagri-primary"
                                                         />
                                                         <div className="flex-1">
                                                             <p className="font-semibold text-gray-900">Pick-up Station</p>
                                                             <p className="text-sm text-gray-500">At our store location</p>
                                                         </div>
-                                                        <p className="font-bold text-melagro-primary">KES 100.00</p>
+                                                        <p className="font-bold text-melagri-primary">KES 100.00</p>
                                                     </div>
                                                 </label>
                                             </div>
@@ -573,7 +580,7 @@ export default function CheckoutPage() {
                                         <div className="mt-8 flex justify-end">
                                             <button
                                                 onClick={handleNextStep}
-                                                className="bg-melagro-primary hover:bg-melagro-secondary text-white px-8 py-3 rounded-lg font-semibold transition-colors"
+                                                className="bg-melagri-primary hover:bg-melagri-secondary text-white px-8 py-3 rounded-lg font-semibold transition-colors"
                                             >
                                                 Continue to Payment →
                                             </button>
@@ -645,12 +652,12 @@ export default function CheckoutPage() {
                                             <div
                                                 onClick={() => setPaymentMethod('card')}
                                                 className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'card'
-                                                    ? 'border-melagro-primary bg-blue-50/50 shadow-sm ring-2 ring-melagro-primary/20'
+                                                    ? 'border-melagri-primary bg-blue-50/50 shadow-sm ring-2 ring-melagri-primary/20'
                                                     : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                                     }`}
                                             >
                                                 {paymentMethod === 'card' && (
-                                                    <div className="absolute top-3 right-3 text-melagro-primary">
+                                                    <div className="absolute top-3 right-3 text-melagri-primary">
                                                         <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                                                     </div>
                                                 )}
@@ -775,7 +782,7 @@ export default function CheckoutPage() {
                                             <div className="pb-8 border-b">
                                                 <div className="flex items-start justify-between mb-4">
                                                     <h3 className="font-bold text-gray-900">Shipping Address</h3>
-                                                    <button className="text-melagro-primary hover:underline text-sm font-semibold" onClick={() => setCurrentStep(1)}>Edit</button>
+                                                    <button className="text-melagri-primary hover:underline text-sm font-semibold" onClick={() => setCurrentStep(1)}>Edit</button>
                                                 </div>
                                                 <p className="text-gray-900 font-semibold">{shippingData.firstName} {shippingData.lastName}</p>
                                                 <p className="text-gray-600">{shippingData.address}</p>
@@ -787,7 +794,7 @@ export default function CheckoutPage() {
                                             <div className="pb-8 border-b">
                                                 <div className="flex items-start justify-between mb-4">
                                                     <h3 className="font-bold text-gray-900">Shipping Method</h3>
-                                                    <button className="text-melagro-primary hover:underline text-sm font-semibold" onClick={() => setCurrentStep(1)}>Edit</button>
+                                                    <button className="text-melagri-primary hover:underline text-sm font-semibold" onClick={() => setCurrentStep(1)}>Edit</button>
                                                 </div>
                                                 <p className="text-gray-900 font-semibold">{shippingMethod === 'standard' ? 'Standard Delivery (2-3 Days)' : 'Pick-up from Store'}</p>
                                             </div>
@@ -796,7 +803,7 @@ export default function CheckoutPage() {
                                             <div className="pb-8 border-b">
                                                 <div className="flex items-start justify-between mb-4">
                                                     <h3 className="font-bold text-gray-900">Payment Method</h3>
-                                                    <button className="text-melagro-primary hover:underline text-sm font-semibold" onClick={() => setCurrentStep(2)}>Edit</button>
+                                                    <button className="text-melagri-primary hover:underline text-sm font-semibold" onClick={() => setCurrentStep(2)}>Edit</button>
                                                 </div>
                                                 <p className="text-gray-900 font-semibold uppercase">
                                                     {paymentMethod === 'cod' ? 'Cash on Delivery' :
@@ -819,7 +826,7 @@ export default function CheckoutPage() {
                                                             <div className="flex-1">
                                                                 <p className="font-semibold text-gray-900">{item.name}</p>
                                                                 {item.selectedVariant && (
-                                                                    <p className="text-xs text-melagro-primary font-bold uppercase tracking-widest mt-0.5">
+                                                                    <p className="text-xs text-melagri-primary font-bold uppercase tracking-widest mt-0.5">
                                                                         Size/Weight: {item.selectedVariant.name}
                                                                     </p>
                                                                 )}
@@ -843,7 +850,7 @@ export default function CheckoutPage() {
                                             <button
                                                 onClick={handlePlaceOrder}
                                                 disabled={isProcessing}
-                                                className="flex-1 bg-melagro-primary hover:bg-melagro-secondary text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                                className="flex-1 bg-melagri-primary hover:bg-melagri-secondary text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                                             >
                                                 {isProcessing ? (
                                                     <>
@@ -898,12 +905,12 @@ export default function CheckoutPage() {
                                             <div className="flex-1">
                                                 <p className="text-sm font-semibold text-gray-900 line-clamp-2">{item.name}</p>
                                                 {item.selectedVariant && (
-                                                    <p className="text-[10px] font-bold text-melagro-primary uppercase tracking-tighter mt-1">
+                                                    <p className="text-[10px] font-bold text-melagri-primary uppercase tracking-tighter mt-1">
                                                         {item.selectedVariant.name}
                                                     </p>
                                                 )}
                                                 <p className="text-xs text-gray-500 mt-1">Qty: {item.quantity}</p>
-                                                <p className="text-sm font-bold text-melagro-primary mt-1">KES {(item.price * item.quantity).toLocaleString()}</p>
+                                                <p className="text-sm font-bold text-melagri-primary mt-1">KES {(item.price * item.quantity).toLocaleString()}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -927,7 +934,7 @@ export default function CheckoutPage() {
                                         <span>Tax (16% VAT)</span>
                                         <span className="font-semibold">Included</span>
                                     </div>
-                                    <div className="pt-3 flex justify-between text-lg font-bold text-melagro-primary border-t border-gray-100">
+                                    <div className="pt-3 flex justify-between text-lg font-bold text-melagri-primary border-t border-gray-100">
                                         <span>Total</span>
                                         <span>KES {total.toLocaleString()}</span>
                                     </div>

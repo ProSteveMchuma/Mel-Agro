@@ -57,7 +57,8 @@ export async function POST(request: Request) {
                 receipt: mpesaReceiptNumber,
                 method: 'M-Pesa',
                 date: new Date().toISOString(),
-                status: 'Success'
+                status: 'Success',
+                recordedBy: 'System (M-Pesa)'
             });
 
         } else {

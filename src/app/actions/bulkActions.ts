@@ -20,6 +20,17 @@ function getRowValue(row: any, ...keys: string[]): any {
     return undefined;
 }
 
+/**
+ * Intelligent string normalization to prevent duplicates from spacing/punctuation
+ */
+function normalizeProductField(val: any): string {
+    if (!val) return "";
+    return String(val)
+        .trim()
+        .replace(/[.,;:]+$/, "") // Remove trailing punctuation
+        .trim();
+}
+
 export async function uploadProductsFromExcel(formData: FormData) {
     const file = formData.get('file') as File;
     if (!file) {
@@ -44,12 +55,16 @@ export async function uploadProductsFromExcel(formData: FormData) {
 
         // 1. Fetch existing products for intelligent deduplication
         const existingSnapshot = await adminDb.collection('products').get();
-        const existingProductsData = new Map<string, { id: string, data: any }>(); // name.toLowerCase() -> {id, data}
+        const skuMap = new Map<string, { id: string, data: any }>();
+        const nameMap = new Map<string, { id: string, data: any }>();
 
         existingSnapshot.forEach(doc => {
             const pData = doc.data();
+            if (pData.productCode) {
+                skuMap.set(normalizeProductField(pData.productCode).toLowerCase(), { id: doc.id, data: pData });
+            }
             if (pData.name) {
-                existingProductsData.set(String(pData.name).toLowerCase().trim(), { id: doc.id, data: pData });
+                nameMap.set(normalizeProductField(pData.name).toLowerCase(), { id: doc.id, data: pData });
             }
         });
 
@@ -93,9 +108,11 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 variants.push({ id: `v-${Date.now()}-0`, name: "Standard", price: basePrice, stockQuantity: 100 });
             }
 
-            // 3. Metadata Extraction
-            const category = getRowValue(row, 'CATEGORY') || "Uncategorized";
-            const subCategory = getRowValue(row, 'SUB CATEGORY', 'SUB-CATEGORY') || "";
+            // 3. Metadata Extraction & Normalization
+            const category = normalizeProductField(getRowValue(row, 'CATEGORY') || "Uncategorized");
+            const subCategory = normalizeProductField(getRowValue(row, 'SUB CATEGORY', 'SUB-CATEGORY') || "");
+            const brand = normalizeProductField(getRowValue(row, 'BRAND', 'MANUFACTURER') || "MEL-AGRI");
+            const productCode = normalizeProductField(getRowValue(row, 'PRODUCT CODE', 'SKU', 'CODE') || "");
 
             let photo = getRowValue(row, 'PHOTO', 'IMAGE');
             if (!photo || (typeof photo === 'string' && !photo.match(/\.(jpg|jpeg|png|webp|gif)$/i))) {
@@ -129,7 +146,8 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 price: basePrice,
                 category: category,
                 subCategory: subCategory,
-                brand: getRowValue(row, 'SUPPLIER', 'SUPPLIER ', 'BRAND', 'MANUFACTURER') || "MEL-AGRI",
+                brand: brand,
+                productCode: productCode,
                 image: (photo && (String(photo).startsWith('http') || String(photo).startsWith('/')))
                     ? photo
                     : "", // Only set image if it's a valid link
@@ -138,13 +156,22 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 lowStockThreshold: 10,
                 variants: variants.length > 1 ? variants : [],
                 weight: parseFloat(getRowValue(row, 'WEIGHT', 'ITEM WEIGHT', 'KG') || "0") || 0,
-                tags: [category, subCategory, String(getRowValue(row, 'PRODUCT CODE') || "")].filter(Boolean).map(t => String(t)),
+                tags: [category, subCategory, productCode].filter(Boolean).map(t => String(t)),
                 lastUpdated: admin.firestore.FieldValue.serverTimestamp()
             };
 
-            // 4. Smart Comparison & Asset Protection
-            if (existingProductsData.has(lowerName)) {
-                const existing = existingProductsData.get(lowerName)!;
+            // 4. Multi-Stage Intelligent Deduplication (SKU First, then Normalized Name)
+            let existing: { id: string, data: any } | undefined = undefined;
+
+            if (productCode) {
+                existing = skuMap.get(productCode.toLowerCase());
+            }
+
+            if (!existing) {
+                existing = nameMap.get(normalizeProductField(trimmedName).toLowerCase());
+            }
+
+            if (existing) {
                 const existingData = existing.data;
 
                 // Protect Image: If existing image is high-quality (not placeholder) and new image is empty/placeholder

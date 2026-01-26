@@ -56,7 +56,7 @@ export default function CartDrawer() {
                 </div>
 
                 {/* Free Shipping Progress */}
-                <div className="bg-melagro-primary/5 p-4 border-b border-gray-100">
+                <div className="bg-melagri-primary/5 p-4 border-b border-gray-100">
                     {cartTotal >= 5000 ? (
                         <div className="text-sm text-green-700 font-bold flex items-center justify-center gap-2 bg-green-50 p-2 rounded-lg border border-green-100">
                             <span>🎉</span> You've got <span className="uppercase">Free Shipping</span>!
@@ -64,11 +64,11 @@ export default function CartDrawer() {
                     ) : (
                         <div>
                             <p className="text-xs text-gray-600 mb-1.5 text-center">
-                                Add <span className="font-bold text-melagro-primary">KES {(5000 - cartTotal).toLocaleString()}</span> more for <span className="font-bold">Free Shipping</span>
+                                Add <span className="font-bold text-melagri-primary">KES {(5000 - cartTotal).toLocaleString()}</span> more for <span className="font-bold">Free Shipping</span>
                             </p>
                             <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                                 <div
-                                    className="h-full bg-melagro-primary transition-all duration-500 ease-out"
+                                    className="h-full bg-melagri-primary transition-all duration-500 ease-out"
                                     style={{ width: `${Math.min((cartTotal / 5000) * 100, 100)}%` }}
                                 />
                             </div>
@@ -117,7 +117,7 @@ export default function CartDrawer() {
                                             </svg>
                                         </button>
                                     </div>
-                                    <p className="text-melagro-primary font-bold text-sm mb-2">KES {item.price.toLocaleString()}</p>
+                                    <p className="text-melagri-primary font-bold text-sm mb-2">KES {item.price.toLocaleString()}</p>
                                     <div className="flex items-center border border-gray-200 rounded-lg w-24">
                                         <button
                                             onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}

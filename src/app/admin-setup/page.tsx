@@ -66,7 +66,7 @@ export default function AdminSetupPage() {
                     <p className="mb-4">Please log in first to claim admin rights.</p>
                     <button
                         onClick={() => router.push('/auth/login?redirect=/admin-setup')}
-                        className="bg-melagro-primary text-white px-6 py-2 rounded-lg"
+                        className="bg-melagri-primary text-white px-6 py-2 rounded-lg"
                     >
                         Log In
                     </button>
@@ -96,14 +96,14 @@ export default function AdminSetupPage() {
                         value={secretCode}
                         onChange={(e) => setSecretCode(e.target.value)}
                         placeholder="Enter admin secret"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagro-primary/20"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagri-primary/20"
                     />
                 </div>
 
                 <button
                     onClick={handleMakeAdmin}
                     disabled={loading || !secretCode}
-                    className="w-full bg-melagro-primary text-white py-3 rounded-xl font-bold hover:bg-melagro-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-melagri-primary text-white py-3 rounded-xl font-bold hover:bg-melagri-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {loading ? 'Processing...' : 'Verify & Make Me Admin'}
                 </button>

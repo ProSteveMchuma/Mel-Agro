@@ -96,7 +96,7 @@ export default function AddProductPage() {
                         required
                         value={formData.name}
                         onChange={handleChange}
-                        className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                        className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                     />
                 </div>
 
@@ -109,7 +109,7 @@ export default function AddProductPage() {
                             required
                             value={formData.price}
                             onChange={handleChange}
-                            className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                            className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                         />
                     </div>
                     <div>
@@ -120,7 +120,7 @@ export default function AddProductPage() {
                             required
                             value={formData.stockQuantity}
                             onChange={handleChange}
-                            className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                            className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                         />
                     </div>
                 </div>
@@ -131,7 +131,7 @@ export default function AddProductPage() {
                         name="category"
                         value={formData.category}
                         onChange={handleChange}
-                        className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                        className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                     >
                         <option value="Fertilizers">Fertilizers</option>
                         <option value="Seeds">Seeds</option>
@@ -148,7 +148,7 @@ export default function AddProductPage() {
                         rows={4}
                         value={formData.description}
                         onChange={handleChange}
-                        className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                        className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                     />
                 </div>
 
@@ -159,7 +159,7 @@ export default function AddProductPage() {
                             type="file"
                             accept="image/*"
                             onChange={handleImageChange}
-                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-melagro-primary/10 file:text-melagro-primary hover:file:bg-melagro-primary/20"
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-melagri-primary/10 file:text-melagri-primary hover:file:bg-melagri-primary/20"
                         />
                         <p className="text-xs text-gray-500">Or use an external URL:</p>
                         <input
@@ -168,7 +168,7 @@ export default function AddProductPage() {
                             placeholder="https://example.com/image.jpg"
                             value={formData.image}
                             onChange={handleChange}
-                            className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                            className="w-full p-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                         />
                         {formData.image && (
                             <div className="mt-2 relative w-full h-48 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
@@ -190,7 +190,7 @@ export default function AddProductPage() {
                     <button
                         type="submit"
                         disabled={isLoading}
-                        className="px-6 py-2 bg-melagro-primary text-white rounded-lg font-medium hover:bg-melagro-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+                        className="px-6 py-2 bg-melagri-primary text-white rounded-lg font-medium hover:bg-melagri-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
                     >
                         {isLoading ? (
                             <>

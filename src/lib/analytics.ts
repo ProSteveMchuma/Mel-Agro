@@ -50,20 +50,26 @@ export const AnalyticsService = {
     },
 
     /**
-     * Log when an item is added to cart.
+     * Track a general website visit.
+     * Records daily totals and unique visitor counts.
      */
-    logAddToCart: async (productId: string) => {
-        if (!productId) return;
-
+    trackVisit: async (isUnique: boolean = false) => {
+        const today = new Date().toISOString().split('T')[0];
         try {
-            const statsRef = doc(db, 'analytics_products', productId);
-            await setDoc(statsRef, {
-                productId,
-                addsToCart: increment(1),
-                lastAdded: serverTimestamp()
-            }, { merge: true });
+            const trafficRef = doc(db, 'analytics_traffic', today);
+            const updateData: any = {
+                date: today,
+                totalVisits: increment(1),
+                lastActive: serverTimestamp()
+            };
+
+            if (isUnique) {
+                updateData.uniqueVisitors = increment(1);
+            }
+
+            await setDoc(trafficRef, updateData, { merge: true });
         } catch (error) {
-            console.error("Failed to log add to cart:", error);
+            console.error("Failed to track visit:", error);
         }
     }
 };

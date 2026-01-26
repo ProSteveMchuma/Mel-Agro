@@ -18,7 +18,7 @@ export const SmsService = {
             formattedPhone = '+' + formattedPhone;
         }
 
-        const message = `Habari ${name || 'Farmer'}, your MelAgro order #${orderId.slice(0, 5)} is now ${status}. Thank you for farming with us!`;
+        const message = `Habari ${name || 'Farmer'}, your Mel-Agri order #${orderId.slice(0, 5)} is now ${status}. Thank you for farming with us!`;
 
         // Send via our API route (browser-safe)
         try {

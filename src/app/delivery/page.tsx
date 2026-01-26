@@ -10,11 +10,11 @@ export default function DeliveryInfo() {
                 <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm max-w-4xl mx-auto">
                     <h1 className="text-3xl font-black text-gray-900 mb-6">Delivery Information</h1>
                     <div className="prose prose-green max-w-none text-gray-600">
-                        <p className="mb-4">Mel-Agro offers reliable delivery across Kenya. We partner with trusted logistics providers to ensure your farm inputs arrive safely and on time.</p>
+                        <p className="mb-4">Mel-Agri offers reliable delivery across Kenya. We partner with trusted logistics providers to ensure your farm inputs arrive safely and on time.</p>
 
                         <div className="grid md:grid-cols-2 gap-6 my-8">
                             <div className="bg-green-50 p-6 rounded-2xl border border-green-100">
-                                <h3 className="font-bold text-lg text-melagro-primary mb-2">Nairobi Region</h3>
+                                <h3 className="font-bold text-lg text-melagri-primary mb-2">Nairobi Region</h3>
                                 <p className="text-sm">Delivery within 24 hours. Free for orders over KES 5,000.</p>
                             </div>
                             <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">

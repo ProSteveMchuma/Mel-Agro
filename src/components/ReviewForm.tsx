@@ -68,7 +68,7 @@ export default function ReviewForm({ productId, onReviewAdded }: { productId: st
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     rows={4}
-                    className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary text-sm"
+                    className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary text-sm"
                     placeholder="Share your experience with this product..."
                 />
             </div>

@@ -61,7 +61,7 @@ export default function AdminNotificationsPopover({ isOpen, onClose }: AdminNoti
                         {notifications.slice(0, 10).map((notif) => (
                             <div
                                 key={notif.id}
-                                className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer group relative ${!notif.read ? 'bg-melagro-primary/5' : ''}`}
+                                className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer group relative ${!notif.read ? 'bg-melagri-primary/5' : ''}`}
                                 onClick={() => {
                                     markNotificationRead(notif.id);
                                     // Extract order ID if present in message (e.g. #ABCDE)
@@ -92,7 +92,7 @@ export default function AdminNotificationsPopover({ isOpen, onClose }: AdminNoti
                                         </p>
                                     </div>
                                     {!notif.read && (
-                                        <div className="w-2 h-2 bg-melagro-primary rounded-full mt-2"></div>
+                                        <div className="w-2 h-2 bg-melagri-primary rounded-full mt-2"></div>
                                     )}
                                 </div>
                             </div>
@@ -106,7 +106,7 @@ export default function AdminNotificationsPopover({ isOpen, onClose }: AdminNoti
                 <Link
                     href="/dashboard/admin/messages"
                     onClick={onClose}
-                    className="text-[10px] font-black text-melagro-primary uppercase tracking-[.2em] hover:text-melagro-secondary transition-colors"
+                    className="text-[10px] font-black text-melagri-primary uppercase tracking-[.2em] hover:text-melagri-secondary transition-colors"
                 >
                     View All Activity
                 </Link>

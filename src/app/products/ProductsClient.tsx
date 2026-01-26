@@ -67,11 +67,11 @@ export default function ProductsClient() {
                 <div className="bg-white border-b border-gray-100 sticky top-16 z-30 shadow-sm">
                     <div className="container-custom px-4 md:px-8 py-3 flex items-center justify-between">
                         <nav className="flex items-center gap-2 text-[10px] md:text-sm">
-                            <Link href="/" className="text-gray-400 hover:text-melagro-primary transition-colors font-bold uppercase tracking-widest">Home</Link>
+                            <Link href="/" className="text-gray-400 hover:text-melagri-primary transition-colors font-bold uppercase tracking-widest">Home</Link>
                             <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
-                            <Link href="/products" className="text-gray-400 hover:text-melagro-primary transition-colors font-bold uppercase tracking-widest">Shop</Link>
+                            <Link href="/products" className="text-gray-400 hover:text-melagri-primary transition-colors font-bold uppercase tracking-widest">Shop</Link>
                             <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
-                            <span className="text-melagro-primary font-black uppercase tracking-widest">
+                            <span className="text-melagri-primary font-black uppercase tracking-widest">
                                 {selectedCategory || "Catalogue"}
                             </span>
                         </nav>
@@ -124,7 +124,7 @@ export default function ProductsClient() {
                         {/* Page Title & Controls */}
                         <div className="mb-8 group">
                             <div className="flex items-center gap-4 mb-3">
-                                <span className="h-1 w-12 bg-melagro-primary rounded-full group-hover:w-20 transition-all duration-500"></span>
+                                <span className="h-1 w-12 bg-melagri-primary rounded-full group-hover:w-20 transition-all duration-500"></span>
                                 <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter uppercase">
                                     {selectedCategory || "Global Catalogue"}
                                 </h1>
@@ -137,7 +137,7 @@ export default function ProductsClient() {
                             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/50">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-melagro-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                                        <svg className="w-5 h-5 text-melagri-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
                                     </div>
                                     <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">
                                         Verified Inventory

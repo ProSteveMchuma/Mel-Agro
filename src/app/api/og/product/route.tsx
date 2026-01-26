@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
                                         fontWeight: 'bold',
                                     }}
                                 >
-                                    MELAGRO.COM
+                                    Mel-Agri.COM
                                 </div>
                             </div>
                         </div>

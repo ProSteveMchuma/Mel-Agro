@@ -19,7 +19,7 @@ export const processMessage = async (message: string): Promise<BotResponse> => {
     // 1. Greetings
     if (GREETINGS.some(g => lowerMsg.includes(g))) {
         return {
-            text: "Habari! 👋 Welcome to MelAgro. I'm your AgroBot assistant. How can I help you today?",
+            text: "Habari! 👋 Welcome to Mel-Agri. I'm your AgroBot assistant. How can I help you today?",
             type: 'options',
             options: ['Find Products', 'Delivery Info', 'Talk to Expert']
         };

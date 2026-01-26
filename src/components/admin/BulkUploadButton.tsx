@@ -39,8 +39,8 @@ export default function BulkUploadButton() {
 
                     // Header
                     doc.setFontSize(20);
-                    doc.setTextColor(34, 197, 94); // Melagro Green
-                    doc.text('MEL-AGRO Bulk Upload Report', 14, 22);
+                    doc.setTextColor(34, 197, 94); // Mel-Agri Green
+                    doc.text('MEL-AGRI Bulk Upload Report', 14, 22);
 
                     doc.setFontSize(10);
                     doc.setTextColor(100);
@@ -69,7 +69,7 @@ export default function BulkUploadButton() {
                         headStyles: { fillColor: [75, 85, 99] }
                     });
 
-                    doc.save(`MelAgro_Upload_Report_${Date.now()}.pdf`);
+                    doc.save(`Mel-Agri_Upload_Report_${Date.now()}.pdf`);
                 } catch (pdfErr) {
                     console.error('PDF Generation failed:', pdfErr);
                     toast.error('Upload succeeded, but PDF report failed to generate.');

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useOrders, Order } from "@/context/OrderContext";
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
@@ -15,11 +15,13 @@ import { format } from "date-fns";
 
 function OrderSuccessContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const orderId = searchParams.get("orderId");
     const { orders } = useOrders();
     const [order, setOrder] = useState<Order | null>(null);
     const [isNotFound, setIsNotFound] = useState(false);
     const [activeDocument, setActiveDocument] = useState<'invoice' | 'receipt' | null>(null);
+    const [countdown, setCountdown] = useState(15);
 
     useEffect(() => {
         if (order) {
@@ -29,8 +31,22 @@ function OrderSuccessContent() {
                 origin: { y: 0.6 },
                 colors: ['#22c55e', '#16a34a', '#ffffff']
             });
+
+            // Auto redirect timer
+            const timer = setInterval(() => {
+                setCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        router.push('/dashboard/user');
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+
+            return () => clearInterval(timer);
         }
-    }, [order]);
+    }, [order, router]);
 
     useEffect(() => {
         const fetchOrder = async () => {
@@ -77,7 +93,7 @@ function OrderSuccessContent() {
                 <div className="text-center">
                     <h2 className="text-2xl font-bold text-gray-900 mb-4">Order Not Found</h2>
                     <p className="text-gray-500 mb-8">We couldn't find the details for order #{orderId?.slice(0, 8)}</p>
-                    <Link href="/dashboard/user" className="bg-melagro-primary text-white px-8 py-3 rounded-xl font-bold">
+                    <Link href="/dashboard/user" className="bg-melagri-primary text-white px-8 py-3 rounded-xl font-bold">
                         Go to Dashboard
                     </Link>
                 </div>
@@ -89,7 +105,7 @@ function OrderSuccessContent() {
         return (
             <div className="flex-grow flex items-center justify-center py-20">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagro-primary mx-auto mb-4"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagri-primary mx-auto mb-4"></div>
                     <p className="text-gray-500">Loading order details...</p>
                 </div>
             </div>
@@ -111,7 +127,7 @@ function OrderSuccessContent() {
                             </span>
                         </div>
                         <div className="flex gap-4">
-                            <button onClick={() => window.print()} className="bg-melagro-primary px-4 py-2 rounded-lg hover:bg-melagro-secondary text-sm font-bold">Print / Save PDF</button>
+                            <button onClick={() => window.print()} className="bg-melagri-primary px-4 py-2 rounded-lg hover:bg-melagri-secondary text-sm font-bold">Print / Save PDF</button>
                             <button onClick={() => setActiveDocument(null)} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600 text-sm font-bold">Close</button>
                         </div>
                     </div>
@@ -154,24 +170,34 @@ function OrderSuccessContent() {
                             <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Success!</h1>
                             <p className="text-gray-600 mb-8 text-lg leading-relaxed">
                                 Thank you for your order <span className="font-black text-gray-900">#{order.id.slice(0, 8)}</span>.
-                                We've sent an <strong>Email, SMS and WhatsApp</strong> confirmation to your registered contacts.
+                                {order.paymentMethod.includes('Cash') || order.paymentMethod.includes('WhatsApp')
+                                    ? "Your order has been received. Please prepare payment for when your items are ready for delivery/pickup."
+                                    : "We've sent an Email, SMS and WhatsApp confirmation to your registered contacts."}
                             </p>
+                            <p className="text-xs text-gray-400 mb-4 italic">Redirecting to dashboard in {countdown}s...</p>
                             <div className="flex flex-col sm:flex-row gap-4">
-                                <Link href="/products" className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-200 text-center print:hidden">
+                                <Link href="/dashboard/user" className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-200 text-center print:hidden flex items-center justify-center gap-2">
+                                    <span>🏠</span> Go to Dashboard
+                                </Link>
+                                <Link href="/products" className="border-2 border-melagri-primary text-melagri-primary bg-white px-8 py-4 rounded-2xl font-black hover:bg-green-50 transition-all text-center print:hidden flex items-center justify-center gap-2">
                                     Shop More
                                 </Link>
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-4 mt-4">
                                 <button
                                     onClick={() => setActiveDocument('invoice')}
-                                    className="border-2 border-melagro-primary text-melagro-primary bg-white px-8 py-4 rounded-2xl font-black hover:bg-green-50 transition-all text-center print:hidden flex items-center justify-center gap-2"
+                                    className="flex-1 border-2 border-gray-200 text-gray-700 bg-white px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all text-center print:hidden flex items-center justify-center gap-2 text-sm"
                                 >
-                                    <span>📄</span> Official Invoice
+                                    <span>📄</span> Invoice
                                 </button>
-                                <button
-                                    onClick={() => setActiveDocument('receipt')}
-                                    className="border-2 border-gray-900 bg-gray-900 text-white px-8 py-4 rounded-2xl font-black hover:bg-black transition-all text-center print:hidden flex items-center justify-center gap-2"
-                                >
-                                    <span>🖨️</span> Print Receipt
-                                </button>
+                                {order.paymentStatus === 'Paid' && (
+                                    <button
+                                        onClick={() => setActiveDocument('receipt')}
+                                        className="flex-1 border-2 border-gray-200 text-gray-700 bg-white px-6 py-3 rounded-xl font-bold hover:bg-gray-50 transition-all text-center print:hidden flex items-center justify-center gap-2 text-sm"
+                                    >
+                                        <span>🖨️</span> Receipt
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -213,7 +239,7 @@ function OrderSuccessContent() {
                                     <span>Shipping</span>
                                     <span className="font-semibold">Calculated at checkout</span>
                                 </div>
-                                <div className="border-t pt-3 flex justify-between text-lg font-bold text-melagro-primary">
+                                <div className="border-t pt-3 flex justify-between text-lg font-bold text-melagri-primary">
                                     <span>Total</span>
                                     <span>KES {order.total.toLocaleString()}</span>
                                 </div>
@@ -233,7 +259,7 @@ function OrderSuccessContent() {
 
                                 {/* Step 1: Placed */}
                                 <div className="flex items-start gap-4 relative">
-                                    <div className="w-6 h-6 rounded-full bg-melagro-primary flex items-center justify-center text-white z-10 shadow-lg shadow-green-500/20">
+                                    <div className="w-6 h-6 rounded-full bg-melagri-primary flex items-center justify-center text-white z-10 shadow-lg shadow-green-500/20">
                                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                                     </div>
                                     <div>
@@ -244,7 +270,7 @@ function OrderSuccessContent() {
 
                                 {/* Step 2: Processing */}
                                 <div className="flex items-start gap-4 relative">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 ${order.status === 'Processing' ? 'bg-melagro-primary animate-pulse shadow-lg shadow-green-500/20' : 'bg-melagro-primary'}`}>
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 ${order.status === 'Processing' ? 'bg-melagri-primary animate-pulse shadow-lg shadow-green-500/20' : 'bg-melagri-primary'}`}>
                                         <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
                                     </div>
                                     <div>
@@ -304,7 +330,7 @@ export default function OrderSuccessPage() {
             <Suspense fallback={
                 <div className="flex-grow flex items-center justify-center py-20">
                     <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagro-primary mx-auto mb-4"></div>
+                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagri-primary mx-auto mb-4"></div>
                         <p className="text-gray-500">Loading...</p>
                     </div>
                 </div>

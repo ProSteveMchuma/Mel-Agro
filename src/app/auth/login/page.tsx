@@ -141,13 +141,13 @@ function LoginForm() {
                     {/* Method Switcher */}
                     <div className="flex border-b border-gray-200">
                         <button
-                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${loginMethod === 'phone' ? 'border-melagro-primary text-melagro-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${loginMethod === 'phone' ? 'border-melagri-primary text-melagri-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                             onClick={() => { setLoginMethod('phone'); setError(''); setOtpSent(false); }}
                         >
                             Phone Number
                         </button>
                         <button
-                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${loginMethod === 'email' ? 'border-melagro-primary text-melagro-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${loginMethod === 'email' ? 'border-melagri-primary text-melagri-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
                             onClick={() => { setLoginMethod('email'); setError(''); setLinkSent(false); }}
                         >
                             Email Address
@@ -174,7 +174,7 @@ function LoginForm() {
                                             name="phone"
                                             type="tel"
                                             required
-                                            className="mt-1 appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 focus:outline-none focus:ring-melagro-primary focus:border-melagro-primary sm:text-sm"
+                                            className="mt-1 appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary sm:text-sm"
                                             placeholder="07..."
                                             value={phone}
                                             onChange={(e) => setPhone(e.target.value)}
@@ -184,7 +184,7 @@ function LoginForm() {
                                     <button
                                         type="submit"
                                         disabled={isLoading}
-                                        className={`w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-melagro-primary hover:bg-melagro-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-melagro-primary transition-all disabled:opacity-70`}
+                                        className={`w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-melagri-primary hover:bg-melagri-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-melagri-primary transition-all disabled:opacity-70`}
                                     >
                                         {isLoading ? 'Sending Code...' : 'Send Verification Code'}
                                     </button>
@@ -193,7 +193,7 @@ function LoginForm() {
                                 <form onSubmit={handleVerifyOtp} className="space-y-6">
                                     <div className="text-center mb-4">
                                         <p className="text-sm text-gray-600">Enter the code sent to <strong>{phone}</strong></p>
-                                        <button type="button" onClick={() => setOtpSent(false)} className="text-xs text-melagro-primary underline mt-1">Change Number</button>
+                                        <button type="button" onClick={() => setOtpSent(false)} className="text-xs text-melagri-primary underline mt-1">Change Number</button>
                                     </div>
                                     <div>
                                         <label htmlFor="otp" className="sr-only">Verification Code</label>
@@ -203,7 +203,7 @@ function LoginForm() {
                                             type="text"
                                             required
                                             maxLength={6}
-                                            className="text-center tracking-[1em] font-mono text-xl appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 focus:outline-none focus:ring-melagro-primary focus:border-melagro-primary"
+                                            className="text-center tracking-[1em] font-mono text-xl appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary"
                                             placeholder="000000"
                                             value={otp}
                                             onChange={(e) => setOtp(e.target.value)}
@@ -212,7 +212,7 @@ function LoginForm() {
                                     <button
                                         type="submit"
                                         disabled={isLoading}
-                                        className={`w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-melagro-primary hover:bg-melagro-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-melagro-primary transition-all disabled:opacity-70`}
+                                        className={`w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-melagri-primary hover:bg-melagri-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-melagri-primary transition-all disabled:opacity-70`}
                                     >
                                         {isLoading ? 'Verifying...' : 'Verify & Login'}
                                     </button>
@@ -228,7 +228,7 @@ function LoginForm() {
                                 <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded-md text-center">
                                     <h3 className="text-lg leading-6 font-medium text-gray-900">Check your email</h3>
                                     <p className="mt-2 text-sm text-gray-500">We sent a magic link to <strong>{email}</strong>.</p>
-                                    <button onClick={() => setLinkSent(false)} className="mt-4 text-sm font-medium text-melagro-primary hover:text-melagro-secondary">Try a different email</button>
+                                    <button onClick={() => setLinkSent(false)} className="mt-4 text-sm font-medium text-melagri-primary hover:text-melagri-secondary">Try a different email</button>
                                 </div>
                             ) : (
                                 <form className="mt-6 space-y-6" onSubmit={handleMagicLinkLogin}>
@@ -240,7 +240,7 @@ function LoginForm() {
                                             type="email"
                                             autoComplete="email"
                                             required
-                                            className="appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-melagro-primary focus:border-melagro-primary sm:text-sm"
+                                            className="appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary sm:text-sm"
                                             placeholder="Email"
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}

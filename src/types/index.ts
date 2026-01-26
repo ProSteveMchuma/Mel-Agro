@@ -33,7 +33,7 @@ export interface Product {
     price: number;
     category: string;
     subCategory?: string;
-    supplier?: string;
+    productCode?: string;
     brand?: string;
     image: string;
     images?: string[]; // Multiple images support
@@ -74,12 +74,13 @@ export interface Order {
     discountAmount?: number;
     couponCode?: string | null;
     paymentMethod: string;
+    transactionId?: string;
     shippingAddress: {
         county: string;
         details: string;
         method?: string;
     };
-    paymentStatus?: 'Paid' | 'Unpaid';
+    paymentStatus?: 'Paid' | 'Unpaid' | 'Pending WhatsApp' | 'Failed';
     status: 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
     items: OrderItem[];
     createdAt?: string; // Compat

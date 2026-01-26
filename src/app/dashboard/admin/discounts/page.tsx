@@ -113,7 +113,7 @@ export default function DiscountManagementPage() {
                                     required
                                     type="text"
                                     placeholder="e.g. SUMMER2024"
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none uppercase"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none uppercase"
                                     value={formData.code}
                                     onChange={e => setFormData({ ...formData, code: e.target.value })}
                                 />
@@ -123,7 +123,7 @@ export default function DiscountManagementPage() {
                                 <input
                                     required
                                     type="date"
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                     value={formData.expiresAt}
                                     onChange={e => setFormData({ ...formData, expiresAt: e.target.value })}
                                 />
@@ -131,7 +131,7 @@ export default function DiscountManagementPage() {
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                                 <select
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                     value={formData.type}
                                     onChange={e => setFormData({ ...formData, type: e.target.value as any })}
                                 >
@@ -145,7 +145,7 @@ export default function DiscountManagementPage() {
                                     required
                                     type="number"
                                     placeholder={formData.type === 'PERCENTAGE' ? '10' : '500'}
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                     value={formData.value}
                                     onChange={e => setFormData({ ...formData, value: e.target.value })}
                                 />
@@ -155,7 +155,7 @@ export default function DiscountManagementPage() {
                                 <input
                                     type="number"
                                     placeholder="0"
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                     value={formData.minOrderValue}
                                     onChange={e => setFormData({ ...formData, minOrderValue: e.target.value })}
                                 />
@@ -165,7 +165,7 @@ export default function DiscountManagementPage() {
                                 <input
                                     type="number"
                                     placeholder="Unlimited"
-                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                                     value={formData.usageLimit}
                                     onChange={e => setFormData({ ...formData, usageLimit: e.target.value })}
                                 />
@@ -175,7 +175,7 @@ export default function DiscountManagementPage() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="bg-melagro-primary text-white px-6 py-2 rounded-lg hover:bg-melagro-secondary transition-colors font-bold"
+                                className="bg-melagri-primary text-white px-6 py-2 rounded-lg hover:bg-melagri-secondary transition-colors font-bold"
                             >
                                 {loading ? 'Saving...' : 'Create Discount'}
                             </button>
@@ -203,7 +203,7 @@ export default function DiscountManagementPage() {
                                 return (
                                     <tr key={discount.id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4 font-bold text-gray-900">{discount.code}</td>
-                                        <td className="px-6 py-4 text-melagro-primary font-medium">
+                                        <td className="px-6 py-4 text-melagri-primary font-medium">
                                             {discount.type === 'PERCENTAGE' ? `${discount.value}% Off` : `KES ${discount.value} Off`}
                                         </td>
                                         <td className="px-6 py-4 text-gray-600">

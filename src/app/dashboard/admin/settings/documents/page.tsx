@@ -35,7 +35,7 @@ export default function DocumentSettingsPage() {
         footerText: "Thank you for your business!",
         terms: "Payment is due within 30 days.",
         showLogo: true,
-        primaryColor: "#16a34a" // melagro-primary
+        primaryColor: "#16a34a" // melagri-primary
     });
 
     useEffect(() => {
@@ -77,7 +77,7 @@ export default function DocumentSettingsPage() {
                 <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="bg-melagro-primary text-white px-6 py-2 rounded-lg hover:bg-melagro-secondary disabled:opacity-50 transition-colors font-medium"
+                    className="bg-melagri-primary text-white px-6 py-2 rounded-lg hover:bg-melagri-secondary disabled:opacity-50 transition-colors font-medium"
                 >
                     {saving ? "Saving..." : "Save Changes"}
                 </button>
@@ -95,7 +95,7 @@ export default function DocumentSettingsPage() {
                                 type="text"
                                 value={templateSettings.invoiceTitle}
                                 onChange={(e) => setTemplateSettings({ ...templateSettings, invoiceTitle: e.target.value })}
-                                className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                             />
                         </div>
 
@@ -118,7 +118,7 @@ export default function DocumentSettingsPage() {
                                 id="showLogo"
                                 checked={templateSettings.showLogo}
                                 onChange={(e) => setTemplateSettings({ ...templateSettings, showLogo: e.target.checked })}
-                                className="w-4 h-4 text-melagro-primary rounded focus:ring-melagro-primary"
+                                className="w-4 h-4 text-melagri-primary rounded focus:ring-melagri-primary"
                             />
                             <label htmlFor="showLogo" className="text-sm font-medium text-gray-900">Show Company Logo</label>
                         </div>
@@ -129,7 +129,7 @@ export default function DocumentSettingsPage() {
                                 value={templateSettings.footerText}
                                 onChange={(e) => setTemplateSettings({ ...templateSettings, footerText: e.target.value })}
                                 rows={2}
-                                className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                             />
                         </div>
 
@@ -139,7 +139,7 @@ export default function DocumentSettingsPage() {
                                 value={templateSettings.terms}
                                 onChange={(e) => setTemplateSettings({ ...templateSettings, terms: e.target.value })}
                                 rows={4}
-                                className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagro-primary/50 outline-none"
+                                className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
                             />
                         </div>
                     </div>

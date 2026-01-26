@@ -32,7 +32,7 @@ export default function FAQ() {
         <section className="py-24 bg-gray-50">
             <div className="container-custom max-w-4xl">
                 <div className="text-center mb-16">
-                    <span className="text-melagro-primary font-bold tracking-wider uppercase text-sm">Common Questions</span>
+                    <span className="text-melagri-primary font-bold tracking-wider uppercase text-sm">Common Questions</span>
                     <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mt-2">Frequently Asked Questions</h2>
                 </div>
 
@@ -46,7 +46,7 @@ export default function FAQ() {
                                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
                                 className="w-full flex items-center justify-between p-6 text-left focus:outline-none"
                             >
-                                <span className={`font-bold text-lg ${openIndex === index ? 'text-melagro-primary' : 'text-gray-900'}`}>
+                                <span className={`font-bold text-lg ${openIndex === index ? 'text-melagri-primary' : 'text-gray-900'}`}>
                                     {faq.question}
                                 </span>
                                 <span className={`transform transition-transform duration-300 ${openIndex === index ? 'rotate-180' : ''}`}>

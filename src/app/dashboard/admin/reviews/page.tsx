@@ -46,7 +46,7 @@ export default function AdminReviewsPage() {
                         <button
                             key={f}
                             onClick={() => setFilter(f)}
-                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-melagro-primary text-white shadow-lg shadow-melagro-primary/20' : 'text-gray-400 hover:text-gray-900'
+                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-melagri-primary text-white shadow-lg shadow-melagri-primary/20' : 'text-gray-400 hover:text-gray-900'
                                 }`}
                         >
                             {f}
@@ -100,7 +100,7 @@ export default function AdminReviewsPage() {
                                     {review.status !== 'approved' && (
                                         <button
                                             onClick={() => handleStatusUpdate(review.id, 'approved')}
-                                            className="px-4 py-2 bg-melagro-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg shadow-melagro-primary/10"
+                                            className="px-4 py-2 bg-melagri-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg shadow-melagri-primary/10"
                                         >
                                             Approve
                                         </button>

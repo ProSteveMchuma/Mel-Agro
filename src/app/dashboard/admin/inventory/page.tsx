@@ -60,7 +60,7 @@ export default function InventoryManagement() {
                     <input
                         type="text"
                         placeholder="Search products..."
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-melagro-primary focus:ring-1 focus:ring-melagro-primary outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary focus:ring-1 focus:ring-melagri-primary outline-none transition-all"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -101,7 +101,7 @@ export default function InventoryManagement() {
                                                     <Image src={product.image} alt={product.name} fill className="object-cover" />
                                                 </div>
                                                 <div>
-                                                    <div className="font-bold text-gray-900 group-hover:text-melagro-primary transition-colors">{product.name}</div>
+                                                    <div className="font-bold text-gray-900 group-hover:text-melagri-primary transition-colors">{product.name}</div>
                                                     <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{product.category}</div>
                                                 </div>
                                             </div>

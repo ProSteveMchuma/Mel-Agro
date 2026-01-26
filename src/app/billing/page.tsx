@@ -10,7 +10,7 @@ export default function BillingPolicy() {
                 <div className="bg-white p-8 rounded-3xl border border-gray-100 shadow-sm max-w-4xl mx-auto">
                     <h1 className="text-3xl font-black text-gray-900 mb-6">Billing Policy</h1>
                     <div className="prose prose-green max-w-none text-gray-600">
-                        <p className="mb-4">At Mel-Agro, we are committed to transparent and secure billing practices.</p>
+                        <p className="mb-4">At Mel-Agri, we are committed to transparent and secure billing practices.</p>
 
                         <h2 className="text-xl font-bold text-gray-800 mt-6 mb-3">Accepted Payment Methods</h2>
                         <ul className="list-disc pl-5 space-y-2 mb-4">

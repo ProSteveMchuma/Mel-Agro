@@ -2,11 +2,11 @@ export default function JsonLd() {
     const orgJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Organization',
-        name: 'Mel-Agro',
-        alternateName: 'Mel Agro',
+        name: 'Mel-Agri',
+        alternateName: 'Mel Agri',
         description: 'Kenya\'s premier digital marketplace for high-quality agricultural inputs including seeds, fertilizers, and tools.',
-        url: 'https://melagro.com',
-        logo: 'https://melagro.com/logo.png',
+        url: 'https://Mel-Agri.com',
+        logo: 'https://Mel-Agri.com/logo.png',
         contactPoint: {
             '@type': 'ContactPoint',
             telephone: '+254748970757',
@@ -15,9 +15,9 @@ export default function JsonLd() {
             availableLanguage: 'en',
         },
         sameAs: [
-            'https://facebook.com/melagro',
-            'https://twitter.com/melagro',
-            'https://instagram.com/melagro',
+            'https://facebook.com/Mel-Agri',
+            'https://twitter.com/Mel-Agri',
+            'https://instagram.com/Mel-Agri',
         ],
         address: {
             '@type': 'PostalAddress',
@@ -30,11 +30,11 @@ export default function JsonLd() {
     const websiteJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
-        name: 'Mel-Agro',
-        url: 'https://melagro.com',
+        name: 'Mel-Agri',
+        url: 'https://Mel-Agri.com',
         potentialAction: {
             '@type': 'SearchAction',
-            target: 'https://melagro.com/products?search={search_term_string}',
+            target: 'https://Mel-Agri.com/products?search={search_term_string}',
             'query-input': 'required name=search_term_string'
         }
     };

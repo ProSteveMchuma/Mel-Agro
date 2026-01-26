@@ -67,12 +67,12 @@ export default function CartPage() {
                                             <div className="flex-grow text-center sm:text-left">
                                                 <h3 className="text-lg font-bold text-gray-900 mb-1">{item.name}</h3>
                                                 {item.selectedVariant && (
-                                                    <p className="text-xs font-bold text-melagro-primary uppercase tracking-widest mb-1">
+                                                    <p className="text-xs font-bold text-melagri-primary uppercase tracking-widest mb-1">
                                                         Size/Weight: {item.selectedVariant.name}
                                                     </p>
                                                 )}
                                                 <p className="text-sm text-gray-500 mb-2">{item.category}</p>
-                                                <p className="text-melagro-primary font-bold text-lg">KES {item.price.toLocaleString()}</p>
+                                                <p className="text-melagri-primary font-bold text-lg">KES {item.price.toLocaleString()}</p>
                                             </div>
 
                                             <div className="flex items-center gap-4">
@@ -121,7 +121,7 @@ export default function CartPage() {
                                             <span>Shipping Estimate</span>
                                             <span className="font-bold text-gray-900">KES {shipping.toLocaleString()}</span>
                                         </div>
-                                        <div className="border-t border-gray-100 pt-4 flex justify-between text-lg font-extrabold text-melagro-primary">
+                                        <div className="border-t border-gray-100 pt-4 flex justify-between text-lg font-extrabold text-melagri-primary">
                                             <span>Total</span>
                                             <span>KES {total.toLocaleString()}</span>
                                         </div>
@@ -154,7 +154,7 @@ export default function CartPage() {
                         <div className="flex items-center justify-between gap-4">
                             <div>
                                 <div className="text-xs text-gray-500">Total (Excl. Shipping)</div>
-                                <div className="text-lg font-extrabold text-melagro-primary">KES {cartTotal.toLocaleString()}</div>
+                                <div className="text-lg font-extrabold text-melagri-primary">KES {cartTotal.toLocaleString()}</div>
                             </div>
                             <button
                                 onClick={handleCheckout}

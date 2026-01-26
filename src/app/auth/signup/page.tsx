@@ -62,7 +62,7 @@ export default function SignupPage() {
                             Create Account
                         </h2>
                         <p className="mt-2 text-sm text-gray-600">
-                            Join MelAgro for a premium shopping experience
+                            Join Mel-Agri for a premium shopping experience
                         </p>
                     </div>
 
@@ -91,7 +91,7 @@ export default function SignupPage() {
                                     type="text"
                                     autoComplete="name"
                                     required
-                                    className="appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-melagro-primary focus:border-melagro-primary sm:text-sm transition-all"
+                                    className="appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary sm:text-sm transition-all"
                                     placeholder="John Doe"
                                     value={name}
                                     onChange={(e) => setName(e.target.value)}
@@ -105,7 +105,7 @@ export default function SignupPage() {
                                     type="email"
                                     autoComplete="email"
                                     required
-                                    className="appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-melagro-primary focus:border-melagro-primary sm:text-sm transition-all"
+                                    className="appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary sm:text-sm transition-all"
                                     placeholder="Enter your email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
@@ -119,7 +119,7 @@ export default function SignupPage() {
                                     type="password"
                                     autoComplete="new-password"
                                     required
-                                    className="appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-melagro-primary focus:border-melagro-primary sm:text-sm transition-all"
+                                    className="appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary sm:text-sm transition-all"
                                     placeholder="Create a password (min 6 chars)"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
@@ -131,7 +131,7 @@ export default function SignupPage() {
                             <button
                                 type="submit"
                                 disabled={isLoading}
-                                className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-melagro-primary hover:bg-melagro-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-melagro-primary transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                className={`group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-melagri-primary hover:bg-melagri-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-melagri-primary transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
                             >
                                 {isLoading ? (
                                     <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -145,7 +145,7 @@ export default function SignupPage() {
 
                         <div className="flex items-center justify-center">
                             <div className="text-sm">
-                                <Link href="/auth/login" className="font-medium text-gray-600 hover:text-melagro-primary">
+                                <Link href="/auth/login" className="font-medium text-gray-600 hover:text-melagri-primary">
                                     Already have an account? Sign in
                                 </Link>
                             </div>

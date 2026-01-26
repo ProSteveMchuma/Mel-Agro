@@ -103,9 +103,9 @@ export default function HelpCenterPage() {
                                 <input
                                     type="text"
                                     placeholder="Search for answers (e.g., 'Delivery fees', 'M-PESA')"
-                                    className="w-full px-6 py-4 border-2 border-gray-300 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-melagro-primary focus:border-transparent"
+                                    className="w-full px-6 py-4 border-2 border-gray-300 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-melagri-primary focus:border-transparent"
                                 />
-                                <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-melagro-primary text-white px-6 py-2 rounded-xl font-bold hover:bg-melagro-secondary transition-colors">
+                                <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-melagri-primary text-white px-6 py-2 rounded-xl font-bold hover:bg-melagri-secondary transition-colors">
                                     Search
                                 </button>
                             </div>
@@ -113,7 +113,7 @@ export default function HelpCenterPage() {
                     </div>
 
                     {/* Hero Banner */}
-                    <div className="bg-gradient-to-r from-melagro-primary/10 to-melagro-secondary/10 rounded-2xl p-12 mb-16 border border-melagro-primary/20">
+                    <div className="bg-gradient-to-r from-melagri-primary/10 to-melagri-secondary/10 rounded-2xl p-12 mb-16 border border-melagri-primary/20">
                         <h2 className="text-2xl font-bold text-gray-900 mb-4 text-center">Browse by Category</h2>
                         <p className="text-gray-600 text-center mb-8">Select a topic to find relevant answers about our services</p>
 
@@ -123,7 +123,7 @@ export default function HelpCenterPage() {
                                     key={cat.id}
                                     onClick={() => setSelectedCategory(cat.id)}
                                     className={`p-6 rounded-xl transition-all font-semibold text-center ${selectedCategory === cat.id
-                                        ? 'bg-melagro-primary text-white shadow-lg'
+                                        ? 'bg-melagri-primary text-white shadow-lg'
                                         : 'bg-white text-gray-900 hover:bg-gray-50 border border-gray-200'
                                         }`}
                                 >
@@ -153,7 +153,7 @@ export default function HelpCenterPage() {
                                     >
                                         <h3 className="font-bold text-gray-900 text-base md:text-lg">{faq.question}</h3>
                                         <svg
-                                            className={`w-6 h-6 text-melagro-primary transition-transform flex-shrink-0 ml-4 ${expandedFaq === `${selectedCategory}-${idx}` ? 'rotate-180' : ''
+                                            className={`w-6 h-6 text-melagri-primary transition-transform flex-shrink-0 ml-4 ${expandedFaq === `${selectedCategory}-${idx}` ? 'rotate-180' : ''
                                                 }`}
                                             fill="none"
                                             stroke="currentColor"
@@ -188,7 +188,7 @@ export default function HelpCenterPage() {
                                             <p className="font-bold text-gray-900">WhatsApp</p>
                                             <p className="text-sm text-gray-600">Chat with support team</p>
                                         </div>
-                                        <span className="text-melagro-primary group-hover:translate-x-1 transition-transform">→</span>
+                                        <span className="text-melagri-primary group-hover:translate-x-1 transition-transform">→</span>
                                     </Link>
 
                                     <Link href="tel:+254748970757" className="w-full flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors group text-left">
@@ -197,7 +197,7 @@ export default function HelpCenterPage() {
                                             <p className="font-bold text-gray-900">Call Us</p>
                                             <p className="text-sm text-gray-600">+254 748 970 757</p>
                                         </div>
-                                        <span className="text-melagro-primary group-hover:translate-x-1 transition-transform">→</span>
+                                        <span className="text-melagri-primary group-hover:translate-x-1 transition-transform">→</span>
                                     </Link>
 
                                     <Link href="mailto:proinnovationtech@gmail.com" className="w-full flex items-center gap-4 p-4 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors group text-left">
@@ -206,7 +206,7 @@ export default function HelpCenterPage() {
                                             <p className="font-bold text-gray-900">Email</p>
                                             <p className="text-sm text-gray-600">proinnovationtech@gmail.com</p>
                                         </div>
-                                        <span className="text-melagro-primary group-hover:translate-x-1 transition-transform">→</span>
+                                        <span className="text-melagri-primary group-hover:translate-x-1 transition-transform">→</span>
                                     </Link>
                                 </div>
                             </div>
@@ -228,10 +228,10 @@ export default function HelpCenterPage() {
                                             className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-colors group"
                                         >
                                             <span className="text-xl">{link.icon}</span>
-                                            <span className="font-semibold text-gray-900 group-hover:text-melagro-primary transition-colors">
+                                            <span className="font-semibold text-gray-900 group-hover:text-melagri-primary transition-colors">
                                                 {link.label}
                                             </span>
-                                            <span className="ml-auto text-melagro-primary opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                                            <span className="ml-auto text-melagri-primary opacity-0 group-hover:opacity-100 transition-opacity">→</span>
                                         </Link>
                                     ))}
                                 </nav>

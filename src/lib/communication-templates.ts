@@ -6,10 +6,10 @@ export const CommunicationTemplates = {
         const userName = order.userName || "Farmer";
 
         // SMS & WhatsApp (Brief & Actionable)
-        const smsBody = `Habari ${userName}, your Mel-Agro order #${orderIdShort} has been received! We are prepping your items for dispatch. Total: KES ${order.total.toLocaleString()}. Thank you for farming with us!`;
+        const smsBody = `Habari ${userName}, your Mel-Agri order #${orderIdShort} has been received! We are prepping your items for dispatch. Total: KES ${order.total.toLocaleString()}. Thank you for farming with us!`;
 
         // Email (Detailed & Professional)
-        const emailSubject = `Order Confirmed - Mel-Agro #${orderIdShort}`;
+        const emailSubject = `Order Confirmed - Mel-Agri #${orderIdShort}`;
         const emailHtml = `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 20px; overflow: hidden;">
                 <div style="background: #22c55e; padding: 40px; text-align: center; color: white;">
@@ -18,7 +18,7 @@ export const CommunicationTemplates = {
                 </div>
                 <div style="padding: 40px;">
                     <p>Habari <strong>${userName}</strong>,</p>
-                    <p>Thank you for choosing Mel-Agro. We've received your order and our team is currently processing it. Here's a brief summary:</p>
+                    <p>Thank you for choosing Mel-Agri. We've received your order and our team is currently processing it. Here's a brief summary:</p>
                     
                     <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 30px 0;">
                         <h3 style="margin-top: 0; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Order Summary</h3>
@@ -45,11 +45,11 @@ export const CommunicationTemplates = {
                     <p>We will notify you via SMS when your order has been shipped.</p>
                     
                     <div style="text-align: center; margin-top: 40px;">
-                        <a href="https://mel-agro.com/dashboard/user" style="background: #22c55e; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">Track Order Status</a>
+                        <a href="https://mel-agri.com/dashboard/user" style="background: #22c55e; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">Track Order Status</a>
                     </div>
                 </div>
                 <div style="background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
-                    &copy; ${new Date().getFullYear()} Mel-Agro Kenya. All rights reserved.
+                    &copy; ${new Date().getFullYear()} Mel-Agri Kenya. All rights reserved.
                 </div>
             </div>
         `;
@@ -64,8 +64,8 @@ export const CommunicationTemplates = {
     getStatusUpdate: (order: Order, status: string) => {
         const orderIdShort = order.id.slice(0, 5).toUpperCase();
         return {
-            subject: `Order Update - Mel-Agro #${orderIdShort}`,
-            smsBody: `Habari ${order.userName || 'Farmer'}, your Mel-Agro order #${orderIdShort} status is now: ${status}. Thank you for farming with us!`,
+            subject: `Order Update - Mel-Agri #${orderIdShort}`,
+            smsBody: `Habari ${order.userName || 'Farmer'}, your Mel-Agri order #${orderIdShort} status is now: ${status}. Thank you for farming with us!`,
             emailBody: `<h1>Order Update</h1><p>Your order #${orderIdShort} is now <strong>${status}</strong>.</p>`
         };
     }

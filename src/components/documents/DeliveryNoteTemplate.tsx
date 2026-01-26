@@ -21,7 +21,7 @@ export const DeliveryNoteTemplate: React.FC<DeliveryNoteTemplateProps> = ({ orde
                 </div>
                 <div className="md:text-right flex flex-col items-end text-right">
                     <Logo className="mb-4 scale-125 origin-right" />
-                    <div className="text-xl font-black text-gray-900 mb-1">{general.companyName || "MelAgro Kenya"}</div>
+                    <div className="text-xl font-black text-gray-900 mb-1">{general.companyName || "Mel-Agri Kenya"}</div>
                     <p className="text-gray-500 text-xs uppercase tracking-widest font-black">Logistics Department</p>
                     <p className="text-gray-500 text-xs max-w-[200px] mt-1">{general.address || "Premium Agricultural Hub"}</p>
                 </div>
@@ -38,7 +38,7 @@ export const DeliveryNoteTemplate: React.FC<DeliveryNoteTemplateProps> = ({ orde
                 <div className="md:text-right">
                     <h3 className="text-gray-500 uppercase text-xs font-bold tracking-wider mb-4">Shipping Method</h3>
                     <p className="text-gray-900">Standard Ground Shipping</p>
-                    <p className="text-gray-600">Carrier: MelAgro Logistics</p>
+                    <p className="text-gray-600">Carrier: Mel-Agri Logistics</p>
                 </div>
             </div>
 

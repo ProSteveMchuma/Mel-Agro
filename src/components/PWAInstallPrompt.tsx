@@ -57,11 +57,11 @@ export default function PWAInstallPrompt() {
         <div className="fixed bottom-0 left-0 right-0 z-50 p-4 bg-white border-t border-gray-200 shadow-lg md:hidden animate-in slide-in-from-bottom duration-500">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex gap-4">
-                    <div className="w-12 h-12 bg-melagro-primary rounded-xl flex items-center justify-center text-white font-bold text-xl shrink-0">
+                    <div className="w-12 h-12 bg-melagri-primary rounded-xl flex items-center justify-center text-white font-bold text-xl shrink-0">
                         M
                     </div>
                     <div>
-                        <h3 className="font-bold text-gray-900">Install MelAgro App</h3>
+                        <h3 className="font-bold text-gray-900">Install Mel-Agri App</h3>
                         <p className="text-sm text-gray-500">
                             {isIOS
                                 ? "Tap 'Share' then 'Add to Home Screen' for the best experience."
@@ -79,7 +79,7 @@ export default function PWAInstallPrompt() {
             {!isIOS && (
                 <button
                     onClick={handleInstallClick}
-                    className="mt-4 w-full bg-melagro-primary text-white py-3 rounded-xl font-bold font-medium"
+                    className="mt-4 w-full bg-melagri-primary text-white py-3 rounded-xl font-bold font-medium"
                 >
                     Install Now
                 </button>

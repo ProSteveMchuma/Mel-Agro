@@ -52,7 +52,7 @@ export default function BannerCarousel() {
                     <div className="absolute inset-0 bg-gradient-to-r from-black/70 to-transparent flex flex-col justify-center px-8 md:px-16 text-white">
                         <h2 className="text-3xl md:text-5xl font-bold mb-2 transform transition-transform duration-700 translate-x-0">{banner.title}</h2>
                         <p className="text-lg md:text-xl text-gray-200">{banner.subtitle}</p>
-                        <button className="mt-4 bg-melagro-primary hover:bg-melagro-secondary text-white px-6 py-2 rounded-full font-bold w-fit transition-all text-sm md:text-base">
+                        <button className="mt-4 bg-melagri-primary hover:bg-melagri-secondary text-white px-6 py-2 rounded-full font-bold w-fit transition-all text-sm md:text-base">
                             Shop Now
                         </button>
                     </div>
@@ -65,7 +65,7 @@ export default function BannerCarousel() {
                     <button
                         key={idx}
                         onClick={() => setCurrent(idx)}
-                        className={`h-2 rounded-full transition-all duration-300 ${idx === current ? "w-6 bg-melagro-primary" : "w-2 bg-white/50"
+                        className={`h-2 rounded-full transition-all duration-300 ${idx === current ? "w-6 bg-melagri-primary" : "w-2 bg-white/50"
                             }`}
                     />
                 ))}

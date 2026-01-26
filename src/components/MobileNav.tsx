@@ -17,7 +17,7 @@ export default function MobileNav() {
             name: 'Home',
             href: '/',
             icon: (active: boolean) => (
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${active ? 'fill-melagro-primary' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 2}>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${active ? 'fill-melagri-primary' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 2}>
                     {active ? (
                         <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
                     ) : (
@@ -30,7 +30,7 @@ export default function MobileNav() {
             name: 'Shop',
             href: '/products',
             icon: (active: boolean) => (
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${active ? 'fill-melagro-primary' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 2}>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${active ? 'fill-melagri-primary' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 2}>
                     {active ? (
                         <path d="M4 6a2 2 0 012-2h12a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 14a2 2 0 012-2h4a2 2 0 012 2v2a2 2 0 01-2 2h-4a2 2 0 01-2-2v-2zM4 14a2 2 0 012-2h4a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2z" />
                     ) : (
@@ -44,7 +44,7 @@ export default function MobileNav() {
             href: '/cart',
             icon: (active: boolean) => (
                 <div className="relative">
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${active ? 'fill-melagro-primary' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 2}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${active ? 'fill-melagri-primary' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 2}>
                         {active ? (
                             <path d="M3 1a1 1 0 000 2h1.22l.305 1.222a.997.997 0 00.01.042l1.358 5.43-.893.892C3.74 11.846 4.632 14 6.414 14H15a1 1 0 000-2H6.414l1-1H14a1 1 0 00.894-.553l3-6A1 1 0 0017 3H6.28l-.31-1.243A1 1 0 005 1H3zM16 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM6.5 18a1.5 1.5 0 100-3 1.5 1.5 0 000 3z" />
                         ) : (
@@ -63,7 +63,7 @@ export default function MobileNav() {
             name: user ? 'Account' : 'Login',
             href: user ? '/dashboard/user' : '/auth/login',
             icon: (active: boolean) => (
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${active ? 'fill-melagro-primary' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 2}>
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-6 w-6 ${active ? 'fill-melagri-primary' : 'fill-none'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={active ? 0 : 2}>
                     {active ? (
                         <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                     ) : (
@@ -83,7 +83,7 @@ export default function MobileNav() {
                         <Link
                             key={item.name}
                             href={item.href}
-                            className={`flex flex-col items-center justify-center py-3 px-2 w-full transition-colors ${isActive ? 'text-melagro-primary' : 'text-gray-500 hover:text-gray-900'}`}
+                            className={`flex flex-col items-center justify-center py-3 px-2 w-full transition-colors ${isActive ? 'text-melagri-primary' : 'text-gray-500 hover:text-gray-900'}`}
                         >
                             {item.icon(isActive)}
                             <span className="text-[10px] font-medium mt-1">{item.name}</span>

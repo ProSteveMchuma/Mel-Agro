@@ -45,13 +45,13 @@ interface SettingsContextType {
 }
 
 const defaultGeneral: GeneralSettings = {
-    companyName: "MelAgro",
+    companyName: "Mel-Agri",
     logoUrl: "",
-    supportEmail: "support@melagro.com",
+    supportEmail: "support@Mel-Agri.com",
     supportPhone: "+254 748 970757",
     currency: "KES",
     address: "Nairobi, Kenya",
-    websiteUrl: "https://melagro.com"
+    websiteUrl: "https://Mel-Agri.com"
 };
 
 const defaultTax: TaxSettings = {

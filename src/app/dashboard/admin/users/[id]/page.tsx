@@ -68,7 +68,7 @@ export default function UserProfilePage() {
                                         alert("Failed to update role.");
                                     }
                                 }}
-                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm focus:ring-2 focus:ring-melagro-primary/20 cursor-pointer outline-none ${(user.role === 'admin' || user.role === 'super-admin') ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}
+                                className={`text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm focus:ring-2 focus:ring-melagri-primary/20 cursor-pointer outline-none ${(user.role === 'admin' || user.role === 'super-admin') ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}
                             >
                                 <option value="customer">Customer</option>
                                 <option value="admin">Admin</option>
@@ -137,7 +137,7 @@ export default function UserProfilePage() {
                                     </td>
                                     <td className="px-6 py-4 text-right font-bold text-gray-900">KES {order.total.toLocaleString()}</td>
                                     <td className="px-6 py-4 text-right">
-                                        <Link href={`/dashboard/admin/orders/${order.id}`} className="text-melagro-primary hover:underline">
+                                        <Link href={`/dashboard/admin/orders/${order.id}`} className="text-melagri-primary hover:underline">
                                             View
                                         </Link>
                                     </td>

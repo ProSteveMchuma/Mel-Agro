@@ -19,6 +19,7 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import AgroBot from "@/components/AgroBot";
 import MobileNav from "@/components/MobileNav";
 import { BehaviorProvider } from "@/context/BehaviorContext";
+import TrafficTracker from "@/components/TrafficTracker";
 
 
 const geistSans = Geist({
@@ -40,25 +41,25 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://melagro.com'),
+  metadataBase: new URL('https://Mel-Agri.com'),
   title: {
-    default: "Mel-Agro | Premium Fertilizers, Certified Seeds & Ag-Tech Kenya",
-    template: "%s | Mel-Agro"
+    default: "Mel-Agri | Premium Fertilizers, Certified Seeds & Ag-Tech Kenya",
+    template: "%s | Mel-Agri"
   },
-  description: "Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection at Mel-Agro. Kenya's premier digital hub for quality agricultural inputs and expert advice.",
+  description: "Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection at Mel-Agri. Kenya's premier digital hub for quality agricultural inputs and expert advice.",
   keywords: [
     "maize seeds kenya",
     "DAP fertilizer price kenya",
     "agricultural inputs nairobi",
     "hybrid seeds kenya",
-    "melagro agri-tech",
+    "Mel-Agri agri-tech",
     "can fertilizer kenya",
     "certified agrochemicals kenya",
     "farming tools nairobi"
   ],
-  authors: [{ name: "Mel-Agro" }],
-  creator: "Mel-Agro",
-  publisher: "Mel-Agro",
+  authors: [{ name: "Mel-Agri" }],
+  creator: "Mel-Agri",
+  publisher: "Mel-Agri",
   robots: {
     index: true,
     follow: true,
@@ -73,29 +74,29 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_KE',
-    url: 'https://melagro.com',
-    title: 'Mel-Agro | Kenya\'s Premier Agricultural Hub',
+    url: 'https://Mel-Agri.com',
+    title: 'Mel-Agri | Kenya\'s Premier Agricultural Hub',
     description: 'Empowering Kenyan farmers with certified seeds, premium fertilizers, and expert agricultural advice.',
-    siteName: 'Mel-Agro',
+    siteName: 'Mel-Agri',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'Mel-Agro Agricultural Solutions',
+        alt: 'Mel-Agri Agricultural Solutions',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Mel-Agro | Kenya\'s Premier Agricultural Hub',
+    title: 'Mel-Agri | Kenya\'s Premier Agricultural Hub',
     description: 'Empowering Kenyan farmers with certified seeds, premium fertilizers, and expert agricultural advice.',
     images: ['/og-image.jpg'],
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Mel-Agro",
+    title: "Mel-Agri",
   },
   formatDetection: {
     telephone: false,
@@ -132,6 +133,7 @@ export default function RootLayout({
                               <MobileNav />
                               {/* <ChatWidget /> - Replacing basic widget with AI Bot */}
                               <WhatsAppButton />
+                              <TrafficTracker />
                               <Toaster position="top-center" toastOptions={{
                                 duration: 3000,
                                 style: {

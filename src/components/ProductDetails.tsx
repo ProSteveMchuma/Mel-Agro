@@ -152,7 +152,7 @@ export default function ProductDetails({ id }: { id: string }) {
                     {/* Right Column: Info */}
                     <div className="flex flex-col">
                         <span className="text-green-600 font-bold text-xs uppercase tracking-wider mb-2">
-                            {product.supplier || "MEL-AGRI QUALITY"}
+                            {product.brand || "MEL-AGRI QUALITY"}
                         </span>
 
                         <div className="flex justify-between items-start">
@@ -174,8 +174,8 @@ export default function ProductDetails({ id }: { id: string }) {
                                             key={v.id}
                                             onClick={() => setSelectedVariant(v)}
                                             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${selectedVariant?.id === v.id
-                                                ? 'bg-melagro-primary text-white border-melagro-primary shadow-lg shadow-green-100'
-                                                : 'bg-white text-gray-600 border-gray-200 hover:border-melagro-primary'
+                                                ? 'bg-melagri-primary text-white border-melagri-primary shadow-lg shadow-green-100'
+                                                : 'bg-white text-gray-600 border-gray-200 hover:border-melagri-primary'
                                                 }`}
                                         >
                                             {v.name}

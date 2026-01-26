@@ -65,7 +65,7 @@ export default function AdminChatPage() {
                             <div
                                 key={conv.id}
                                 onClick={() => setActiveConversationId(conv.id)}
-                                className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${activeConversationId === conv.id ? 'bg-blue-50 border-l-4 border-l-melagro-primary' : ''}`}
+                                className={`p-4 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${activeConversationId === conv.id ? 'bg-blue-50 border-l-4 border-l-melagri-primary' : ''}`}
                             >
                                 <div className="font-bold text-gray-900 truncate">{conv.userName || 'Anonymous'}</div>
                                 <div className="text-xs text-gray-500 truncate mb-1">{conv.userEmail}</div>
@@ -94,7 +94,7 @@ export default function AdminChatPage() {
                             </div>
                             <button
                                 onClick={() => setShowProductPicker(!showProductPicker)}
-                                className="px-3 py-1.5 bg-melagro-primary text-white text-xs font-bold rounded-lg hover:bg-melagro-secondary flex items-center gap-1"
+                                className="px-3 py-1.5 bg-melagri-primary text-white text-xs font-bold rounded-lg hover:bg-melagri-secondary flex items-center gap-1"
                             >
                                 + Create Proposal
                             </button>
@@ -126,7 +126,7 @@ export default function AdminChatPage() {
                                                 <div className="font-bold text-gray-900">Total: KES {msg.proposalData?.total.toLocaleString()}</div>
                                             </div>
                                         ) : (
-                                            <div className={`p-3 rounded-2xl text-sm ${!isCustomer ? 'bg-melagro-primary text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none'}`}>
+                                            <div className={`p-3 rounded-2xl text-sm ${!isCustomer ? 'bg-melagri-primary text-white rounded-br-none' : 'bg-gray-200 text-gray-800 rounded-bl-none'}`}>
                                                 {msg.content}
                                             </div>
                                         )}
@@ -145,12 +145,12 @@ export default function AdminChatPage() {
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 placeholder="Type a message..."
-                                className="flex-grow px-4 py-2 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-melagro-primary/50"
+                                className="flex-grow px-4 py-2 bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
                             />
                             <button
                                 type="submit"
                                 disabled={!input.trim()}
-                                className="p-2 bg-melagro-primary text-white rounded-full hover:bg-melagro-secondary disabled:opacity-50"
+                                className="p-2 bg-melagri-primary text-white rounded-full hover:bg-melagri-secondary disabled:opacity-50"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -190,7 +190,7 @@ export default function AdminChatPage() {
                                             </div>
                                             <button
                                                 onClick={() => handleSendProposal(product)}
-                                                className="px-2 py-1 bg-melagro-primary text-white text-xs rounded hover:bg-melagro-secondary shrink-0"
+                                                className="px-2 py-1 bg-melagri-primary text-white text-xs rounded hover:bg-melagri-secondary shrink-0"
                                             >
                                                 Send
                                             </button>

@@ -10,7 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AnalyticsCharts from "@/components/admin/AnalyticsCharts";
 import ReportsCenter from "@/components/admin/ReportsCenter";
-import { collection, query, orderBy, limit, getDocs, QueryDocumentSnapshot } from "firebase/firestore";
+import { collection, query, orderBy, limit, getDocs, getDoc, doc, QueryDocumentSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Product } from "@/types";
 
@@ -39,6 +39,7 @@ export default function AdminDashboard() {
     // Analytics State
     const [topSearches, setTopSearches] = useState<SearchTerm[]>([]);
     const [topViewed, setTopViewed] = useState<ViewedProduct[]>([]);
+    const [traffic, setTraffic] = useState({ totalVisits: 0, uniqueVisitors: 0 });
     const [loadingAnalytics, setLoadingAnalytics] = useState(true);
 
     // Calculate Stats
@@ -74,6 +75,13 @@ export default function AdminDashboard() {
                 });
 
                 setTopViewed(viewedProducts);
+
+                // Today's Traffic
+                const today = new Date().toISOString().split('T')[0];
+                const trafficSnap = await getDoc(doc(db, 'analytics_traffic', today));
+                if (trafficSnap.exists()) {
+                    setTraffic(trafficSnap.data() as any);
+                }
             } catch (err) {
                 console.error("Error fetching analytics:", err);
             } finally {
@@ -118,8 +126,8 @@ export default function AdminDashboard() {
             {/* AI MARKET INTELLIGENCE STRIP */}
             <div className="print:hidden">
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-melagro-primary/10 rounded-2xl flex items-center justify-center border border-melagro-primary/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-melagro-primary animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="w-12 h-12 bg-melagri-primary/10 rounded-2xl flex items-center justify-center border border-melagri-primary/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-melagri-primary animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                     </div>
@@ -132,18 +140,18 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Market Opportunity Widget */}
                     <div className="lg:col-span-2 bg-gradient-to-br from-slate-900 to-slate-950 p-8 rounded-[2rem] text-white shadow-2xl relative overflow-hidden border border-slate-800">
-                        <div className="absolute top-0 right-0 w-64 h-64 bg-melagro-primary/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-melagri-primary/10 rounded-full blur-[100px] -mr-32 -mt-32"></div>
 
                         <div className="relative z-10">
                             <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-melagro-primary">Prophet: Demand Forecasting</h3>
-                                <span className="px-3 py-1 bg-melagro-primary/20 text-melagro-primary text-[10px] font-black rounded-full uppercase truncate">Live Market Sync</span>
+                                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-melagri-primary">Prophet: Demand Forecasting</h3>
+                                <span className="px-3 py-1 bg-melagri-primary/20 text-melagri-primary text-[10px] font-black rounded-full uppercase truncate">Live Market Sync</span>
                             </div>
 
                             <div className="space-y-6">
                                 {/* Demand Surge Card */}
                                 {topSearches.length > 0 && (
-                                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm group hover:border-melagro-primary/50 transition-all">
+                                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm group hover:border-melagri-primary/50 transition-all">
                                         <div className="flex items-start gap-4">
                                             <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-400 group-hover:scale-110 transition-transform">
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
@@ -153,7 +161,7 @@ export default function AdminDashboard() {
                                                 <p className="text-xs text-gray-400 mt-1 italic">Interest has increased by ~40% in the last 24hrs. Supply check recommended.</p>
 
                                                 <div className="mt-4 flex gap-2">
-                                                    <button className="px-3 py-1.5 bg-melagro-primary text-white text-[10px] font-black uppercase rounded-lg">Create Bundle</button>
+                                                    <button className="px-3 py-1.5 bg-melagri-primary text-white text-[10px] font-black uppercase rounded-lg">Create Bundle</button>
                                                     <button className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg">Run Campaign</button>
                                                 </div>
                                             </div>
@@ -172,7 +180,30 @@ export default function AdminDashboard() {
                                             <p className="text-xs text-gray-400 mt-1">Conversion drop-off at "Shipping Details" is 15% higher than usual.</p>
 
                                             <div className="mt-4 flex gap-2">
-                                                <Link href="/dashboard/admin/intelligence" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg">Analyze Funnel</Link>
+                                                <Link href="/dashboard/admin/intelligence/abandoned-carts" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg">Analyze Funnel</Link>
+                                                <Link href="/dashboard/admin/intelligence/abandoned-carts" className="px-3 py-1.5 bg-melagri-primary text-white text-[10px] font-black uppercase rounded-lg">View Recoverable Carts</Link>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Website Traffic Pulse */}
+                                <div className="p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm group hover:border-blue-500/50 transition-all">
+                                    <div className="flex items-start gap-4">
+                                        <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        </div>
+                                        <div className="flex-grow">
+                                            <p className="text-lg font-black tracking-tight">Today's Traffic Pulse</p>
+                                            <div className="mt-2 flex gap-6">
+                                                <div>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase">Live Visits</p>
+                                                    <p className="text-xl font-black text-white">{traffic.totalVisits || 0}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase">Unique Users</p>
+                                                    <p className="text-xl font-black text-melagri-primary">{traffic.uniqueVisitors || 0}</p>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -189,7 +220,7 @@ export default function AdminDashboard() {
                                 {topViewed.slice(0, 3).map((item, i) => (
                                     <div key={i} className="flex items-center justify-between">
                                         <span className="text-sm font-bold text-gray-800 truncate pr-4">{item.name}</span>
-                                        <span className="text-xs font-black text-melagro-primary">{item.views} Views</span>
+                                        <span className="text-xs font-black text-melagri-primary">{item.views} Views</span>
                                     </div>
                                 ))}
                             </div>
@@ -286,7 +317,7 @@ export default function AdminDashboard() {
                 <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                         <h2 className="font-bold text-gray-900">Recent Orders</h2>
-                        <Link href="/dashboard/admin/orders" className="text-sm text-melagro-primary hover:underline">View All</Link>
+                        <Link href="/dashboard/admin/orders" className="text-sm text-melagri-primary hover:underline">View All</Link>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left text-sm">
@@ -367,7 +398,7 @@ export default function AdminDashboard() {
                                     return (
                                         <Link href={`/dashboard/admin/products/edit/${product.id}`} key={product.id} className="block group">
                                             <div className="flex justify-between items-start mb-1">
-                                                <span className="text-sm font-medium text-gray-900 group-hover:text-melagro-primary transition-colors">{product.name}</span>
+                                                <span className="text-sm font-medium text-gray-900 group-hover:text-melagri-primary transition-colors">{product.name}</span>
                                                 <span className="text-[8px] font-black text-gray-300 uppercase italic">Fix Needed</span>
                                             </div>
                                             <div className="flex gap-1">
@@ -387,7 +418,7 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                     <div className="p-4 border-t border-gray-100 bg-gray-50 text-center">
-                        <Link href="/dashboard/admin/products" className="text-sm text-melagro-primary font-bold hover:underline">Manage Catalog</Link>
+                        <Link href="/dashboard/admin/products" className="text-sm text-melagri-primary font-bold hover:underline">Manage Catalog</Link>
                     </div>
                 </div>
             </div>

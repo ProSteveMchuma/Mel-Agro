@@ -46,13 +46,13 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     const [language, setLanguage] = useState<Language>('en');
 
     useEffect(() => {
-        const savedLang = localStorage.getItem('melagro_lang') as Language;
+        const savedLang = localStorage.getItem('Mel-Agri_lang') as Language;
         if (savedLang) setLanguage(savedLang);
     }, []);
 
     const handleSetLanguage = (lang: Language) => {
         setLanguage(lang);
-        localStorage.setItem('melagro_lang', lang);
+        localStorage.setItem('Mel-Agri_lang', lang);
     };
 
     const t = (key: string) => {

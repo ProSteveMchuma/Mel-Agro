@@ -29,7 +29,7 @@ export default function ReceiptPage() {
                 <div className="pb-12 text-center print:hidden">
                     <button
                         onClick={() => window.print()}
-                        className="bg-melagro-primary text-white px-8 py-3 rounded-lg shadow-lg hover:bg-melagro-secondary transition-colors font-bold"
+                        className="bg-melagri-primary text-white px-8 py-3 rounded-lg shadow-lg hover:bg-melagri-secondary transition-colors font-bold"
                     >
                         Print Receipt
                     </button>

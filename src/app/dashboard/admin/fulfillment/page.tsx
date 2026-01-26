@@ -69,7 +69,7 @@ export default function FulfillmentPage() {
                         actionableOrders.map(order => (
                             <div
                                 key={order.id}
-                                className={`bg-white p-5 rounded-2xl border transition-all cursor-pointer ${selectedOrder?.id === order.id ? 'border-melagro-primary ring-1 ring-melagro-primary shadow-md' : 'border-gray-100 hover:border-gray-200 shadow-sm'}`}
+                                className={`bg-white p-5 rounded-2xl border transition-all cursor-pointer ${selectedOrder?.id === order.id ? 'border-melagri-primary ring-1 ring-melagri-primary shadow-md' : 'border-gray-100 hover:border-gray-200 shadow-sm'}`}
                                 onClick={() => setSelectedOrder(order)}
                             >
                                 <div className="flex justify-between items-start mb-3">
@@ -116,7 +116,7 @@ export default function FulfillmentPage() {
                                         {selectedOrder.status === 'Processing' && (
                                             <button
                                                 onClick={() => updateOrderStatus(selectedOrder.id, 'Shipped')}
-                                                className="w-full py-3 bg-melagro-primary text-white rounded-xl font-bold hover:bg-melagro-secondary transition-all shadow-md active:scale-95"
+                                                className="w-full py-3 bg-melagri-primary text-white rounded-xl font-bold hover:bg-melagri-secondary transition-all shadow-md active:scale-95"
                                             >
                                                 Mark as Shipped
                                             </button>
@@ -199,7 +199,7 @@ function InternalNotes({ orderId, initialNote, history }: { orderId: string, ini
             <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
-                className="w-full text-xs rounded-xl border-gray-200 focus:ring-melagro-primary/20 p-3 min-h-[80px]"
+                className="w-full text-xs rounded-xl border-gray-200 focus:ring-melagri-primary/20 p-3 min-h-[80px]"
                 placeholder="Add logistics or status notes here..."
             />
             <button

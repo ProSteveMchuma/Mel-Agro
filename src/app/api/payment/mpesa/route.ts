@@ -46,7 +46,7 @@ export async function POST(request: Request) {
                 PartyB: shortcode,
                 PhoneNumber: formattedPhone,
                 CallBackURL: callbackUrl,
-                AccountReference: 'MelAgro',
+                AccountReference: 'Mel-Agri',
                 TransactionDesc: 'Order Payment',
             }),
         });

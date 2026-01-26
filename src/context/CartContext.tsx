@@ -30,7 +30,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // 1. Initial Load: LocalStorage -> Firestore Merge
     useEffect(() => {
         const loadCart = async () => {
-            const localCart = localStorage.getItem('melagro_cart');
+            const localCart = localStorage.getItem('Mel-Agri_cart');
             let items: CartItem[] = [];
 
             if (localCart) {
@@ -69,14 +69,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (isInitialLoad) return;
 
-        localStorage.setItem('melagro_cart', JSON.stringify(cartItems));
+        localStorage.setItem('Mel-Agri_cart', JSON.stringify(cartItems));
 
         if (user) {
             const syncCart = async () => {
                 try {
                     await setDoc(doc(db, 'carts', user.uid), {
+                        userId: user.uid,
+                        userName: user.name || 'Anonymous Farmer',
+                        userEmail: user.email,
+                        userPhone: user.phone || '',
                         items: cartItems,
-                        updatedAt: new Date().toISOString()
+                        total: cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0),
+                        itemCount: cartItems.reduce((acc, item) => acc + item.quantity, 0),
+                        updatedAt: new Date().toISOString(),
+                        status: cartItems.length > 0 ? 'active' : 'cleared'
                     }, { merge: true });
                 } catch (e) {
                     console.error("Cloud cart sync failed", e);

@@ -101,7 +101,7 @@ export default function ProductManagement() {
                     <input
                         type="text"
                         placeholder="Search products..."
-                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-melagro-primary focus:ring-1 focus:ring-melagro-primary outline-none transition-all"
+                        className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary focus:ring-1 focus:ring-melagri-primary outline-none transition-all"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -109,14 +109,14 @@ export default function ProductManagement() {
                 <select
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
-                    className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagro-primary outline-none bg-white"
+                    className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary outline-none bg-white"
                 >
                     {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
                 <select
                     value={filterStock}
                     onChange={(e) => setFilterStock(e.target.value)}
-                    className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagro-primary outline-none bg-white"
+                    className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary outline-none bg-white"
                 >
                     <option value="All">All Stock Status</option>
                     <option value="In Stock">In Stock</option>
@@ -136,7 +136,7 @@ export default function ProductManagement() {
                                         type="checkbox"
                                         checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
                                         onChange={toggleSelectAll}
-                                        className="rounded border-gray-300 text-melagro-primary focus:ring-melagro-primary"
+                                        className="rounded border-gray-300 text-melagri-primary focus:ring-melagri-primary"
                                     />
                                 </th>
                                 <th className="px-6 py-4 font-medium">Product</th>
@@ -164,7 +164,7 @@ export default function ProductManagement() {
                                                 type="checkbox"
                                                 checked={isSelected}
                                                 onChange={() => toggleSelectProduct(String(product.id))}
-                                                className="rounded border-gray-300 text-melagro-primary focus:ring-melagro-primary"
+                                                className="rounded border-gray-300 text-melagri-primary focus:ring-melagri-primary"
                                             />
                                         </td>
                                         <td className="px-6 py-4">
@@ -178,7 +178,12 @@ export default function ProductManagement() {
                                                         unoptimized={typeof product.image === 'string' && product.image.includes('firebasestorage')}
                                                     />
                                                 </div>
-                                                <div className="font-medium text-gray-900">{product.name}</div>
+                                                <div>
+                                                    <div className="font-medium text-gray-900">{product.name}</div>
+                                                    {product.productCode && (
+                                                        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">{product.productCode}</div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 text-gray-600">

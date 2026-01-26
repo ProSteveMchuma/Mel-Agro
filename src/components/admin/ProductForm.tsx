@@ -30,7 +30,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
         price: initialData?.price ? initialData.price.toString() : '',
         category: initialData?.category || 'Fertilizers',
         subCategory: initialData?.subCategory || '',
-        supplier: initialData?.supplier || '',
+        productCode: initialData?.productCode || '',
         brand: initialData?.brand || '',
         description: initialData?.description || '',
         image: initialData?.image || '',
@@ -123,7 +123,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
             price: price,
             category: formData.category,
             subCategory: formData.subCategory,
-            supplier: formData.supplier,
+            productCode: formData.productCode,
             brand: formData.brand,
             description: formData.description,
             image: formData.image || 'https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?q=80&w=1000&auto=format&fit=crop',
@@ -165,7 +165,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                 name="name"
                                 value={formData.name}
                                 onChange={handleChange}
-                                className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary"
+                                className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary"
                                 placeholder="e.g. DAP Fertilizer"
                             />
                         </div>
@@ -176,7 +176,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                     name="category"
                                     value={formData.category}
                                     onChange={handleChange}
-                                    className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary pr-10"
+                                    className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary pr-10"
                                 >
                                     {dynamicCategories.map(cat => (
                                         <option key={cat} value={cat}>{cat}</option>
@@ -188,7 +188,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                         <input
                                             type="text"
                                             placeholder="Enter new category name"
-                                            className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary text-sm font-bold"
+                                            className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary text-sm font-bold"
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
                                                     e.preventDefault();
@@ -220,7 +220,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                 name="subCategory"
                                 value={formData.subCategory}
                                 onChange={handleChange}
-                                className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary"
+                                className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary"
                                 placeholder="e.g. Planting Fertilizer"
                             />
                         </div>
@@ -231,19 +231,19 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                 name="brand"
                                 value={formData.brand}
                                 onChange={handleChange}
-                                className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary"
+                                className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary"
                                 placeholder="e.g. Yara"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Product Code (SKU)</label>
                             <input
                                 type="text"
-                                name="supplier"
-                                value={formData.supplier}
+                                name="productCode"
+                                value={formData.productCode}
                                 onChange={handleChange}
-                                className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary"
-                                placeholder="e.g. Mel-Agri"
+                                className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary"
+                                placeholder="e.g. MEL-001"
                             />
                         </div>
                     </div>
@@ -261,7 +261,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                 name="price"
                                 value={formData.price}
                                 onChange={handleChange}
-                                className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary"
+                                className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary"
                                 placeholder="0.00"
                             />
                         </div>
@@ -274,7 +274,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                 value={formData.stockQuantity}
                                 onChange={handleChange}
                                 min="0"
-                                className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary"
+                                className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary"
                                 placeholder="0"
                             />
                         </div>
@@ -287,7 +287,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                 value={formData.lowStockThreshold}
                                 onChange={handleChange}
                                 min="0"
-                                className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary"
+                                className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary"
                                 placeholder="10"
                             />
                         </div>
@@ -303,7 +303,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                             <button
                                 type="button"
                                 onClick={addVariant}
-                                className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-melagro-primary border border-melagro-primary/20 hover:bg-melagro-primary hover:text-white transition-all shadow-sm"
+                                className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-melagri-primary border border-melagri-primary/20 hover:bg-melagri-primary hover:text-white transition-all shadow-sm"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                                 Add Variant
@@ -320,7 +320,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                                 type="text"
                                                 value={variant.name}
                                                 onChange={(e) => updateVariant(idx, 'name', e.target.value)}
-                                                className="w-full text-xs rounded-lg border-gray-200 focus:ring-melagro-primary focus:border-melagro-primary"
+                                                className="w-full text-xs rounded-lg border-gray-200 focus:ring-melagri-primary focus:border-melagri-primary"
                                                 placeholder="50kg"
                                             />
                                         </div>
@@ -330,7 +330,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                                 type="number"
                                                 value={variant.price}
                                                 onChange={(e) => updateVariant(idx, 'price', e.target.value)}
-                                                className="w-full text-xs rounded-lg border-gray-200 focus:ring-melagro-primary focus:border-melagro-primary"
+                                                className="w-full text-xs rounded-lg border-gray-200 focus:ring-melagri-primary focus:border-melagri-primary"
                                                 placeholder="Override price"
                                             />
                                         </div>
@@ -340,7 +340,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                                 type="number"
                                                 value={variant.stockQuantity}
                                                 onChange={(e) => updateVariant(idx, 'stockQuantity', e.target.value)}
-                                                className="w-full text-xs rounded-lg border-gray-200 focus:ring-melagro-primary focus:border-melagro-primary"
+                                                className="w-full text-xs rounded-lg border-gray-200 focus:ring-melagri-primary focus:border-melagri-primary"
                                                 placeholder="0"
                                             />
                                         </div>
@@ -368,7 +368,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                     <div className="space-y-6">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                            <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-melagro-primary focus-within:border-melagro-primary">
+                            <div className="border border-gray-300 rounded-lg overflow-hidden focus-within:ring-1 focus-within:ring-melagri-primary focus-within:border-melagri-primary">
                                 <textarea
                                     required
                                     name="description"
@@ -389,7 +389,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                     value={formData.specification}
                                     onChange={handleChange}
                                     rows={4}
-                                    className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary text-sm"
+                                    className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary text-sm"
                                     placeholder="e.g. Nitrogen: 18%, Phosphorus: 46%..."
                                 ></textarea>
                             </div>
@@ -400,7 +400,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                     value={formData.howToUse}
                                     onChange={handleChange}
                                     rows={4}
-                                    className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary text-sm"
+                                    className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary text-sm"
                                     placeholder="Step-by-step instructions for the farmer..."
                                 ></textarea>
                             </div>
@@ -414,7 +414,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                     value={formData.features}
                                     onChange={handleChange}
                                     rows={4}
-                                    className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary text-sm"
+                                    className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary text-sm"
                                     placeholder="High Yield&#10;Drought Resistant&#10;Fast Maturing"
                                 ></textarea>
                             </div>
@@ -425,7 +425,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                     name="tags"
                                     value={formData.tags}
                                     onChange={handleChange}
-                                    className="w-full rounded-lg border-gray-300 focus:ring-melagro-primary focus:border-melagro-primary text-sm"
+                                    className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary text-sm"
                                     placeholder="hybrid, planting, 50kg"
                                 />
                                 <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">Useful for "Related Products" logic</p>
@@ -455,7 +455,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                     )}
                                     {uploading && (
                                         <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
-                                            <div className="w-6 h-6 border-2 border-melagro-primary border-t-transparent animate-spin rounded-full"></div>
+                                            <div className="w-6 h-6 border-2 border-melagri-primary border-t-transparent animate-spin rounded-full"></div>
                                         </div>
                                     )}
                                 </div>
@@ -470,8 +470,8 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                         file:mr-4 file:py-2 file:px-6
                                         file:rounded-full file:border-0
                                         file:text-[10px] file:font-black file:uppercase file:tracking-widest
-                                        file:bg-melagro-primary file:text-white
-                                        hover:file:bg-melagro-secondary cursor-pointer disabled:opacity-50"
+                                        file:bg-melagri-primary file:text-white
+                                        hover:file:bg-melagri-secondary cursor-pointer disabled:opacity-50"
                                     />
                                     <div className="mt-3">
                                         <input
@@ -480,7 +480,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                             value={formData.image}
                                             onChange={handleChange}
                                             placeholder="Or paste primary image URL"
-                                            className="text-xs w-full bg-gray-50 border-gray-100 rounded-xl focus:ring-melagro-primary/20 transition-all font-medium"
+                                            className="text-xs w-full bg-gray-50 border-gray-100 rounded-xl focus:ring-melagri-primary/20 transition-all font-medium"
                                         />
                                     </div>
                                 </div>
