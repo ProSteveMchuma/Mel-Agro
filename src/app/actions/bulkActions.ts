@@ -27,6 +27,16 @@ export async function uploadProductsFromExcel(formData: FormData) {
     }
 
     try {
+        console.log("Bulk upload action triggered");
+        // Verify initialization
+        try {
+            const collections = await adminDb.listCollections();
+            console.log(`Firebase Admin initialized. Accessible collections: ${collections.map(c => c.id).join(', ')}`);
+        } catch (initErr: any) {
+            console.error("Firebase Admin check failed:", initErr);
+            return { success: false, error: `Firebase Admin auth failure: ${initErr.message}` };
+        }
+
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         const workbook = XLSX.read(buffer, { type: 'buffer' });
