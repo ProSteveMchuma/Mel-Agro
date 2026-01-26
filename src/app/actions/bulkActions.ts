@@ -78,29 +78,40 @@ export async function uploadProductsFromExcel(formData: FormData) {
         const reportLogs: any[] = [];
 
         for (const row of allSheetData as any[]) {
-            const name = getRowValue(row, 'PRODUCT NAME', 'NAME');
+            const name = getRowValue(row, 'PRODUCT NAME', 'NAME', 'Product Name');
             if (!name) continue;
 
             const trimmedName = String(name).trim();
             const lowerName = trimmedName.toLowerCase().trim();
 
             // 2. Parsing Price & Variants
-            const rawPrice = getRowValue(row, 'PRODUCT PRICE', 'PRICE') || "";
+            const rawPrice = getRowValue(row, 'PRODUCT PRICE', 'PRICE', 'Base Price (KES)') || "";
             const priceStr = String(rawPrice);
             const variants: ProductVariant[] = [];
             let basePrice = 0;
 
-            const variantRegex = /(.*?)(?:Kes|KES)\s*([\d,.]+)/g;
+            const variantRegex = /(?:Kes|KES)?\s*([\d,]{2,10})\s*(?:\((.*?)\))?/gi;
             let match;
             let variantIndex = 0;
-            while ((match = variantRegex.exec(priceStr)) !== null) {
-                const rawVName = match[1].trim();
-                const vPrice = parseFloat(match[2].replace(/,/g, ''));
-                let vName = rawVName.split(',').pop()?.trim().replace(/:$/, '') || "Standard";
-                if (!vName || vName.length > 30) vName = "Standard";
-                if (variantIndex === 0) basePrice = vPrice;
-                variants.push({ id: `v-${Date.now()}-${variantIndex}`, name: vName, price: vPrice, stockQuantity: 100 });
-                variantIndex++;
+            const priceTokens = priceStr.split(',').map(s => s.trim());
+
+            for (const token of priceTokens) {
+                const innerMatch = /(?:Kes|KES)?\s*([\d,]{2,10})\s*(?:\((.*?)\))?/i.exec(token);
+                if (innerMatch && innerMatch[1]) {
+                    const cleanPrice = innerMatch[1].replace(/,/g, '');
+                    const vPrice = parseFloat(cleanPrice);
+                    if (!isNaN(vPrice)) {
+                        let vName = (innerMatch[2] || "Standard").trim();
+                        if (variantIndex === 0) basePrice = vPrice;
+                        variants.push({
+                            id: `v-${Date.now()}-${variantIndex}`,
+                            name: vName,
+                            price: vPrice,
+                            stockQuantity: 100
+                        });
+                        variantIndex++;
+                    }
+                }
             }
 
             if (variants.length === 0 && !isNaN(parseFloat(priceStr.replace(/,/g, '')))) {
@@ -111,10 +122,10 @@ export async function uploadProductsFromExcel(formData: FormData) {
             // 3. Metadata Extraction & Normalization
             const category = normalizeProductField(getRowValue(row, 'CATEGORY') || "Uncategorized");
             const subCategory = normalizeProductField(getRowValue(row, 'SUB CATEGORY', 'SUB-CATEGORY') || "");
-            const brand = normalizeProductField(getRowValue(row, 'BRAND', 'MANUFACTURER') || "MEL-AGRI");
+            const brand = normalizeProductField(getRowValue(row, 'BRAND', 'MANUFACTURER', 'Brand') || "MEL-AGRI");
             const productCode = normalizeProductField(getRowValue(row, 'PRODUCT CODE', 'SKU', 'CODE') || "");
 
-            let photo = getRowValue(row, 'PHOTO', 'IMAGE');
+            let photo = getRowValue(row, 'PHOTO', 'IMAGE', 'Photo link');
             if (!photo || (typeof photo === 'string' && !photo.match(/\.(jpg|jpeg|png|webp|gif)$/i))) {
                 const possiblePath = Object.values(row).find(val =>
                     typeof val === 'string' && (val.includes('\\') || val.includes('/') || val.match(/\.(jpg|jpeg|png|webp)$/i))
@@ -122,15 +133,15 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 if (possiblePath) photo = String(possiblePath);
             }
 
-            const specData = getRowValue(row, 'SPECIFICATION', 'TECHNICAL SPECIFICATION', 'SPECS');
+            const specData = getRowValue(row, 'SPECIFICATION', 'TECHNICAL SPECIFICATION', 'SPECS', 'Technical Specification');
             const specification = typeof specData === 'string' ? specData : (Array.isArray(specData) ? specData.join(', ') : "");
 
-            let featuresCol = getRowValue(row, 'FEATURES', 'HIGHLIGHTS', 'KEY FEATURES');
+            let featuresCol = getRowValue(row, 'FEATURES', 'HIGHLIGHTS', 'KEY FEATURES', 'Features (One per line)');
             let features: string[] = [];
             if (featuresCol) {
                 features = String(featuresCol).split(/[,\n]/).map(f => f.trim()).filter(Boolean);
             } else {
-                const description = String(getRowValue(row, 'PRODUCT DISCRIPTION', 'DESCRIPTION') || "");
+                const description = String(getRowValue(row, 'PRODUCT DISCRIPTION', 'DESCRIPTION', 'Product Description') || "");
                 const bulletMatches = description.match(/[•*-]\s*(.*?)(?=\n|[•*-]|$)/g);
                 if (bulletMatches) {
                     features = bulletMatches.map(m => m.replace(/^[•*-]\s*/, '').trim()).filter(f => f.length > 3);
@@ -139,9 +150,9 @@ export async function uploadProductsFromExcel(formData: FormData) {
 
             const newProductData: any = {
                 name: trimmedName,
-                description: getRowValue(row, 'PRODUCT DISCRIPTION', 'DESCRIPTION', 'PRODUCT DESCRIPTION') || "",
+                description: getRowValue(row, 'PRODUCT DISCRIPTION', 'DESCRIPTION', 'PRODUCT DESCRIPTION', 'Product Description') || "",
                 specification: specification,
-                howToUse: getRowValue(row, 'HOW TO USE', 'DIRECTIONS', 'USE') || "",
+                howToUse: getRowValue(row, 'HOW TO USE', 'DIRECTIONS', 'USE', 'How To Use / Guide') || "",
                 features: features.length > 0 ? features : ["Quality Guaranteed", "Farmer Choice"],
                 price: basePrice,
                 category: category,
