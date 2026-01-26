@@ -71,5 +71,38 @@ export const AnalyticsService = {
         } catch (error) {
             console.error("Failed to track visit:", error);
         }
+    },
+
+    /**
+     * Log an "Add to Cart" event.
+     */
+    logAddToCart: async (productId: string) => {
+        if (!productId) return;
+        try {
+            const statsRef = doc(db, 'analytics_products', productId);
+            await setDoc(statsRef, {
+                productId,
+                addToCartCount: increment(1),
+                lastAdded: serverTimestamp()
+            }, { merge: true });
+        } catch (error) {
+            console.error("Failed to log add to cart:", error);
+        }
+    },
+
+    /**
+     * Log a successful purchase.
+     */
+    logPurchase: async (orderId: string, amount: number) => {
+        if (!orderId) return;
+        try {
+            await addDoc(collection(db, 'analytics_purchases'), {
+                orderId,
+                amount,
+                timestamp: serverTimestamp()
+            });
+        } catch (error) {
+            console.error("Failed to log purchase:", error);
+        }
     }
 };

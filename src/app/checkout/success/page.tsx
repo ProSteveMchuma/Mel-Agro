@@ -56,6 +56,10 @@ function OrderSuccessContent() {
             const foundOrder = orders.find((o) => o.id === orderId);
             if (foundOrder) {
                 setOrder(foundOrder);
+                // Log purchase analytics
+                import('@/lib/analytics').then(({ AnalyticsService }) => {
+                    AnalyticsService.logPurchase(foundOrder.id, foundOrder.total);
+                });
                 return;
             }
 
