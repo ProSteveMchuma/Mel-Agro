@@ -31,11 +31,16 @@ export async function uploadProductsFromExcel(formData: FormData) {
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         const workbook = XLSX.read(buffer, { type: 'buffer' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const data = XLSX.utils.sheet_to_json(worksheet);
 
-        console.log(`Processing ${data.length} rows from Excel`);
+        let allSheetData: any[] = [];
+        workbook.SheetNames.forEach(sheetName => {
+            const worksheet = workbook.Sheets[sheetName];
+            const data = XLSX.utils.sheet_to_json(worksheet);
+            console.log(`Read ${data.length} rows from sheet: ${sheetName}`);
+            allSheetData = [...allSheetData, ...data];
+        });
+
+        console.log(`Processing ${allSheetData.length} total rows from ${workbook.SheetNames.length} sheets`);
 
         // 1. Fetch existing products for intelligent deduplication
         const existingSnapshot = await adminDb.collection('products').get();
@@ -54,7 +59,7 @@ export async function uploadProductsFromExcel(formData: FormData) {
         let createdCount = 0;
         let updatedCount = 0;
 
-        for (const row of data as any[]) {
+        for (const row of allSheetData as any[]) {
             const name = getRowValue(row, 'PRODUCT NAME', 'NAME');
             if (!name) {
                 console.warn(`Row ${count} skipped: Missing name column`);
@@ -65,59 +70,74 @@ export async function uploadProductsFromExcel(formData: FormData) {
             const lowerName = trimmedName.toLowerCase();
 
             // 2. Parsing Price & Variants
-            const rawPrice = getRowValue(row, 'PRODUCT PRICE', 'PRICE');
-            const priceStr = String(rawPrice || "");
-            const variantParts = priceStr.split(',').map(s => s.trim()).filter(Boolean);
-
-            let basePrice = 0;
+            const rawPrice = getRowValue(row, 'PRODUCT PRICE', 'PRICE') || "";
+            const priceStr = String(rawPrice);
             const variants: ProductVariant[] = [];
+            let basePrice = 0;
 
-            if (variantParts.length > 0) {
-                variantParts.forEach((part, index) => {
-                    const kesMatch = part.match(/Kes\s*([\d,.]+)/i);
-                    const numMatch = part.match(/([\d,.]+)/);
-
-                    const price = kesMatch
-                        ? parseFloat(kesMatch[1].replace(/,/g, ''))
-                        : (numMatch ? parseFloat(numMatch[1].replace(/,/g, '')) : 0);
-
-                    let variantName = part.split(/Kes/i)[0].trim();
-                    if ((!variantName || variantName === numMatch?.[0]) && numMatch) {
-                        variantName = part.replace(numMatch[0], '').trim();
-                    }
-                    if (!variantName || variantName === numMatch?.[0]) variantName = "Standard";
-
-                    if (index === 0) basePrice = price;
-
-                    variants.push({
-                        id: `v-${Date.now()}-${index}`,
-                        name: variantName,
-                        price: price,
-                        stockQuantity: 100
-                    });
-                });
+            const variantRegex = /(.*?)(?:Kes|KES)\s*([\d,.]+)/g;
+            let match;
+            let variantIndex = 0;
+            while ((match = variantRegex.exec(priceStr)) !== null) {
+                const rawVName = match[1].trim();
+                const vPrice = parseFloat(match[2].replace(/,/g, ''));
+                let vName = rawVName.split(',').pop()?.trim().replace(/:$/, '') || "Standard";
+                if (!vName || vName.length > 30) vName = "Standard";
+                if (variantIndex === 0) basePrice = vPrice;
+                variants.push({ id: `v-${Date.now()}-${variantIndex}`, name: vName, price: vPrice, stockQuantity: 100 });
+                variantIndex++;
             }
 
-            // 3. Prepare Product Data
+            if (variants.length === 0 && !isNaN(parseFloat(priceStr.replace(/,/g, '')))) {
+                basePrice = parseFloat(priceStr.replace(/,/g, ''));
+                variants.push({ id: `v-${Date.now()}-0`, name: "Standard", price: basePrice, stockQuantity: 100 });
+            }
+
+            // 3. Metadata Extraction
             const category = getRowValue(row, 'CATEGORY') || "Uncategorized";
-            const subCategory = getRowValue(row, 'SUB CATEGORY') || "";
-            const photo = getRowValue(row, 'PHOTO', 'IMAGE');
+            const subCategory = getRowValue(row, 'SUB CATEGORY', 'SUB-CATEGORY') || "";
+
+            let photo = getRowValue(row, 'PHOTO', 'IMAGE');
+            if (!photo || (typeof photo === 'string' && !photo.match(/\.(jpg|jpeg|png|webp|gif)$/i))) {
+                const possiblePath = Object.values(row).find(val =>
+                    typeof val === 'string' && (val.includes('\\') || val.includes('/') || val.match(/\.(jpg|jpeg|png|webp)$/i))
+                );
+                if (possiblePath) photo = String(possiblePath);
+            }
+
+            const specData = getRowValue(row, 'SPECIFICATION', 'TECHNICAL SPECIFICATION', 'SPECS');
+            const specification = typeof specData === 'string' ? specData : (Array.isArray(specData) ? specData.join(', ') : "");
+
+            let featuresCol = getRowValue(row, 'FEATURES', 'HIGHLIGHTS', 'KEY FEATURES');
+            let features: string[] = [];
+            if (featuresCol) {
+                features = String(featuresCol).split(/[,\n]/).map(f => f.trim()).filter(Boolean);
+            } else {
+                const description = String(getRowValue(row, 'PRODUCT DISCRIPTION', 'DESCRIPTION') || "");
+                const bulletMatches = description.match(/[•*-]\s*(.*?)(?=\n|[•*-]|$)/g);
+                if (bulletMatches) {
+                    features = bulletMatches.map(m => m.replace(/^[•*-]\s*/, '').trim()).filter(f => f.length > 3);
+                }
+            }
 
             const productData: any = {
                 name: trimmedName,
                 description: getRowValue(row, 'PRODUCT DISCRIPTION', 'DESCRIPTION', 'PRODUCT DESCRIPTION') || "",
-                specification: getRowValue(row, 'SPECIFICATION') || "",
-                howToUse: getRowValue(row, 'HOW TO USE', 'DIRECTIONS') || "",
+                specification: specification,
+                howToUse: getRowValue(row, 'HOW TO USE', 'DIRECTIONS', 'USE') || "",
+                features: features.length > 0 ? features : ["Quality Guaranteed", "Farmer Choice"],
                 price: basePrice,
                 category: category,
                 subCategory: subCategory,
-                brand: getRowValue(row, 'SUPPLIER', 'SUPPLIER ', 'BRAND') || "MEL-AGRI",
-                image: photo && String(photo).startsWith('http') ? photo : "https://placehold.co/600x600?text=No+Image",
+                brand: getRowValue(row, 'SUPPLIER', 'SUPPLIER ', 'BRAND', 'MANUFACTURER') || "MEL-AGRI",
+                image: (photo && (String(photo).startsWith('http') || String(photo).startsWith('/')))
+                    ? photo
+                    : `https://placehold.co/600x600?text=${encodeURIComponent(trimmedName)}`,
                 inStock: true,
                 stockQuantity: 100,
                 lowStockThreshold: 10,
                 variants: variants.length > 1 ? variants : [],
-                tags: [category, subCategory].filter(Boolean).map(t => String(t)),
+                tags: [category, subCategory, String(getRowValue(row, 'PRODUCT CODE') || "")].filter(Boolean).map(t => String(t)),
                 lastUpdated: admin.firestore.FieldValue.serverTimestamp()
             };
 
