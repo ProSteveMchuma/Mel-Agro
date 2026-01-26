@@ -44,30 +44,30 @@ export async function uploadProductsFromExcel(formData: FormData) {
 
         // 1. Fetch existing products for intelligent deduplication
         const existingSnapshot = await adminDb.collection('products').get();
-        const existingProductsMap = new Map<string, string>(); // name.toLowerCase() -> id
+        const existingProductsData = new Map<string, { id: string, data: any }>(); // name.toLowerCase() -> {id, data}
+
         existingSnapshot.forEach(doc => {
             const pData = doc.data();
             if (pData.name) {
-                existingProductsMap.set(String(pData.name).toLowerCase().trim(), doc.id);
+                existingProductsData.set(String(pData.name).toLowerCase().trim(), { id: doc.id, data: pData });
             }
         });
 
         const batch = adminDb.batch();
         const productsRef = adminDb.collection("products");
 
-        let count = 0;
+        let totalProcessed = 0;
         let createdCount = 0;
         let updatedCount = 0;
+        let skippedCount = 0;
+        const reportLogs: any[] = [];
 
         for (const row of allSheetData as any[]) {
             const name = getRowValue(row, 'PRODUCT NAME', 'NAME');
-            if (!name) {
-                console.warn(`Row ${count} skipped: Missing name column`);
-                continue;
-            }
+            if (!name) continue;
 
             const trimmedName = String(name).trim();
-            const lowerName = trimmedName.toLowerCase();
+            const lowerName = trimmedName.toLowerCase().trim();
 
             // 2. Parsing Price & Variants
             const rawPrice = getRowValue(row, 'PRODUCT PRICE', 'PRICE') || "";
@@ -120,7 +120,7 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 }
             }
 
-            const productData: any = {
+            const newProductData: any = {
                 name: trimmedName,
                 description: getRowValue(row, 'PRODUCT DISCRIPTION', 'DESCRIPTION', 'PRODUCT DESCRIPTION') || "",
                 specification: specification,
@@ -132,7 +132,7 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 brand: getRowValue(row, 'SUPPLIER', 'SUPPLIER ', 'BRAND', 'MANUFACTURER') || "MEL-AGRI",
                 image: (photo && (String(photo).startsWith('http') || String(photo).startsWith('/')))
                     ? photo
-                    : `https://placehold.co/600x600?text=${encodeURIComponent(trimmedName)}`,
+                    : "", // Only set image if it's a valid link
                 inStock: true,
                 stockQuantity: 100,
                 lowStockThreshold: 10,
@@ -141,30 +141,68 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 lastUpdated: admin.firestore.FieldValue.serverTimestamp()
             };
 
-            // 4. Intelligent Write (Update if exists, Set if new)
-            if (existingProductsMap.has(lowerName)) {
-                const docId = existingProductsMap.get(lowerName)!;
-                const docRef = productsRef.doc(docId);
-                batch.update(docRef, productData);
-                updatedCount++;
+            // 4. Smart Comparison & Asset Protection
+            if (existingProductsData.has(lowerName)) {
+                const existing = existingProductsData.get(lowerName)!;
+                const existingData = existing.data;
+
+                // Protect Image: If existing image is high-quality (not placeholder) and new image is empty/placeholder
+                if (!newProductData.image || newProductData.image === "") {
+                    newProductData.image = existingData.image || `https://placehold.co/600x600?text=${encodeURIComponent(trimmedName)}`;
+                } else if (existingData.image && !existingData.image.includes('placehold.co') && newProductData.image.includes('placehold.co')) {
+                    newProductData.image = existingData.image;
+                }
+
+                // Deep Compare (Simplified for key fields)
+                const hasChanged =
+                    existingData.price !== newProductData.price ||
+                    existingData.description !== newProductData.description ||
+                    existingData.category !== newProductData.category ||
+                    existingData.image !== newProductData.image ||
+                    JSON.stringify(existingData.variants) !== JSON.stringify(newProductData.variants);
+
+                if (hasChanged) {
+                    const docRef = productsRef.doc(existing.id);
+                    batch.update(docRef, newProductData);
+                    updatedCount++;
+                    reportLogs.push({ name: trimmedName, action: 'Updated', details: 'Changes detected in pricing or specs' });
+                } else {
+                    skippedCount++;
+                    reportLogs.push({ name: trimmedName, action: 'Skipped', details: 'Data is already up to date' });
+                }
             } else {
+                // New Product
+                if (!newProductData.image) {
+                    newProductData.image = `https://placehold.co/600x600?text=${encodeURIComponent(trimmedName)}`;
+                }
                 const docRef = productsRef.doc();
-                productData.createdAt = admin.firestore.FieldValue.serverTimestamp();
-                productData.rating = 5;
-                productData.reviews = 0;
-                batch.set(docRef, productData);
+                newProductData.createdAt = admin.firestore.FieldValue.serverTimestamp();
+                newProductData.rating = 5;
+                newProductData.reviews = 0;
+                batch.set(docRef, newProductData);
                 createdCount++;
+                reportLogs.push({ name: trimmedName, action: 'Created', details: 'New product added to catalog' });
             }
 
-            count++;
-
-            // Firestore Batch Limit is 500. For safety we only process up to 490 per action call.
-            if (count >= 490) break;
+            totalProcessed++;
+            if (totalProcessed >= 490) break;
         }
 
-        await batch.commit();
-        console.log(`Bulk upload successful: ${count} total, ${createdCount} created, ${updatedCount} updated`);
-        return { success: true, count, createdCount, updatedCount };
+        if (totalProcessed > 0) {
+            await batch.commit();
+        }
+
+        console.log(`Bulk upload successful: ${totalProcessed} total, ${createdCount} created, ${updatedCount} updated, ${skippedCount} skipped`);
+        return {
+            success: true,
+            summary: {
+                total: totalProcessed,
+                created: createdCount,
+                updated: updatedCount,
+                skipped: skippedCount
+            },
+            logs: reportLogs
+        };
 
     } catch (error: any) {
         console.error("Bulk upload action error:", error);
@@ -172,3 +210,16 @@ export async function uploadProductsFromExcel(formData: FormData) {
     }
 }
 
+export async function getAllProducts() {
+    try {
+        const snapshot = await adminDb.collection('products').get();
+        const products = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+        return { success: true, products };
+    } catch (error: any) {
+        console.error("Error fetching products for export:", error);
+        return { success: false, error: error.message };
+    }
+}

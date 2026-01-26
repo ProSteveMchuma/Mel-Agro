@@ -26,11 +26,57 @@ export default function BulkUploadButton() {
 
             if (result.success) {
                 toast.success(
-                    `Done! Created: ${result.createdCount}, Updated: ${result.updatedCount}`,
-                    { id: loadingToast, duration: 5000 }
+                    `Done! Created: ${result.summary.created}, Updated: ${result.summary.updated}`,
+                    { id: loadingToast, duration: 2000 }
                 );
+
+                // Generate PDF Report
+                try {
+                    const { default: jsPDF } = await import('jspdf');
+                    const { default: autoTable } = await import('jspdf-autotable');
+
+                    const doc = new jsPDF();
+
+                    // Header
+                    doc.setFontSize(20);
+                    doc.setTextColor(34, 197, 94); // Melagro Green
+                    doc.text('MEL-AGRO Bulk Upload Report', 14, 22);
+
+                    doc.setFontSize(10);
+                    doc.setTextColor(100);
+                    doc.text(`Date: ${new Date().toLocaleString()}`, 14, 30);
+
+                    // Summary Table
+                    autoTable(doc, {
+                        startY: 35,
+                        head: [['Metric', 'Count']],
+                        body: [
+                            ['Total Processed', result.summary.total],
+                            ['New Products Created', result.summary.created],
+                            ['Existing Products Updated', result.summary.updated],
+                            ['Skipped (Up to Date)', result.summary.skipped],
+                        ],
+                        theme: 'striped',
+                        headStyles: { fillStyle: 'fill', fillColor: [34, 197, 94] }
+                    });
+
+                    // Details Table
+                    autoTable(doc, {
+                        startY: (doc as any).lastAutoTable.finalY + 10,
+                        head: [['Product Name', 'Action', 'Status Details']],
+                        body: result.logs.map((log: any) => [log.name, log.action, log.details]),
+                        styles: { fontSize: 8 },
+                        headStyles: { fillColor: [75, 85, 99] }
+                    });
+
+                    doc.save(`MelAgro_Upload_Report_${Date.now()}.pdf`);
+                } catch (pdfErr) {
+                    console.error('PDF Generation failed:', pdfErr);
+                    toast.error('Upload succeeded, but PDF report failed to generate.');
+                }
+
                 // Refresh the page to show new products
-                setTimeout(() => window.location.reload(), 1500);
+                setTimeout(() => window.location.reload(), 3000);
             } else {
                 toast.error(`Upload failed: ${result.error}`, { id: loadingToast });
             }

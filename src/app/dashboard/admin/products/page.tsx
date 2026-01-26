@@ -5,6 +5,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import BulkUploadButton from "@/components/admin/BulkUploadButton";
+import ExportProductsButton from "@/components/admin/ExportProductsButton";
 
 export default function ProductManagement() {
     const { products, deleteProduct } = useProducts();
@@ -80,6 +81,7 @@ export default function ProductManagement() {
                             Delete ({selectedProducts.length})
                         </button>
                     )}
+                    <ExportProductsButton />
                     <BulkUploadButton />
                     <Link href="/dashboard/admin/products/new" className="btn-primary flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
