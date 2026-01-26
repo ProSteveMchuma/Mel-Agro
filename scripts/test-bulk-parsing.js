@@ -2,7 +2,6 @@
 const XLSX = require('xlsx');
 const path = require('path');
 
-// Replicating the logic from bulkActions.ts for testing
 function getRowValue(row, ...keys) {
     const rowKeys = Object.keys(row);
     for (const targetKey of keys) {
@@ -23,19 +22,55 @@ function normalizeProductField(val) {
         .trim();
 }
 
+function convertToDirectDriveLink(url) {
+    if (!url || !url.includes('drive.google.com')) return url;
+
+    const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileMatch && fileMatch[1]) {
+        return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
+    }
+
+    const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (idMatch && idMatch[1]) {
+        return `https://drive.google.com/uc?export=view&id=${idMatch[1]}`;
+    }
+
+    return url;
+}
+
 const filePath = path.join('c:', 'Users', 'Steve', 'OneDrive - House Of Procurement', 'Desktop', 'Documents', 'GitHub', 'Mel-Agro', 'excel', 'NEW LISTING PRODUCT1.xlsx');
 
 try {
     const workbook = XLSX.readFile(filePath);
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const allSheetData = XLSX.utils.sheet_to_json(worksheet);
 
-    console.log(`--- Testing Parsing for ${allSheetData.length} products ---\n`);
+    // NEW: Capture hyperlinks
+    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    if (worksheet['!ref']) {
+        const range = XLSX.utils.decode_range(worksheet['!ref']);
+        const headers = [];
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+            const cell = worksheet[XLSX.utils.encode_cell({ r: range.s.r, c: C })];
+            headers.push(cell ? String(cell.v).trim() : `COL_${C}`);
+        }
 
-    const results = allSheetData.slice(0, 3).map((row, index) => {
+        jsonData.forEach((row, idx) => {
+            const rowIdx = range.s.r + 1 + idx;
+            headers.forEach((header, colIdx) => {
+                const cellAddress = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+                const cell = worksheet[cellAddress];
+                if (cell && cell.l && cell.l.Target) {
+                    row[header] = cell.l.Target;
+                }
+            });
+        });
+    }
+
+    console.log(`--- Testing Parsing for ${jsonData.length} products ---\n`);
+
+    const results = jsonData.slice(0, 5).map((row, index) => {
         const name = getRowValue(row, 'PRODUCT NAME', 'NAME', 'Product Name');
-        const trimmedName = String(name || "").trim();
 
         const rawPrice = getRowValue(row, 'PRODUCT PRICE', 'PRICE', 'Base Price (KES)') || "";
         const priceStr = String(rawPrice).trim();
@@ -44,7 +79,6 @@ try {
 
         const priceTokens = priceStr.split(',').map(s => s.trim());
         let variantIndex = 0;
-
         for (const token of priceTokens) {
             const innerMatch = /(?:Kes|KES)?\s*([\d,]{2,10})\s*(?:\((.*?)\))?/i.exec(token);
             if (innerMatch && innerMatch[1]) {
@@ -59,29 +93,17 @@ try {
             }
         }
 
-        const category = normalizeProductField(getRowValue(row, 'CATEGORY') || "Uncategorized");
-        const brand = normalizeProductField(getRowValue(row, 'BRAND', 'MANUFACTURER', 'Brand') || "MEL-AGRI");
-        const photo = getRowValue(row, 'PHOTO', 'IMAGE', 'Photo link');
-        const specData = getRowValue(row, 'SPECIFICATION', 'TECHNICAL SPECIFICATION', 'SPECS', 'Technical Specification');
-        const howToUse = getRowValue(row, 'HOW TO USE', 'DIRECTIONS', 'USE', 'How To Use / Guide');
-
-        let featuresCol = getRowValue(row, 'FEATURES', 'HIGHLIGHTS', 'KEY FEATURES', 'Features (One per line)');
-        let features = [];
-        if (featuresCol) {
-            features = String(featuresCol).split(/[,\n]/).map(f => f.trim()).filter(Boolean);
-        }
+        let photo = getRowValue(row, 'PHOTO', 'IMAGE', 'Photo link');
+        const rawPhoto = photo;
+        if (photo) photo = convertToDirectDriveLink(String(photo));
 
         return {
             index: index + 1,
-            name: trimmedName,
-            basePrice,
-            variants,
-            category,
-            brand,
-            photo,
-            featuresCount: features.length,
-            spec: specData ? (specData.substring(0, 50) + "...") : "None",
-            howToUse: howToUse ? (howToUse.substring(0, 50) + "...") : "None"
+            name,
+            rawPhoto,
+            finalPhoto: photo,
+            variantsCount: variants.length,
+            firstVariantPrice: variants[0] ? variants[0].price : 0
         };
     });
 

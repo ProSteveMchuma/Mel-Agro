@@ -31,6 +31,27 @@ function normalizeProductField(val: any): string {
         .trim();
 }
 
+/**
+ * Converts a Google Drive sharing link to a direct view/download link
+ */
+function convertToDirectDriveLink(url: string): string {
+    if (!url || !url.includes('drive.google.com')) return url;
+
+    // Pattern for file links: /file/d/ID/view...
+    const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+    if (fileMatch && fileMatch[1]) {
+        return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
+    }
+
+    // Pattern for id=ID query param
+    const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+    if (idMatch && idMatch[1]) {
+        return `https://drive.google.com/uc?export=view&id=${idMatch[1]}`;
+    }
+
+    return url;
+}
+
 export async function uploadProductsFromExcel(formData: FormData) {
     const file = formData.get('file') as File;
     if (!file) {
@@ -46,9 +67,35 @@ export async function uploadProductsFromExcel(formData: FormData) {
         let allSheetData: any[] = [];
         workbook.SheetNames.forEach(sheetName => {
             const worksheet = workbook.Sheets[sheetName];
-            const data = XLSX.utils.sheet_to_json(worksheet);
-            console.log(`Read ${data.length} rows from sheet: ${sheetName}`);
-            allSheetData = [...allSheetData, ...data];
+
+            // sheet_to_json is fast, but doesn't include hyperlinks
+            const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
+
+            // Enhance data with hyperlinks
+            if (worksheet['!ref']) {
+                const range = XLSX.utils.decode_range(worksheet['!ref']);
+                // Map columns to keys
+                const headers: string[] = [];
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const cell = worksheet[XLSX.utils.encode_cell({ r: range.s.r, c: C })];
+                    headers.push(cell ? String(cell.v).trim() : `COL_${C}`);
+                }
+
+                jsonData.forEach((row, idx) => {
+                    const rowIdx = range.s.r + 1 + idx; // Adjust for header and 0-indexing
+                    headers.forEach((header, colIdx) => {
+                        const cellAddress = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
+                        const cell = worksheet[cellAddress];
+                        // If cell has a hyperlink, override the value in row
+                        if (cell && cell.l && cell.l.Target) {
+                            row[header] = cell.l.Target;
+                        }
+                    });
+                });
+            }
+
+            console.log(`Read ${jsonData.length} rows from sheet: ${sheetName}`);
+            allSheetData = [...allSheetData, ...jsonData];
         });
 
         console.log(`Processing ${allSheetData.length} total rows from ${workbook.SheetNames.length} sheets`);
@@ -126,6 +173,7 @@ export async function uploadProductsFromExcel(formData: FormData) {
             const productCode = normalizeProductField(getRowValue(row, 'PRODUCT CODE', 'SKU', 'CODE') || "");
 
             let photo = getRowValue(row, 'PHOTO', 'IMAGE', 'Photo link');
+            if (photo) photo = convertToDirectDriveLink(String(photo));
             if (!photo || (typeof photo === 'string' && !photo.match(/\.(jpg|jpeg|png|webp|gif)$/i))) {
                 const possiblePath = Object.values(row).find(val =>
                     typeof val === 'string' && (val.includes('\\') || val.includes('/') || val.match(/\.(jpg|jpeg|png|webp)$/i))
