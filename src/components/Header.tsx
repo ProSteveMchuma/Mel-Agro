@@ -22,18 +22,18 @@ export default function Header() {
     : "/auth/login";
 
   return (
-    <header className="sticky top-0 z-50 bg-white">
+    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 transition-all duration-300">
       {/* Top Bar */}
-      <div className="bg-[#f0f9f1] py-2 border-b border-gray-100">
+      <div className="bg-[#f0f9f1] py-1.5 md:py-2 border-b border-gray-100 hidden sm:block">
         <div className="container-custom flex justify-center items-center">
-          <p className="text-[10px] md:text-sm font-medium text-gray-700">
-            FREE Delivery in Nairobi on orders over <span className="font-bold">KES 5,000!</span>
+          <p className="text-[10px] md:text-xs font-medium text-gray-700 uppercase tracking-widest">
+            FREE Delivery in Nairobi on orders over <span className="font-black text-green-700 underline decoration-green-300 decoration-2">KES 5,000!</span>
           </p>
         </div>
       </div>
 
       {/* Main Header */}
-      <div className="container-custom py-4 border-b border-gray-100 shadow-sm">
+      <div className="container-custom py-3 md:py-4 shadow-sm">
         <div className="flex items-center gap-8 justify-between">
           {/* Logo & Mobile Menu Toggle */}
           <div className="flex items-center gap-4">

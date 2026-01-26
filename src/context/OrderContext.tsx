@@ -24,7 +24,7 @@ interface OrderContextType {
     notifications: Notification[];
     addOrder: (order: Omit<Order, 'id' | 'date' | 'status'>, pointsToRedeem?: number) => Promise<Order>;
     updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
-    updateOrderPaymentStatus: (orderId: string, paymentStatus: 'Paid' | 'Unpaid') => Promise<void>;
+    updateOrderPaymentStatus: (orderId: string, paymentStatus: 'Paid' | 'Unpaid', transactionDetails?: any) => Promise<void>;
     requestReturn: (orderId: string, reason: string) => Promise<void>;
     updateReturnStatus: (orderId: string, status: 'Approved' | 'Rejected') => Promise<void>;
     handleConfirmReceipt: (orderId: string) => Promise<void>;

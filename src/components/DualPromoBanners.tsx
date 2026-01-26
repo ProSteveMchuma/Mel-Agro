@@ -19,7 +19,7 @@ export default function DualPromoBanners() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                    <div className="absolute inset-0 p-12 flex flex-col justify-end text-white">
+                    <div className="absolute inset-0 p-6 md:p-12 flex flex-col justify-end text-white">
                         <motion.span
                             initial={{ x: -20, opacity: 0 }}
                             whileInView={{ x: 0, opacity: 1 }}
@@ -41,7 +41,7 @@ export default function DualPromoBanners() {
                 {/* Right Banner - Sell on Mel-Agri */}
                 <motion.div
                     whileHover={{ y: -8 }}
-                    className="flex-1 bg-gradient-to-br from-green-600 to-green-500 rounded-[2.5rem] p-12 relative overflow-hidden group shadow-xl text-white"
+                    className="flex-1 bg-gradient-to-br from-green-600 to-green-500 rounded-[2.5rem] p-6 md:p-12 relative overflow-hidden group shadow-xl text-white"
                 >
                     <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
                         <svg width="200" height="200" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="currentColor" strokeWidth="1" fill="none" strokeDasharray="5 5" className="animate-spin-slow" /></svg>

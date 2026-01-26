@@ -157,7 +157,7 @@ export default function ProductsClient() {
 
                         {/* Products Grid */}
                         <Suspense fallback={
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                                 {[...Array(6)].map((_, i) => (
                                     <div key={i} className="bg-white rounded-2xl h-80 animate-pulse border border-gray-100 shadow-sm"></div>
                                 ))}
@@ -238,7 +238,7 @@ function ProductsGrid({ category, priceRange, selectedBrands }: { category: stri
     }, [products, searchParams, priceRange]);
 
     if (isLoading && products.length === 0) return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
                 <div key={i} className="bg-white rounded-2xl h-80 animate-pulse border border-gray-100 shadow-sm"></div>
             ))}
@@ -257,7 +257,7 @@ function ProductsGrid({ category, priceRange, selectedBrands }: { category: stri
 
     return (
         <div className="space-y-12">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProducts.map(product => (
                     <ProductCard
                         key={product.id}

@@ -420,7 +420,7 @@ export default function ProductDetails({ id }: { id: string }) {
                         <Link href="/products" className="text-gray-400 font-bold text-sm hover:text-green-600 transition-colors uppercase tracking-widest">Explore All →</Link>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
                         {relatedProducts.length > 0 ? relatedProducts.map((p) => (
                             <ProductCard
                                 key={p.id}

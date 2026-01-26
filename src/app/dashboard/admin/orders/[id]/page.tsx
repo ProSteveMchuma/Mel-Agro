@@ -9,7 +9,10 @@ export default function AdminOrderDetailsPage() {
     const { orders, updateOrderStatus, updateOrderPaymentStatus, updateReturnStatus } = useOrders();
     const params = useParams();
     const router = useRouter();
+    const [order, setOrder] = useState<any>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+    const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
+    const [trackingInfo, setTrackingInfo] = useState({ carrier: '', trackingNumber: '' });
     const [paymentRecord, setPaymentRecord] = useState({
         amount: 0,
         reference: '',
