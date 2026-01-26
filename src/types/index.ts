@@ -48,6 +48,8 @@ export interface Product {
     specification?: string;
     howToUse?: string;
     variants?: ProductVariant[];
+    weight?: number; // In KG
+    weightUnit?: 'kg' | 'g' | 'lb' | 'l' | 'ml';
     stock?: number; // Legacy/Compat
 }
 
@@ -56,6 +58,7 @@ export interface ProductVariant {
     name: string; // e.g., "50kg", "10kg"
     price?: number; // Override price
     stockQuantity: number;
+    weight?: number; // In KG
 }
 
 export interface Order {

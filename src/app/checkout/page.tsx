@@ -16,6 +16,7 @@ import { useBehavior } from '@/context/BehaviorContext';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
+import { getDeliveryCost } from '@/lib/delivery';
 
 const LocationPicker = dynamic(() => import('../../components/checkout/LocationPicker'), {
     ssr: false,
@@ -67,7 +68,10 @@ export default function CheckoutPage() {
     const [shippingMethod, setShippingMethod] = useState('standard');
     const [paymentMethod, setPaymentMethod] = useState('mpesa');
 
-    const shippingCost = shippingMethod === 'standard' ? 400 : 100;
+    // Calculate dynamic shipping
+    const deliveryInfo = getDeliveryCost(shippingData.county, cartTotal);
+    const shippingCost = shippingMethod === 'standard' ? deliveryInfo.cost : 100;
+
     const discountFromPoints = usePoints ? Math.min(cartTotal, user?.loyaltyPoints || 0) : 0;
     const total = cartTotal + shippingCost - discountFromPoints;
 
@@ -489,9 +493,19 @@ export default function CheckoutPage() {
                                             <div className="mt-6">
                                                 <label className="block text-sm font-semibold text-gray-900 mb-4">Pin Your Exact Delivery Location</label>
                                                 <LocationPicker
-                                                    onLocationSelect={(lat, lng) => {
-                                                        setShippingData(prev => ({ ...prev, lat, lng }));
-                                                        toast.success("Location pinned!", { id: 'map-toast' });
+                                                    onLocationSelect={(lat, lng, address) => {
+                                                        setShippingData(prev => ({
+                                                            ...prev,
+                                                            lat,
+                                                            lng,
+                                                            county: address?.county || prev.county,
+                                                            town: address?.town || prev.town
+                                                        }));
+                                                        if (address?.county) {
+                                                            toast.success(`Location detected: ${address.county}`, { id: 'map-toast' });
+                                                        } else {
+                                                            toast.success("Location pinned!", { id: 'map-toast' });
+                                                        }
                                                     }}
                                                     initialLat={shippingData.lat}
                                                     initialLng={shippingData.lng}
@@ -521,7 +535,14 @@ export default function CheckoutPage() {
                                                             <p className="font-semibold text-gray-900">Standard Delivery</p>
                                                             <p className="text-sm text-gray-500">Arrives in 1-3 business days</p>
                                                         </div>
-                                                        <p className="font-bold text-melagro-primary">KES 400.00</p>
+                                                        <div className="text-right">
+                                                            <p className="font-bold text-melagro-primary">
+                                                                {shippingCost === 0 ? "FREE" : `KES ${shippingCost.toLocaleString()}`}
+                                                            </p>
+                                                            {shippingMethod === 'standard' && (
+                                                                <p className="text-[10px] text-gray-400 font-medium">({deliveryInfo.reason})</p>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </label>
 
@@ -895,19 +916,24 @@ export default function CheckoutPage() {
                                     </div>
                                     <div className="flex justify-between text-gray-600">
                                         <span>Shipping</span>
-                                        <span className="font-semibold">KES {shippingCost.toLocaleString()}</span>
+                                        <span className="font-semibold">{shippingCost === 0 ? "FREE" : `KES ${shippingCost.toLocaleString()}`}</span>
                                     </div>
-                                    <div className="flex justify-between text-gray-600">
+                                    {shippingMethod === 'standard' && (
+                                        <div className="flex justify-end -mt-2">
+                                            <p className="text-[10px] text-gray-400 italic">{deliveryInfo.reason}</p>
+                                        </div>
+                                    )}
+                                    <div className="flex justify-between text-gray-600 border-t pt-3">
                                         <span>Tax (16% VAT)</span>
                                         <span className="font-semibold">Included</span>
                                     </div>
-                                    <div className="border-t pt-3 flex justify-between text-lg font-bold text-melagro-primary">
+                                    <div className="pt-3 flex justify-between text-lg font-bold text-melagro-primary border-t border-gray-100">
                                         <span>Total</span>
                                         <span>KES {total.toLocaleString()}</span>
                                     </div>
                                 </div>
-
                             </div>
+
                         </div>
                     </div>
                 </div>

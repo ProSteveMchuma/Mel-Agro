@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { getAllProducts } from '@/app/actions/bulkActions';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import { Product } from '@/types';
 
 export default function ExportProductsButton() {
     const [isExporting, setIsExporting] = useState(false);
@@ -17,14 +18,15 @@ export default function ExportProductsButton() {
 
             if (result.success && result.products) {
                 // Transform products for Excel
-                const exportData = result.products.map(p => {
+                const products = result.products as Product[];
+                const exportData = products.map(p => {
                     // Format variants back to "Name Kes Price" string
                     const variantStr = p.variants && p.variants.length > 0
                         ? p.variants.map((v: any) => `${v.name} Kes ${v.price}`).join(', ')
                         : `Kes ${p.price}`;
 
                     return {
-                        'PRODUCT CODE': p.id.substring(0, 8),
+                        'PRODUCT CODE': p.id.toString().substring(0, 8),
                         'PRODUCT NAME': p.name,
                         'PRODUCT DISCRIPTION': p.description,
                         'SPECIFICATION': p.specification || "",

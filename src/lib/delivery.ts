@@ -45,7 +45,21 @@ export const KENYAN_COUNTIES = [
     "Kakamega", "Vihiga", "Bungoma", "Busia", "Siaya", "Kisumu", "Homa Bay", "Migori", "Kisii", "Nyamira"
 ].sort();
 
-export function getDeliveryCost(county: string): number {
-    const zone = DELIVERY_ZONES.find(z => z.regions.includes(county));
-    return zone ? zone.price : 750; // Default to 'Rest of Kenya' price
+export const FREE_SHIPPING_THRESHOLD = 10000;
+
+export function getDeliveryCost(county: string, orderTotal: number = 0): { cost: number; zoneName: string; reason?: string } {
+    // 1. Free Shipping Check
+    if (orderTotal >= FREE_SHIPPING_THRESHOLD) {
+        return { cost: 0, zoneName: "Free Shipping", reason: "Order over KES 10,000" };
+    }
+
+    // 2. Zone Base Price
+    const zone = DELIVERY_ZONES.find(z => z.regions.includes(county)) || DELIVERY_ZONES[5]; // Default to 'Rest of Kenya'
+    let cost = zone.price;
+
+    return {
+        cost: Math.round(cost),
+        zoneName: zone.name,
+        reason: `${zone.name} Standard Rate`
+    };
 }

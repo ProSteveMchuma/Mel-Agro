@@ -137,6 +137,7 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 stockQuantity: 100,
                 lowStockThreshold: 10,
                 variants: variants.length > 1 ? variants : [],
+                weight: parseFloat(getRowValue(row, 'WEIGHT', 'ITEM WEIGHT', 'KG') || "0") || 0,
                 tags: [category, subCategory, String(getRowValue(row, 'PRODUCT CODE') || "")].filter(Boolean).map(t => String(t)),
                 lastUpdated: admin.firestore.FieldValue.serverTimestamp()
             };

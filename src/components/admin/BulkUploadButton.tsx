@@ -57,7 +57,7 @@ export default function BulkUploadButton() {
                             ['Skipped (Up to Date)', result.summary.skipped],
                         ],
                         theme: 'striped',
-                        headStyles: { fillStyle: 'fill', fillColor: [34, 197, 94] }
+                        headStyles: { fillColor: [34, 197, 94] }
                     });
 
                     // Details Table
