@@ -24,7 +24,7 @@ export default function BulkUploadButton() {
         try {
             const result = await uploadProductsFromExcel(formData);
 
-            if (result.success) {
+            if (result.success && result.summary && result.logs) {
                 toast.success(
                     `Done! Created: ${result.summary.created}, Updated: ${result.summary.updated}`,
                     { id: loadingToast, duration: 2000 }
@@ -78,7 +78,7 @@ export default function BulkUploadButton() {
                 // Refresh the page to show new products
                 setTimeout(() => window.location.reload(), 3000);
             } else {
-                toast.error(`Upload failed: ${result.error}`, { id: loadingToast });
+                toast.error(`Upload failed: ${result.success ? "Summary missing" : result.error}`, { id: loadingToast });
             }
         } catch (error) {
             toast.error('An unexpected error occurred', { id: loadingToast });
