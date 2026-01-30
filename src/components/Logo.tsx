@@ -20,11 +20,11 @@ export default function Logo({ className = "", iconOnly = false, light = false }
                     className={`w-6 h-6 ${light ? 'text-green-600' : 'text-white'}`}
                 >
                     <path
-                        d="M12 3C12 3 12 10 7 14C5 15.6 3 16 3 19C3 21 5 21 5 21C5 21 12 21 12 14C12 21 19 21 19 21C19 21 21 21 21 19C21 16 19 15.6 17 14C12 10 12 3 12 3Z"
+                        d="M12 21C12 21 12 14 17 10C19 8.4 21 8 21 5C21 3 19 3 19 3C19 3 12 3 12 10C12 3 5 3 5 3C5 3 3 3 3 5C3 8 5 8.4 7 10C12 14 12 21 12 21Z"
                         fill="currentColor"
                     />
                     <path
-                        d="M12 3V14"
+                        d="M12 21V10"
                         stroke={light ? "#16a34a" : "white"}
                         strokeWidth="2"
                         strokeLinecap="round"

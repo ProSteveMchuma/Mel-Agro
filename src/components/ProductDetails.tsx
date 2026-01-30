@@ -11,6 +11,7 @@ import { getProductById, getRelatedProducts, Product } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from "react-hot-toast";
+import Logo from '@/components/Logo';
 
 export default function ProductDetails({ id }: { id: string }) {
     const [product, setProduct] = useState<Product | undefined>(undefined);
@@ -36,6 +37,9 @@ export default function ProductDetails({ id }: { id: string }) {
                 setSelectedImage(p.image);
                 if (p.variants && p.variants.length > 0) {
                     setSelectedVariant(p.variants[0]);
+                    if (p.variants[0].image) {
+                        setSelectedImage(p.variants[0].image);
+                    }
                 }
                 import('@/lib/analytics').then(({ AnalyticsService }) => {
                     AnalyticsService.logView(String(p.id));
@@ -49,6 +53,20 @@ export default function ProductDetails({ id }: { id: string }) {
         fetchData();
     }, [id]);
 
+    useEffect(() => {
+        if (!product || !product.images || product.images.length <= 1) return;
+
+        const interval = setInterval(() => {
+            setSelectedImage(prev => {
+                const currentIndex = product.images!.indexOf(prev);
+                const nextIndex = (currentIndex + 1) % product.images!.length;
+                return product.images![nextIndex];
+            });
+        }, 6000);
+
+        return () => clearInterval(interval);
+    }, [product]);
+
     const { addToCart } = useCart();
 
     const handleAddToCart = (e?: React.MouseEvent) => {
@@ -60,6 +78,15 @@ export default function ProductDetails({ id }: { id: string }) {
         if (product) {
             addToCart(product, quantity, selectedVariant || undefined);
         }
+    };
+
+    const formatDescription = (description: string) => {
+        if (!description) return [];
+        // Split by newlines or bullet points
+        return description
+            .split(/\n|•|(?<=\w)\s*-\s*|(?<=\w)\s*\*\s*/)
+            .map(line => line.trim())
+            .filter(line => line.length > 0);
     };
 
     if (loading) {
@@ -121,14 +148,30 @@ export default function ProductDetails({ id }: { id: string }) {
                                 <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">In Stock</span>
                             </div>
 
-                            <Image
-                                src={safeImage}
-                                alt={product.name}
-                                fill
-                                className="object-contain p-8 hover:scale-105 transition-transform duration-500"
-                                priority
-                                unoptimized={safeImage.includes('firebasestorage')}
-                            />
+                            {/* Watermark */}
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-10 pointer-events-none z-10 select-none">
+                                <Logo iconOnly className="w-32 h-32" />
+                            </div>
+
+                            <AnimatePresence mode="wait">
+                                <motion.div
+                                    key={safeImage}
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                                    className="relative w-full h-full"
+                                >
+                                    <Image
+                                        src={safeImage}
+                                        alt={product.name}
+                                        fill
+                                        className="object-contain p-8 hover:scale-105 transition-transform duration-500"
+                                        priority
+                                        unoptimized={safeImage.includes('firebasestorage')}
+                                    />
+                                </motion.div>
+                            </AnimatePresence>
                         </div>
 
                         {/* Thumbnails */}
@@ -172,7 +215,10 @@ export default function ProductDetails({ id }: { id: string }) {
                                     {product.variants.map((v) => (
                                         <button
                                             key={v.id}
-                                            onClick={() => setSelectedVariant(v)}
+                                            onClick={() => {
+                                                setSelectedVariant(v);
+                                                if (v.image) setSelectedImage(v.image);
+                                            }}
                                             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${selectedVariant?.id === v.id
                                                 ? 'bg-melagri-primary text-white border-melagri-primary shadow-lg shadow-green-100'
                                                 : 'bg-white text-gray-600 border-gray-200 hover:border-melagri-primary'
@@ -182,6 +228,11 @@ export default function ProductDetails({ id }: { id: string }) {
                                         </button>
                                     ))}
                                 </div>
+                                {selectedVariant?.sku && (
+                                    <p className="mt-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                        SKU: {selectedVariant.sku}
+                                    </p>
+                                )}
                             </div>
                         )}
 
@@ -219,9 +270,21 @@ export default function ProductDetails({ id }: { id: string }) {
                             )}
                         </div>
 
-                        <p className="text-gray-600 text-sm leading-relaxed mb-6">
-                            {product.description}
-                        </p>
+                        <div className="space-y-3 mb-6">
+                            {formatDescription(product.description || "").map((point, idx) => (
+                                <div key={idx} className="flex items-start gap-3">
+                                    <span className="mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-green-500" />
+                                    <p className="text-gray-600 text-sm leading-relaxed">
+                                        {point}
+                                    </p>
+                                </div>
+                            ))}
+                            {(!product.description || formatDescription(product.description).length === 0) && (
+                                <p className="text-gray-600 text-sm leading-relaxed">
+                                    {product.description || "No description available."}
+                                </p>
+                            )}
+                        </div>
 
                         {/* Actions */}
                         <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -343,9 +406,21 @@ export default function ProductDetails({ id }: { id: string }) {
                                         className="space-y-6"
                                     >
                                         <h3 className="text-lg font-bold text-gray-900">Product Overview</h3>
-                                        <p className="text-gray-600 text-sm leading-relaxed">
-                                            {product.description}
-                                        </p>
+                                        <div className="space-y-4">
+                                            {formatDescription(product.description || "").map((point, idx) => (
+                                                <div key={idx} className="flex items-start gap-3">
+                                                    <span className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full border-2 border-green-500" />
+                                                    <p className="text-gray-600 text-sm leading-relaxed">
+                                                        {point}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                            {(!product.description || formatDescription(product.description).length === 0) && (
+                                                <p className="text-gray-600 text-sm leading-relaxed">
+                                                    {product.description || "No description available."}
+                                                </p>
+                                            )}
+                                        </div>
                                     </motion.div>
                                 )}
 

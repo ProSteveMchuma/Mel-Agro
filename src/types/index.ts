@@ -55,10 +55,12 @@ export interface Product {
 
 export interface ProductVariant {
     id: string;
+    sku?: string;
     name: string; // e.g., "50kg", "10kg"
     price?: number; // Override price
     stockQuantity: number;
     weight?: number; // In KG
+    image?: string; // Variant-specific image
 }
 
 export interface Order {
