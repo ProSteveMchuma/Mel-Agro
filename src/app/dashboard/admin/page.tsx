@@ -49,9 +49,9 @@ export default function AdminDashboard() {
     const totalUsers = users.length;
 
 
-    // Fetch Analytics Data
+    // Fetch Analytics Data (Searches & Top Products)
     useEffect(() => {
-        const fetchAnalytics = async () => {
+        const fetchProductAnalytics = async () => {
             try {
                 // Top Searches
                 const searchQ = query(collection(db, 'analytics_search_terms'), orderBy('count', 'desc'), limit(5));
@@ -75,24 +75,34 @@ export default function AdminDashboard() {
                 });
 
                 setTopViewed(viewedProducts);
+            } catch (err) {
+                console.error("Error fetching product analytics:", err);
+            }
+        };
 
-                // Today's Traffic
+        if (products.length > 0) {
+            fetchProductAnalytics();
+        }
+    }, [products]);
+
+    // Fetch Today's Traffic (Independent of products)
+    useEffect(() => {
+        const fetchTraffic = async () => {
+            try {
                 const today = new Date().toISOString().split('T')[0];
                 const trafficSnap = await getDoc(doc(db, 'analytics_traffic', today));
                 if (trafficSnap.exists()) {
                     setTraffic(trafficSnap.data() as any);
                 }
             } catch (err) {
-                console.error("Error fetching analytics:", err);
+                console.error("Error fetching traffic:", err);
             } finally {
                 setLoadingAnalytics(false);
             }
         };
 
-        if (products.length > 0) {
-            fetchAnalytics();
-        }
-    }, [products]);
+        fetchTraffic();
+    }, []);
 
     return (
         <div className="space-y-8">
