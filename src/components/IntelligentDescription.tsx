@@ -20,11 +20,11 @@ export default function IntelligentDescription({ text, className = "" }: Intelli
 
     const formatText = (content: string) => {
         // Handle bold text **...** or __...__
-        let parts: (string | JSX.Element)[] = [content];
+        let parts: (string | React.ReactNode)[] = [content];
 
         // Replace bold tags
         const boldRegex = /(\*\*|__)(.*?)\1/g;
-        let formattedParts: (string | JSX.Element)[] = [];
+        let formattedParts: (string | React.ReactNode)[] = [];
 
         parts.forEach(part => {
             if (typeof part !== 'string') {
@@ -47,17 +47,17 @@ export default function IntelligentDescription({ text, className = "" }: Intelli
         });
 
         // Highlight Keywords (Case insensitive but preserve prefix)
-        let finalParts: (string | JSX.Element)[] = [];
+        let finalParts: (string | React.ReactNode)[] = [];
         formattedParts.forEach((part, idx) => {
             if (typeof part !== 'string') {
                 finalParts.push(part);
                 return;
             }
 
-            let subParts: (string | JSX.Element)[] = [part];
+            let subParts: (string | React.ReactNode)[] = [part];
 
             HIGHLIGHT_KEYWORDS.forEach(keyword => {
-                let tempParts: (string | JSX.Element)[] = [];
+                let tempParts: (string | React.ReactNode)[] = [];
                 const keywordRegex = new RegExp(`^(${keyword}:?)`, 'i');
 
                 subParts.forEach(sp => {
@@ -84,7 +84,7 @@ export default function IntelligentDescription({ text, className = "" }: Intelli
 
     const renderParagraph = (p: string, idx: number) => {
         // Detect if it's a list item
-        const isListItem = p.match(/^(\s*[•\-\*]|\d+\.)\s+(.*)/s);
+        const isListItem = p.match(/^(\s*[•\-\*]|\d+\.)\s+([\s\S]*)/);
 
         if (isListItem) {
             return (
