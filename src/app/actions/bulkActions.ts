@@ -172,14 +172,8 @@ export async function uploadProductsFromExcel(formData: FormData) {
             const brand = normalizeProductField(getRowValue(row, 'BRAND', 'MANUFACTURER', 'Brand') || "MEL-AGRI");
             const productCode = normalizeProductField(getRowValue(row, 'PRODUCT CODE', 'SKU', 'CODE') || "");
 
-            let photo = getRowValue(row, 'PHOTO', 'IMAGE', 'Photo link');
-            if (photo) photo = convertToDirectDriveLink(String(photo));
-            if (!photo || (typeof photo === 'string' && !photo.match(/\.(jpg|jpeg|png|webp|gif)$/i))) {
-                const possiblePath = Object.values(row).find(val =>
-                    typeof val === 'string' && (val.includes('\\') || val.includes('/') || val.match(/\.(jpg|jpeg|png|webp)$/i))
-                );
-                if (possiblePath) photo = String(possiblePath);
-            }
+            // Image protection: Never extract image from Excel to avoid overwriting manual uploads
+            let photo = "";
 
             const specData = getRowValue(row, 'SPECIFICATION', 'TECHNICAL SPECIFICATION', 'SPECS', 'Technical Specification');
             const specification = typeof specData === 'string' ? specData : (Array.isArray(specData) ? specData.join(', ') : "");
@@ -200,7 +194,7 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 name: trimmedName,
                 description: getRowValue(row, 'PRODUCT DISCRIPTION', 'DESCRIPTION', 'PRODUCT DESCRIPTION', 'Product Description') || "",
                 specification: specification,
-                howToUse: getRowValue(row, 'HOW TO USE', 'DIRECTIONS', 'USE', 'How To Use / Guide') || "",
+                howToUse: getRowValue(row, 'HOW TO USE', 'DIRECTIONS', 'USE', 'How To Use / Guide', 'GUIDE', 'USAGE', 'INSTRUCTIONS', 'How to use') || "",
                 features: features.length > 0 ? features : ["Quality Guaranteed", "Farmer Choice"],
                 price: basePrice,
                 category: category,
@@ -233,11 +227,12 @@ export async function uploadProductsFromExcel(formData: FormData) {
             if (existing) {
                 const existingData = existing.data;
 
-                // Protect Image: If existing image is high-quality (not placeholder) and new image is empty/placeholder
-                if (!newProductData.image || newProductData.image === "") {
-                    newProductData.image = existingData.image || `https://placehold.co/600x600?text=${encodeURIComponent(trimmedName)}`;
-                } else if (existingData.image && !existingData.image.includes('placehold.co') && newProductData.image.includes('placehold.co')) {
+                // Protect Image: Never update image from Excel if it exists in DB
+                if (existingData.image) {
                     newProductData.image = existingData.image;
+                } else if (!newProductData.image || newProductData.image === "") {
+                    // Fallback to placeholder ONLY if no image at all
+                    newProductData.image = `https://placehold.co/600x600?text=${encodeURIComponent(trimmedName)}`;
                 }
 
                 // Deep Compare (Simplified for key fields)
@@ -245,7 +240,8 @@ export async function uploadProductsFromExcel(formData: FormData) {
                     existingData.price !== newProductData.price ||
                     existingData.description !== newProductData.description ||
                     existingData.category !== newProductData.category ||
-                    existingData.image !== newProductData.image ||
+                    existingData.howToUse !== newProductData.howToUse ||
+                    JSON.stringify(existingData.features) !== JSON.stringify(newProductData.features) ||
                     JSON.stringify(existingData.variants) !== JSON.stringify(newProductData.variants);
 
                 if (hasChanged) {

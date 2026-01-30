@@ -12,6 +12,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from "react-hot-toast";
 import Logo from '@/components/Logo';
+import IntelligentDescription from '@/components/IntelligentDescription';
 
 export default function ProductDetails({ id }: { id: string }) {
     const [product, setProduct] = useState<Product | undefined>(undefined);
@@ -82,11 +83,14 @@ export default function ProductDetails({ id }: { id: string }) {
 
     const formatDescription = (description: string) => {
         if (!description) return [];
-        // Split by newlines or bullet points
-        return description
-            .split(/\n|•|(?<=\w)\s*-\s*|(?<=\w)\s*\*\s*/)
+        // Only split by explicit bullet points or double newlines (paragraphs)
+        // If it's a long block of text without markers, keep it as one paragraph
+        const points = description
+            .split(/\n\n+|•|(?<=\w)\s*-\s*(?=\w)|(?<=\w)\s*\*\s*(?=\w)/)
             .map(line => line.trim())
             .filter(line => line.length > 0);
+
+        return points;
     };
 
     if (loading) {
@@ -270,21 +274,26 @@ export default function ProductDetails({ id }: { id: string }) {
                             )}
                         </div>
 
-                        <div className="space-y-3 mb-6">
-                            {formatDescription(product.description || "").map((point, idx) => (
-                                <div key={idx} className="flex items-start gap-3">
-                                    <span className="mt-1 flex-shrink-0 w-1.5 h-1.5 rounded-full bg-green-500" />
-                                    <p className="text-gray-600 text-sm leading-relaxed">
-                                        {point}
-                                    </p>
-                                </div>
-                            ))}
-                            {(!product.description || formatDescription(product.description).length === 0) && (
-                                <p className="text-gray-600 text-sm leading-relaxed">
-                                    {product.description || "No description available."}
-                                </p>
-                            )}
+                        <div className="mb-8">
+                            <IntelligentDescription text={product.description || ""} />
                         </div>
+
+                        {/* Features List */}
+                        {product.features && product.features.length > 0 && (
+                            <div className="mb-8 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Key Features</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {product.features.map((feature, idx) => (
+                                        <div key={idx} className="flex items-center gap-2">
+                                            <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                                            </svg>
+                                            <span className="text-xs text-gray-700 font-medium">{feature}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Actions */}
                         <div className="flex flex-col sm:flex-row gap-4 mb-8">
@@ -406,21 +415,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                         className="space-y-6"
                                     >
                                         <h3 className="text-lg font-bold text-gray-900">Product Overview</h3>
-                                        <div className="space-y-4">
-                                            {formatDescription(product.description || "").map((point, idx) => (
-                                                <div key={idx} className="flex items-start gap-3">
-                                                    <span className="mt-1.5 flex-shrink-0 w-2 h-2 rounded-full border-2 border-green-500" />
-                                                    <p className="text-gray-600 text-sm leading-relaxed">
-                                                        {point}
-                                                    </p>
-                                                </div>
-                                            ))}
-                                            {(!product.description || formatDescription(product.description).length === 0) && (
-                                                <p className="text-gray-600 text-sm leading-relaxed">
-                                                    {product.description || "No description available."}
-                                                </p>
-                                            )}
-                                        </div>
+                                        <IntelligentDescription text={product.description || ""} />
                                     </motion.div>
                                 )}
 
