@@ -46,6 +46,7 @@ export default function Home() {
     <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-green-100 selection:text-green-900">
       <JsonLd />
       <Header />
+      <main className="flex-grow w-full">
 
         {/* Mobile-only Category Scroll (since sidebar is hidden on small screens) */}
         <section className="lg:hidden container-custom mb-8">
