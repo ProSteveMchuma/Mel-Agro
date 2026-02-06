@@ -10,23 +10,27 @@ import { fuzzySearch } from "@/components/SmartSearch";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function ProductsClient() {
+
+interface ProductsClientProps {
+    initialProducts: Product[];
+    initialBrands: string[];
+    initialCategories: string[];
+}
+
+export default function ProductsClient({ initialProducts, initialBrands, initialCategories }: ProductsClientProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
 
     // State for filters - initialize from URL
     const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get("category") || "");
     const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
-    const [availableBrands, setAvailableBrands] = useState<string[]>([]);
-    const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+
+    // Initialize with server-fetched data
+    const [availableBrands, setAvailableBrands] = useState<string[]>(initialBrands);
+    const [availableCategories, setAvailableCategories] = useState<string[]>(initialCategories);
+
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-    // Fetch dynamic filters on mount
-    useEffect(() => {
-        getUniqueBrands().then(setAvailableBrands);
-        getUniqueCategories().then(setAvailableCategories);
-    }, []);
 
     // Sync state with URL changes
     useEffect(() => {
@@ -55,6 +59,7 @@ export default function ProductsClient() {
                 : [...prev, brand]
         );
     };
+
 
 
 
@@ -167,6 +172,7 @@ export default function ProductsClient() {
                                 category={selectedCategory}
                                 priceRange={priceRange}
                                 selectedBrands={selectedBrands}
+                                initialProducts={initialProducts}
                             />
                         </Suspense>
                     </div>
@@ -178,10 +184,37 @@ export default function ProductsClient() {
     );
 }
 
-function ProductsGrid({ category, priceRange, selectedBrands }: { category: string, priceRange: [number, number], selectedBrands: string[] }) {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [lastVisible, setLastVisible] = useState<any>(null);
+function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }: { category: string, priceRange: [number, number], selectedBrands: string[], initialProducts: Product[] }) {
+    // Only use initialProducts if they match the current category filter (simple check)
+    // Actually, on mount, category should match what page.tsx used. 
+    // But if user changes category, we discard initialProducts.
+    // We can use a ref to track if it's the very first load.
+    const isFirstLoad = React.useRef(true);
+
+    // logic: if first load, use initialProducts. else, start empty and fetch (or keep previous?)
+    // Actually standard pattern: initialize with prop, but effect updates it.
+
+    const [products, setProducts] = useState<Product[]>(isFirstLoad.current ? initialProducts : []);
+    const [isLoading, setIsLoading] = useState(false);
+    const [lastVisible, setLastVisible] = useState<any>(null); // We don't have lastVisible from server? Hmm.
+    // If we rely on load more, we need lastVisible. 
+    // Since page.tsx didn't return lastVisible, we can't reliably "Load More" from the server-fetched batch without re-fetching or knowing the cursor.
+    // Compromise: Initial load is fast (server). "Show More" might need to re-fetch the first page to get the cursor OR we just accept we might miss the cursor?
+    // Actually, Firestore cursors are DocumentSnapshots. We can't serialize them easily to pass from Server Component to Client Component.
+    // So for "Load More" to work, we might need to fetch page 1 again on client to get the cursor? 
+    // Or we handle the first "Load More" by fetching page 2 using offset? Firestore doesn't like offset.
+    // BEST EFFORT: 
+    // On mount, if we have initialProducts, show them.
+    // But we don't have the "cursor" for the next page. 
+    // So "Show More" button ensures we have a cursor. 
+    // Strategy: 
+    // 1. Render initialProducts.
+    // 2. Silently fetch page 1 (or just the cursor?) in background? No that defeats the purpose.
+    // 3. Changing filters resets everything.
+
+    // Let's rely on standard client fetching for now but seed with initialProducts for immediate paint.
+    // But we need to make sure effect doesn't immediately overwrite it.
+
     const [hasMore, setHasMore] = useState(true);
     const searchParams = useSearchParams();
 
@@ -215,7 +248,34 @@ function ProductsGrid({ category, priceRange, selectedBrands }: { category: stri
     };
 
     useEffect(() => {
-        loadProducts(true);
+        // If it's the first load and we have initialProducts, we skip the fetch
+        // BUT we don't have the pagination cursor. 
+        // So we MUST fetch to enable pagination? 
+        // OR we disable pagination until the user interacts?
+        // Let's do this: 
+        // If initialProducts are present and it's isFirstLoad, we set them.
+        // But we immediately fetch in background to get the cursor? 
+        // Or simply: valid optimization is purely visual. The fetches happen.
+        // Wait, if I fetch immediately, I double charge.
+        // Alternative: getProductsPage in lib/products returns serialized LastVisible (id)? 
+        // Firestore startAfter can take a Snapshot OR a field value (if sorted by that field).
+        // If sorted by createdAt (desc), we can pass the createdAt string of the last item!
+        // We need to update getProductsPage to support ID/Field cursor for this to work purely server-side.
+        // For now, to be safe and simple: 
+        // Use InitialProducts for display. Fetch Client Side immediately to get fresh state + cursor.
+        // This gives "Perceived Performance" (instant paint) but not DB read savings (double read).
+        // TO FIX DB READS: We need caching. We did specific caching on UniqueBrands.
+        // For Products, we can't easily cache the search query.
+        // But the "Filter Data" was the big cost (reading ALL docs). We fixed that.
+        // So fetching 12 docs twice (server + client) is acceptable compared to reading 500 docs for filters.
+
+        if (isFirstLoad.current && initialProducts.length > 0) {
+            isFirstLoad.current = false;
+            // Optionally fetch silently to get cursor
+            loadProducts(true);
+        } else {
+            loadProducts(true);
+        }
     }, [category, selectedBrands]);
 
     const filteredProducts = useMemo(() => {
@@ -235,7 +295,7 @@ function ProductsGrid({ category, priceRange, selectedBrands }: { category: stri
         }
 
         return filtered;
-    }, [products, searchParams, priceRange]);
+    }, [products, searchParams, priceRange, selectedBrands]); // Added selectedBrands dep
 
     if (isLoading && products.length === 0) return (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
