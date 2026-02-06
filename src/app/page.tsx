@@ -96,16 +96,20 @@ export default function Home() {
               <FadeInWhenVisible delay={0.2}>
                 <div className="space-y-10">
                   <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                    <div className="space-y-1">
+                    {/* Header Text - Hidden on Mobile */}
+                    <div className="hidden md:block space-y-1">
                       <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em]">Commercial Selection</p>
                       <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">Recommended for you</h2>
                       <p className="text-sm text-gray-500 font-medium max-w-md">Top-rated products trusted by successful farmers across the country.</p>
                     </div>
-                    <Link href="/products" className="bg-gray-900 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-xl shadow-gray-900/10">
+
+                    {/* Button - Hidden on Mobile to prioritize product grid immediately */}
+                    <Link href="/products" className="hidden md:block bg-gray-900 text-white px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-600 transition-all shadow-xl shadow-gray-900/10">
                       View Catalog →
                     </Link>
                   </div>
-                  <div className="bg-white p-8 md:p-12 rounded-[3.5rem] border border-gray-100 shadow-sm relative overflow-hidden">
+
+                  <div className="bg-white p-4 md:p-12 rounded-[2rem] md:rounded-[3.5rem] border border-gray-100 shadow-sm relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-3xl" />
                     <ProductRow title="" filter={(p) => p.rating >= 4} />
                   </div>

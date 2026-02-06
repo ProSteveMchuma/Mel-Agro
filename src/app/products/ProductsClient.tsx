@@ -129,12 +129,14 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                         {/* Page Title & Controls */}
                         <div className="mb-8 group">
                             <div className="flex items-center gap-4 mb-3">
-                                <span className="h-1 w-12 bg-melagri-primary rounded-full group-hover:w-20 transition-all duration-500"></span>
-                                <h1 className="text-4xl md:text-5xl font-black text-gray-900 tracking-tighter uppercase">
+                                {/* Decorative line hidden on mobile */}
+                                <span className="hidden md:block h-1 w-12 bg-melagri-primary rounded-full group-hover:w-20 transition-all duration-500"></span>
+                                <h1 className="text-xl md:text-5xl font-black text-gray-900 tracking-tighter uppercase">
                                     {selectedCategory || "Global Catalogue"}
                                 </h1>
                             </div>
-                            <p className="text-gray-500 mb-8 font-medium max-w-2xl leading-relaxed">
+                            {/* Description hidden on mobile */}
+                            <p className="hidden md:block text-gray-500 mb-8 font-medium max-w-2xl leading-relaxed">
                                 Curating the finest agricultural inputs for the modern farmer. Certified quality, delivered to your farm.
                             </p>
 
