@@ -15,6 +15,10 @@ export default function ShopLayout({ showBreadcrumbs = true }: { showBreadcrumbs
 
     // Derive categories from products
     const [categories, setCategories] = useState<string[]>([]);
+    const [activeCategory, setActiveCategory] = useState("All");
+    const [filteredProducts, setFilteredProducts] = useState(products);
+    const [sortBy, setSortBy] = useState("featured");
+    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         if (products.length > 0) {
@@ -26,7 +30,6 @@ export default function ShopLayout({ showBreadcrumbs = true }: { showBreadcrumbs
         }
     }, [products]);
 
-    const [activeCategory, setActiveCategory] = useState("All");
 
     // Sync with URL param on mount or change
     useEffect(() => {
@@ -44,10 +47,6 @@ export default function ShopLayout({ showBreadcrumbs = true }: { showBreadcrumbs
             setSearchTerm(initialSearch);
         }
     }, [initialCategory, initialSearch, categories]);
-
-    const [filteredProducts, setFilteredProducts] = useState(products);
-    const [sortBy, setSortBy] = useState("featured");
-    const [searchTerm, setSearchTerm] = useState("");
 
     useEffect(() => {
         let result = [...products];

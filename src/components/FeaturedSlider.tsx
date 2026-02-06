@@ -44,14 +44,14 @@ export default function FeaturedSlider() {
     const currentProduct = products[activeIndex];
 
     return (
-        <div className="relative w-full h-[400px] md:h-[600px] overflow-hidden rounded-[2.5rem] bg-gray-900 shadow-2xl group">
+        <div className="relative w-full h-[280px] md:h-[500px] overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-gray-900 shadow-2xl group border border-gray-800/50">
             <AnimatePresence mode='wait'>
                 <motion.div
                     key={currentProduct.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 1 }}
+                    transition={{ duration: 0.8 }}
                     className="absolute inset-0"
                 >
                     {/* Background Image with Overlay */}
@@ -60,42 +60,42 @@ export default function FeaturedSlider() {
                             src={currentProduct.image || "/assets/images/placeholder.png"}
                             alt={currentProduct.name}
                             fill
-                            className="object-cover opacity-60 scale-105 group-hover:scale-100 transition-transform duration-[10s]"
+                            className="object-cover object-center opacity-70 group-hover:opacity-60 transition-opacity duration-700"
                             priority
                         />
-                        <div className="absolute inset-0 bg-gradient-to-r from-gray-900 via-gray-900/40 to-transparent" />
+                        <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-gray-900/90 via-gray-900/40 to-transparent" />
                     </div>
 
                     {/* Content */}
-                    <div className="relative h-full flex flex-col justify-center px-8 md:px-20 z-10">
+                    <div className="relative h-full flex flex-col justify-end md:justify-center px-6 md:px-20 pb-8 md:pb-0 z-10">
                         <motion.div
-                            initial={{ opacity: 0, x: -30 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.2, duration: 0.8 }}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2, duration: 0.6 }}
                         >
-                            <span className="bg-green-500 text-white text-[10px] md:text-xs font-black uppercase tracking-[0.3em] px-3 py-1.5 rounded-full mb-6 inline-block">
-                                Featured Product
+                            <span className="bg-green-500 text-white text-[9px] md:text-xs font-black uppercase tracking-[0.2em] px-2 py-1 md:px-3 md:py-1.5 rounded-md md:rounded-full mb-3 md:mb-6 inline-block shadow-lg shadow-green-900/20">
+                                Featured Pick
                             </span>
-                            <h2 className="text-4xl md:text-7xl font-black text-white mb-6 leading-none tracking-tighter uppercase max-w-2xl">
+                            <h2 className="text-2xl md:text-6xl font-black text-white mb-2 md:mb-6 leading-none tracking-tighter uppercase max-w-2xl drop-shadow-sm">
                                 {currentProduct.name}
                             </h2>
-                            <p className="text-lg md:text-xl text-gray-200 mb-10 max-w-xl line-clamp-2 font-medium">
+                            <p className="hidden md:block text-lg md:text-xl text-gray-200 mb-8 max-w-xl line-clamp-2 font-medium drop-shadow-sm">
                                 {currentProduct.description || "Premium agricultural solution for your farm. Certified quality for maximum yield."}
                             </p>
 
-                            <div className="flex flex-col sm:flex-row gap-4">
+                            <div className="flex items-center gap-3 md:gap-4 mt-2 md:mt-0">
                                 <Link
                                     href={`/product/${currentProduct.id}`}
-                                    className="bg-white text-gray-900 px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-green-50 transition-all text-center"
+                                    className="bg-white text-gray-900 px-6 py-3 md:px-10 md:py-4 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-sm hover:bg-green-50 transition-all text-center shadow-xl"
                                 >
-                                    View Details
+                                    View
                                 </Link>
                                 <button
                                     onClick={() => {
                                         addToCart(currentProduct);
                                         toast.success(`Added ${currentProduct.name} to cart!`);
                                     }}
-                                    className="bg-green-600/20 backdrop-blur-md border border-white/20 text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-green-600/40 transition-all"
+                                    className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-6 py-3 md:px-10 md:py-4 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-sm hover:bg-green-600 transition-all shadow-xl shadow-green-900/20"
                                 >
                                     Add To Cart
                                 </button>
@@ -106,31 +106,34 @@ export default function FeaturedSlider() {
             </AnimatePresence>
 
             {/* Slider Dots */}
-            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex gap-3 z-20">
+            <div className="absolute bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 flex gap-2 z-20">
                 {products.map((_, idx) => (
                     <button
                         key={idx}
                         onClick={() => setActiveIndex(idx)}
-                        className={`transition-all duration-500 rounded-full ${idx === activeIndex
-                            ? 'w-12 h-2.5 bg-green-500'
-                            : 'w-2.5 h-2.5 bg-white/30 hover:bg-white/50'
+                        className={`transition-all duration-500 rounded-full h-1.5 md:h-2 ${idx === activeIndex
+                            ? 'w-6 md:w-10 bg-green-500'
+                            : 'w-1.5 md:w-2 bg-white/30 hover:bg-white/50'
                             }`}
                     />
                 ))}
             </div>
 
-            {/* Price Tag */}
-            <div className="absolute top-10 right-10 z-20">
+            {/* Price Tag - Hidden on very small screens if needed, or scaled down */}
+            <div className="absolute top-4 right-4 md:top-10 md:right-10 z-20">
                 <motion.div
                     key={currentProduct.price}
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white/10 backdrop-blur-xl border border-white/10 p-6 rounded-3xl"
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="bg-black/20 backdrop-blur-xl border border-white/10 p-3 md:p-6 rounded-2xl md:rounded-3xl"
                 >
-                    <p className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Price starts from</p>
-                    <p className="text-3xl font-black text-white leading-none">
-                        KES {currentProduct.price.toLocaleString()}
-                    </p>
+                    <p className="hidden md:block text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Price</p>
+                    <div className="flex items-baseline gap-1">
+                        <span className="text-xs md:text-sm font-bold text-green-400">KES</span>
+                        <span className="text-xl md:text-3xl font-black text-white leading-none">
+                            {currentProduct.price.toLocaleString()}
+                        </span>
+                    </div>
                 </motion.div>
             </div>
         </div>

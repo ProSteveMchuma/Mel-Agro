@@ -22,8 +22,8 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
     const router = useRouter();
 
     // State for filters - initialize from URL
-    const [selectedCategory, setSelectedCategory] = useState<string>(searchParams.get("category") || "");
     const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+    const currentCategory = searchParams.get("category") || "";
 
     // Initialize with server-fetched data
     const [availableBrands, setAvailableBrands] = useState<string[]>(initialBrands);
@@ -31,14 +31,6 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
 
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-    // Sync state with URL changes
-    useEffect(() => {
-        const cat = searchParams.get("category");
-        if (cat !== selectedCategory) {
-            setSelectedCategory(cat || "");
-        }
-    }, [searchParams, selectedCategory]);
 
     const handleCategoryChange = (category: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -48,7 +40,6 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
             params.delete("category");
         }
         router.push(`/products?${params.toString()}`);
-        setSelectedCategory(category);
         setIsSidebarOpen(false); // Close sidebar on mobile after selection
     };
 
@@ -77,7 +68,7 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                             <Link href="/products" className="text-gray-400 hover:text-melagri-primary transition-colors font-bold uppercase tracking-widest">Shop</Link>
                             <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
                             <span className="text-melagri-primary font-black uppercase tracking-widest">
-                                {selectedCategory || "Catalogue"}
+                                {currentCategory || "Catalogue"}
                             </span>
                         </nav>
 
@@ -127,21 +118,47 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
 
                     <div className="flex-1">
                         {/* Page Title & Controls */}
-                        <div className="mb-8 group">
-                            <div className="flex items-center gap-4 mb-3">
-                                {/* Decorative line hidden on mobile */}
-                                <span className="hidden md:block h-1 w-12 bg-melagri-primary rounded-full group-hover:w-20 transition-all duration-500"></span>
-                                <h1 className="text-xl md:text-5xl font-black text-gray-900 tracking-tighter uppercase">
-                                    {selectedCategory || "Global Catalogue"}
+                        <div className="mb-6 md:mb-8 group">
+                            {/* Desktop Title - Hidden on Mobile */}
+                            <div className="hidden md:flex items-center gap-4 mb-3">
+                                <span className="h-1 w-12 bg-melagri-primary rounded-full group-hover:w-20 transition-all duration-500"></span>
+                                <h1 className="text-5xl font-black text-gray-900 tracking-tighter uppercase">
+                                    {currentCategory || "Global Catalogue"}
                                 </h1>
                             </div>
+
                             {/* Description hidden on mobile */}
                             <p className="hidden md:block text-gray-500 mb-8 font-medium max-w-2xl leading-relaxed">
                                 Curating the finest agricultural inputs for the modern farmer. Certified quality, delivered to your farm.
                             </p>
 
-                            {/* Sort and Filter Bar */}
-                            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/50">
+                            {/* Mobile Category Pills */}
+                            <div className="md:hidden flex gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
+                                <button
+                                    onClick={() => handleCategoryChange("")}
+                                    className={`flex-shrink-0 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wide border transition-all ${currentCategory === ""
+                                        ? "bg-gray-900 text-white border-gray-900 shadow-lg shadow-gray-900/20"
+                                        : "bg-white text-gray-500 border-gray-100 shadow-sm"
+                                        }`}
+                                >
+                                    All
+                                </button>
+                                {availableCategories.map(cat => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => handleCategoryChange(cat)}
+                                        className={`flex-shrink-0 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wide border transition-all ${currentCategory === cat
+                                            ? "bg-gray-900 text-white border-gray-900 shadow-lg shadow-gray-900/20"
+                                            : "bg-white text-gray-500 border-gray-100 shadow-sm"
+                                            }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Desktop Sort and Filter Bar - Hidden on Mobile */}
+                            <div className="hidden md:flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/50">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center">
                                         <svg className="w-5 h-5 text-melagri-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
@@ -154,8 +171,8 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                                     <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100 italic">
                                         {searchParams.get("search")
                                             ? `Results for "${searchParams.get("search")}"`
-                                            : selectedCategory
-                                                ? `Collection: ${selectedCategory}`
+                                            : currentCategory
+                                                ? `Collection: ${currentCategory}`
                                                 : "Full Catalogue"}
                                     </p>
                                 </div>
@@ -171,7 +188,7 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                             </div>
                         }>
                             <ProductsGrid
-                                category={selectedCategory}
+                                category={currentCategory}
                                 priceRange={priceRange}
                                 selectedBrands={selectedBrands}
                                 initialProducts={initialProducts}

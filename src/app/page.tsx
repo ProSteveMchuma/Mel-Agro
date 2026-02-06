@@ -55,17 +55,17 @@ export default function Home() {
               <h2 className="text-lg font-black text-gray-900 tracking-tighter">Shop by Category</h2>
               <Link href="/products" className="text-xs font-bold text-green-600">All →</Link>
             </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+            <div className="grid grid-cols-2 gap-3">
               {categories.map((cat: string) => (
                 <Link
                   key={cat}
                   href={`/products?category=${encodeURIComponent(cat)}`}
-                  className="flex-shrink-0 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-2 whitespace-nowrap"
+                  className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100 hover:border-green-200 transition-colors"
                 >
                   <span className="text-lg">
                     {CATEGORY_ICONS[cat] || "🌾"}
                   </span>
-                  <span className="text-xs font-bold text-gray-700">{cat}</span>
+                  <span className="text-xs font-bold text-gray-700 truncate">{cat}</span>
                 </Link>
               ))}
             </div>
