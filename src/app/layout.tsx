@@ -93,15 +93,6 @@ export const metadata: Metadata = {
     description: 'Empowering Kenyan farmers with certified seeds, premium fertilizers, and expert agricultural advice.',
     images: ['/og-image.jpg'],
   },
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "Mel-Agri",
-  },
-  formatDetection: {
-    telephone: false,
-  },
-  manifest: "/manifest.json",
   verification: {
     google: 'google-site-verification-id', // Needs to be updated with real ID
   }
