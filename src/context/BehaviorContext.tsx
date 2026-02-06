@@ -146,7 +146,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 
 
-        const { user } = useAuth();
+
 
         // ... (lines 32-145 remain unchanged, so I will target the specific block for trackAction)
 
