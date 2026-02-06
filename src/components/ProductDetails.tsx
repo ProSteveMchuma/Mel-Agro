@@ -232,9 +232,9 @@ export default function ProductDetails({ id }: { id: string }) {
                                         </button>
                                     ))}
                                 </div>
-                                {selectedVariant?.sku && (
+                                {(selectedVariant?.sku || product.productCode) && (
                                     <p className="mt-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                        SKU: {selectedVariant.sku}
+                                        SKU: {selectedVariant?.sku || product.productCode}
                                     </p>
                                 )}
                             </div>

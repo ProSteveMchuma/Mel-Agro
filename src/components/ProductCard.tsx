@@ -98,7 +98,7 @@ export default function ProductCard({ id, name, price, image, images = [], categ
                         src={imageSrc}
                         alt={name}
                         fill
-                        className="object-contain p-4 md:p-6 group-hover:scale-110 transition-transform duration-700 ease-out"
+                        className="object-contain p-2 md:p-3 group-hover:scale-110 transition-transform duration-700 ease-out"
                         unoptimized={imageSrc.includes('firebasestorage')}
                     />
 
