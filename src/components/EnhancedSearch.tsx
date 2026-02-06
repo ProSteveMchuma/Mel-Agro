@@ -18,9 +18,10 @@ const TRENDING_SEARCHES = [
 interface EnhancedSearchProps {
     className?: string;
     autoFocus?: boolean;
+    variant?: 'default' | 'mobile';
 }
 
-export default function EnhancedSearch({ className = "", autoFocus = false }: EnhancedSearchProps) {
+export default function EnhancedSearch({ className = "", autoFocus = false, variant = 'default' }: EnhancedSearchProps) {
     const [isFocused, setIsFocused] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [popularProducts, setPopularProducts] = useState<Product[]>([]);
@@ -99,11 +100,14 @@ export default function EnhancedSearch({ className = "", autoFocus = false }: En
                 relative transition-all duration-300 ease-out border
                 ${isFocused
                     ? "bg-white shadow-2xl rounded-t-[1.5rem] md:rounded-t-[2.5rem] rounded-b-none border-green-500/30"
-                    : "bg-gray-900/40 backdrop-blur-xl rounded-[1.5rem] md:rounded-[2.5rem] border-white/20 hover:border-white/30 shadow-lg"}
+                    : variant === 'mobile'
+                        ? "bg-gray-100/80 backdrop-blur-md rounded-[1.5rem] border-gray-200"
+                        : "bg-gray-900/40 backdrop-blur-xl rounded-[1.5rem] md:rounded-[2.5rem] border-white/20 hover:border-white/30 shadow-lg"
+                }
             `}>
                 <form onSubmit={handleSearch} className="relative flex items-center p-1.5 md:p-2">
                     <div className="flex-grow relative pl-2 md:pl-6">
-                        <svg className={`w-5 h-5 md:w-6 md:h-6 absolute left-4 md:left-6 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isFocused ? "text-green-600" : "text-white/40"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className={`w-5 h-5 md:w-6 md:h-6 absolute left-4 md:left-6 top-1/2 -translate-y-1/2 transition-colors duration-300 ${isFocused || variant === 'mobile' ? "text-green-600" : "text-white/40"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                         <input
@@ -115,7 +119,7 @@ export default function EnhancedSearch({ className = "", autoFocus = false }: En
                             placeholder="What are you planting today?"
                             className={`
                                 w-full pl-10 md:pl-10 pr-4 md:pr-6 py-3.5 md:py-5 bg-transparent border-none focus:ring-0 text-base md:text-lg transition-colors duration-300
-                                ${isFocused ? "text-gray-900 placeholder:text-gray-400" : "text-white placeholder:text-white/40"}
+                                ${isFocused || variant === 'mobile' ? "text-gray-900 placeholder:text-gray-400" : "text-white placeholder:text-white/40"}
                             `}
                         />
                     </div>

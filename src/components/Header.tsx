@@ -113,7 +113,7 @@ export default function Header() {
         <div className="md:hidden fixed inset-0 z-[70] bg-white animate-in slide-in-from-top duration-300 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-gray-100 flex items-center gap-4">
             <div className="flex-grow relative z-50">
-              <EnhancedSearch autoFocus={true} />
+              <EnhancedSearch autoFocus={true} variant="mobile" />
             </div>
             <button
               onClick={() => setIsSearchOpen(false)}
