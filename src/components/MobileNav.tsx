@@ -10,7 +10,8 @@ export default function MobileNav() {
     const { user } = useAuth();
 
     // Don't show on checkout as it has its own bottom bar
-    if (pathname === '/checkout') return null;
+    // Also hide on individual product pages (e.g., /products/123) to avoid conflict with sticky "Add to Cart"
+    if (pathname === '/checkout' || (pathname.startsWith('/products/') && pathname !== '/products')) return null;
 
     const navItems = [
         {

@@ -6,6 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import SmartSearch from "./SmartSearch";
+import EnhancedSearch from "./EnhancedSearch";
 import { useLanguage } from "@/context/LanguageContext";
 import Logo from "./Logo";
 
@@ -111,32 +112,19 @@ export default function Header() {
       {isSearchOpen && (
         <div className="md:hidden fixed inset-0 z-[70] bg-white animate-in slide-in-from-top duration-300 overflow-hidden flex flex-col">
           <div className="p-4 border-b border-gray-100 flex items-center gap-4">
-            <div className="flex-grow">
-              <SmartSearch />
+            <div className="flex-grow relative z-50">
+              <EnhancedSearch autoFocus={true} />
             </div>
             <button
               onClick={() => setIsSearchOpen(false)}
-              className="px-4 py-2 text-xs font-black text-gray-400 uppercase tracking-widest"
+              className="px-4 py-2 text-xs font-black text-gray-400 uppercase tracking-widest flex-shrink-0"
             >
               Close
             </button>
           </div>
-          <div className="flex-grow bg-gray-50/50 p-6">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Quick Suggestions</p>
-            <div className="flex flex-wrap gap-2">
-              {['Maize Seeds', 'Fertilizer', 'Tools', 'Irrigation'].map(term => (
-                <button
-                  key={term}
-                  onClick={() => {
-                    router.push(`/products?search=${encodeURIComponent(term)}`);
-                    setIsSearchOpen(false);
-                  }}
-                  className="px-4 py-2 bg-white border border-gray-100 rounded-xl text-xs font-bold text-gray-700 shadow-sm"
-                >
-                  {term}
-                </button>
-              ))}
-            </div>
+          {/* EnhancedSearch handles its own suggestions and dropdowns */}
+          <div className="flex-grow bg-gray-50/50 p-6 flex items-center justify-center text-gray-400 text-sm">
+            Start typing to see results...
           </div>
         </div>
       )}

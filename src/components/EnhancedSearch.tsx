@@ -15,7 +15,12 @@ const TRENDING_SEARCHES = [
     { term: "Knapsack Sprayer", icon: "🚿" },
     { term: "Chicken Feed", icon: "🐔" },
 ];
-export default function EnhancedSearch() {
+interface EnhancedSearchProps {
+    className?: string;
+    autoFocus?: boolean;
+}
+
+export default function EnhancedSearch({ className = "", autoFocus = false }: EnhancedSearchProps) {
     const [isFocused, setIsFocused] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [popularProducts, setPopularProducts] = useState<Product[]>([]);
@@ -104,6 +109,7 @@ export default function EnhancedSearch() {
                         <input
                             type="text"
                             value={searchQuery}
+                            autoFocus={autoFocus}
                             onFocus={() => setIsFocused(true)}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="What are you planting today?"

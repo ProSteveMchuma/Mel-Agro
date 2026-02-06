@@ -129,7 +129,7 @@ export default function RootLayout({
                           <BehaviorProvider>
                             <WishlistProvider>
                               {children}
-                              <PWAInstallPrompt />
+                              {/* <PWAInstallPrompt /> - Disabled by user request */}
                               <MobileNav />
                               {/* <ChatWidget /> - Replacing basic widget with AI Bot */}
                               <WhatsAppButton />
