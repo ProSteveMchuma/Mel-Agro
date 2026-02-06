@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useProducts } from "@/context/ProductContext";
+import MobileFilterDrawer from "@/components/MobileFilterDrawer";
 
 export default function ShopLayout({ showBreadcrumbs = true }: { showBreadcrumbs?: boolean }) {
     const { products } = useProducts();
@@ -100,8 +101,8 @@ export default function ShopLayout({ showBreadcrumbs = true }: { showBreadcrumbs
 
                 {/* Mobile Filter Drawer (Mobile Only) */}
                 <MobileFilterDrawer
-                    currentCategory={selectedCategory}
-                    onCategoryChange={setSelectedCategory}
+                    currentCategory={activeCategory === "All" ? null : activeCategory}
+                    onCategoryChange={(cat) => setActiveCategory(cat || "All")}
                     onSortChange={setSortBy}
                     totalProducts={filteredProducts.length}
                 />
