@@ -1,7 +1,8 @@
 import { Metadata } from "next";
 import { Suspense } from "react";
 import ProductsClient from "./ProductsClient";
-import { getProductsPage, getUniqueBrandsCached, getUniqueCategoriesCached } from "@/lib/products";
+import { getProductsPage } from "@/lib/products";
+import { getUniqueBrandsCached, getUniqueCategoriesCached } from "@/lib/products-server";
 
 export const metadata: Metadata = {
     title: "Agricultural Marketplace | Seeds, Fertilizers & Tools",
