@@ -81,7 +81,7 @@ export default function FeaturedSlider() {
                             <h2 className="text-3xl md:text-6xl font-black text-white mb-3 md:mb-6 leading-[1.1] tracking-tighter uppercase max-w-2xl drop-shadow-lg filter">
                                 {currentProduct.name}
                             </h2>
-                            <p className="block text-base md:text-xl text-gray-200/90 mb-6 md:mb-8 max-w-xl line-clamp-3 font-medium drop-shadow-md leading-relaxed">
+                            <p className="hidden md:block text-base md:text-xl text-gray-200/90 mb-6 md:mb-8 max-w-xl line-clamp-3 font-medium drop-shadow-md leading-relaxed">
                                 {currentProduct.description || "Premium agricultural solution for your farm. Certified quality for maximum yield."}
                             </p>
 
