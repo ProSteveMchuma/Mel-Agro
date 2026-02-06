@@ -47,7 +47,29 @@ export default function Home() {
       <JsonLd />
       <Header />
 
-      <main className="flex-grow space-y-12 md:space-y-16 pb-20 pt-8">
+        {/* Mobile-only Category Scroll (since sidebar is hidden on small screens) */}
+        <section className="lg:hidden container-custom mb-8">
+          <FadeInWhenVisible>
+            <div className="flex justify-between items-end mb-4 px-2">
+              <h2 className="text-lg font-black text-gray-900 tracking-tighter">Shop by Category</h2>
+              <Link href="/products" className="text-xs font-bold text-green-600">All →</Link>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+              {categories.map((cat: string) => (
+                <Link
+                  key={cat}
+                  href={`/products?category=${encodeURIComponent(cat)}`}
+                  className="flex-shrink-0 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-2 whitespace-nowrap"
+                >
+                  <span className="text-lg">
+                    {CATEGORY_ICONS[cat] || "🌾"}
+                  </span>
+                  <span className="text-xs font-bold text-gray-700">{cat}</span>
+                </Link>
+              ))}
+            </div>
+          </FadeInWhenVisible>
+        </section>
 
         {/* Top Section: Sidebar + Main Content (Hero & Featured) */}
         <section className="container-custom">
@@ -93,29 +115,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Mobile-only Category Scroll (since sidebar is hidden on small screens) */}
-        <section className="lg:hidden container-custom">
-          <FadeInWhenVisible>
-            <div className="flex justify-between items-end mb-6 px-2">
-              <h2 className="text-2xl font-black text-gray-900 tracking-tighter">Shop by Category</h2>
-              <Link href="/products" className="text-sm font-bold text-green-600">All →</Link>
-            </div>
-            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
-              {categories.map((cat: string) => (
-                <Link
-                  key={cat}
-                  href={`/products?category=${encodeURIComponent(cat)}`}
-                  className="flex-shrink-0 px-6 py-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-2 whitespace-nowrap"
-                >
-                  <span className="text-xl">
-                    {CATEGORY_ICONS[cat] || "🌾"}
-                  </span>
-                  <span className="text-sm font-bold text-gray-700">{cat}</span>
-                </Link>
-              ))}
-            </div>
-          </FadeInWhenVisible>
-        </section>
+
 
         <FadeInWhenVisible>
           <Partners />
@@ -139,6 +139,6 @@ export default function Home() {
 
       <Footer />
       <WhatsAppButton />
-    </div>
+    </div >
   );
 }

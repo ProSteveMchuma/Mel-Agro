@@ -44,7 +44,7 @@ export default function FeaturedSlider() {
     const currentProduct = products[activeIndex];
 
     return (
-        <div className="relative w-full h-[500px] md:h-[600px] overflow-hidden rounded-[2.5rem] bg-gray-900 shadow-2xl group">
+        <div className="relative w-full h-[400px] md:h-[600px] overflow-hidden rounded-[2.5rem] bg-gray-900 shadow-2xl group">
             <AnimatePresence mode='wait'>
                 <motion.div
                     key={currentProduct.id}
