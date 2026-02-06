@@ -133,23 +133,25 @@ export default function Header() {
       {isMenuOpen && (
         <div className="lg:hidden fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm transition-opacity" onClick={() => setIsMenuOpen(false)}>
           <div
-            className="absolute top-0 left-0 w-[80%] max-w-sm h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-left duration-300"
+            className="absolute top-0 left-0 w-[85%] max-w-xs h-full bg-white shadow-2xl flex flex-col animate-in slide-in-from-left duration-300"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-900 text-white">
-              <Logo />
+            <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-900 text-white">
+              <div className="scale-75 origin-left">
+                <Logo light />
+              </div>
               <button onClick={() => setIsMenuOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
-            <nav className="flex-grow py-6 px-6 overflow-y-auto">
-              <div className="space-y-1 mb-8">
+            <nav className="flex-grow py-4 px-4 overflow-y-auto">
+              <div className="space-y-1 mb-6">
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest px-3 mb-2">Main Menu</p>
-                <Link href="/" className="block px-3 py-3 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>Home</Link>
-                <Link href="/products" className="block px-3 py-3 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>Shop All</Link>
-                <Link href="/dashboard/user" className="block px-3 py-3 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>My Orders</Link>
-                <Link href="/wishlist" className="block px-3 py-3 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>Wishlist</Link>
+                <Link href="/" className="block px-3 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>Home</Link>
+                <Link href="/products" className="block px-3 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>Shop All</Link>
+                <Link href="/dashboard/user" className="block px-3 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>My Orders</Link>
+                <Link href="/wishlist" className="block px-3 py-2.5 text-sm font-bold text-gray-900 hover:bg-gray-50 rounded-xl" onClick={() => setIsMenuOpen(false)}>Wishlist</Link>
               </div>
 
               <div className="space-y-1">
@@ -158,7 +160,7 @@ export default function Header() {
                   <Link
                     key={cat}
                     href={`/products?category=${cat}`}
-                    className="block px-3 py-3 text-sm font-bold text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl"
+                    className="block px-3 py-2.5 text-sm font-bold text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-xl"
                     onClick={() => setIsMenuOpen(false)}
                   >
                     {cat}
