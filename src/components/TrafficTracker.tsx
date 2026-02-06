@@ -17,9 +17,9 @@ export default function TrafficTracker() {
 
                 // Update their last visit date
                 localStorage.setItem('Mel-Agri_last_visit', today);
+                console.log("Traffic tracked:", { isUnique, today });
             } catch (err) {
-                // Silently fail as analytics shouldn't break the UI
-                console.debug("Traffic Tracking suppressed.");
+                console.error("Traffic Tracking Failed:", err);
             }
         };
 

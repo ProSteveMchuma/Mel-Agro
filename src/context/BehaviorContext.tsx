@@ -26,6 +26,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Internal state to track patterns
     const [searchFailures, setSearchFailures] = useState(0);
     const [hasShownCheckoutHelp, setHasShownCheckoutHelp] = useState(false);
+    const [hasShownSearchHelp, setHasShownSearchHelp] = useState(false);
 
     const { user } = useAuth();
 
@@ -143,9 +144,16 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             updateAffinity(metadata.category, 10);
         }
 
+
+
+        const { user } = useAuth();
+
+        // ... (lines 32-145 remain unchanged, so I will target the specific block for trackAction)
+
         if (action === 'empty_search') {
             setSearchFailures(prev => prev + 1);
-            if (searchFailures >= 1) {
+            // Only show if we haven't shown it yet and failures > 0 (or immediately on first fail if desired, keeping logic similar)
+            if (searchFailures >= 0 && !hasShownSearchHelp) {
                 showProactiveHelp(
                     "Can't find what you're looking for? Our team can help you source it via WhatsApp!",
                     {
@@ -153,6 +161,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         onClick: () => window.open('https://wa.me/254748970757?text=Hello,%20I%20am%20looking%20for%20something%20I%20can%20not%20find%20on%20the%20website.', '_blank')
                     }
                 );
+                setHasShownSearchHelp(true);
             }
         }
 

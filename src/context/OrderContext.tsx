@@ -333,19 +333,31 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             updateData.transactionId = transactionDetails.reference;
             updateData.paymentMethod = transactionDetails.method;
 
-            // Log to transactions collection
-            await addDoc(collection(db, "transactions"), {
-                orderId,
-                amount: transactionDetails.amount,
-                reference: transactionDetails.reference,
-                method: transactionDetails.method,
-                date: transactionDetails.date,
-                status: 'Success',
-                recordedBy: user?.uid || 'System'
-            });
+            // Log to transactions collection (fail-safe)
+            try {
+                await addDoc(collection(db, "transactions"), {
+                    orderId,
+                    amount: transactionDetails.amount,
+                    reference: transactionDetails.reference,
+                    method: transactionDetails.method,
+                    date: transactionDetails.date,
+                    status: 'Success',
+                    recordedBy: user?.uid || 'System'
+                });
+                console.log("Transaction logged successfully");
+            } catch (err) {
+                console.error("Failed to log transaction (Order update will proceed):", err);
+                // We do NOT throw here, allowing the order status update to succeed
+            }
         }
 
-        await updateDoc(orderRef, updateData);
+        try {
+            await updateDoc(orderRef, updateData);
+            console.log("Order payment status updated successfully");
+        } catch (error) {
+            console.error("Failed to update order payment status:", error);
+            throw error; // Re-throw to notify specific UI component
+        }
     };
 
     const requestReturn = async (orderId: string, reason: string) => {
