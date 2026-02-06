@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import Breadcrumbs from "@/components/Breadcrumbs";
 import { useProducts } from "@/context/ProductContext";
-import MobileFilterDrawer from "@/components/MobileFilterDrawer";
+import MobileFilterDrawer from "./MobileFilterDrawer";
 
 export default function ShopLayout({ showBreadcrumbs = true }: { showBreadcrumbs?: boolean }) {
     const { products } = useProducts();

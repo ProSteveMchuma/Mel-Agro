@@ -21,7 +21,6 @@ export default function EditProductPage() {
                 // Prepare initial data for the form, converting stockQuantity to string
                 const initialFormData = {
                     ...foundProduct,
-                    stockQuantity: foundProduct.stockQuantity?.toString() || "0",
                     featured: foundProduct.featured || false
                 };
                 setProduct(initialFormData);
