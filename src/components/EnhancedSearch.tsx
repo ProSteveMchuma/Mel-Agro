@@ -251,31 +251,12 @@ export default function EnhancedSearch({ className = "", autoFocus = false, vari
                                 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10 overflow-y-auto
                                 ${isMobileBar ? "max-h-[60vh] p-4" : "p-4 md:p-8 max-h-[70vh] md:max-h-none"}
                             `}>
-                                {/* Left Column: Trending & Categories */}
-                                <div className="md:col-span-4 space-y-6 md:space-y-10">
-                                    <div>
-                                        <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-3 md:mb-4">Trending Now</h4>
-                                        <div className="grid grid-cols-2 md:grid-cols-1 gap-2 md:gap-3">
-                                            {TRENDING_SEARCHES.map((item) => (
-                                                <button
-                                                    key={item.term}
-                                                    onClick={() => handleQuickSearch(item.term)}
-                                                    className="flex items-center gap-2 md:gap-3 w-full text-left p-2 md:p-3 rounded-xl hover:bg-gray-50 transition-colors group border border-gray-50 md:border-transparent"
-                                                >
-                                                    <span className="text-lg md:text-xl group-hover:scale-125 transition-transform">{item.icon}</span>
-                                                    <span className="text-xs md:text-sm font-bold text-gray-700 truncate">{item.term}</span>
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Right Column: Popular Products or Fuzzy Suggestions */}
-                                <div className="md:col-span-8">
+                                {/* Suggestions / Popular Products */}
+                                <div className="col-span-1 md:col-span-12">
                                     <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em] mb-4 md:mb-6">
                                         {(searchQuery.length > 1 && suggestions.length > 0) ? "Intelligent Suggestions" : "Popular Right Now"}
                                     </h4>
-                                    <div className={`grid ${isMobileBar ? 'grid-cols-1 gap-2' : 'grid-cols-2 md:grid-cols-3 gap-3 md:gap-6'}`}>
+                                    <div className={`grid ${isMobileBar ? 'grid-cols-1 gap-2' : 'grid-cols-2 md:grid-cols-4 gap-3 md:gap-6'}`}>
                                         {(searchQuery.length > 1 && suggestions.length > 0 ? suggestions : popularProducts).map((product) => (
                                             <Link
                                                 key={product.id}
