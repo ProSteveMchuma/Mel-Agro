@@ -6,7 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import SmartSearch from "./SmartSearch";
-import EnhancedSearch from "./EnhancedSearch";
+
 import { useLanguage } from "@/context/LanguageContext";
 import Logo from "./Logo";
 
@@ -89,7 +89,7 @@ export default function Header() {
 
       {/* Mobile Search Bar - Permanent (New) */}
       <div className="md:hidden container-custom py-2 pb-3 bg-white border-b border-gray-100">
-        <EnhancedSearch variant="mobile-bar" />
+        <SmartSearch />
       </div>
     </header>
   );
