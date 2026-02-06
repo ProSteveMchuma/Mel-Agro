@@ -76,7 +76,7 @@ export default function MobileNav() {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 lg:hidden z-50 safe-area-bottom pb-safe">
+        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md shadow-[0_-5px_20px_rgba(0,0,0,0.03)] lg:hidden z-50 safe-area-bottom pb-safe">
             <div className="flex items-center justify-around">
                 {navItems.map((item) => {
                     const isActive = pathname === item.href;

@@ -11,7 +11,7 @@ export default function WhatsAppButton() {
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 1, type: "spring", stiffness: 260, damping: 20 }}
-            className="fixed bottom-24 md:bottom-8 right-8 z-50"
+            className="hidden md:block fixed bottom-24 md:bottom-8 right-8 z-50"
         >
             <a
                 href={`https://wa.me/${phoneNumber}?text=${message}`}
