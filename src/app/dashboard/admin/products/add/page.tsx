@@ -16,7 +16,8 @@ export default function AddProductPage() {
         category: "Fertilizers",
         description: "",
         image: "",
-        stockQuantity: ""
+        stockQuantity: "",
+        featured: false
     });
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -71,7 +72,8 @@ export default function AddProductPage() {
                 stockQuantity: stockQty,
                 lowStockThreshold: 10,
                 rating: 0,
-                reviews: 0
+                reviews: 0,
+                featured: formData.featured
             });
 
             router.push("/dashboard/admin/products");
@@ -139,6 +141,20 @@ export default function AddProductPage() {
                         <option value="Animal Feeds">Animal Feeds</option>
                         <option value="Tools">Tools</option>
                     </select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        id="featured"
+                        name="featured"
+                        checked={formData.featured}
+                        onChange={(e) => setFormData(prev => ({ ...prev, featured: e.target.checked }))}
+                        className="w-4 h-4 text-melagri-primary border-gray-300 rounded focus:ring-melagri-primary"
+                    />
+                    <label htmlFor="featured" className="text-sm font-medium text-gray-700">
+                        Mark as Featured Product
+                    </label>
                 </div>
 
                 <div>

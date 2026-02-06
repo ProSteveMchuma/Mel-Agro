@@ -17,7 +17,15 @@ export default function EditProductPage() {
     useEffect(() => {
         if (products.length > 0) {
             const foundProduct = getProduct(id);
-            setProduct(foundProduct);
+            if (foundProduct) {
+                // Prepare initial data for the form, converting stockQuantity to string
+                const initialFormData = {
+                    ...foundProduct,
+                    stockQuantity: foundProduct.stockQuantity?.toString() || "0",
+                    featured: foundProduct.featured || false
+                };
+                setProduct(initialFormData);
+            }
             setIsLoading(false);
         }
     }, [products, id, getProduct]);

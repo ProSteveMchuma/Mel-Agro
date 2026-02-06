@@ -51,6 +51,7 @@ export interface Product {
     weight?: number; // In KG
     weightUnit?: 'kg' | 'g' | 'lb' | 'l' | 'ml';
     stock?: number; // Legacy/Compat
+    featured?: boolean;
 }
 
 export interface ProductVariant {
