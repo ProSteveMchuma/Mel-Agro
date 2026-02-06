@@ -37,31 +37,21 @@ export default function Header() {
       <div className="container-custom py-3 md:py-4 shadow-sm">
         <div className="flex items-center gap-8 justify-between">
           {/* Logo & Mobile Menu Toggle */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
             >
               <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
               </svg>
             </button>
-            <Link href="/" className="group flex-shrink-0">
+            <Link href="/" className="group flex-shrink-0 origin-left transform scale-75 md:scale-100">
               <Logo />
             </Link>
           </div>
 
-          {/* Search Toggle - Mobile */}
-          <div className="md:hidden flex-grow flex justify-end pr-2">
-            <button
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </button>
-          </div>
+          {/* Search Toggle - Mobile (REMOVED - Now using permanent bar) */}
 
           {/* Search Bar - Desktop */}
           <div className="hidden md:flex flex-grow max-w-2xl relative justify-center">
@@ -108,26 +98,12 @@ export default function Header() {
         </div>
       </div>
 
-      {/* Mobile Search Overlay */}
-      {isSearchOpen && (
-        <div className="md:hidden fixed inset-0 z-[70] bg-white animate-in slide-in-from-top duration-300 overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-gray-100 flex items-center gap-4">
-            <div className="flex-grow relative z-50">
-              <EnhancedSearch autoFocus={true} variant="mobile" />
-            </div>
-            <button
-              onClick={() => setIsSearchOpen(false)}
-              className="px-4 py-2 text-xs font-black text-gray-400 uppercase tracking-widest flex-shrink-0"
-            >
-              Close
-            </button>
-          </div>
-          {/* EnhancedSearch handles its own suggestions and dropdowns */}
-          <div className="flex-grow bg-gray-50/50 p-6 flex items-center justify-center text-gray-400 text-sm">
-            Start typing to see results...
-          </div>
-        </div>
-      )}
+      {/* Mobile Search Bar - Permanent (New) */}
+      <div className="md:hidden container-custom py-2 pb-3 bg-white border-b border-gray-100">
+        <EnhancedSearch variant="mobile-bar" />
+      </div>
+
+      {/* Mobile Search Overlay (Legacy - Removed) */}
 
       {/* Mobile Menu Overlay */}
       {isMenuOpen && (

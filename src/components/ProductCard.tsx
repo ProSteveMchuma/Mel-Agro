@@ -160,21 +160,24 @@ export default function ProductCard({ id, name, price, image, images = [], categ
                     </div>
 
                     {/* Double Buttons */}
-                    <div className="grid grid-cols-2 gap-1.5 md:gap-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 md:gap-2 mt-auto">
                         <button
                             onClick={handleAddToCart}
                             disabled={isAdding}
-                            className={`py-2 md:py-2.5 rounded-lg md:rounded-xl font-bold text-[10px] md:text-[11px] uppercase tracking-widest transition-all duration-300 ${isAdding
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-gray-900 text-white hover:bg-[#22c55e] shadow-sm hover:shadow-green-200"
-                                }`}
+                            className={`
+                                w-full py-3 md:py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all duration-200 active:scale-95
+                                ${isAdding
+                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+                                    : "bg-gray-900 text-white hover:bg-[#22c55e] shadow-md hover:shadow-green-200"
+                                }
+                            `}
                         >
-                            {isAdding ? "Added!" : "Add Cart"}
+                            {isAdding ? "Added!" : "Add to Cart"}
                         </button>
 
                         <button
                             onClick={handleView}
-                            className="py-2 md:py-2.5 rounded-lg md:rounded-xl font-bold text-[10px] md:text-[11px] uppercase tracking-widest bg-white border border-gray-200 text-gray-900 hover:border-gray-900 transition-all shadow-sm"
+                            className="hidden md:block w-full py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-widest bg-white border border-gray-200 text-gray-900 hover:border-gray-900 transition-all shadow-sm hover:bg-gray-50 active:scale-95"
                         >
                             View
                         </button>
