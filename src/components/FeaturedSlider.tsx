@@ -44,7 +44,7 @@ export default function FeaturedSlider() {
     const currentProduct = products[activeIndex];
 
     return (
-        <div className="relative w-full h-[280px] md:h-[500px] overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-gray-900 shadow-2xl group border border-gray-800/50">
+        <div className="relative w-full h-[500px] overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-gray-900 shadow-2xl group border border-gray-800/50">
             <AnimatePresence mode='wait'>
                 <motion.div
                     key={currentProduct.id}
@@ -60,42 +60,44 @@ export default function FeaturedSlider() {
                             src={currentProduct.image || "/assets/images/placeholder.png"}
                             alt={currentProduct.name}
                             fill
-                            className="object-cover object-center opacity-70 group-hover:opacity-60 transition-opacity duration-700"
+                            className="object-cover object-center opacity-80 md:opacity-70 group-hover:scale-105 transition-all duration-[2s] ease-out"
                             priority
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-gray-900/90 via-gray-900/40 to-transparent" />
+                        {/* Improved Gradient for text readability */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent md:bg-gradient-to-r" />
                     </div>
 
                     {/* Content */}
-                    <div className="relative h-full flex flex-col justify-end md:justify-center px-6 md:px-20 pb-8 md:pb-0 z-10">
+                    <div className="relative h-full flex flex-col justify-end md:justify-center px-6 md:px-20 pb-10 md:pb-0 z-10">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2, duration: 0.6 }}
+                            className="flex flex-col items-start"
                         >
-                            <span className="bg-green-500 text-white text-[9px] md:text-xs font-black uppercase tracking-[0.2em] px-2 py-1 md:px-3 md:py-1.5 rounded-md md:rounded-full mb-3 md:mb-6 inline-block shadow-lg shadow-green-900/20">
+                            <span className="bg-green-500 text-white text-[10px] md:text-sm font-black uppercase tracking-[0.2em] px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-full mb-3 md:mb-6 shadow-lg shadow-green-900/20 backdrop-blur-sm">
                                 Featured Pick
                             </span>
-                            <h2 className="text-2xl md:text-6xl font-black text-white mb-2 md:mb-6 leading-none tracking-tighter uppercase max-w-2xl drop-shadow-sm">
+                            <h2 className="text-3xl md:text-6xl font-black text-white mb-3 md:mb-6 leading-[1.1] tracking-tighter uppercase max-w-2xl drop-shadow-lg filter">
                                 {currentProduct.name}
                             </h2>
-                            <p className="hidden md:block text-lg md:text-xl text-gray-200 mb-8 max-w-xl line-clamp-2 font-medium drop-shadow-sm">
+                            <p className="block text-base md:text-xl text-gray-200/90 mb-6 md:mb-8 max-w-xl line-clamp-3 font-medium drop-shadow-md leading-relaxed">
                                 {currentProduct.description || "Premium agricultural solution for your farm. Certified quality for maximum yield."}
                             </p>
 
-                            <div className="flex items-center gap-3 md:gap-4 mt-2 md:mt-0">
+                            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-4 w-full md:w-auto">
                                 <Link
-                                    href={`/product/${currentProduct.id}`}
-                                    className="bg-white text-gray-900 px-6 py-3 md:px-10 md:py-4 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-sm hover:bg-green-50 transition-all text-center shadow-xl"
+                                    href={`/products/${currentProduct.id}`}
+                                    className="bg-white text-gray-900 px-8 py-3.5 md:px-10 md:py-4 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-50 transition-all text-center shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-95"
                                 >
-                                    View
+                                    View Details
                                 </Link>
                                 <button
                                     onClick={() => {
                                         addToCart(currentProduct);
                                         toast.success(`Added ${currentProduct.name} to cart!`);
                                     }}
-                                    className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-6 py-3 md:px-10 md:py-4 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-[10px] md:text-sm hover:bg-green-600 transition-all shadow-xl shadow-green-900/20"
+                                    className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-8 py-3.5 md:px-10 md:py-4 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-500 transition-all shadow-xl shadow-green-900/20 hover:-translate-y-1 active:scale-95 flex justify-center"
                                 >
                                     Add To Cart
                                 </button>
@@ -119,18 +121,18 @@ export default function FeaturedSlider() {
                 ))}
             </div>
 
-            {/* Price Tag - Hidden on very small screens if needed, or scaled down */}
+            {/* Price Tag */}
             <div className="absolute top-4 right-4 md:top-10 md:right-10 z-20">
                 <motion.div
                     key={currentProduct.price}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="bg-black/20 backdrop-blur-xl border border-white/10 p-3 md:p-6 rounded-2xl md:rounded-3xl"
+                    className="bg-black/30 backdrop-blur-xl border border-white/10 p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-xl"
                 >
-                    <p className="hidden md:block text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Price</p>
-                    <div className="flex items-baseline gap-1">
+                    <p className="text-[10px] md:text-xs font-black text-green-400 uppercase tracking-widest mb-1 text-right">Price</p>
+                    <div className="flex items-baseline gap-1 justify-end">
                         <span className="text-xs md:text-sm font-bold text-green-400">KES</span>
-                        <span className="text-xl md:text-3xl font-black text-white leading-none">
+                        <span className="text-xl md:text-3xl font-black text-white leading-none tracking-tight">
                             {currentProduct.price.toLocaleString()}
                         </span>
                     </div>
