@@ -22,6 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // Dynamic Product routes
     let productRoutes: any[] = [];
+    let categoryRoutes: any[] = [];
     try {
         const querySnapshot = await getDocs(collection(db, 'products'));
         productRoutes = querySnapshot.docs.map((doc) => ({
@@ -30,9 +31,26 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
             changeFrequency: 'weekly' as const,
             priority: 0.7,
         }));
+
+        // Extract unique categories from products
+        const categories = new Set<string>();
+        querySnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            if (data.category) {
+                categories.add(data.category);
+            }
+        });
+
+        categoryRoutes = Array.from(categories).map(category => ({
+            url: `${baseUrl}/products?category=${encodeURIComponent(category)}`,
+            lastModified: new Date(),
+            changeFrequency: 'weekly' as const,
+            priority: 0.8,
+        }));
+
     } catch (error) {
-        console.error("Error generating sitemap products:", error);
+        console.error("Error generating sitemap products/categories:", error);
     }
 
-    return [...routes, ...productRoutes];
+    return [...routes, ...categoryRoutes, ...productRoutes];
 }

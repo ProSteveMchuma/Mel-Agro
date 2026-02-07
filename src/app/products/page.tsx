@@ -18,15 +18,46 @@ export default async function ProductsPage() {
         getUniqueCategoriesCached()
     ]);
 
+    const jsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'CollectionPage',
+        name: 'Agricultural Products Market | Mel-Agri',
+        description: 'Browse our comprehensive catalogue of agricultural inputs. From hybrid maize seeds to high-nitrogen fertilizers.',
+        url: 'https://mel-agri.com/products',
+        breadcrumb: {
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+                {
+                    '@type': 'ListItem',
+                    position: 1,
+                    name: 'Home',
+                    item: 'https://mel-agri.com',
+                },
+                {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: 'Products',
+                    item: 'https://mel-agri.com/products',
+                },
+            ],
+        },
+    };
+
     return (
-        <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagri-primary"></div>
-        </div>}>
-            <ProductsClient
-                initialProducts={initialProducts}
-                initialBrands={brands}
-                initialCategories={categories}
+        <>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
             />
-        </Suspense>
+            <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagri-primary"></div>
+            </div>}>
+                <ProductsClient
+                    initialProducts={initialProducts}
+                    initialBrands={brands}
+                    initialCategories={categories}
+                />
+            </Suspense>
+        </>
     );
 }
