@@ -78,17 +78,14 @@ export default function FeaturedSlider() {
                             <span className="bg-green-500 text-white text-[10px] md:text-sm font-black uppercase tracking-[0.2em] px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-full mb-3 md:mb-6 shadow-lg shadow-green-900/20 backdrop-blur-sm">
                                 Featured Pick
                             </span>
-                            <h2 className="text-3xl md:text-6xl font-black text-white mb-3 md:mb-6 leading-[1.1] tracking-tighter uppercase max-w-2xl drop-shadow-lg filter">
+                            <h2 className="text-2xl md:text-5xl font-black text-white mb-6 md:mb-10 leading-[1.1] tracking-tighter uppercase max-w-2xl drop-shadow-lg filter">
                                 {currentProduct.name}
                             </h2>
-                            <p className="hidden md:block text-base md:text-xl text-gray-200/90 mb-6 md:mb-8 max-w-xl line-clamp-3 font-medium drop-shadow-md leading-relaxed">
-                                {currentProduct.description || "Premium agricultural solution for your farm. Certified quality for maximum yield."}
-                            </p>
 
                             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-4 w-full md:w-auto">
                                 <Link
                                     href={`/products/${currentProduct.id}`}
-                                    className="bg-white text-gray-900 px-8 py-3.5 md:px-10 md:py-4 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-50 transition-all text-center shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-95"
+                                    className="bg-white text-gray-900 px-6 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-50 transition-all text-center shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-95"
                                 >
                                     View Details
                                 </Link>
@@ -97,7 +94,7 @@ export default function FeaturedSlider() {
                                         addToCart(currentProduct);
                                         toast.success(`Added ${currentProduct.name} to cart!`);
                                     }}
-                                    className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-8 py-3.5 md:px-10 md:py-4 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-500 transition-all shadow-xl shadow-green-900/20 hover:-translate-y-1 active:scale-95 flex justify-center"
+                                    className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-6 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-500 transition-all shadow-xl shadow-green-900/20 hover:-translate-y-1 active:scale-95 flex justify-center"
                                 >
                                     Add To Cart
                                 </button>
