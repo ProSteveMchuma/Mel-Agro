@@ -10,11 +10,21 @@ interface ProductRowProps {
     filter?: (p: Product) => boolean;
 }
 
-export default function ProductRow({ title = "", filter }: ProductRowProps) {
-    const [products, setProducts] = useState<Product[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
+export default function ProductRow({ title = "", filter, products: initialProducts }: ProductRowProps & { products?: Product[] }) {
+    const [products, setProducts] = useState<Product[]>(initialProducts || []);
+    const [isLoading, setIsLoading] = useState(!initialProducts);
 
     useEffect(() => {
+        if (initialProducts) {
+            if (filter) {
+                setProducts(initialProducts.filter(filter).slice(0, 12));
+            } else {
+                setProducts(initialProducts.slice(0, 12));
+            }
+            setIsLoading(false);
+            return;
+        }
+
         setIsLoading(true);
         getProducts().then(allProducts => {
             let filtered = allProducts;
@@ -25,7 +35,7 @@ export default function ProductRow({ title = "", filter }: ProductRowProps) {
             setProducts(filtered.slice(0, 12));
             setIsLoading(false);
         });
-    }, [filter]);
+    }, [filter, initialProducts]);
 
     if (isLoading) {
         return (

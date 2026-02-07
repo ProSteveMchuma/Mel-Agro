@@ -8,20 +8,26 @@ import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import toast from 'react-hot-toast';
 
-export default function FeaturedSlider() {
-    const [products, setProducts] = useState<Product[]>([]);
+export default function FeaturedSlider({ products: initialProducts }: { products?: Product[] }) {
+    const [products, setProducts] = useState<Product[]>(initialProducts || []);
     const [activeIndex, setActiveIndex] = useState(0);
     const { addToCart } = useCart();
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(!initialProducts);
 
     useEffect(() => {
+        if (initialProducts) {
+            setProducts(initialProducts);
+            setLoading(false);
+            return;
+        }
+
         const fetchFeatured = async () => {
             const featured = await getFeaturedProducts(5);
             setProducts(featured);
             setLoading(false);
         };
         fetchFeatured();
-    }, []);
+    }, [initialProducts]);
 
     useEffect(() => {
         if (products.length <= 1) return;
