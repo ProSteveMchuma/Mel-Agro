@@ -1,36 +1,63 @@
 "use client";
-import React, { useState } from 'react';
-import { SavedAddress, User } from '@/types';
+import React, { useState, useEffect } from 'react';
+import { SavedAddress } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'react-hot-toast';
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { savedAddressSchema, SavedAddressFormData } from '@/lib/schemas';
+import { Input } from '@/components/ui/form/Input';
+import { Textarea } from '@/components/ui/form/Textarea';
+import { Select } from '@/components/ui/form/Select';
+
+const KENYA_COUNTIES = [
+    { value: 'Nairobi', label: 'Nairobi' },
+    { value: 'Mombasa', label: 'Mombasa' },
+    { value: 'Kisumu', label: 'Kisumu' },
+    { value: 'Nakuru', label: 'Nakuru' },
+    { value: 'Eldoret', label: 'Eldoret' },
+    { value: 'Kiambu', label: 'Kiambu' },
+    { value: 'Machakos', label: 'Machakos' },
+    { value: 'Kajiado', label: 'Kajiado' },
+    { value: 'Kilifi', label: 'Kilifi' },
+    { value: 'Meru', label: 'Meru' },
+    { value: 'Nyeri', label: 'Nyeri' },
+    // Add more as needed or move to constants
+];
 
 export default function AddressBook() {
     const { user, updateProfile } = useAuth();
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [formData, setFormData] = useState<Omit<SavedAddress, 'id'>>({
-        label: '',
-        county: '',
-        city: '',
-        details: '',
-        isPrimary: false
+
+    const methods = useForm<SavedAddressFormData>({
+        resolver: zodResolver(savedAddressSchema),
+        defaultValues: {
+            label: '',
+            county: '',
+            city: '',
+            details: '',
+            isPrimary: false
+        }
     });
+
+    const { handleSubmit, reset, setValue } = methods;
 
     const addresses = user?.savedAddresses || [];
 
-    const handleSave = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const onSubmit = async (data: SavedAddressFormData) => {
         try {
             let newAddresses = [...addresses];
 
-            if (formData.isPrimary) {
+            // If setting as primary, unset others
+            if (data.isPrimary) {
                 newAddresses = newAddresses.map(a => ({ ...a, isPrimary: false }));
             }
 
             if (editingId) {
-                newAddresses = newAddresses.map(a => a.id === editingId ? { ...formData, id: editingId } : a);
+                newAddresses = newAddresses.map(a => a.id === editingId ? { ...data, id: editingId } : a);
             } else {
-                const newAddress = { ...formData, id: Date.now().toString() };
+                const newAddress = { ...data, id: Date.now().toString() };
                 newAddresses.push(newAddress);
             }
 
@@ -38,6 +65,7 @@ export default function AddressBook() {
             toast.success(editingId ? "Address updated" : "Address added");
             resetForm();
         } catch (error) {
+            console.error(error);
             toast.error("Failed to save address");
         }
     };
@@ -69,7 +97,7 @@ export default function AddressBook() {
     const resetForm = () => {
         setIsAdding(false);
         setEditingId(null);
-        setFormData({
+        reset({
             label: '',
             county: '',
             city: '',
@@ -80,13 +108,11 @@ export default function AddressBook() {
 
     const startEdit = (address: SavedAddress) => {
         setEditingId(address.id);
-        setFormData({
-            label: address.label,
-            county: address.county,
-            city: address.city,
-            details: address.details,
-            isPrimary: address.isPrimary
-        });
+        setValue('label', address.label);
+        setValue('county', address.county);
+        setValue('city', address.city);
+        setValue('details', address.details);
+        setValue('isPrimary', address.isPrimary);
         setIsAdding(true);
     };
 
@@ -96,7 +122,7 @@ export default function AddressBook() {
                 <h3 className="text-xl font-bold text-gray-900">Saved Addresses</h3>
                 {!isAdding && (
                     <button
-                        onClick={() => setIsAdding(true)}
+                        onClick={() => { resetForm(); setIsAdding(true); }}
                         className="px-4 py-2 bg-melagri-primary text-white text-xs font-bold rounded-xl hover:scale-105 transition-all shadow-lg shadow-melagri-primary/20"
                     >
                         + Add New
@@ -105,69 +131,56 @@ export default function AddressBook() {
             </div>
 
             {isAdding ? (
-                <form onSubmit={handleSave} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4 animate-in slide-in-from-top-4 duration-300">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="md:col-span-2">
-                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Label (e.g. Home, Farm 1)</label>
+                <FormProvider {...methods}>
+                    <form onSubmit={handleSubmit(onSubmit)} className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm space-y-4 animate-in slide-in-from-top-4 duration-300">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-2">
+                                <Input
+                                    name="label"
+                                    label="Label (e.g. Home, Farm 1)"
+                                    placeholder="Home"
+                                />
+                            </div>
+                            <div>
+                                <Select
+                                    name="county"
+                                    label="County"
+                                    options={KENYA_COUNTIES}
+                                />
+                            </div>
+                            <div>
+                                <Input
+                                    name="city"
+                                    label="City/Town"
+                                    placeholder="e.g. Ruiru"
+                                />
+                            </div>
+                            <div className="md:col-span-2">
+                                <Textarea
+                                    name="details"
+                                    label="Specific Details (Landmarks, Road)"
+                                    placeholder="Near the dairy plant, Green Gate"
+                                    className="h-20"
+                                />
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
                             <input
-                                required
-                                type="text"
-                                value={formData.label}
-                                onChange={(e) => setFormData({ ...formData, label: e.target.value })}
-                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagri-primary/20"
-                                placeholder="Home"
+                                type="checkbox"
+                                id="isPrimary"
+                                {...methods.register('isPrimary')}
+                                className="rounded border-gray-300 text-melagri-primary focus:ring-melagri-primary/20"
                             />
+                            <label htmlFor="isPrimary" className="text-xs font-bold text-gray-600">Set as primary delivery address</label>
                         </div>
-                        <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">County</label>
-                            <input
-                                required
-                                type="text"
-                                value={formData.county}
-                                onChange={(e) => setFormData({ ...formData, county: e.target.value })}
-                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagri-primary/20"
-                                placeholder="e.g. Kiambu"
-                            />
+                        <div className="flex justify-end gap-3 pt-4 border-t border-gray-50">
+                            <button type="button" onClick={resetForm} className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-gray-600">Cancel</button>
+                            <button type="submit" className="px-6 py-2 bg-gray-900 text-white text-xs font-bold rounded-xl hover:scale-105 transition-all">
+                                {editingId ? "Update Address" : "Save Address"}
+                            </button>
                         </div>
-                        <div>
-                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">City/Town</label>
-                            <input
-                                required
-                                type="text"
-                                value={formData.city}
-                                onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagri-primary/20"
-                                placeholder="e.g. Ruiru"
-                            />
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-[10px] font-black text-gray-400 uppercase mb-1">Specific Details (Landmarks, Road)</label>
-                            <textarea
-                                required
-                                value={formData.details}
-                                onChange={(e) => setFormData({ ...formData, details: e.target.value })}
-                                className="w-full text-sm rounded-xl border-gray-100 focus:ring-melagri-primary/20 p-3 h-20"
-                                placeholder="Near the dairy plant, Green Gate"
-                            />
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="isPrimary"
-                            checked={formData.isPrimary}
-                            onChange={(e) => setFormData({ ...formData, isPrimary: e.target.checked })}
-                            className="rounded border-gray-300 text-melagri-primary focus:ring-melagri-primary/20"
-                        />
-                        <label htmlFor="isPrimary" className="text-xs font-bold text-gray-600">Set as primary delivery address</label>
-                    </div>
-                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-50">
-                        <button type="button" onClick={resetForm} className="px-4 py-2 text-xs font-bold text-gray-400 hover:text-gray-600">Cancel</button>
-                        <button type="submit" className="px-6 py-2 bg-gray-900 text-white text-xs font-bold rounded-xl hover:scale-105 transition-all">
-                            {editingId ? "Update Address" : "Save Address"}
-                        </button>
-                    </div>
-                </form>
+                    </form>
+                </FormProvider>
             ) : addresses.length === 0 ? (
                 <div className="text-center py-12 bg-white rounded-3xl border border-dashed border-gray-200">
                     <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">No saved addresses yet</p>

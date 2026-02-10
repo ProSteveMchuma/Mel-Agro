@@ -14,9 +14,13 @@ import { useWishlist } from "@/context/WishlistContext";
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplate";
-import WeatherWidget from "@/components/dashboard/WeatherWidget";
+
 import { toast } from "react-hot-toast";
 import AddressBook from "@/components/dashboard/AddressBook";
+import { useForm, FormProvider } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { profileSchema, ProfileFormData } from '@/lib/schemas';
+import { Input } from '@/components/ui/form/Input';
 
 type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses' | 'payments';
 
@@ -39,6 +43,13 @@ export default function UserDashboard() {
     const [printMode, setPrintMode] = useState<'invoice' | 'receipt' | 'delivery' | null>(null);
     const [printOrder, setPrintOrder] = useState<Order | null>(null);
     const [trackOrderId, setTrackOrderId] = useState('');
+    const [showProfileModal, setShowProfileModal] = useState(false);
+
+    useEffect(() => {
+        if (user && (user.name === 'User' || !user.email)) {
+            setShowProfileModal(true);
+        }
+    }, [user]);
 
     useEffect(() => {
         if (user) {
@@ -533,9 +544,7 @@ export default function UserDashboard() {
                                 </div>
                             </div>
 
-                            <div className="mb-8">
-                                <WeatherWidget />
-                            </div>
+
 
                             <nav className="space-y-1.5">
                                 {[
@@ -685,6 +694,10 @@ export default function UserDashboard() {
                         </div>
                     </div>
                 )}
+
+                {showProfileModal && user && (
+                    <ProfileCompletionModal user={user} onClose={() => setShowProfileModal(false)} />
+                )}
             </main>
             <Footer />
         </div>
@@ -731,5 +744,80 @@ function MessageForm() {
                 {status === 'sending' ? 'Sending...' : status === 'success' ? 'Message Sent!' : 'Send Message'}
             </button>
         </form>
+    );
+}
+
+function ProfileCompletionModal({ user, onClose }: { user: any, onClose: () => void }) {
+    const { updateProfile } = useAuth();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const methods = useForm<ProfileFormData>({
+        resolver: zodResolver(profileSchema),
+        defaultValues: {
+            name: user.name === 'User' ? '' : user.name,
+            email: user.email || '',
+            phone: user.phone || '',
+            address: user.address || ''
+        }
+    });
+
+    const onSubmit = async (data: ProfileFormData) => {
+        setIsSubmitting(true);
+        try {
+            await updateProfile(data);
+            toast.success("Profile updated successfully!");
+            onClose();
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to update profile");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 relative">
+                <h2 className="text-2xl font-black text-gray-900 mb-2">Complete Your Profile 📝</h2>
+                <p className="text-gray-500 mb-6">Please provide your details to ensure smooth delivery and communication.</p>
+
+                <FormProvider {...methods}>
+                    <form onSubmit={methods.handleSubmit(onSubmit)} className="space-y-4">
+                        <Input
+                            name="name"
+                            label="Full Name"
+                            placeholder="John Doe"
+                        />
+                        <Input
+                            name="email"
+                            label="Email Address"
+                            type="email"
+                            placeholder="john@example.com"
+                        />
+                        <Input
+                            name="phone"
+                            label="Phone Number"
+                            placeholder="+254..."
+                            readOnly={!!user.phone && user.phone.length > 5} // Read-only if phone auth was used
+                        />
+                        <Input
+                            name="address"
+                            label="Default Delivery Address"
+                            placeholder="Where should we deliver?"
+                            required={false}
+                        />
+                        <div className="pt-4">
+                            <button
+                                type="submit"
+                                disabled={isSubmitting}
+                                className="w-full py-4 bg-melagri-primary text-white rounded-2xl font-bold shadow-lg shadow-melagri-primary/20 hover:scale-[1.02] transition-all disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+                            >
+                                {isSubmitting ? 'Saving...' : 'Save & Continue'}
+                            </button>
+                        </div>
+                    </form>
+                </FormProvider>
+            </div>
+        </div>
     );
 }
