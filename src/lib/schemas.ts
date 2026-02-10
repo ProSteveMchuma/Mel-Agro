@@ -62,7 +62,7 @@ export const savedAddressSchema = z.object({
     county: z.string().min(2, { message: "County is required" }),
     city: z.string().min(2, { message: "City/Town is required" }),
     details: z.string().min(5, { message: "Please provide valid address details" }),
-    isPrimary: z.boolean().default(false),
+    isPrimary: z.boolean(),
 });
 
 export const profileSchema = z.object({
