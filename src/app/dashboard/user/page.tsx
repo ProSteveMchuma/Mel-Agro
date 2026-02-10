@@ -626,7 +626,7 @@ export default function UserDashboard() {
                             </div>
                         )}
                         {/* Fallback for other tabs if not implemented yet */}
-                        {!['dashboard', 'orders', 'support', 'profile', 'wishlist', 'notifications', 'returns'].includes(activeTab) && (
+                        {!['dashboard', 'orders', 'support', 'profile', 'wishlist', 'notifications', 'returns', 'addresses'].includes(activeTab) && (
                             <div className="bg-white p-20 rounded-3xl border border-gray-100 text-center shadow-sm">
                                 <div className="text-6xl mb-6">🛠️</div>
                                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon</h3>
