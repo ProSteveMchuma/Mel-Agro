@@ -46,7 +46,9 @@ export default function UserDashboard() {
     const [showProfileModal, setShowProfileModal] = useState(false);
 
     useEffect(() => {
-        if (user && (user.name === 'User' || !user.email)) {
+        // Smart Profile Prompt: Only annoy user if they have NEITHER phone nor email
+        // or if they have a generic name but are trying to do something active.
+        if (user && !user.phone && !user.email) {
             setShowProfileModal(true);
         }
     }, [user]);
@@ -798,6 +800,7 @@ function ProfileCompletionModal({ user, onClose }: { user: any, onClose: () => v
                             name="phone"
                             label="Phone Number"
                             placeholder="+254..."
+                            format="phone"
                             readOnly={!!user.phone && user.phone.length > 5} // Read-only if phone auth was used
                         />
                         <Input

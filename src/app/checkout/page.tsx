@@ -130,7 +130,9 @@ export default function CheckoutPage() {
 
     const onSubmit = async (data: CheckoutFormData) => {
         if (!user) {
-            toast.error("You must be logged in to place an order.");
+            toast.error("Please sign in to complete your order.");
+            // Smart Redirect: Save current path as callback
+            router.push(`/auth/login?callbackUrl=/checkout`);
             return;
         }
 
@@ -170,8 +172,11 @@ export default function CheckoutPage() {
                     lng: data.shipping.lng
                 },
                 phone: data.shipping.phone,
-                paymentMethod: data.paymentMethod === 'whatsapp' ? 'WhatsApp Order' : (data.paymentMethod === 'cod' ? 'Cash on Delivery' : 'M-Pesa'),
-                paymentStatus: data.paymentMethod === 'whatsapp' ? 'Pending WhatsApp' : 'Unpaid',
+                paymentMethod: data.paymentMethod === 'whatsapp' ? 'WhatsApp Order' :
+                    (data.paymentMethod === 'cod' ? 'Cash on Delivery' :
+                        (data.paymentMethod === 'manual_mpesa' ? `M-Pesa Paybill (${data.transactionCode})` : 'M-Pesa')),
+                paymentStatus: data.paymentMethod === 'whatsapp' ? 'Pending WhatsApp' :
+                    (data.paymentMethod === 'manual_mpesa' ? 'Pending Verification' : 'Unpaid'),
                 shippingMethod: data.shippingMethod,
                 shippingCost: shippingCost
             });
@@ -414,6 +419,7 @@ export default function CheckoutPage() {
                                                     type="tel"
                                                     label="Phone Number (+254)"
                                                     placeholder="0712 345 678"
+                                                    format="phone"
                                                 />
 
                                                 <hr />
@@ -568,6 +574,29 @@ export default function CheckoutPage() {
                                                     <p className="text-sm text-gray-500 font-medium">Instant payment directly from your phone.</p>
                                                 </div>
 
+                                                {/* M-Pesa Manual (Paybill) */}
+                                                <div
+                                                    onClick={() => setValue('paymentMethod', 'manual_mpesa')}
+                                                    className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'manual_mpesa'
+                                                        ? 'border-[#22c55e] bg-green-50/50 shadow-sm ring-2 ring-[#22c55e]/20'
+                                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                        }`}
+                                                >
+                                                    {paymentMethod === 'manual_mpesa' && (
+                                                        <div className="absolute top-3 right-3 text-[#22c55e]">
+                                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                                        </div>
+                                                    )}
+                                                    <div className="mb-4 h-[22px]"></div>
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center p-1 border border-gray-100 shadow-sm text-green-600 font-black text-xs">
+                                                            P
+                                                        </div>
+                                                        <span className="font-bold text-gray-900">Paybill / Till</span>
+                                                    </div>
+                                                    <p className="text-sm text-gray-500 font-medium">Pay manually via M-Pesa Menu.</p>
+                                                </div>
+
                                                 {/* WhatsApp Order Option */}
                                                 <div
                                                     onClick={() => setValue('paymentMethod', 'whatsapp')}
@@ -641,7 +670,7 @@ export default function CheckoutPage() {
                                             {/* Selected Payment Details */}
                                             <div className="mt-8 animate-in fade-in slide-in-from-top-2 duration-300">
                                                 {paymentMethod === 'mpesa' && (
-                                                    <div className="bg-[#f0f9f1] p-6 rounded-2xl border border-green-100">
+                                                    <div className="bg-[#f0f9f1] p-6 rounded-2xl border border-green-100 animate-in fade-in slide-in-from-top-2">
                                                         <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
                                                             <span className="text-xl">📱</span> Confirm M-Pesa Number
                                                         </h3>
@@ -660,6 +689,39 @@ export default function CheckoutPage() {
                                                             >
                                                                 Edit
                                                             </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {paymentMethod === 'manual_mpesa' && (
+                                                    <div className="bg-[#f0f9f1] p-6 rounded-2xl border border-green-100 animate-in fade-in slide-in-from-top-2">
+                                                        <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-4">
+                                                            <span className="text-xl">📲</span> Pay via M-Pesa Paybill
+                                                        </h3>
+                                                        <div className="bg-white p-4 rounded-xl border border-gray-200 mb-6 space-y-3">
+                                                            <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                                                                <span className="text-gray-500 text-sm font-medium">Business No.</span>
+                                                                <span className="font-black text-xl text-gray-900 tracking-wider">522522</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center border-b border-gray-100 pb-2">
+                                                                <span className="text-gray-500 text-sm font-medium">Account No.</span>
+                                                                <span className="font-bold text-gray-900">MELAGRO</span>
+                                                            </div>
+                                                            <div className="flex justify-between items-center">
+                                                                <span className="text-gray-500 text-sm font-medium">Amount</span>
+                                                                <span className="font-black text-xl text-melagri-primary">KES {total.toLocaleString()}</span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <label className="block text-sm font-bold text-gray-900">Enter M-Pesa Transaction Code</label>
+                                                            <Input
+                                                                name="transactionCode"
+                                                                placeholder="e.g. QHG45..."
+                                                                className="uppercase tracking-widest font-mono"
+                                                                format="uppercase"
+                                                            />
+                                                            <p className="text-xs text-gray-500">You will receive this code in the SMS from M-Pesa.</p>
                                                         </div>
                                                     </div>
                                                 )}

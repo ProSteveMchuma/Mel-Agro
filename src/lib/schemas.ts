@@ -42,7 +42,8 @@ export const addressSchema = z.object({
 export const checkoutSchema = z.object({
     shipping: addressSchema,
     shippingMethod: z.enum(['standard', 'pickup']),
-    paymentMethod: z.enum(['mpesa', 'card', 'cod', 'whatsapp']),
+    paymentMethod: z.enum(['mpesa', 'manual_mpesa', 'card', 'cod', 'whatsapp']),
+    transactionCode: z.string().optional(),
 });
 
 // --- Product/Admin Schemas ---

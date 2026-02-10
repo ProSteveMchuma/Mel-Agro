@@ -8,11 +8,39 @@ import { twMerge } from "tailwind-merge";
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
     name: string;
     label?: string;
+    format?: 'phone' | 'uppercase';
 }
 
-export function Input({ name, label, className, ...props }: InputProps) {
-    const { register, formState: { errors } } = useFormContext();
+export function Input({ name, label, className, format, ...props }: InputProps) {
+    const { register, formState: { errors }, setValue } = useFormContext();
     const error = errors[name]?.message as string | undefined;
+
+    const { onChange, onBlur, name: regName, ref } = register(name);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+
+        if (format === 'uppercase') {
+            value = value.toUpperCase();
+            e.target.value = value;
+            setValue(name, value);
+        }
+
+        onChange(e);
+    };
+
+    const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+        if (format === 'phone') {
+            let value = e.target.value.replace(/\s+/g, '');
+            if (value.startsWith('0')) value = '+254' + value.substring(1);
+            if (value.startsWith('7') || value.startsWith('1')) value = '+254' + value;
+            if (value && !value.startsWith('+')) value = '+254' + value;
+
+            e.target.value = value;
+            setValue(name, value);
+        }
+        onBlur(e);
+    }
 
     return (
         <div className="w-full">
@@ -23,7 +51,10 @@ export function Input({ name, label, className, ...props }: InputProps) {
             )}
             <input
                 id={name}
-                {...register(name)}
+                name={regName}
+                ref={ref}
+                onChange={handleChange}
+                onBlur={handleBlur}
                 {...props}
                 className={twMerge(
                     "w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-all",
