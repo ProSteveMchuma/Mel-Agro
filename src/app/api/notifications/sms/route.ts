@@ -12,6 +12,16 @@ export async function POST(request: Request) {
         const username = process.env.AFRICASTALKING_USERNAME || 'sandbox'; // Default to sandbox
         const from = process.env.AFRICASTALKING_SENDER_ID; // Optional
 
+        // Format phone number to E.164 (+254...) required by Africa's Talking
+        let formattedPhone = to.replace(/\s+/g, '').replace(/-/g, '');
+        if (formattedPhone.startsWith('0')) {
+            formattedPhone = '+254' + formattedPhone.substring(1);
+        } else if (formattedPhone.startsWith('254')) {
+            formattedPhone = '+' + formattedPhone;
+        } else if (!formattedPhone.startsWith('+')) {
+            formattedPhone = '+' + formattedPhone;
+        }
+
         if (!apiKey) {
             console.warn("Missing Africa's Talking API Key. Logging SMS instead.");
             console.log(`[MOCK SMS] To: ${to}, Message: ${message}`);
@@ -30,7 +40,7 @@ export async function POST(request: Request) {
 
         const formData = new URLSearchParams();
         formData.append('username', username);
-        formData.append('to', to);
+        formData.append('to', formattedPhone);
         formData.append('message', message);
         if (from) formData.append('from', from);
 
