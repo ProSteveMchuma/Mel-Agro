@@ -178,7 +178,8 @@ export default function CheckoutPage() {
                 paymentStatus: data.paymentMethod === 'whatsapp' ? 'Pending WhatsApp' :
                     (data.paymentMethod === 'manual_mpesa' ? 'Pending Verification' : 'Unpaid'),
                 shippingMethod: data.shippingMethod,
-                shippingCost: shippingCost
+                shippingCost: shippingCost,
+                notificationPreferences: ['sms', 'email']
             });
 
             const newOrder = await addOrder(orderData, discountFromPoints);
