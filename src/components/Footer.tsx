@@ -13,7 +13,7 @@ export default function Footer() {
                             <span className="text-xl font-black text-white tracking-widest ml-2">Mel-Agri</span>
                         </Link>
                         <p className="text-sm text-gray-400 leading-relaxed">
-                            The No.1 Agricultural Online Store in Kenya. We connect farmers with quality inputs for better harvests.
+                            Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests.
                         </p>
                         <div className="flex gap-4 pt-2">
                             <a href="#" className="text-gray-400 hover:text-white transition-colors"><svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 2.404-4.69 3.83-7.541 3.83-.49 0-.97-.03-1.44-.094 2.69 1.724 5.891 2.73 9.324 2.73 11.175 0 17.288-9.14 17.288-17.07 0-.256-.006-.514-.017-.768 1.187-.847 2.216-1.921 3.033-3.07z" /></svg></a>
