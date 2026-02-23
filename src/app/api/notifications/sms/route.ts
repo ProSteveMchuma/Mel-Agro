@@ -44,6 +44,9 @@ export async function POST(request: Request) {
         formData.append('message', message);
         if (from) formData.append('from', from);
 
+        console.log(`[SMS DEBUG 1] Raw Input Phone: ${to}`);
+        console.log(`[SMS DEBUG 2] Sending message to: ${formattedPhone} using Africa's Talking`);
+
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
