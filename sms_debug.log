@@ -1,0 +1,64 @@
+[2026-02-23T11:03:00.612Z] [SMS DEBUG 1] Raw Input Phone: 0712345678
+[2026-02-23T11:03:00.746Z] [SMS DEBUG 2] Sending to: +254712345678 using Africa's Talking
+[2026-02-23T11:03:02.221Z] [SMS DEBUG 3] Africa's Talking Response: {
+  "SMSMessageData": {
+    "Message": "Sent to 0/1 Total Cost: 0",
+    "Recipients": [
+      {
+        "cost": "0",
+        "messageId": "None",
+        "number": "+254712345678",
+        "status": "UserInBlacklist",
+        "statusCode": 406
+      }
+    ]
+  }
+}
+[2026-02-23T11:04:20.891Z] [SMS DEBUG 1] Raw Input Phone: +254712345678
+[2026-02-23T11:04:20.891Z] [SMS DEBUG 2] Sending to: +254712345678 using Africa's Talking
+[2026-02-23T11:04:21.472Z] [SMS DEBUG 3] Africa's Talking Response: {
+  "SMSMessageData": {
+    "Message": "Sent to 0/1 Total Cost: 0",
+    "Recipients": [
+      {
+        "cost": "0",
+        "messageId": "None",
+        "number": "+254712345678",
+        "status": "UserInBlacklist",
+        "statusCode": 406
+      }
+    ]
+  }
+}
+[2026-02-23T11:20:19.431Z] [SMS DEBUG 1] Raw Input Phone: 0715947213
+[2026-02-23T11:20:19.440Z] [SMS DEBUG 2] Sending to: +254715947213 using Africa's Talking
+[2026-02-23T11:20:20.758Z] [SMS DEBUG 3] Africa's Talking Response: {
+  "SMSMessageData": {
+    "Message": "Sent to 0/1 Total Cost: 0",
+    "Recipients": [
+      {
+        "cost": "0",
+        "messageId": "None",
+        "number": "+254715947213",
+        "status": "UserInBlacklist",
+        "statusCode": 406
+      }
+    ]
+  }
+}
+[2026-02-23T11:27:59.051Z] [SMS DEBUG 1] Raw Input Phone: 0719584549
+[2026-02-23T11:27:59.084Z] [SMS DEBUG 2] Sending to: +254719584549 using Africa's Talking
+[2026-02-23T11:28:03.399Z] [SMS DEBUG 3] Africa's Talking Response: {
+  "SMSMessageData": {
+    "Message": "Sent to 0/1 Total Cost: 0",
+    "Recipients": [
+      {
+        "cost": "0",
+        "messageId": "None",
+        "number": "+254719584549",
+        "status": "UserInBlacklist",
+        "statusCode": 406
+      }
+    ]
+  }
+}
