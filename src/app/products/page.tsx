@@ -6,7 +6,7 @@ import { getUniqueBrandsCached, getUniqueCategoriesCached } from "@/lib/products
 
 export const metadata: Metadata = {
     title: "Agricultural Marketplace | Seeds, Fertilizers & Tools",
-    description: "Browse our comprehensive catalogue of agricultural inputs. From hybrid maize seeds to high-nitrogen fertilizers, we have everything you need for a successful harvest.",
+    description: "Bringing Quality Agricultural Inputs Online in Kenya. Browse our comprehensive catalogue of agricultural inputs, from hybrid maize seeds to high-nitrogen fertilizers.",
     keywords: ["seeds", "fertilizers", "farm tools", "pesticides", "animal feeds", "kenya agrivet"],
 };
 
@@ -22,8 +22,8 @@ export default async function ProductsPage() {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',
         name: 'Agricultural Products Market | Mel-Agri',
-        description: 'Browse our comprehensive catalogue of agricultural inputs. From hybrid maize seeds to high-nitrogen fertilizers.',
-        url: 'https://mel-agri.com/products',
+        description: 'Bringing Quality Agricultural Inputs Online in Kenya. Browse our comprehensive catalogue of agricultural inputs.',
+        url: 'https://melagri.co.ke/products',
         breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [
@@ -31,13 +31,13 @@ export default async function ProductsPage() {
                     '@type': 'ListItem',
                     position: 1,
                     name: 'Home',
-                    item: 'https://mel-agri.com',
+                    item: 'https://melagri.co.ke',
                 },
                 {
                     '@type': 'ListItem',
                     position: 2,
                     name: 'Products',
-                    item: 'https://mel-agri.com/products',
+                    item: 'https://melagri.co.ke/products',
                 },
             ],
         },

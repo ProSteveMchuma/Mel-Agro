@@ -4,7 +4,7 @@
 // TODO: To enable real SMS, install 'africastalking' and uncomment the code below
 // npm install africastalking
 
-const MOCK_MODE = true; // Set to false when you have API keys
+const MOCK_MODE = false; // Real SMS is now enabled
 
 export const SmsService = {
     sendOrderUpdate: async (phoneNumber: string, orderId: string, status: string, name?: string) => {

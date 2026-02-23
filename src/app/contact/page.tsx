@@ -5,7 +5,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: "Contact Us | Agriculture Support Kenya",
-    description: "Get in touch with Mel-Agri for inquiries about fertilizers, seeds, and bulk orders. Our expert team is ready to support your farm's growth.",
+    description: "Get in touch with Mel-Agri for inquiries about fertilizers, seeds, and bulk orders. Bringing Quality Agricultural Inputs Online in Kenya.",
 };
 
 export default function ContactPage() {
@@ -17,8 +17,8 @@ export default function ContactPage() {
                 <div className="max-w-7xl mx-auto">
                     {/* Header */}
                     <div className="mb-16 text-center lg:text-left">
-                        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Contact Makamithi</h1>
-                        <p className="text-lg text-gray-600">We are here to help you grow. Reach out with your orders or partnerships.</p>
+                        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Contact Mel-Agri</h1>
+                        <p className="text-lg text-gray-600">Bringing Quality Agricultural Inputs Online in Kenya. Reach out with your orders or partnerships.</p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">

@@ -5,7 +5,7 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: "Our Heritage & Vision",
-    description: "Learn about Mel-Agri's mission to transform Kenyan agriculture. A subsidiary of Mel-Agri, we bring decades of expertise to your farm.",
+    description: "Bringing Quality Agricultural Inputs Online in Kenya. Learn about Mel-Agri's mission to transform Kenyan agriculture and our legacy of excellence.",
 };
 
 export default function AboutPage() {

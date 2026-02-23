@@ -41,12 +41,12 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://Mel-Agri.com'),
+  metadataBase: new URL('https://melagri.co.ke'),
   title: {
-    default: "Mel-Agri | Premium Fertilizers, Certified Seeds & Ag-Tech Kenya",
+    default: "Mel-Agri | Premium Agricultural Inputs Kenya",
     template: "%s | Mel-Agri"
   },
-  description: "Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection at Mel-Agri. Kenya's premier digital hub for quality agricultural inputs and expert advice.",
+  description: "Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests. Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection.",
   keywords: [
     "maize seeds kenya",
     "DAP fertilizer price kenya",
@@ -74,9 +74,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_KE',
-    url: 'https://Mel-Agri.com',
-    title: 'Mel-Agri | Kenya\'s Premier Agricultural Hub',
-    description: 'Empowering Kenyan farmers with certified seeds, premium fertilizers, and expert agricultural advice.',
+    url: 'https://melagri.co.ke',
+    title: 'Mel-Agri | Premium Agricultural Inputs Kenya',
+    description: 'Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests.',
     siteName: 'Mel-Agri',
     images: [
       {
@@ -89,8 +89,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Mel-Agri | Kenya\'s Premier Agricultural Hub',
-    description: 'Empowering Kenyan farmers with certified seeds, premium fertilizers, and expert agricultural advice.',
+    title: 'Mel-Agri | Premium Agricultural Inputs Kenya',
+    description: 'Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests.',
     images: ['/og-image.jpg'],
   },
   verification: {
