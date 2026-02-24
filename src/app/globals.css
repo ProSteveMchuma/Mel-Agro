@@ -18,6 +18,7 @@
   --color-melagri-primary: var(--primary-green);
   --color-melagri-secondary: var(--secondary-green);
   --color-melagri-accent: var(--accent-orange);
+  --font-arizonia: var(--font-arizonia);
   --animate-marquee: marquee 25s linear infinite;
 }
 

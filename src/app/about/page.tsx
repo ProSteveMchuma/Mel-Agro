@@ -50,7 +50,7 @@ export default function AboutPage() {
                                     </h2>
                                     <div className="space-y-6 text-gray-600 text-lg leading-relaxed">
                                         <p>
-                                            Mel-Agri operates as a specialized digital arm of <strong>Makamithi</strong>, leveraging decades of on-field expertise and supply chain mastery.
+                                            Mel-Agri operates as a specialized digital arm of <strong className="font-arizonia font-normal text-3xl">Makamithi</strong>, leveraging decades of on-field expertise and supply chain mastery.
                                         </p>
                                         <p>
                                             Our ecosystem is built on the foundation of research and development, ensuring that every product on our platform meets the highest standards of agricultural efficacy.
