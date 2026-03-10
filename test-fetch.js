@@ -20,7 +20,7 @@ async function testFetch() {
         const snap = await getDocs(q);
         console.log(`Found ${snap.size} products.`);
         snap.forEach(doc => {
-            console.log(`- ${doc.data().name} (${doc.data().category})`);
+            console.log(`- ${doc.data().name} (${doc.data().category}) | Image: ${doc.data().image}`);
         });
         process.exit(0);
     } catch (error) {

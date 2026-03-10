@@ -1,0 +1,12 @@
+﻿[dotenv@17.2.4] injecting env (15) from .env.local -- tip: ΓÜÖ∩╕Å  override existing env vars with { override: true }
+Found 10 products.
+- Agral 90 (Crop Protection Products) | Image: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1769691916355_AGRAL%2090.jpeg?alt=media&token=2cafa32f-098e-438c-9534-06a7ab877190
+- Triger 5%EC (Crop Protection Products) | Image: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1769692995185_TRIGER%205%25EC.jpeg?alt=media&token=87d01ed4-b3ba-4fa3-a4c3-c32cae37f2d2
+- Nimbecidine (Crop Protection Products) | Image: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1771406208055_nimbecidine.jpg?alt=media&token=4e5b5db0-a81a-4103-92e2-b1e3f6814ebc
+- Super Cal (Animal Health) | Image: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1772101670646_super%20cal%201l.jpg?alt=media&token=b30428d3-71ab-4bc5-abc6-d309ba061644
+- Amylite (Animal Health) | Image: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1770640275702_Amylite.jpg?alt=media&token=5795fbe7-d476-4b44-a0f3-0851a02cc0fb
+- Coopers Milking Salve 100g (Animal Health) | Image: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1770215544645_ckl%20milking%20salve.jpg?alt=media&token=fe243088-da58-4d77-9753-16066dabba64
+- Premise 200 SC  (Crop Protection Products) | Image: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1769408171126_PREMISE%20200SC%20250ML.jpg?alt=media&token=f27069f1-3d24-4d64-84c3-abe6a275556b
+- Amito 5.7%WDG (Crop Protection Products) | Image: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1771244058041_Amito%205.7%20WDG.jpg?alt=media&token=e2f3ad4e-90b7-4a95-95c4-72eaba3eb685
+- Coccid Granules (Animal Health) | Image: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1770641308713_coccid%2020.jpg?alt=media&token=a4d14707-5adf-4361-acd6-443d02469952
+- Calcibora  Seaweed Calcium-Boron Foliar Fertilizer (Fertilizers) | Image: https://firebasestorage.googleapis.com/v0/b/melagri.firebasestorage.app/o/products%2F1771418194291_Calcibora.jpg?alt=media&token=0a3279e7-104e-4f5b-b0de-3e1bba9787bc

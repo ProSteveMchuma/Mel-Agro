@@ -33,15 +33,6 @@ export default function Hero({ categories: dynamicCategories = [] }: HeroProps) 
             description: "Get certified hybrid maize seeds and planting fertilizers today.",
             primaryBtn: "Shop Now",
             primaryLink: "/products?category=seeds"
-        },
-        {
-            id: 'tools-sale',
-            image: "https://images.unsplash.com/photo-1589923188900-85dae523342b?q=80&w=1740&auto=format&fit=crop",
-            tag: "NEW ARRIVALS",
-            title: "Modern Tools for Higher Efficiency",
-            description: "Upgrade your farm with our latest high-performance tilling and harvesting tools.",
-            primaryBtn: "View Tools",
-            primaryLink: "/products?category=Farm%20Tools"
         }
     ];
 
