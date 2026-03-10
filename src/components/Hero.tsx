@@ -27,7 +27,7 @@ export default function Hero({ categories: dynamicCategories = [] }: HeroProps) 
     })) : [
         {
             id: 'shamba-ready',
-            image: "https://images.unsplash.com/photo-1625246333195-78d9c38ad449?q=80&w=1740&auto=format&fit=crop",
+            image: "/images/kenyan-farmer-banner.png",
             tag: "WEEKLY OFFER",
             title: "Prepare Your Shamba For The Long Rains",
             description: "Get certified hybrid maize seeds and planting fertilizers today.",
