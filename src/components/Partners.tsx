@@ -25,10 +25,10 @@ export default function Partners() {
                         <img src="assets/partners/seedco.png" alt="SeedCo" />
                     </a>
                     <a href="https://unga-group.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/unga-plc.png" alt="Unga PLC" />
+                        <img src="assets/partners/unga.png" alt="Unga PLC" />
                     </a>
                     <a href="https://oshochem.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/osha.png" alt="Osha" />
+                        <img src="assets/partners/osho.png" alt="Osho" />
                     </a>
                     <a href="https://www.bayer.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
                         <img src="assets/partners/bayer.png" alt="Bayer" />
@@ -51,10 +51,10 @@ export default function Partners() {
                         <img src="assets/partners/seedco.png" alt="SeedCo" />
                     </a>
                     <a href="https://unga-group.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/unga-plc.png" alt="Unga PLC" />
+                        <img src="assets/partners/unga.png" alt="Unga PLC" />
                     </a>
                     <a href="https://oshochem.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/osha.png" alt="Osha" />
+                        <img src="assets/partners/osho.png" alt="Osho" />
                     </a>
                     <a href="https://www.bayer.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
                         <img src="assets/partners/bayer.png" alt="Bayer" />
