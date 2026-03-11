@@ -19,16 +19,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     const description = (product.description || '').substring(0, 160);
+    const seoDescription = `Buy original ${product.name} online at Mel-Agro. ${description} Fast nationwide delivery in Kenya.`;
 
     const ogImage = `/api/og/product?name=${encodeURIComponent(product.name)}&price=${product.price}&category=${encodeURIComponent(product.category)}&image=${encodeURIComponent(product.image)}`;
 
     return {
-        title: `${product.name} - Buy High Quality ${product.category}`,
-        description: description,
-        keywords: [product.name, product.category, "Kenya", "Mel-Agri", "Agriculture"],
+        title: `Buy ${product.name} Online - Fast Delivery in Kenya | Mel-Agro`,
+        description: seoDescription,
+        keywords: [product.name, product.category, `Buy ${product.name} Kenya`, `Buy ${product.category} online Kenya`, "Mel-Agro", "Certified Agrochemicals"],
         openGraph: {
-            title: `${product.name} | Mel-Agri Kenya`,
-            description: description,
+            title: `Buy ${product.name} Online | Mel-Agro Kenya`,
+            description: seoDescription,
             images: [
                 {
                     url: ogImage,
@@ -38,15 +39,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
                 }
             ],
             type: 'website',
-            siteName: 'Mel-Agri',
+            siteName: 'Mel-Agro',
             locale: 'en_KE',
         },
         twitter: {
             card: 'summary_large_image',
-            title: `${product.name} | Mel-Agri`,
-            description: description,
+            title: `Buy ${product.name} Online | Mel-Agro`,
+            description: seoDescription,
             images: [ogImage],
-            site: '@melagri',
+            site: '@melagro',
         },
         other: {
             'product:price:amount': product.price.toString(),
@@ -68,13 +69,24 @@ export default async function Page({ params }: Props) {
         image: product.image,
         description: product.description || '',
         sku: product.id,
+        brand: {
+            '@type': 'Brand',
+            name: product.brand || 'Mel-Agro'
+        },
         offers: {
             '@type': 'Offer',
             price: product.price,
             priceCurrency: 'KES',
             availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            url: `https://mel-agri.com/products/${id}`,
+            url: `https://melagri.co.ke/products/${id}`,
         },
+        ...(product.rating ? {
+            aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: product.rating,
+                reviewCount: product.reviews || 1,
+            }
+        } : {})
     } : null;
 
     const breadcrumbJsonLd = {
@@ -85,19 +97,19 @@ export default async function Page({ params }: Props) {
                 '@type': 'ListItem',
                 position: 1,
                 name: 'Home',
-                item: 'https://mel-agri.com',
+                item: 'https://melagri.co.ke',
             },
             {
                 '@type': 'ListItem',
                 position: 2,
                 name: 'Products',
-                item: 'https://mel-agri.com/products',
+                item: 'https://melagri.co.ke/products',
             },
             {
                 '@type': 'ListItem',
                 position: 3,
                 name: product?.name || 'Product',
-                item: `https://mel-agri.com/products/${id}`,
+                item: `https://melagri.co.ke/products/${id}`,
             },
         ],
     };

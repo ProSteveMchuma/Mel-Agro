@@ -53,7 +53,7 @@ function parseSimpleMarkdown(markdown: string) {
 
     // Basic table parsing (very naive for MVP)
     if (html.includes('|')) {
-        const rows = html.split('\\n').filter(r => r.trim().startsWith('|'));
+        const rows = html.split('\n').filter(r => r.trim().startsWith('|'));
         if (rows.length > 0) {
             let tableHtml = '<div class="overflow-x-auto my-8"><table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg overflow-hidden">';
             rows.forEach((row, rowIndex) => {
@@ -62,9 +62,9 @@ function parseSimpleMarkdown(markdown: string) {
                 tableHtml += '<tr class="' + (rowIndex % 2 === 0 ? 'bg-gray-50' : 'bg-white') + '">';
                 cells.forEach(cell => {
                     if (rowIndex === 0) {
-                        tableHtml += \`<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">\${cell.trim()}</th>\`;
+                        tableHtml += `<th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-50 border-b border-gray-200">${cell.trim()}</th>`;
                     } else {
-                        tableHtml += \`<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-b border-gray-100">\${cell.trim()}</td>\`;
+                        tableHtml += `<td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 border-b border-gray-100">${cell.trim()}</td>`;
                     }
                 });
                 tableHtml += '</tr>';
@@ -72,18 +72,18 @@ function parseSimpleMarkdown(markdown: string) {
             tableHtml += '</table></div>';
             
             // Replace the raw markdown table roughly with the HTML table
-            html = html.replace(/\\|.*?\\|[\\s\\S]*?\\n(?=\\n|$)/im, tableHtml); // Naive replacement
+            html = html.replace(/\|.*?\|[\s\S]*?\n(?=\n|$)/im, tableHtml); // Naive replacement
         }
     }
 
     // Wrap un-tagged text in paragraphs
-    const paragraphs = html.split('\\n\\n');
+    const paragraphs = html.split('\n\n');
     html = paragraphs.map(p => {
         if (!p.trim().startsWith('<') && p.trim().length > 0) {
-             return \`<p class="mb-6 leading-relaxed text-gray-700 text-lg">\${p}</p>\`;
+             return `<p class="mb-6 leading-relaxed text-gray-700 text-lg">${p}</p>`;
         }
         return p;
-    }).join('\\n');
+    }).join('\n');
 
     return html;
 }
@@ -102,7 +102,7 @@ export default async function GuidePage({ params }: Props) {
         '@type': 'Article',
         headline: guide.title,
         description: guide.description,
-        image: \`https://mel-agri.com\${guide.image}\`,
+        image: `https://melagri.co.ke${guide.image}`,
         datePublished: guide.publishedAt,
         dateModified: guide.updatedAt,
         author: {
@@ -120,7 +120,7 @@ export default async function GuidePage({ params }: Props) {
         },
         mainEntityOfPage: {
             '@type': 'WebPage',
-            '@id': \`https://mel-agri.com/guides/\${guide.slug}\`,
+            '@id': `https://melagri.co.ke/guides/${guide.slug}`,
         },
     };
 

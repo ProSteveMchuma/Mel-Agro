@@ -2,9 +2,9 @@ export default function JsonLd() {
     const orgJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Organization',
-        name: 'Mel-Agri',
-        alternateName: 'Mel Agri',
-        description: 'Kenya\'s premier digital marketplace for high-quality agricultural inputs including seeds, fertilizers, and tools.',
+        name: 'Mel-Agro',
+        alternateName: 'Mel Agro',
+        description: 'Kenya\'s premier online agrovet and digital marketplace for high-quality certified agricultural inputs, seeds, fertilizers, and tools. Fast nationwide delivery.',
         url: 'https://Mel-Agri.com',
         logo: 'https://Mel-Agri.com/logo.png',
         contactPoint: {
@@ -30,7 +30,7 @@ export default function JsonLd() {
     const websiteJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
-        name: 'Mel-Agri',
+        name: 'Mel-Agro',
         url: 'https://Mel-Agri.com',
         potentialAction: {
             '@type': 'SearchAction',

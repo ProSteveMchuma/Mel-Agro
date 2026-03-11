@@ -20,7 +20,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-green-100 selection:text-green-900">
       <JsonLd />
-      <h1 className="sr-only">Mel-Agri: Buy Premium Agricultural Inputs, Seeds, and Fertilizers in Kenya</h1>
+      <h1 className="sr-only">Buy Premium Agricultural Inputs, Certified Seeds, and Agrochemicals Setup in Kenya | Mel-Agro Digital Agrovet</h1>
       <Header />
       <main className="flex-grow w-full">
         <HomeClient

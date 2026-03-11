@@ -49,23 +49,22 @@ export const viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://melagri.co.ke'),
   title: {
-    default: "Mel-Agri | Premium Agricultural Inputs Kenya",
-    template: "%s | Mel-Agri"
+    default: "Mel-Agro | Buy Premium Agricultural Inputs & Seeds Online Kenya",
+    template: "%s | Mel-Agro"
   },
-  description: "Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests. Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection.",
+  description: "Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests. Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection with fast nationwide delivery.",
   keywords: [
+    "buy agricultural inputs online kenya",
+    "online agrovet near me",
+    "farm inputs delivery kenya",
+    "agrochemicals online delivery kenya",
     "maize seeds kenya",
     "DAP fertilizer price kenya",
-    "agricultural inputs nairobi",
-    "hybrid seeds kenya",
-    "Mel-Agri agri-tech",
-    "can fertilizer kenya",
-    "certified agrochemicals kenya",
-    "farming tools nairobi"
+    "certified agrochemicals kenya"
   ],
-  authors: [{ name: "Mel-Agri" }],
-  creator: "Mel-Agri",
-  publisher: "Mel-Agri",
+  authors: [{ name: "Mel-Agro" }],
+  creator: "Mel-Agro",
+  publisher: "Mel-Agro",
   robots: {
     index: true,
     follow: true,
@@ -81,21 +80,21 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_KE',
     url: 'https://melagri.co.ke',
-    title: 'Mel-Agri | Premium Agricultural Inputs Kenya',
-    description: 'Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests.',
-    siteName: 'Mel-Agri',
+    title: 'Mel-Agro | Buy Premium Agricultural Inputs & Seeds Online Kenya',
+    description: 'Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests. Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection with fast nationwide delivery.',
+    siteName: 'Mel-Agro',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'Mel-Agri Agricultural Solutions',
+        alt: 'Mel-Agro Agricultural Solutions',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Mel-Agri | Premium Agricultural Inputs Kenya',
+    title: 'Mel-Agro | Buy Premium Agricultural Inputs & Seeds Online Kenya',
     description: 'Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests.',
     images: ['/og-image.jpg'],
   },
