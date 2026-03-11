@@ -96,7 +96,7 @@ export default function ProductCard({ id, name, price, image, images = [], categ
                 <div className="relative aspect-square overflow-hidden bg-[#f8fcf9] flex items-center justify-center p-3 md:p-6 text-center">
                     <Image
                         src={imageSrc}
-                        alt={name}
+                        alt={`Buy ${name} online at Mel-Agro ${category}`}
                         fill
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                         className="object-contain p-2 md:p-3 group-hover:scale-110 transition-transform duration-700 ease-out"

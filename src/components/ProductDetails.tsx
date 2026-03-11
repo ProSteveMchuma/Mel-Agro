@@ -168,7 +168,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                 >
                                     <Image
                                         src={safeImage}
-                                        alt={product.name}
+                                        alt={`${product.name} - ${product.brand || 'Premium'} ${product.category} in Kenya | Mel-Agro`}
                                         fill
                                         className="object-contain p-8 hover:scale-105 transition-transform duration-500"
                                         priority
@@ -188,7 +188,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                         className={`w-16 h-16 flex-shrink-0 rounded-lg border-2 overflow-hidden transition-all ${selectedImage === img ? 'border-green-500 scale-110' : 'border-transparent hover:border-gray-200'}`}
                                     >
                                         <div className="relative w-full h-full bg-gray-50">
-                                            <Image src={img} alt="Thumbnail" fill className="object-cover" unoptimized={img.includes('firebasestorage')} />
+                                            <Image src={img} alt={`${product.name} Image ${idx + 1}`} fill className="object-cover" unoptimized={img.includes('firebasestorage')} />
                                         </div>
                                     </button>
                                 ))}

@@ -54,7 +54,7 @@ export default function CategoryIcons({ categories: dynamicCategories = [] }: Ca
                                 <div className="w-full aspect-square rounded-[2rem] overflow-hidden mb-4 border border-gray-100 shadow-sm transition-shadow group-hover:shadow-2xl relative">
                                     <Image
                                         src={cat.image}
-                                        alt={cat.name}
+                                        alt={`Shop ${cat.name} at Mel-Agro Kenya`}
                                         fill
                                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 16vw"
                                         className="object-cover group-hover:scale-110 transition-transform duration-700"

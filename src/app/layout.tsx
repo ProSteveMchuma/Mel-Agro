@@ -98,7 +98,7 @@ export const metadata: Metadata = {
     images: ['/og-image.jpg'],
   },
   verification: {
-    google: 'google-site-verification-id', // Needs to be updated with real ID
+    google: 'SmMoEZQ9Z1KQVluCgL0QUSjhPN9QqNwCXDUWq83DoO4',
   }
 };
 
