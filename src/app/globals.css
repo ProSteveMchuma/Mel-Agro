@@ -48,6 +48,27 @@
   .card-hover {
     @apply transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 border border-gray-100;
   }
+
+  .partners-track {
+    @apply flex overflow-hidden w-full relative py-8;
+  }
+  
+  .partners-track:hover .partners-slide {
+    animation-play-state: paused;
+  }
+
+  .partners-slide {
+    @apply flex items-center gap-12 sm:gap-20 px-6 sm:px-10 shrink-0 w-max;
+    animation: scroll-partners 30s linear infinite;
+  }
+
+  .partner-logo {
+    @apply relative w-32 h-16 sm:w-44 sm:h-24 bg-white/50 hover:bg-white backdrop-blur-sm border border-gray-100/50 hover:border-green-100 flex shadow-sm hover:shadow-xl hover:shadow-green-500/10 items-center justify-center p-4 sm:p-5 rounded-2xl transition-all duration-300 group cursor-pointer;
+  }
+  
+  .partner-logo img {
+    @apply max-w-full max-h-full object-contain filter grayscale opacity-60 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-500;
+  }
 }
 
 body {
