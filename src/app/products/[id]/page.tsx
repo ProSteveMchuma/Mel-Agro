@@ -3,6 +3,8 @@ import ProductDetails from '@/components/ProductDetails';
 import { getProductById } from '@/lib/products';
 import { Suspense } from 'react';
 
+import { headers } from 'next/headers';
+
 type Props = {
     params: Promise<{ id: string }>;
 };
@@ -10,6 +12,12 @@ type Props = {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id } = await params;
     const product = await getProductById(id);
+    
+    // Resolve dynamic domain
+    const headersList = await headers();
+    const domain = headersList.get('host') || 'melagri.co.ke';
+    const protocol = domain.includes('localhost') ? 'http' : 'https';
+    const baseUrl = `${protocol}://${domain}`;
 
     if (!product) {
         return {
@@ -21,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const description = (product.description || '').substring(0, 160);
     const seoDescription = `Buy original ${product.name} online at Mel-Agro. ${description} Fast nationwide delivery in Kenya.`;
 
-    const ogImage = `/api/og/product?name=${encodeURIComponent(product.name)}&price=${product.price}&category=${encodeURIComponent(product.category)}&image=${encodeURIComponent(product.image)}`;
+    const ogImage = `${baseUrl}/api/og/product?name=${encodeURIComponent(product.name)}&price=${product.price}&category=${encodeURIComponent(product.category)}&image=${encodeURIComponent(product.image)}`;
 
     return {
         title: `Buy ${product.name} Online - Fast Delivery in Kenya | Mel-Agro`,
@@ -54,6 +62,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             'product:price:currency': 'KES',
             'product:availability': product.inStock ? 'instock' : 'oos',
             'product:category': product.category,
+        },
+        alternates: {
+            canonical: `${baseUrl}/products/${id}` // Force explicit canonical based on visited domain
         }
     };
 }
@@ -61,6 +72,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function Page({ params }: Props) {
     const { id } = await params;
     const product = await getProductById(id);
+
+    const headersList = await headers();
+    const domain = headersList.get('host') || 'melagri.co.ke';
 
     const productJsonLd = product ? {
         '@context': 'https://schema.org',
@@ -78,7 +92,7 @@ export default async function Page({ params }: Props) {
             price: product.price,
             priceCurrency: 'KES',
             availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            url: `https://melagri.co.ke/products/${id}`,
+            url: `https://${domain}/products/${id}`,
         },
         ...(product.rating ? {
             aggregateRating: {
@@ -97,19 +111,19 @@ export default async function Page({ params }: Props) {
                 '@type': 'ListItem',
                 position: 1,
                 name: 'Home',
-                item: 'https://melagri.co.ke',
+                item: `https://${domain}`,
             },
             {
                 '@type': 'ListItem',
                 position: 2,
                 name: 'Products',
-                item: 'https://melagri.co.ke/products',
+                item: `https://${domain}/products`,
             },
             {
                 '@type': 'ListItem',
                 position: 3,
                 name: product?.name || 'Product',
-                item: `https://melagri.co.ke/products/${id}`,
+                item: `https://${domain}/products/${id}`,
             },
         ],
     };

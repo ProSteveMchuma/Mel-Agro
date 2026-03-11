@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 
 export default function DualPromoBanners() {
@@ -12,10 +13,13 @@ export default function DualPromoBanners() {
                     whileHover={{ y: -8 }}
                     className="flex-1 rounded-[2.5rem] overflow-hidden relative min-h-[300px] group shadow-xl"
                 >
-                    <img
+                    <Image
                         src="https://images.unsplash.com/photo-1622383529984-601460aa30aa?q=80&w=1200&auto=format&fit=crop"
                         alt="New Arrivals"
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="object-cover transition-transform duration-1000 group-hover:scale-110"
+                        priority
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 

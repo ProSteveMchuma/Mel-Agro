@@ -1,9 +1,13 @@
 import { MetadataRoute } from 'next';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { headers } from 'next/headers';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-    const baseUrl = 'https://Mel-Agri.com';
+    const headersList = await headers();
+    const domain = headersList.get('host') || 'melagri.co.ke';
+    const protocol = domain.includes('localhost') ? 'http' : 'https';
+    const baseUrl = `${protocol}://${domain}`;
 
     // Static routes
     const routes = [

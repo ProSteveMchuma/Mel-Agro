@@ -47,7 +47,6 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://melagri.co.ke'),
   title: {
     default: "Mel-Agro | Buy Premium Agricultural Inputs & Seeds Online Kenya",
     template: "%s | Mel-Agro"
