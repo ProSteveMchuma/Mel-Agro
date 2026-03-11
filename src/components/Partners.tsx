@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 
 export default function Partners() {
     return (
@@ -13,54 +14,54 @@ export default function Partners() {
             <div className="partners-track">
                 <div className="partners-slide">
                     <a href="https://www.bayer.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/bayer.png" alt="Bayer" />
+                        <Image src="/assets/partners/bayer.png" alt="Bayer" width={200} height={100} />
                     </a>
                     <a href="https://www.syngenta.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/syngenta.png" alt="Syngenta" />
+                        <Image src="/assets/partners/syngenta.png" alt="Syngenta" width={200} height={100} />
                     </a>
                     <a href="https://www.corteva.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/corteva.png" alt="Corteva" />
+                        <Image src="/assets/partners/corteva.png" alt="Corteva" width={200} height={100} />
                     </a>
                     <a href="https://www.seedcogroup.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/seedco.png" alt="SeedCo" />
+                        <Image src="/assets/partners/seedco.png" alt="SeedCo" width={200} height={100} />
                     </a>
                     <a href="https://unga-group.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/unga.png" alt="Unga PLC" />
+                        <Image src="/assets/partners/unga.png" alt="Unga PLC" width={200} height={100} />
                     </a>
                     <a href="https://oshochem.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/osho.png" alt="Osho" />
+                        <Image src="/assets/partners/osho.png" alt="Osho" width={200} height={100} />
                     </a>
                     <a href="https://www.bayer.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/bayer.png" alt="Bayer" />
+                        <Image src="/assets/partners/bayer.png" alt="Bayer" width={200} height={100} />
                     </a>
                     <a href="https://www.syngenta.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/syngenta.png" alt="Syngenta" />
+                        <Image src="/assets/partners/syngenta.png" alt="Syngenta" width={200} height={100} />
                     </a>
                 </div>
                 <div className="partners-slide" aria-hidden="true">
                     <a href="https://www.bayer.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/bayer.png" alt="Bayer" />
+                        <Image src="/assets/partners/bayer.png" alt="Bayer" width={200} height={100} />
                     </a>
                     <a href="https://www.syngenta.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/syngenta.png" alt="Syngenta" />
+                        <Image src="/assets/partners/syngenta.png" alt="Syngenta" width={200} height={100} />
                     </a>
                     <a href="https://www.corteva.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/corteva.png" alt="Corteva" />
+                        <Image src="/assets/partners/corteva.png" alt="Corteva" width={200} height={100} />
                     </a>
                     <a href="https://www.seedcogroup.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/seedco.png" alt="SeedCo" />
+                        <Image src="/assets/partners/seedco.png" alt="SeedCo" width={200} height={100} />
                     </a>
                     <a href="https://unga-group.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/unga.png" alt="Unga PLC" />
+                        <Image src="/assets/partners/unga.png" alt="Unga PLC" width={200} height={100} />
                     </a>
                     <a href="https://oshochem.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/osho.png" alt="Osho" />
+                        <Image src="/assets/partners/osho.png" alt="Osho" width={200} height={100} />
                     </a>
                     <a href="https://www.bayer.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/bayer.png" alt="Bayer" />
+                        <Image src="/assets/partners/bayer.png" alt="Bayer" width={200} height={100} />
                     </a>
                     <a href="https://www.syngenta.com" target="_blank" rel="noopener noreferrer" className="partner-logo">
-                        <img src="assets/partners/syngenta.png" alt="Syngenta" />
+                        <Image src="/assets/partners/syngenta.png" alt="Syngenta" width={200} height={100} />
                     </a>
                 </div>
             </div>
