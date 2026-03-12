@@ -99,18 +99,23 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
 
             await updateDoc(productRef, sanitizedUpdates);
 
-            // Log Inventory History if stock changed
-            if (updates.stockQuantity !== undefined && oldProduct && updates.stockQuantity !== oldProduct.stockQuantity) {
-                await addDoc(collection(db, "inventory_history"), {
-                    productId: String(id),
-                    productName: oldProduct.name,
-                    previousStock: oldProduct.stockQuantity,
-                    newStock: updates.stockQuantity,
-                    change: Number(updates.stockQuantity) - Number(oldProduct.stockQuantity),
-                    type: 'adjustment',
-                    updatedBy: authUser?.email || 'System',
-                    updatedAt: new Date().toISOString()
-                });
+            try {
+                // Log Inventory History if stock changed
+                if (updates.stockQuantity !== undefined && oldProduct && updates.stockQuantity !== oldProduct.stockQuantity) {
+                    await addDoc(collection(db, "inventory_history"), {
+                        productId: String(id),
+                        productName: oldProduct.name,
+                        previousStock: oldProduct.stockQuantity,
+                        newStock: updates.stockQuantity,
+                        change: Number(updates.stockQuantity) - Number(oldProduct.stockQuantity),
+                        type: 'adjustment',
+                        updatedBy: authUser?.email || authUser?.phone || authUser?.uid || 'System',
+                        updatedAt: new Date().toISOString()
+                    });
+                }
+            } catch (historyError) {
+                console.warn("Failed to log inventory history, but product update succeeded:", historyError);
+                // We don't throw here to allow the main update to be considered "done"
             }
         } catch (error) {
             console.error("Error updating product:", error);
