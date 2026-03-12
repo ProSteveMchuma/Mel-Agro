@@ -22,7 +22,25 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
     const router = useRouter();
 
     // State for filters - initialize from URL
-    const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+    const [selectedBrands, setSelectedBrands] = useState<string[]>(() => {
+        // Initialize from URL search params
+        if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search);
+            const brands = params.getAll("brand");
+            const search = params.get("search");
+
+            // If search matches a brand exactly, promote it to selectedBrands
+            // This ensures "all products under the brand" are shown via server filter
+            if (search && initialBrands.some(b => b.toLowerCase() === search.toLowerCase())) {
+                const matchedBrand = initialBrands.find(b => b.toLowerCase() === search.toLowerCase())!;
+                if (!brands.includes(matchedBrand)) {
+                    return [...brands, matchedBrand];
+                }
+            }
+            return brands;
+        }
+        return [];
+    });
     const currentCategory = searchParams.get("category") || "";
 
     // Initialize with server-fetched data
@@ -62,11 +80,18 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
     };
 
     const handleBrandChange = (brand: string) => {
-        setSelectedBrands(prev =>
-            prev.includes(brand)
-                ? prev.filter(b => b !== brand)
-                : [...prev, brand]
-        );
+        const newBrands = selectedBrands.includes(brand)
+            ? selectedBrands.filter(b => b !== brand)
+            : [...selectedBrands, brand];
+        
+        setSelectedBrands(newBrands);
+
+        // Update URL
+        const params = new URLSearchParams(searchParams.toString());
+        params.delete("brand"); // Clear existing
+        newBrands.forEach(b => params.append("brand", b));
+        
+        router.push(`/products?${params.toString()}`, { scroll: false });
     };
 
 

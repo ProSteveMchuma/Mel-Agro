@@ -275,7 +275,7 @@ export default function SmartSearch() {
                                                 key={brand}
                                                 onClick={() => {
                                                     setIsOpen(false);
-                                                    router.push(`/products?search=${encodeURIComponent(brand)}`);
+                                                    router.push(`/products?brand=${encodeURIComponent(brand)}`);
                                                 }}
                                                 className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3 transition-colors group"
                                             >
