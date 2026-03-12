@@ -11,15 +11,20 @@ service cloud.firestore {
       );
     }
 
-    // Products: Public read, Admin write
+    // Products: Public read, Admin write, User can decrement stock
     match /products/{productId} {
       allow read: if true;
       allow write: if isAdmin();
+      allow update: if request.auth != null && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stockQuantity', 'inStock']) &&
+        request.resource.data.stockQuantity <= resource.data.stockQuantity;
     }
 
-    // Inventory History: Admin only
+    // Inventory History: Admin write, User create (for orders)
     match /inventory_history/{historyId} {
-      allow read, write: if isAdmin();
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+      allow create: if request.auth != null;
     }
 
     // Orders: Users can read/create their own, Admin can read/write all
@@ -30,8 +35,7 @@ service cloud.firestore {
       allow update: if request.auth != null && (
         isAdmin() || (
           resource.data.userId == request.auth.uid && (
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['returnStatus', 'returnReason', 'checkoutRequestId']) ||
-            (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status == 'Cancelled')
+            request.resource.data.diff(resource.data).affectedKeys().hasAny(['returnStatus', 'returnReason', 'checkoutRequestId', 'status'])
           )
         )
       );

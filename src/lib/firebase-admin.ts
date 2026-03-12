@@ -7,28 +7,24 @@ if (!admin.apps.length) {
         let privateKey = process.env.FIREBASE_PRIVATE_KEY;
         if (privateKey) {
             // 1. Basic cleanup: remove quotes and normalize literal \n
-            privateKey = privateKey.replace(/^["']|["']$/g, '').replace(/\\n/g, '\n');
+            // Handle cases where the key might be double-quoted or have escaped backslashes
+            privateKey = privateKey.replace(/^["']|["']$/g, '')
+                                   .replace(/\\n/g, '\n')
+                                   .replace(/\\\\n/g, '\n');
 
             // 2. Identify and re-wrap the PEM content
             const header = '-----BEGIN PRIVATE KEY-----';
             const footer = '-----END PRIVATE KEY-----';
 
             if (privateKey.includes(header) && privateKey.includes(footer)) {
-                // Extract just the base64 part, removing everything else (markers, whitespace, etc)
+                // Extract just the content between header and footer
                 const parts = privateKey.split(header);
                 const contentWithFooter = parts[parts.length - 1];
                 const contentParts = contentWithFooter.split(footer);
-                const base64Content = contentParts[0].replace(/\s+/g, '');
+                const rawContent = contentParts[0].replace(/\s+/g, '');
 
-                // Re-wrap at 64 characters
-                const wrapped = base64Content.match(/.{1,64}/g)?.join('\n');
-                if (wrapped) {
-                    privateKey = `${header}\n${wrapped}\n${footer}\n`;
-                }
-            } else if (!privateKey.startsWith('-----') && privateKey.length > 500) {
-                // It might be just the raw base64 string
-                const cleaned = privateKey.replace(/\s+/g, '');
-                const wrapped = cleaned.match(/.{1,64}/g)?.join('\n');
+                // Re-wrap at 64 characters for standard PEM format
+                const wrapped = rawContent.match(/.{1,64}/g)?.join('\n');
                 if (wrapped) {
                     privateKey = `${header}\n${wrapped}\n${footer}\n`;
                 }
