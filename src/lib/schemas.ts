@@ -25,7 +25,7 @@ export const signupSchema = z.object({
 export const addressSchema = z.object({
     firstName: z.string().min(2, { message: "First name is required" }),
     lastName: z.string().min(2, { message: "Last name is required" }),
-    email: z.string().email({ message: "Invalid email address" }),
+    email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal('')),
     phone: z.string().refine((val) => {
         // Basic Kenya phone validation or use libphonenumber-js strictly if preferred
         // Here we use a basic regex + length check for flexibility before strictening

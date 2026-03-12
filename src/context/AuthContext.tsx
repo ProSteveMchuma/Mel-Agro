@@ -36,12 +36,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                 let userData = userDoc.exists() ? userDoc.data() : {};
 
+                const adminEmails = ['admin@melagri.com', 'admin@melagri.co.ke', 'james.wambua@makamithi.com'];
+                const userEmail = (firebaseUser.email || '').toLowerCase();
+                const isAdminEmail = adminEmails.some(email => email.toLowerCase() === userEmail);
+
                 // If user document doesn't exist, create it
                 if (!userDoc.exists()) {
                     const newUserData = {
                         name: firebaseUser.displayName || 'User',
                         email: firebaseUser.email || '',
-                        role: firebaseUser.email === 'proinnovationtech@gmail.com' ? 'super-admin' : (['admin@Mel-Agri.com', 'james.wambua@makamithi.com'].includes(firebaseUser.email || '') ? 'admin' : 'user'),
+                        role: firebaseUser.email === 'proinnovationtech@gmail.com' ? 'super-admin' : (isAdminEmail ? 'admin' : 'user'),
                         createdAt: new Date().toISOString()
                     };
                     await setDoc(userDocRef, newUserData);
@@ -56,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
                 const role = firebaseUser.email === 'proinnovationtech@gmail.com'
                     ? 'super-admin'
-                    : (['admin@Mel-Agri.com', 'james.wambua@makamithi.com'].includes(firebaseUser.email || '') ? 'admin' : (userData.role || 'user'));
+                    : (isAdminEmail ? 'admin' : (userData.role || 'user'));
 
                 setUser({
                     uid: firebaseUser.uid,

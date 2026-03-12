@@ -2,7 +2,7 @@ export interface User {
     uid: string;
     id?: string; // For UserContext use
     name: string;
-    email: string;
+    email?: string;
     role: 'super-admin' | 'admin' | 'customer' | 'user';
     phone?: string;
     address?: string;

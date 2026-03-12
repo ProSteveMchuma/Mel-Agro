@@ -1,0 +1,46 @@
+[debug] [2026-03-12T07:02:20.139Z] ----------------------------------------------------------------------
+[debug] [2026-03-12T07:02:20.148Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Steve\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js projects:list
+[debug] [2026-03-12T07:02:20.149Z] CLI Version:   15.5.1
+[debug] [2026-03-12T07:02:20.150Z] Platform:      win32
+[debug] [2026-03-12T07:02:20.150Z] Node Version:  v22.21.0
+[debug] [2026-03-12T07:02:20.151Z] Time:          Thu Mar 12 2026 10:02:20 GMT+0300 (East Africa Time)
+[debug] [2026-03-12T07:02:20.151Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-03-12T07:02:20.159Z] >>> [apiv2][query] GET https://firebase-public.firebaseio.com/cli.json [none]
+[debug] [2026-03-12T07:02:21.150Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-03-12T07:02:21.153Z] > authorizing via signed-in user (info@proinnovationtech.co.ke)
+[debug] [2026-03-12T07:02:21.169Z] Checked if tokens are valid: false, expires at: 1773173929919
+[debug] [2026-03-12T07:02:21.169Z] Checked if tokens are valid: false, expires at: 1773173929919
+[debug] [2026-03-12T07:02:21.169Z] > refreshing access token with scopes: []
+[debug] [2026-03-12T07:02:21.176Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-03-12T07:02:21.177Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-12T07:02:22.424Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-03-12T07:02:22.425Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-03-12T07:02:22.446Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2026-03-12T07:02:22.952Z] <<< [apiv2][status] GET https://firebase-public.firebaseio.com/cli.json 200
+[debug] [2026-03-12T07:02:22.953Z] <<< [apiv2][body] GET https://firebase-public.firebaseio.com/cli.json {"cloudBuildErrorAfter":1594252800000,"cloudBuildWarnAfter":1590019200000,"defaultNode10After":1594252800000,"minVersion":"3.0.5","node8DeploysDisabledAfter":1613390400000,"node8RuntimeDisabledAfter":1615809600000,"node8WarnAfter":1600128000000}
+[debug] [2026-03-12T07:02:24.367Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2026-03-12T07:02:24.368Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] ┌──────────────────────┬─────────────────────────┬────────────────┬──────────────────────┐
+│ Project Display Name │ Project ID              │ Project Number │ Resource Location ID │
+├──────────────────────┼─────────────────────────┼────────────────┼──────────────────────┤
+│ machaGo              │ machago-53a31           │ 172849903480   │ [Not specified]      │
+├──────────────────────┼─────────────────────────┼────────────────┼──────────────────────┤
+│ melagri              │ melagri (current)       │ 1006235521196  │ [Not specified]      │
+├──────────────────────┼─────────────────────────┼────────────────┼──────────────────────┤
+│ Vibes                │ studio-7364234327-dac7c │ 248644713088   │ [Not specified]      │
+├──────────────────────┼─────────────────────────┼────────────────┼──────────────────────┤
+│ Firebase app         │ studio-8153963468-36b29 │ 652315652900   │ [Not specified]      │
+├──────────────────────┼─────────────────────────┼────────────────┼──────────────────────┤
+│ Tenderpro            │ tenderpro-480721        │ 336800880016   │ [Not specified]      │
+├──────────────────────┼─────────────────────────┼────────────────┼──────────────────────┤
+│ Tenderpro            │ tenderpro-d198d         │ 194278460320   │ [Not specified]      │
+└──────────────────────┴─────────────────────────┴────────────────┴──────────────────────┘
+[info] 
+[info] 6 project(s) total.
+[debug] [2026-03-12T07:02:30.025Z] Error: Timed out.
+    at Timeout._onTimeout (C:\Users\Steve\AppData\Roaming\npm\node_modules\firebase-tools\lib\utils.js:308:49)
+    at listOnTimeout (node:internal/timers:588:17)
+    at process.processTimers (node:internal/timers:523:7)
+[error] 
+[error] Error: An unexpected error has occurred.

@@ -5,13 +5,13 @@ service firebase.storage {
       allow read: if true;
       allow write: if request.auth != null && (
         (request.auth.token.get('email', '').lower() in [
-          'admin@melagro.com', 
-          'admin@mel-agri.com',
+          'admin@melagri.com', 
+          'admin@melagri.co.ke',
           'james.wambua@makamithi.com', 
           'proinnovationtech@gmail.com',
           'shadrack@adifa.co.ke'
         ]) ||
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super-admin']
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.get('role', 'user') in ['admin', 'super-admin']
       );
     }
   }

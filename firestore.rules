@@ -6,13 +6,13 @@ service cloud.firestore {
       return request.auth != null && (
         (request.auth.token.get('email', '').lower() in [
           'proinnovationtech@gmail.com', 
-          'admin@melagro.com', 
-          'admin@mel-agri.com',
+          'admin@melagri.com', 
+          'admin@melagri.co.ke',
           'james.wambua@makamithi.com',
           'shadrack@adifa.co.ke'
         ]) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super-admin'])
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') in ['admin', 'super-admin'])
       );
     }
 
@@ -22,7 +22,7 @@ service cloud.firestore {
       allow write: if isAdmin();
       allow update: if request.auth != null && (
         isAdmin() || 
-        request.resource.data.diff(resource.data).affectedKeys().hasAny(['stockQuantity', 'inStock'])
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stockQuantity', 'inStock'])
       );
     }
 
@@ -129,5 +129,6 @@ service cloud.firestore {
     }
   }
 }
+
 
 

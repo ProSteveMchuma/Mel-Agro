@@ -412,7 +412,7 @@ export default function CheckoutPage() {
                                                 <Input
                                                     name="shipping.email"
                                                     type="email"
-                                                    label="Email Address"
+                                                    label="Email Address (Optional)"
                                                     placeholder="john@example.com"
                                                 />
                                                 <Input
