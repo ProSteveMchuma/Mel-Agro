@@ -1,24 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper function to check if user is admin
-    // Helper function to check if user is admin or super-admin
+    // Robust helper function to check if user is admin or super-admin
     function isAdmin() {
       return request.auth != null && (
-        request.auth.token.email in ['proinnovationtech@gmail.com', 'admin@melagro.com', 'james.wambua@makamithi.com'] ||
+        (request.auth.token.get('email', '').lower() in [
+          'proinnovationtech@gmail.com', 
+          'admin@melagro.com', 
+          'admin@mel-agri.com',
+          'james.wambua@makamithi.com',
+          'shadrack@adifa.co.ke'
+        ]) ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ['admin', 'super-admin'])
       );
     }
 
-    // Products: Public read, Admin write, User can decrement stock
+    // Products: Public read, Admin write, User can decrement stock during checkout
     match /products/{productId} {
       allow read: if true;
       allow write: if isAdmin();
-      allow update: if request.auth != null && 
-        (isAdmin() || (
-          request.resource.data.diff(resource.data).affectedKeys().hasAny(['stockQuantity', 'inStock'])
-        ));
+      allow update: if request.auth != null && (
+        isAdmin() || 
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['stockQuantity', 'inStock'])
+      );
     }
 
     // Inventory History: Admin write, User create (for orders)
@@ -44,8 +49,7 @@ service cloud.firestore {
 
     // Users: Users can read/write their own profile, Admin can read all
     match /users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
       allow read: if isAdmin();
     }
 
@@ -82,15 +86,13 @@ service cloud.firestore {
     // Notifications: Users can read/write their own, Admin can read/write all
     match /notifications/{notificationId} {
       allow create: if request.auth != null;
-      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
-      allow update: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow read, update: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     // Messages: Users can create and read own. Admin can read/write all.
     match /messages/{messageId} {
       allow create: if request.auth != null;
-      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
-      allow update: if isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow read, update: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     // Analytics: Restricted delete/read, Public write (for tracking)
@@ -106,11 +108,26 @@ service cloud.firestore {
       allow read, delete: if isAdmin();
       allow create, update: if true;
     }
+    match /analytics_funnels/{id} {
+      allow read, delete: if isAdmin();
+      allow create, update: if request.auth != null && request.auth.uid == id;
+    }
+    match /analytics_purchases/{id} {
+      allow read, delete: if isAdmin();
+      allow create: if request.auth != null;
+    }
 
     // Carts: Private to user
     match /carts/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    
+    // Discounts/Coupons: Public read, Admin write
+    match /discounts/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
   }
 }
+
 
