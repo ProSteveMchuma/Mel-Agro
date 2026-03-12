@@ -116,67 +116,123 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                         </div>
                     </div>
 
-                    <div className="flex-1">
-                        {/* Page Title & Controls */}
-                        <div className="mb-6 md:mb-8 group">
-                            {/* Desktop Title - Hidden on Mobile */}
-                            <div className="hidden md:flex items-center mb-3">
-                                <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">
-                                    {currentCategory || "Global Catalogue"}
-                                </h1>
-                            </div>
-
-                            {/* Description hidden on mobile */}
-                            <p className="hidden md:block text-gray-500 mb-8 font-medium max-w-2xl leading-relaxed">
-                                Curating the finest agricultural inputs for the modern farmer. Certified quality, delivered to your farm.
-                            </p>
-
-                            {/* Mobile Category Pills */}
-                            <div className="md:hidden flex gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
-                                <button
-                                    onClick={() => handleCategoryChange("")}
-                                    className={`flex-shrink-0 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wide border transition-all ${currentCategory === ""
-                                        ? "bg-gray-900 text-white border-gray-900 shadow-lg shadow-gray-900/20"
-                                        : "bg-white text-gray-500 border-gray-100 shadow-sm"
-                                        }`}
-                                >
-                                    All
-                                </button>
-                                {availableCategories.map(cat => (
-                                    <button
-                                        key={cat}
-                                        onClick={() => handleCategoryChange(cat)}
-                                        className={`flex-shrink-0 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wide border transition-all ${currentCategory === cat
-                                            ? "bg-gray-900 text-white border-gray-900 shadow-lg shadow-gray-900/20"
-                                            : "bg-white text-gray-500 border-gray-100 shadow-sm"
-                                            }`}
-                                    >
-                                        {cat}
-                                    </button>
-                                ))}
-                            </div>
-
-                            {/* Desktop Sort and Filter Bar - Hidden on Mobile */}
-                            <div className="hidden md:flex flex-col sm:flex-row items-center justify-between gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-xl shadow-gray-200/50">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center">
-                                        <svg className="w-5 h-5 text-melagri-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                            <div className="flex-1">
+                                {/* Page Title & Controls */}
+                                <div className="mb-6 md:mb-8 group">
+                                    {/* Desktop Title - Hidden on Mobile */}
+                                    <div className="hidden md:flex items-center mb-3">
+                                        <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">
+                                            {currentCategory || "Global Catalogue"}
+                                        </h1>
                                     </div>
-                                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em]">
-                                        Verified Inventory
+
+                                    {/* Description hidden on mobile */}
+                                    <p className="hidden md:block text-gray-500 mb-8 font-medium max-w-2xl leading-relaxed">
+                                        Curating the finest agricultural inputs for the modern farmer. Certified quality, delivered to your farm.
                                     </p>
+
+                                    <div className="md:hidden">
+                                        <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
+                                            <button
+                                                onClick={() => handleCategoryChange("")}
+                                                className={`flex-shrink-0 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wide border transition-all ${currentCategory === ""
+                                                    ? "bg-gray-900 text-white border-gray-900 shadow-lg shadow-gray-900/20"
+                                                    : "bg-white text-gray-500 border-gray-100 shadow-sm"
+                                                    }`}
+                                            >
+                                                All
+                                            </button>
+                                            {availableCategories.map(cat => (
+                                                <button
+                                                    key={cat}
+                                                    onClick={() => handleCategoryChange(cat)}
+                                                    className={`flex-shrink-0 px-5 py-2.5 rounded-full text-xs font-black uppercase tracking-wide border transition-all ${currentCategory === cat
+                                                        ? "bg-gray-900 text-white border-gray-900 shadow-lg shadow-gray-900/20"
+                                                        : "bg-white text-gray-500 border-gray-100 shadow-sm"
+                                                        }`}
+                                                >
+                                                    {cat}
+                                                </button>
+                                            ))}
+                                        </div>
+                                        
+                                        {/* Mobile Smart Pills */}
+                                        <div className="flex items-center gap-2 overflow-x-auto pb-6 scrollbar-hide -mx-4 px-4">
+                                            {["Bayer", "Syngenta", "Maize Seeds", "Dog Feed", "NPK", "Sprayers"].map(pill => (
+                                                <button
+                                                    key={pill}
+                                                    onClick={() => {
+                                                        const params = new URLSearchParams(searchParams.toString());
+                                                        params.set("search", pill);
+                                                        router.push(`/products?${params.toString()}`);
+                                                    }}
+                                                    className="flex-shrink-0 px-4 py-2 bg-gray-50 border border-gray-100 rounded-full text-[10px] font-bold text-gray-500 shadow-sm uppercase tracking-wider active:bg-melagri-primary active:text-white transition-colors"
+                                                >
+                                                    {pill}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Desktop Sort and Filter Bar - Hidden on Mobile */}
+                                    <div className="hidden md:flex flex-col gap-4">
+                                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/50">
+                                            <div className="flex items-center gap-3 bg-gray-50/50 pl-4 pr-2 py-1.5 rounded-2xl flex-1 max-w-md border border-gray-100/50 transition-all focus-within:bg-white focus-within:ring-2 focus-within:ring-melagri-primary/10">
+                                                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                                                <form
+                                                    onSubmit={(e) => {
+                                                        e.preventDefault();
+                                                        const val = (e.currentTarget.elements[0] as HTMLInputElement).value;
+                                                        const params = new URLSearchParams(searchParams.toString());
+                                                        if (val) params.set("search", val);
+                                                        else params.delete("search");
+                                                        router.push(`/products?${params.toString()}`);
+                                                    }}
+                                                    className="flex-1"
+                                                >
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Quick filter products..."
+                                                        defaultValue={searchParams.get("search") || ""}
+                                                        className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold placeholder:text-gray-300 py-1"
+                                                    />
+                                                </form>
+                                                <div className="bg-melagri-primary/10 px-3 py-1 rounded-lg">
+                                                    <p className="text-[10px] text-melagri-primary font-black uppercase tracking-wider">
+                                                        Deep Filter
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4 w-full sm:w-auto">
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest bg-gray-50/50 px-4 py-2.5 rounded-2xl border border-gray-100 italic">
+                                                    {searchParams.get("search")
+                                                        ? `Results for "${searchParams.get("search")}"`
+                                                        : currentCategory
+                                                            ? `Collection: ${currentCategory}`
+                                                            : "Full Catalogue"}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Smart Pills for Discovery */}
+                                        <div className="flex items-center gap-2 overflow-x-auto pb-2 pl-2">
+                                            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest pr-2">Suggestions:</span>
+                                            {["Bayer", "Syngenta", "Maize Seeds", "Dog Feed", "NPK", "Sprayers"].map(pill => (
+                                                <button
+                                                    key={pill}
+                                                    onClick={() => {
+                                                        const params = new URLSearchParams(searchParams.toString());
+                                                        params.set("search", pill);
+                                                        router.push(`/products?${params.toString()}`);
+                                                    }}
+                                                    className="flex-shrink-0 px-4 py-1.5 bg-white border border-gray-100 rounded-full text-[10px] font-bold text-gray-500 hover:bg-melagri-primary hover:text-white hover:border-melagri-primary transition-all shadow-sm uppercase tracking-wider"
+                                                >
+                                                    {pill}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-4 w-full sm:w-auto">
-                                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100 italic">
-                                        {searchParams.get("search")
-                                            ? `Results for "${searchParams.get("search")}"`
-                                            : currentCategory
-                                                ? `Collection: ${currentCategory}`
-                                                : "Full Catalogue"}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
 
                         {/* Products Grid */}
                         <Suspense fallback={

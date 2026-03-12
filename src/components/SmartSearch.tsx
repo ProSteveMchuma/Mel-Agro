@@ -31,6 +31,8 @@ export default function SmartSearch() {
     const [query, setQuery] = useState("");
     const [isOpen, setIsOpen] = useState(false);
     const [suggestions, setSuggestions] = useState<typeof products>([]);
+    const [intents, setIntents] = useState<string[]>([]);
+    const [matchedBrands, setMatchedBrands] = useState<string[]>([]);
     const wrapperRef = useRef<HTMLDivElement>(null);
     const { t } = useLanguage();
     const { trackAction } = useBehavior();
@@ -46,8 +48,6 @@ export default function SmartSearch() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Initialize Fuse for fuzzy search
-    // Options are now centralized in fuzzySearch export
     const fuseOptions = {
         keys: [
             { name: 'name', weight: 0.4 },
@@ -59,6 +59,27 @@ export default function SmartSearch() {
         includeScore: true
     };
 
+    // Intent Mapping for "Understanding" the Customer
+    const INTENT_MAP: Record<string, string[]> = {
+        "Crop Protection": ["kill", "pest", "insect", "weed", "disease", "fungus", "spray", "herbicide", "insecticide", "fungicide", "protection", "poison"],
+        "Animal Feeds": ["cow", "cattle", "chicken", "poultry", "pig", "dairy", "animal", "feed", "livestock", "dog", "cat", "nutrition"],
+        "Veterinary Products": ["vet", "medicine", "vaccine", "treatment", "sick", "wound", "injection", "animal health"],
+        "Seeds": ["seed", "maize", "bean", "grow", "yield", "hybrid", "planting", "crop"],
+        "Fertilizers": ["fertilizer", "soil", "nutrient", "npk", "manure", "dap", "can", "top dress", "booster"],
+        "Farm Tools": ["tool", "equipment", "jembes", "panga", "shovels", "sprayer", "pump"]
+    };
+
+    const detectIntents = (searchTerm: string) => {
+        const detected: string[] = [];
+        const lowTerm = searchTerm.toLowerCase();
+        for (const [category, keywords] of Object.entries(INTENT_MAP)) {
+            if (keywords.some(kw => lowTerm.includes(kw))) {
+                detected.push(category);
+            }
+        }
+        return detected;
+    };
+
     // Filter products based on query using Fuse
     useEffect(() => {
         if (query.trim().length > 1) {
@@ -67,10 +88,32 @@ export default function SmartSearch() {
                 const fuse = new Fuse.default(products, fuseOptions);
                 const result = fuse.search(query);
 
-                // Extract items from Fuse result and limit to 5
-                const matches = result.slice(0, 5).map(r => r.item);
+                // Detect semantic intent
+                const detectedIntents = detectIntents(query);
+                setIntents(detectedIntents);
 
-                if (matches.length === 0) {
+                // Extract unique brands that match the query
+                const brandMatches = Array.from(new Set(
+                    products
+                        .filter(p => p.brand && p.brand.toLowerCase().includes(query.toLowerCase()))
+                        .map(p => p.brand as string)
+                )).slice(0, 3);
+                
+                setMatchedBrands(brandMatches);
+
+                // Extract items from Fuse result and limit to 5
+                // Priority: Direct matches + Intent matches
+                let matches = result.slice(0, 5).map(r => r.item);
+
+                // If no direct matches but we have intents, find products in those categories
+                if (matches.length < 3 && detectedIntents.length > 0) {
+                    const intentProducts = products
+                        .filter(p => detectedIntents.includes(p.category) && !matches.find(m => m.id === p.id))
+                        .slice(0, 5 - matches.length);
+                    matches = [...matches, ...intentProducts];
+                }
+
+                if (matches.length === 0 && detectedIntents.length === 0) {
                     trackAction('empty_search', { query });
                 }
 
@@ -79,6 +122,8 @@ export default function SmartSearch() {
             });
         } else {
             setSuggestions([]);
+            setIntents([]);
+            setMatchedBrands([]);
             setIsOpen(false);
         }
     }, [query, products]);
@@ -127,7 +172,7 @@ export default function SmartSearch() {
     };
 
     const highlightMatch = (text: string, highlight: string) => {
-        if (!highlight.trim()) return text;
+        if (!highlight.trim() || !text) return text;
         const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
         return (
             <span>
@@ -183,14 +228,71 @@ export default function SmartSearch() {
 
             {/* Suggestions Dropdown */}
             {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                    {suggestions.length > 0 ? (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 min-w-[320px]">
+                    {intents.length > 0 || matchedBrands.length > 0 || suggestions.length > 0 ? (
                         <>
                             <div className="py-2">
-                                <div className="px-4 py-2 text-xs font-bold text-gray-400 uppercase tracking-wider">
-                                    Suggested Products
+                                {/* Intent-Based Solutions */}
+                                {intents.length > 0 && (
+                                    <div className="mb-2">
+                                        <div className="px-4 py-2 text-[10px] font-black text-melagri-primary uppercase tracking-[0.2em] flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-melagri-primary animate-pulse" />
+                                            Recommended Solutions
+                                        </div>
+                                        {intents.map(intent => (
+                                            <button
+                                                key={intent}
+                                                onClick={() => {
+                                                    setIsOpen(false);
+                                                    router.push(`/products?category=${encodeURIComponent(intent)}`);
+                                                }}
+                                                className="w-full text-left px-4 py-3 hover:bg-melagri-primary group flex items-center justify-between transition-all"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center text-melagri-primary group-hover:bg-white/20 group-hover:text-white transition-colors">
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                                    </div>
+                                                    <div>
+                                                        <span className="block text-sm font-black text-gray-800 group-hover:text-white transition-colors">{intent}</span>
+                                                        <span className="block text-[10px] text-gray-500 group-hover:text-green-100 transition-colors uppercase tracking-widest font-bold">View full category</span>
+                                                    </div>
+                                                </div>
+                                                <svg className="w-4 h-4 text-gray-300 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                                            </button>
+                                        ))}
+                                        <div className="h-px bg-gray-50 mx-4 my-2" />
+                                    </div>
+                                )}
+
+                                {/* Brand Matches */}
+                                {matchedBrands.length > 0 && (
+                                    <div className="mb-2">
+                                        <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                                            Trusted Brands
+                                        </div>
+                                        {matchedBrands.map(brand => (
+                                            <button
+                                                key={brand}
+                                                onClick={() => {
+                                                    setIsOpen(false);
+                                                    router.push(`/products?search=${encodeURIComponent(brand)}`);
+                                                }}
+                                                className="w-full text-left px-4 py-2.5 hover:bg-gray-50 flex items-center gap-3 transition-colors group"
+                                            >
+                                                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-melagri-primary/10 group-hover:text-melagri-primary transition-colors">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-10V4m0 10V4m0 10h1m-1 4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                                                </div>
+                                                <span className="text-sm font-bold text-gray-700 group-hover:text-melagri-primary transition-colors">{highlightMatch(brand, query)}</span>
+                                            </button>
+                                        ))}
+                                        <div className="h-px bg-gray-50 mx-4 my-2" />
+                                    </div>
+                                )}
+
+                                <div className="px-4 py-2 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">
+                                    Product Matches
                                 </div>
-                                {suggestions.map((product) => (
+                                {suggestions.map((product: any) => (
                                     <Link
                                         key={product.id}
                                         href={`/products/${product.id}`}
@@ -215,6 +317,12 @@ export default function SmartSearch() {
                                                 {highlightMatch(product.name, query)}
                                             </div>
                                             <div className="text-xs text-gray-500 truncate">
+                                                {product.brand && (
+                                                    <>
+                                                        <span className="font-bold text-gray-700">{highlightMatch(product.brand, query)}</span>
+                                                        {" • "}
+                                                    </>
+                                                )}
                                                 {product.category} • <span className="text-green-600 font-medium">KES {product.price.toLocaleString()}</span>
                                             </div>
                                         </div>
