@@ -14,8 +14,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const { user, logout } = useAuth();
     const { unreadNotificationsCount } = useOrders();
     const router = useRouter();
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
+
+    // On desktop (md+), start the sidebar open by default
+    React.useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth >= 768) {
+                setIsSidebarOpen(true);
+            } else {
+                setIsSidebarOpen(false);
+            }
+        };
+        handleResize(); // Run on mount
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const { isLoading, isAuthenticated, isAdmin } = useAuth(); // Destructure isAdmin and loading state
 
@@ -112,34 +126,51 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     return (
         <div className="min-h-screen bg-gray-100 flex font-sans">
+            {/* Sidebar Backdrop (Mobile only) */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-20 md:hidden backdrop-blur-sm transition-opacity"
+                    onClick={() => setIsSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className={`bg-gradient-to-b from-slate-900 to-slate-950 text-white transition-all duration-300 ${isSidebarOpen ? 'w-64' : 'w-24'} flex flex-col fixed h-full z-20 shadow-2xl overflow-hidden`}>
+            <aside className={`bg-gradient-to-b from-slate-900 to-slate-950 text-white transition-all duration-300 ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-24 -translate-x-full md:translate-x-0'} flex flex-col fixed h-full z-30 shadow-2xl overflow-hidden`}>
                 <div className="p-6 flex items-center justify-between">
                     {isSidebarOpen ? (
                         <Logo light />
                     ) : (
-                        <Logo iconOnly light />
+                        <div className="hidden md:block">
+                            <Logo iconOnly light />
+                        </div>
                     )}
-                    <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg transition-colors">
+                    <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg transition-colors md:flex hidden">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
+                    {/* Mobile Close Button */}
+                    <button onClick={() => setIsSidebarOpen(false)} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg transition-colors md:hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
-                <nav className="flex-grow mt-6">
+                <nav className="flex-grow mt-6 overflow-y-auto">
                     <ul className="space-y-2 px-4">
                         {menuItems.map((item) => (
                             <li key={item.name}>
                                 <Link
                                     href={item.href}
+                                    onClick={() => setIsSidebarOpen(false)}
                                     className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${pathname === item.href
                                         ? 'bg-melagri-primary text-white shadow-lg shadow-melagri-primary/20'
                                         : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                                         }`}
                                 >
                                     {item.icon}
-                                    {isSidebarOpen && <span className="font-medium">{item.name}</span>}
+                                    <span className="font-medium">{item.name}</span>
                                 </Link>
                             </li>
                         ))}
@@ -160,37 +191,48 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </aside>
 
             {/* Main Content */}
-            <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'ml-64' : 'ml-24'}`}>
+            <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-24'} ml-0 w-full`}>
                 {/* Topbar */}
-                <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 h-20 flex items-center justify-between px-8 sticky top-0 z-10">
-                    <div className="flex flex-col">
-                        <div className="flex items-center gap-2 mb-0.5">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                            </span>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-green-600">System Live</span>
-                        </div>
-                        <div className="text-gray-400 text-xs font-medium">
-                            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 h-20 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">
+                    <div className="flex items-center gap-4">
+                        {/* Mobile Toggle */}
+                        <button 
+                            onClick={() => setIsSidebarOpen(true)}
+                            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg md:hidden"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        
+                        <div className="flex flex-col">
+                            <div className="flex items-center gap-2 mb-0.5">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                </span>
+                                <span className="text-[10px] font-black uppercase tracking-widest text-green-600">System Live</span>
+                            </div>
+                            <div className="text-gray-400 text-[10px] md:text-xs font-medium truncate max-w-[120px] md:max-w-none">
+                                {new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2 md:gap-6">
                         <div className="relative">
                             <button
                                 onClick={() => setShowNotifications(!showNotifications)}
-                                className="p-2.5 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all relative group"
+                                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-50 rounded-xl transition-all relative group"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                 </svg>
                                 {unreadNotificationsCount > 0 && (
-                                    <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[10px] font-bold text-white flex items-center justify-center animate-bounce">
+                                    <span className="absolute top-1.5 right-1.5 w-3.5 h-3.5 bg-red-500 rounded-full border-2 border-white text-[8px] font-bold text-white flex items-center justify-center animate-bounce">
                                         {unreadNotificationsCount}
                                     </span>
                                 )}
-                                <span className="absolute top-full right-0 mt-2 bg-gray-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Notifications</span>
                             </button>
 
                             <AdminNotificationsPopover
@@ -199,19 +241,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             />
                         </div>
 
-                        <div className="flex items-center gap-4 pl-6 border-l border-gray-100">
-                            <div className="text-right hidden md:block">
-                                <div className="text-sm font-black text-gray-900 leading-none mb-1">{user?.name || 'Admin'}</div>
-                                <div className="text-[10px] font-bold text-melagri-primary uppercase tracking-tighter">{user?.role || 'Administrator'}</div>
+                        <div className="flex items-center gap-2 md:gap-4 md:pl-6 md:border-l border-gray-100">
+                            <div className="text-right hidden sm:block">
+                                <div className="text-sm font-black text-gray-900 leading-none mb-1">{user?.name?.split(' ')[0] || 'Admin'}</div>
+                                <div className="text-[10px] font-bold text-melagri-primary uppercase tracking-tighter">Admin</div>
                             </div>
-                            <div className="w-11 h-11 bg-gradient-to-tr from-gray-100 to-gray-200 rounded-xl flex items-center justify-center text-gray-600 font-black shadow-inner border border-white">
+                            <div className="w-9 h-9 md:w-11 md:h-11 bg-gradient-to-tr from-gray-100 to-gray-200 rounded-xl flex items-center justify-center text-gray-600 font-black shadow-inner border border-white text-sm md:text-base">
                                 {user?.name?.charAt(0) || 'A'}
                             </div>
                         </div>
                     </div>
                 </header>
 
-                <main className="p-8">
+                <main className="p-4 md:p-8">
                     {children}
                 </main>
             </div>

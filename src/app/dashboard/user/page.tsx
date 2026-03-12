@@ -531,10 +531,41 @@ export default function UserDashboard() {
     return (
         <div className="min-h-screen flex flex-col bg-[#F9FAFB] font-sans">
             <Header />
-            <main className="flex-grow py-12 px-4 max-w-7xl mx-auto w-full">
+            <main className="flex-grow py-6 md:py-12 px-4 max-w-7xl mx-auto w-full">
+                {/* Mobile Tab Navigation */}
+                <div className="lg:hidden mb-6 -mx-4 px-4 overflow-x-auto no-scrollbar pb-2">
+                    <div className="flex gap-2 min-w-max">
+                        {[
+                            { id: 'dashboard', label: 'Home', icon: '🏠' },
+                            { id: 'orders', label: 'Orders', icon: '📦' },
+                            { id: 'wishlist', label: 'Wishlist', icon: '❤️' },
+                            { id: 'addresses', label: 'Addresses', icon: '📍' },
+                            { id: 'returns', label: 'Returns', icon: '🔄' },
+                            { id: 'notifications', label: 'Alerts', icon: '🔔' },
+                            { id: 'profile', label: 'Settings', icon: '⚙️' },
+                            { id: 'support', label: 'Support', icon: '🎧' }
+                        ].map((item) => (
+                            <button
+                                key={item.id}
+                                onClick={() => setActiveTab(item.id as Tab)}
+                                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${activeTab === item.id
+                                    ? 'bg-melagri-primary text-white shadow-lg'
+                                    : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'
+                                    }`}
+                            >
+                                <span>{item.icon}</span>
+                                {item.label}
+                                {item.id === 'notifications' && unreadNotificationsCount > 0 && (
+                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                                )}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* Sidebar */}
-                    <div className="lg:col-span-1">
+                    {/* Sidebar (Desktop only) */}
+                    <div className="hidden lg:block lg:col-span-1">
                         <div className="bg-white rounded-3xl p-6 border border-gray-100 sticky top-24 shadow-sm">
                             <div className="flex items-center gap-4 mb-8">
                                 <div className="w-16 h-16 bg-gradient-to-tr from-melagri-primary to-green-400 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg ring-4 ring-melagri-primary/10">
@@ -545,8 +576,6 @@ export default function UserDashboard() {
                                     <p className="text-[10px] text-gray-400 font-medium truncate">{user.email || user.phone || 'No contact email'}</p>
                                 </div>
                             </div>
-
-
 
                             <nav className="space-y-1.5">
                                 {[
@@ -593,35 +622,35 @@ export default function UserDashboard() {
                         {activeTab === 'addresses' && <AddressBook />}
                         {activeTab === 'support' && renderSupport()}
                         {activeTab === 'profile' && (
-                            <div className="max-w-2xl bg-white p-8 rounded-3xl border border-gray-100 shadow-sm">
+                            <div className="max-w-2xl bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-8">Profile Settings</h2>
                                 <form onSubmit={handleUpdateProfile} className="space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         <div>
                                             <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Full Name</label>
-                                            <input type="text" value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} disabled={!isEditingProfile} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-melagri-primary/20 disabled:opacity-50 font-medium" />
+                                            <input type="text" value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} disabled={!isEditingProfile} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl focus:ring-2 focus:ring-melagri-primary/20 disabled:opacity-50 font-medium text-sm" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Email Address</label>
-                                            <input type="email" value={profileForm.email} disabled className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium opacity-50 cursor-not-allowed" />
+                                            <input type="email" value={profileForm.email} disabled className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium opacity-50 cursor-not-allowed text-sm" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Phone</label>
-                                            <input type="tel" value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} disabled={!isEditingProfile} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium" />
+                                            <input type="tel" value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} disabled={!isEditingProfile} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium text-sm" />
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-400 uppercase mb-2">Delivery Address</label>
-                                            <input type="text" value={profileForm.address} onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })} disabled={!isEditingProfile} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium" />
+                                            <input type="text" value={profileForm.address} onChange={(e) => setProfileForm({ ...profileForm, address: e.target.value })} disabled={!isEditingProfile} className="w-full px-4 py-3 bg-gray-50 border-none rounded-2xl font-medium text-sm" />
                                         </div>
                                     </div>
                                     <div className="flex justify-end pt-4">
                                         {isEditingProfile ? (
                                             <div className="flex gap-3">
-                                                <button type="button" onClick={() => setIsEditingProfile(false)} className="px-6 py-3 font-bold text-gray-500">Cancel</button>
-                                                <button type="submit" className="px-8 py-3 bg-melagri-primary text-white rounded-2xl font-bold shadow-lg shadow-melagri-primary/20 hover:scale-105 transition-all">Save Changes</button>
+                                                <button type="button" onClick={() => setIsEditingProfile(false)} className="px-6 py-3 font-bold text-gray-500 text-sm">Cancel</button>
+                                                <button type="submit" className="px-8 py-3 bg-melagri-primary text-white rounded-2xl font-bold shadow-lg shadow-melagri-primary/20 hover:scale-105 transition-all text-sm">Save Changes</button>
                                             </div>
                                         ) : (
-                                            <button type="button" onClick={() => setIsEditingProfile(true)} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-bold hover:scale-105 transition-all">Edit Profile</button>
+                                            <button type="button" onClick={() => setIsEditingProfile(true)} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-bold hover:scale-105 transition-all text-sm">Edit Profile</button>
                                         )}
                                     </div>
                                 </form>
@@ -629,10 +658,10 @@ export default function UserDashboard() {
                         )}
                         {/* Fallback for other tabs if not implemented yet */}
                         {!['dashboard', 'orders', 'support', 'profile', 'wishlist', 'notifications', 'returns', 'addresses'].includes(activeTab) && (
-                            <div className="bg-white p-20 rounded-3xl border border-gray-100 text-center shadow-sm">
-                                <div className="text-6xl mb-6">🛠️</div>
-                                <h3 className="text-2xl font-bold text-gray-900 mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon</h3>
-                                <p className="text-gray-500 font-medium">We're working hard to bring you this feature.</p>
+                            <div className="bg-white p-12 md:p-20 rounded-3xl border border-gray-100 text-center shadow-sm">
+                                <div className="text-5xl md:text-6xl mb-6">🛠️</div>
+                                <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Coming Soon</h3>
+                                <p className="text-gray-500 font-medium text-sm">We're working hard to bring you this feature.</p>
                             </div>
                         )}
                     </div>
@@ -641,13 +670,13 @@ export default function UserDashboard() {
                 {/* Modals & Overlays */}
                 {selectedOrder && (
                     <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectedOrder(null)}>
-                        <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 relative" onClick={e => e.stopPropagation()}>
+                        <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 md:p-8 relative" onClick={e => e.stopPropagation()}>
                             <button onClick={() => setSelectedOrder(null)} className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors">
                                 <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
-                            <h2 className="text-2xl font-black text-gray-900 mb-6">Order Details</h2>
+                            <h2 className="text-xl md:text-2xl font-black text-gray-900 mb-6">Order Details</h2>
                             <OrderTimeline status={selectedOrder.status} />
-                            <div className="flex gap-4 mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                            <div className="flex gap-4 mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm">
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase">Status</p>
                                     <p className="font-black text-melagri-primary uppercase">{selectedOrder.status}</p>
@@ -660,21 +689,21 @@ export default function UserDashboard() {
                             <div className="space-y-4 mb-8">
                                 {selectedOrder.items.map((item: any, i: number) => (
                                     <div key={i} className="flex gap-4 items-center">
-                                        <div className="w-12 h-12 bg-gray-100 rounded-lg relative overflow-hidden flex-shrink-0">
+                                        <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 rounded-lg relative overflow-hidden flex-shrink-0">
                                             {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
                                         </div>
-                                        <div className="flex-grow">
-                                            <p className="text-sm font-bold text-gray-900">{item.name}</p>
-                                            <p className="text-xs text-gray-500">{item.quantity} x KES {item.price.toLocaleString()}</p>
+                                        <div className="flex-grow min-w-0">
+                                            <p className="text-xs md:text-sm font-bold text-gray-900 truncate">{item.name}</p>
+                                            <p className="text-[10px] md:text-xs text-gray-500">{item.quantity} x KES {item.price.toLocaleString()}</p>
                                         </div>
-                                        <p className="font-bold text-gray-900">KES {(item.price * item.quantity).toLocaleString()}</p>
+                                        <p className="text-xs md:text-sm font-bold text-gray-900">KES {(item.price * item.quantity).toLocaleString()}</p>
                                     </div>
                                 ))}
                             </div>
-                            <div className="grid grid-cols-3 gap-3">
-                                <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('invoice'); }} className="py-3 px-4 bg-gray-900 text-white rounded-xl text-xs font-bold hover:scale-[1.02] transition-all">Invoice</button>
-                                <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('receipt'); }} className="py-3 px-4 bg-gray-900 text-white rounded-xl text-xs font-bold hover:scale-[1.02] transition-all">Receipt</button>
-                                <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('delivery'); }} className="py-3 px-4 bg-gray-900 text-white rounded-xl text-xs font-bold hover:scale-[1.02] transition-all">Ship Doc</button>
+                            <div className="grid grid-cols-3 gap-2 md:gap-3">
+                                <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('invoice'); }} className="py-2.5 md:py-3 px-2 md:px-4 bg-gray-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:scale-[1.02] transition-all">Invoice</button>
+                                <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('receipt'); }} className="py-2.5 md:py-3 px-2 md:px-4 bg-gray-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:scale-[1.02] transition-all">Receipt</button>
+                                <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('delivery'); }} className="py-2.5 md:py-3 px-2 md:px-4 bg-gray-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:scale-[1.02] transition-all">Ship Doc</button>
                             </div>
                         </div>
                     </div>
