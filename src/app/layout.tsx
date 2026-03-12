@@ -20,6 +20,8 @@ import AgroBot from "@/components/AgroBot";
 import MobileNav from "@/components/MobileNav";
 import { BehaviorProvider } from "@/context/BehaviorContext";
 import TrafficTracker from "@/components/TrafficTracker";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 
 const geistSans = Geist({
@@ -128,6 +130,8 @@ export default function RootLayout({
                               <MobileNav />
                               {/* <ChatWidget /> - Replacing basic widget with AI Bot */}
                               <WhatsAppButton />
+                              <Analytics />
+                              <SpeedInsights />
                               <TrafficTracker />
                               <Toaster position="top-center" toastOptions={{
                                 duration: 3000,

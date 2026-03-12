@@ -31,6 +31,24 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
 
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    
+    // Real-time search state
+    const [localSearch, setLocalSearch] = useState(searchParams.get("search") || "");
+
+    // Debounce effect for real-time search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            const params = new URLSearchParams(searchParams.toString());
+            if (localSearch) {
+                params.set("search", localSearch);
+            } else {
+                params.delete("search");
+            }
+            router.push(`/products?${params.toString()}`, { scroll: false });
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [localSearch, router, searchParams]);
 
     const handleCategoryChange = (category: string) => {
         const params = new URLSearchParams(searchParams.toString());
@@ -179,24 +197,15 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                                         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-white rounded-[2rem] border border-gray-100 shadow-xl shadow-gray-200/50">
                                             <div className="flex items-center gap-3 bg-gray-50/50 pl-4 pr-2 py-1.5 rounded-2xl flex-1 max-w-md border border-gray-100/50 transition-all focus-within:bg-white focus-within:ring-2 focus-within:ring-melagri-primary/10">
                                                 <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                                                <form
-                                                    onSubmit={(e) => {
-                                                        e.preventDefault();
-                                                        const val = (e.currentTarget.elements[0] as HTMLInputElement).value;
-                                                        const params = new URLSearchParams(searchParams.toString());
-                                                        if (val) params.set("search", val);
-                                                        else params.delete("search");
-                                                        router.push(`/products?${params.toString()}`);
-                                                    }}
-                                                    className="flex-1"
-                                                >
+                                                <div className="flex-1">
                                                     <input
                                                         type="text"
                                                         placeholder="Quick filter products..."
-                                                        defaultValue={searchParams.get("search") || ""}
+                                                        value={localSearch}
+                                                        onChange={(e) => setLocalSearch(e.target.value)}
                                                         className="w-full bg-transparent border-none focus:ring-0 text-sm font-bold placeholder:text-gray-300 py-1"
                                                     />
-                                                </form>
+                                                </div>
                                                 <div className="bg-melagri-primary/10 px-3 py-1 rounded-lg">
                                                     <p className="text-[10px] text-melagri-primary font-black uppercase tracking-wider">
                                                         Deep Filter
