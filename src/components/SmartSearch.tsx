@@ -14,9 +14,9 @@ export const fuzzySearch = (products: any[], query: string) => {
     const fuseOptions = {
         keys: [
             { name: 'name', weight: 0.4 },
-            { name: 'tags', weight: 0.3 },
-            { name: 'category', weight: 0.2 },
-            { name: 'description', weight: 0.1 }
+            { name: 'brand', weight: 0.3 },
+            { name: 'tags', weight: 0.2 },
+            { name: 'category', weight: 0.1 }
         ],
         threshold: 0.3,
         includeScore: true
@@ -51,9 +51,9 @@ export default function SmartSearch() {
     const fuseOptions = {
         keys: [
             { name: 'name', weight: 0.4 },
-            { name: 'tags', weight: 0.3 },
-            { name: 'category', weight: 0.2 },
-            { name: 'description', weight: 0.1 }
+            { name: 'brand', weight: 0.3 },
+            { name: 'tags', weight: 0.2 },
+            { name: 'category', weight: 0.1 }
         ],
         threshold: 0.3,
         includeScore: true
