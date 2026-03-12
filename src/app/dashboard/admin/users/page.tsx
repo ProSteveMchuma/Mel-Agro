@@ -11,7 +11,7 @@ export default function UserManagement() {
 
     const filteredUsers = users.filter(user =>
         user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+        (user.email && user.email.toLowerCase().includes(searchTerm.toLowerCase()))
     );
 
     return (
@@ -66,7 +66,7 @@ export default function UserManagement() {
                                             </div>
                                             <div>
                                                 <div className="font-medium text-gray-900 group-hover:text-melagri-primary transition-colors">{user.name}</div>
-                                                <div className="text-xs text-gray-500">{user.email}</div>
+                                                <div className="text-xs text-gray-500">{user.email || user.phone || 'No Contact'}</div>
                                             </div>
                                         </div>
                                     </td>

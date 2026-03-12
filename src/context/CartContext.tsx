@@ -77,7 +77,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                     await setDoc(doc(db, 'carts', user.uid), {
                         userId: user.uid,
                         userName: user.name || 'Anonymous Farmer',
-                        userEmail: user.email,
+                        userEmail: user.email || '',
                         userPhone: user.phone || '',
                         items: cartItems,
                         total: cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0),

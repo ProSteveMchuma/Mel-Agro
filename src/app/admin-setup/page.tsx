@@ -35,7 +35,7 @@ export default function AdminSetupPage() {
             const userSnap = await getDoc(userRef);
             if (!userSnap.exists()) {
                 await setDoc(userRef, {
-                    email: user.email,
+                    email: user.email || '',
                     role: 'admin',
                     createdAt: new Date().toISOString()
                 });
@@ -80,7 +80,7 @@ export default function AdminSetupPage() {
             <div className="bg-white p-8 rounded-2xl shadow-lg max-w-md w-full text-center">
                 <h1 className="text-2xl font-bold mb-2">Claim Admin Access</h1>
                 <p className="text-gray-600 mb-6">
-                    Current User: <span className="font-mono font-bold">{user?.email}</span>
+                    Current User: <span className="font-mono font-bold">{user?.email || user?.phone || 'No Contact Info'}</span>
                 </p>
 
                 {message && (

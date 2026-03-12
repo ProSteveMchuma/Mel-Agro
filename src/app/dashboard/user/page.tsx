@@ -542,7 +542,7 @@ export default function UserDashboard() {
                                 </div>
                                 <div className="overflow-hidden">
                                     <p className="font-bold text-gray-900 truncate leading-tight">{user.name}</p>
-                                    <p className="text-[10px] text-gray-400 font-medium truncate">{user.email}</p>
+                                    <p className="text-[10px] text-gray-400 font-medium truncate">{user.email || user.phone || 'No contact email'}</p>
                                 </div>
                             </div>
 

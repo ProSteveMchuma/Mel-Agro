@@ -20,7 +20,7 @@ export interface ChatMessage {
 export interface Conversation {
     id: string; // userId
     userName: string;
-    userEmail: string;
+    userEmail?: string;
     lastMessage: string;
     lastMessageAt: any;
     unreadCount: number;
@@ -130,7 +130,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         await setDoc(doc(db, 'conversations', targetId), {
             id: targetId,
             userName: (user.role === 'admin' || user.role === 'super-admin') ? conversations.find(c => c.id === targetId)?.userName : user.name, // Maintain user name
-            userEmail: (user.role === 'admin' || user.role === 'super-admin') ? conversations.find(c => c.id === targetId)?.userEmail : user.email,
+            userEmail: ((user.role === 'admin' || user.role === 'super-admin') ? conversations.find(c => c.id === targetId)?.userEmail : user.email) || '',
             lastMessage: type === 'order-proposal' ? '📦 Sent an Order Proposal' : content,
             lastMessageAt: serverTimestamp(),
             unreadCount: 0 // Resetting logic would go here ideally 

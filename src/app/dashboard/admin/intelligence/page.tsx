@@ -87,7 +87,7 @@ export default function IntelligencePage() {
                                     </div>
                                     <div>
                                         <h3 className="text-lg font-bold text-gray-900">{user.name}</h3>
-                                        <p className="text-sm text-gray-500">{user.email}</p>
+                                        <p className="text-sm text-gray-500">{user.email || user.phone || 'No Contact'}</p>
                                     </div>
                                 </div>
                                 <div className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${intentColor}`}>

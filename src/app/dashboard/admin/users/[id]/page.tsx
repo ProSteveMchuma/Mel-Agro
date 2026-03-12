@@ -54,7 +54,7 @@ export default function UserProfilePage() {
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
-                        <p className="text-gray-500 text-sm">{user.email}</p>
+                        <p className="text-gray-500 text-sm">{user.email || user.phone || 'No Contact Email'}</p>
                         <div className="flex items-center gap-2 mt-2">
                             <select
                                 value={user.role}

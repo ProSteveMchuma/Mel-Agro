@@ -5,7 +5,9 @@ export async function POST(request: Request) {
         const { amount, email, orderId, items } = await request.json();
         const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL;
 
-        if (!amount || !email || !orderId) {
+        const customerEmail = email || `customer_${orderId}@melagri-temp.com`;
+
+        if (!amount || !customerEmail || !orderId) {
             return NextResponse.json({ success: false, message: 'Missing required payment data' }, { status: 400 });
         }
 
@@ -30,7 +32,7 @@ export async function POST(request: Request) {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                email,
+                email: customerEmail,
                 amount: Math.round(amount * 100),
                 reference: `MEL_${orderId}_${Date.now()}`,
                 callback_url: `${origin}/checkout/success?orderId=${orderId}`,
