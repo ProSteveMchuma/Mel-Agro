@@ -193,19 +193,28 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         // Async: Notify Admins (Failure here doesn't roll back the order)
         try {
-            const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
-            const adminDocs = await getDocs(adminsQuery);
-            adminDocs.forEach(async (adminDoc) => {
-                await addDoc(collection(db, 'notifications'), {
-                    userId: adminDoc.id,
-                    message: `New Order #${orderId.substr(0, 5)} placed by ${orderData.userEmail || 'Customer'}`,
-                    date,
-                    read: false,
-                    type: 'system'
+            // Only try to query admins if current user is an admin or we have a more robust way
+            // In a client-side context, a regular user CANNOT query other users (security rule)
+            // We'll skip this query if it's likely to fail or just catch the error properly
+            if (user?.role === 'admin' || user?.role === 'super-admin') {
+                const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
+                const adminDocs = await getDocs(adminsQuery);
+                adminDocs.forEach(async (adminDoc) => {
+                    await addDoc(collection(db, 'notifications'), {
+                        userId: adminDoc.id,
+                        message: `New Order #${orderId.substr(0, 5)} placed by ${orderData.userEmail || 'Customer'}`,
+                        date,
+                        read: false,
+                        type: 'system'
+                    }).catch(e => console.warn("Internal notif error:", e));
                 });
-            });
+            } else {
+                // For regular users, we can't query other users. 
+                // Suggestion: Use a Cloud Function trigger or a fixed admin ID if absolutely necessary.
+                console.log("Skipping admin notification query for regular user to avoid permission error.");
+            }
         } catch (error) {
-            console.warn("Failed to notify admins, but order was placed:", error);
+            console.warn("Handled permission error in admin notification, order was still placed:", error);
         }
 
         // 5. Trigger Unified Customer Notifications (Email, SMS, WhatsApp)
