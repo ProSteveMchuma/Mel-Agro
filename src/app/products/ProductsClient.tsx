@@ -120,9 +120,8 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                         {/* Page Title & Controls */}
                         <div className="mb-6 md:mb-8 group">
                             {/* Desktop Title - Hidden on Mobile */}
-                            <div className="hidden md:flex items-center gap-4 mb-3">
-                                <span className="h-1 w-12 bg-melagri-primary rounded-full group-hover:w-20 transition-all duration-500"></span>
-                                <h1 className="text-5xl font-black text-gray-900 tracking-tighter uppercase">
+                            <div className="hidden md:flex items-center mb-3">
+                                <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">
                                     {currentCategory || "Global Catalogue"}
                                 </h1>
                             </div>

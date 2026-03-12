@@ -91,14 +91,20 @@ export async function getProductsPage(
 export async function getUniqueBrands(): Promise<string[]> {
     try {
         const snapshot = await getDocs(collection(db, "products"));
-        const brands = new Set<string>();
+        const brandCounts: Record<string, number> = {};
+        
         snapshot.forEach(doc => {
             const data = doc.data();
             if (data.brand && typeof data.brand === 'string') {
-                brands.add(data.brand);
+                brandCounts[data.brand] = (brandCounts[data.brand] || 0) + 1;
             }
         });
-        return Array.from(brands).sort();
+
+        // Sort by frequency descending, then alphabetically
+        return Object.keys(brandCounts).sort((a, b) => {
+            const diff = brandCounts[b] - brandCounts[a];
+            return diff !== 0 ? diff : a.localeCompare(b);
+        });
     } catch (error) {
         console.error("Error fetching unique brands:", error);
         return [];

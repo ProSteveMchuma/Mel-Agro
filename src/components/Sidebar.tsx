@@ -54,6 +54,9 @@ export default function Sidebar({
         // On mobile, we might want to close the filter drawer here
     };
 
+    const [showAllBrands, setShowAllBrands] = useState(false);
+    const brandsToDisplay = showAllBrands ? brands : brands.slice(0, 10);
+
     return (
         <aside className="w-full lg:w-64 bg-white border border-gray-100 rounded-3xl h-fit sticky top-24 shadow-sm overflow-hidden">
             <div className="p-8 space-y-10">
@@ -133,7 +136,7 @@ export default function Sidebar({
                             <span className="w-8 h-[1px] bg-gray-100 flex-grow ml-4"></span>
                         </h3>
                         <div className="space-y-3">
-                            {brands.map((brand, idx) => (
+                            {brandsToDisplay.map((brand, idx) => (
                                 <label key={idx} className="flex items-center gap-4 cursor-pointer group">
                                     <div className="relative flex items-center">
                                         <input
@@ -146,6 +149,19 @@ export default function Sidebar({
                                     <span className="text-sm font-bold text-gray-600 group-hover:text-melagri-primary transition-colors">{brand}</span>
                                 </label>
                             ))}
+                            
+                            {brands.length > 10 && (
+                                <button
+                                    onClick={() => setShowAllBrands(!showAllBrands)}
+                                    className="text-[10px] font-black text-melagri-primary uppercase tracking-widest hover:underline pt-2 flex items-center gap-2"
+                                >
+                                    {showAllBrands ? (
+                                        <>Show Less <span className="text-lg">↑</span></>
+                                    ) : (
+                                        <>View More ({brands.length - 10} more) <span className="text-lg">↓</span></>
+                                    )}
+                                </button>
+                            )}
                         </div>
                     </div>
                 )}
