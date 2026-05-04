@@ -27,6 +27,8 @@ export default function AdminOrderDetailsPage() {
     const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
     const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
     const [isReverseModalOpen, setIsReverseModalOpen] = useState(false);
+    const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+    const [reminderChannels, setReminderChannels] = useState<{ sms: boolean; email: boolean }>({ sms: true, email: true });
     const [verifyCode, setVerifyCode] = useState('');
     const [reverseRemarks, setReverseRemarks] = useState('');
     const [mpesaActionLoading, setMpesaActionLoading] = useState<string | null>(null);
@@ -140,6 +142,37 @@ export default function AdminOrderDetailsPage() {
             }
         } catch (e: any) {
             toast.error(e?.message || "Verification failed", { id: t });
+        } finally {
+            setMpesaActionLoading(null);
+        }
+    };
+
+    const handleSendReminder = async () => {
+        if (!order) return;
+        const channels = (Object.keys(reminderChannels) as Array<keyof typeof reminderChannels>).filter(c => reminderChannels[c]);
+        if (channels.length === 0) {
+            toast.error("Select at least one channel");
+            return;
+        }
+        setMpesaActionLoading('reminder');
+        const t = toast.loading("Sending reminder...");
+        try {
+            const res = await authedFetch('/api/admin/orders/send-payment-reminder', {
+                orderId: order.id,
+                channels,
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success(data.message, { id: t, duration: 5000 });
+                setIsReminderModalOpen(false);
+            } else {
+                const reasons = data.results
+                    ? Object.entries(data.results).map(([c, r]: any) => `${c}: ${r.reason || 'failed'}`).join(' • ')
+                    : '';
+                toast.error(`${data.message || 'Reminder failed'}${reasons ? ` — ${reasons}` : ''}`, { id: t, duration: 7000 });
+            }
+        } catch (e: any) {
+            toast.error(e?.message || 'Reminder failed', { id: t });
         } finally {
             setMpesaActionLoading(null);
         }
@@ -424,12 +457,27 @@ export default function AdminOrderDetailsPage() {
                         </div>
 
                         {order.paymentStatus !== 'Paid' ? (
-                            <button
-                                onClick={() => setIsPaymentModalOpen(true)}
-                                className="w-full bg-green-600 text-white py-4 rounded-2xl hover:bg-green-700 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-600/10 active:scale-95"
-                            >
-                                Record Payment
-                            </button>
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => setIsPaymentModalOpen(true)}
+                                    className="w-full bg-green-600 text-white py-4 rounded-2xl hover:bg-green-700 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-600/10 active:scale-95"
+                                >
+                                    Record Payment
+                                </button>
+                                <button
+                                    onClick={() => setIsReminderModalOpen(true)}
+                                    disabled={mpesaActionLoading === 'reminder'}
+                                    className="w-full bg-amber-50 text-amber-700 border border-amber-200 py-3 rounded-2xl hover:bg-amber-100 transition-all font-black uppercase text-[10px] tracking-widest active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
+                                >
+                                    <span>📨</span>
+                                    {mpesaActionLoading === 'reminder' ? 'Sending Reminder...' : 'Send Payment Reminder'}
+                                </button>
+                                {order.lastReminderAt && (
+                                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest text-center">
+                                        Last sent: {new Date(order.lastReminderAt).toLocaleString()}{order.reminderCount > 1 ? ` · ${order.reminderCount}× total` : ''}
+                                    </p>
+                                )}
+                            </div>
                         ) : (
                             <button
                                 onClick={() => updateOrderPaymentStatus(order.id, 'Unpaid')}
@@ -762,6 +810,91 @@ export default function AdminOrderDetailsPage() {
                                 className="flex-1 py-5 text-[10px] font-black text-white bg-red-600 hover:bg-red-700 rounded-[1.5rem] transition-all shadow-xl shadow-red-600/20 uppercase tracking-[0.2em] active:scale-95 disabled:opacity-60"
                             >
                                 {mpesaActionLoading === 'reverse' ? 'Reversing...' : 'Confirm Reversal'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Payment Reminder Modal */}
+            {isReminderModalOpen && (
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 transform animate-in slide-in-from-bottom-8 duration-300">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600">
+                                <span className="text-2xl">📨</span>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Send Payment Reminder</h2>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Nudge the customer to complete payment</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2 mb-6">
+                            <div className="flex justify-between text-xs">
+                                <span className="font-black text-gray-400 uppercase">Order</span>
+                                <span className="font-mono font-black text-gray-900">#{order.id.slice(0, 8)}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="font-black text-gray-400 uppercase">Outstanding</span>
+                                <span className="font-black text-amber-700 text-base">KES {Number(order.total).toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between text-xs">
+                                <span className="font-black text-gray-400 uppercase">Customer</span>
+                                <span className="font-bold text-gray-900 text-[10px]">{order.userName || order.userEmail || order.phone || 'Unknown'}</span>
+                            </div>
+                            {order.lastReminderAt && (
+                                <div className="flex justify-between text-xs pt-2 border-t border-gray-100">
+                                    <span className="font-black text-gray-400 uppercase">Last reminder</span>
+                                    <span className="text-[10px] text-gray-600">{new Date(order.lastReminderAt).toLocaleString()}{order.reminderCount > 1 ? ` (${order.reminderCount}×)` : ''}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="space-y-3 mb-8">
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Send via</p>
+                            <label className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${reminderChannels.sms ? 'border-melagri-primary bg-green-50/50' : 'border-gray-100 hover:border-gray-200'} ${!order.phone ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <div>
+                                    <p className="font-bold text-gray-900 text-sm">SMS</p>
+                                    <p className="text-[10px] text-gray-500 mt-0.5">{order.phone || 'No phone on order'}</p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={reminderChannels.sms}
+                                    disabled={!order.phone}
+                                    onChange={(e) => setReminderChannels(c => ({ ...c, sms: e.target.checked }))}
+                                    className="w-5 h-5 rounded accent-melagri-primary cursor-pointer"
+                                />
+                            </label>
+                            <label className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${reminderChannels.email ? 'border-melagri-primary bg-green-50/50' : 'border-gray-100 hover:border-gray-200'} ${!order.userEmail ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <div>
+                                    <p className="font-bold text-gray-900 text-sm">Email</p>
+                                    <p className="text-[10px] text-gray-500 mt-0.5">{order.userEmail || 'No email on order'}</p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={reminderChannels.email}
+                                    disabled={!order.userEmail}
+                                    onChange={(e) => setReminderChannels(c => ({ ...c, email: e.target.checked }))}
+                                    className="w-5 h-5 rounded accent-melagri-primary cursor-pointer"
+                                />
+                            </label>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setIsReminderModalOpen(false)}
+                                disabled={mpesaActionLoading === 'reminder'}
+                                className="flex-1 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleSendReminder}
+                                disabled={mpesaActionLoading === 'reminder' || (!reminderChannels.sms && !reminderChannels.email)}
+                                className="flex-[1.5] py-5 text-[10px] font-black text-white bg-amber-600 hover:bg-amber-700 rounded-[1.5rem] transition-all shadow-xl shadow-amber-600/20 uppercase tracking-[0.2em] active:scale-95 disabled:opacity-60"
+                            >
+                                {mpesaActionLoading === 'reminder' ? 'Sending...' : 'Send Now'}
                             </button>
                         </div>
                     </div>

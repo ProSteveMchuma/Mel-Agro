@@ -1054,7 +1054,7 @@ export default function CheckoutPage() {
                                                             <span className="text-xl">📲</span> Pay via M-Pesa Buy Goods
                                                         </h3>
                                                         <p className="text-xs text-gray-500 mb-3">Lipa na M-Pesa → Buy Goods and Services → Enter Till Number</p>
-                                                        <div className="bg-white p-4 rounded-xl border border-gray-200 mb-6 space-y-3">
+                                                        <div className="bg-white p-4 rounded-xl border border-gray-200 mb-4 space-y-3">
                                                             <div className="flex justify-between items-center border-b border-gray-100 pb-2">
                                                                 <span className="text-gray-500 text-sm font-medium">Till No.</span>
                                                                 <span className="font-black text-xl text-gray-900 tracking-wider">3130847</span>
@@ -1065,15 +1065,22 @@ export default function CheckoutPage() {
                                                             </div>
                                                         </div>
 
+                                                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 flex items-start gap-2">
+                                                            <span className="text-emerald-600 text-sm mt-0.5">⚡</span>
+                                                            <p className="text-xs text-emerald-800 leading-relaxed">
+                                                                <span className="font-bold">Just pay — we&apos;ll detect it automatically</span> within seconds. The code field below is only a backup if it doesn&apos;t show up.
+                                                            </p>
+                                                        </div>
+
                                                         <div className="space-y-2">
-                                                            <label className="block text-sm font-bold text-gray-900">Enter M-Pesa Transaction Code</label>
+                                                            <label className="block text-sm font-bold text-gray-900">M-Pesa Transaction Code <span className="text-gray-400 font-normal">(optional)</span></label>
                                                             <Input
                                                                 name="transactionCode"
                                                                 placeholder="e.g. QHG45..."
                                                                 className="uppercase tracking-widest font-mono"
                                                                 format="uppercase"
                                                             />
-                                                            <p className="text-xs text-gray-500">You will receive this code in the SMS from M-Pesa.</p>
+                                                            <p className="text-xs text-gray-500">Only enter if our auto-detection didn&apos;t catch your payment.</p>
                                                         </div>
                                                     </div>
                                                 )}

@@ -107,5 +107,53 @@ export const CommunicationTemplates = {
             smsBody: `Habari ${order.userName || 'Farmer'}, your Mel-Agri order #${orderIdShort} status is now: ${status}. Thank you for farming with us!`,
             emailBody: `<h1>Order Update</h1><p>Your order #${orderIdShort} is now <strong>${status}</strong>.</p>`
         };
-    }
+    },
+
+    getPaymentReminder: (order: Order, opts: { tillNumber?: string } = {}) => {
+        const orderIdShort = order.id.slice(0, 5).toUpperCase();
+        const userName = order.userName || "Farmer";
+        const amount = Number(order.total) || 0;
+        const tillNumber = opts.tillNumber || process.env.MPESA_TILL_NUMBER || '3130847';
+        const dashboardUrl = `${SITE_URL}/dashboard/user?orderId=${order.id}`;
+
+        const smsBody = `Habari ${userName}! Your Mel-Agri order #${orderIdShort} (KES ${amount.toLocaleString()}) is awaiting payment. Complete it: ${dashboardUrl} or pay via M-Pesa Buy Goods Till ${tillNumber}.`;
+
+        const emailSubject = `Payment Reminder - Mel-Agri #${orderIdShort}`;
+        const emailHtml = `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 20px; overflow: hidden;">
+                <div style="background: #f59e0b; padding: 40px; text-align: center; color: white;">
+                    <h1 style="margin: 0; font-size: 24px;">Reminder: Order Awaiting Payment</h1>
+                    <p style="margin-top: 10px; opacity: 0.9;">Order Reference: #${orderIdShort}</p>
+                </div>
+                <div style="padding: 40px;">
+                    <p>Habari <strong>${userName}</strong>,</p>
+                    <p>Just a quick reminder — your Mel-Agri order is ready to go as soon as we receive payment.</p>
+                    <div style="background: #fffbeb; padding: 20px; border-radius: 12px; margin: 30px 0; border: 1px solid #fde68a;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <tr><td style="padding: 6px 0; color: #64748b;">Order</td><td style="padding: 6px 0; text-align: right; font-weight: bold;">#${orderIdShort}</td></tr>
+                            <tr><td style="padding: 6px 0; color: #64748b;">Amount Due</td><td style="padding: 6px 0; text-align: right; font-weight: bold; color: #b45309;">KES ${amount.toLocaleString()}</td></tr>
+                            <tr><td style="padding: 6px 0; color: #64748b;">Items</td><td style="padding: 6px 0; text-align: right;">${order.items.length}</td></tr>
+                        </table>
+                    </div>
+
+                    <div style="text-align: center; margin: 32px 0;">
+                        <a href="${dashboardUrl}" style="background: #22c55e; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; margin: 4px;">Complete Payment</a>
+                    </div>
+
+                    <div style="background: #f0fdf4; padding: 16px; border-radius: 12px; border: 1px solid #bbf7d0; font-size: 13px; color: #166534;">
+                        <strong>Or pay via M-Pesa right now:</strong><br>
+                        Lipa na M-Pesa &rarr; Buy Goods and Services &rarr; Till <strong style="font-family: monospace; font-size: 15px;">${tillNumber}</strong> &rarr; Amount <strong>KES ${amount.toLocaleString()}</strong>.
+                        We&rsquo;ll detect your payment automatically and notify you within seconds.
+                    </div>
+
+                    <p style="font-size: 12px; color: #94a3b8; margin-top: 30px;">If you&rsquo;ve already paid, please ignore this reminder — payments take a moment to reflect.</p>
+                </div>
+                <div style="background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+                    &copy; ${new Date().getFullYear()} Mel-Agri Kenya. All rights reserved.
+                </div>
+            </div>
+        `;
+
+        return { subject: emailSubject, emailBody: emailHtml, smsBody };
+    },
 };

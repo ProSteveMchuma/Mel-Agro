@@ -94,31 +94,61 @@ export default function MpesaSettingsPage() {
                 {loading ? (
                     <p className="text-gray-400 text-sm">Loading...</p>
                 ) : config ? (
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-2">
-                            <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-[10px] font-black uppercase tracking-widest">
-                                {config.success ? 'Registered' : 'Registration may have failed'}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                                Last registered {config.registeredAt ? new Date(config.registeredAt).toLocaleString() : 'unknown'}
-                            </span>
-                        </div>
-                        <div className="bg-gray-50 rounded-2xl p-4 space-y-2 text-sm">
-                            <div className="flex justify-between"><span className="text-gray-500 font-bold">Confirmation URL</span><code className="font-mono text-xs break-all max-w-md text-right">{config.confirmationURL}</code></div>
-                            <div className="flex justify-between"><span className="text-gray-500 font-bold">Validation URL</span><code className="font-mono text-xs break-all max-w-md text-right">{config.validationURL}</code></div>
-                            <div className="flex justify-between"><span className="text-gray-500 font-bold">Response Type</span><span className="font-bold">{config.responseType}</span></div>
-                            <div className="flex justify-between"><span className="text-gray-500 font-bold">Short Code</span><code className="font-mono text-xs">{config.shortCode}</code></div>
-                            <div className="flex justify-between"><span className="text-gray-500 font-bold">Registered By</span><span className="text-xs">{config.registeredByEmail}</span></div>
-                        </div>
-                        {config.response?.errorMessage && (
-                            <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-700">
-                                <p className="font-bold mb-1">Daraja error</p>
-                                <p>{config.response.errorMessage}</p>
+                    (() => {
+                        const liveBase = (process.env.NEXT_PUBLIC_BASE_URL || (typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.host}` : '')).replace(/\/$/, '');
+                        const registeredHost = (() => { try { return new URL(config.confirmationURL).host; } catch { return ''; } })();
+                        const liveHost = (() => { try { return new URL(liveBase).host; } catch { return ''; } })();
+                        const domainMismatch = registeredHost && liveHost && registeredHost !== liveHost;
+                        const fullySetUp = config.success && !domainMismatch;
+                        return (
+                            <div className="space-y-4">
+                                {fullySetUp && (
+                                    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3">
+                                        <span className="text-2xl">✅</span>
+                                        <div>
+                                            <p className="font-black text-emerald-900 text-sm">Customers paying to Till {config.shortCode || '3130847'} are now auto-detected</p>
+                                            <p className="text-xs text-emerald-800 mt-1">No admin verification needed — orders flip to Paid within seconds of the M-Pesa SMS.</p>
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${config.success ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                        {config.success ? 'Registered' : 'Registration may have failed'}
+                                    </span>
+                                    <span className="text-xs text-gray-500">
+                                        Last registered {config.registeredAt ? new Date(config.registeredAt).toLocaleString() : 'unknown'}
+                                    </span>
+                                </div>
+                                {domainMismatch && (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
+                                        <p className="font-bold mb-1">⚠️ Domain mismatch</p>
+                                        <p className="text-xs">URL registered with Safaricom uses <code className="font-mono">{registeredHost}</code> but this site is running at <code className="font-mono">{liveHost}</code>. Re-register below so Safaricom can reach the right host.</p>
+                                    </div>
+                                )}
+                                <div className="bg-gray-50 rounded-2xl p-4 space-y-2 text-sm">
+                                    <div className="flex justify-between"><span className="text-gray-500 font-bold">Confirmation URL</span><code className="font-mono text-xs break-all max-w-md text-right">{config.confirmationURL}</code></div>
+                                    <div className="flex justify-between"><span className="text-gray-500 font-bold">Validation URL</span><code className="font-mono text-xs break-all max-w-md text-right">{config.validationURL}</code></div>
+                                    <div className="flex justify-between"><span className="text-gray-500 font-bold">Response Type</span><span className="font-bold">{config.responseType}</span></div>
+                                    <div className="flex justify-between"><span className="text-gray-500 font-bold">Short Code</span><code className="font-mono text-xs">{config.shortCode}</code></div>
+                                    <div className="flex justify-between"><span className="text-gray-500 font-bold">Registered By</span><span className="text-xs">{config.registeredByEmail}</span></div>
+                                </div>
+                                {config.response?.errorMessage && (
+                                    <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-700">
+                                        <p className="font-bold mb-1">Daraja error</p>
+                                        <p>{config.response.errorMessage}</p>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
+                        );
+                    })()
                 ) : (
-                    <p className="text-gray-500 text-sm">No C2B URLs registered yet.</p>
+                    <div className="space-y-3">
+                        <p className="text-gray-700 text-sm">No C2B URLs registered yet.</p>
+                        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+                            <p className="font-bold">Customers currently have to type their M-Pesa receipt code manually.</p>
+                            <p className="text-xs mt-1">Register your URLs below and Safaricom will start auto-confirming Till payments — typing becomes optional.</p>
+                        </div>
+                    </div>
                 )}
             </div>
 

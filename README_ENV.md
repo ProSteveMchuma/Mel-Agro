@@ -63,6 +63,24 @@ Once deployed, an admin should visit `/dashboard/admin/settings/mpesa` and click
 
 You only need to register once per environment (sandbox vs production). Re-register if your domain changes.
 
+### Three levels of M-Pesa payment automation
+
+The codebase supports three escalating levels of automation for manual M-Pesa (Buy Goods) payments. Pick what fits your operations:
+
+| Level | Customer experience | Admin experience | Setup required |
+|-------|---------------------|------------------|----------------|
+| **1. Manual typing** (default) | Customer pays to till, returns to site, types the receipt code | Admin opens order, clicks **Approve** in the Verify Manual modal | None — works out of the box |
+| **2. Daraja auto-verify** | Customer pays to till, returns to site, types the receipt code | Admin opens order, clicks **Auto-Verify with Safaricom** in the Verify Manual modal — Daraja TransactionStatus API confirms the receipt and auto-marks the order Paid | `MPESA_INITIATOR_NAME`, `MPESA_INITIATOR_PASSWORD`, and the production cert (`ProductionCertificate.cer`) at `src/lib/mpesa-certs/` |
+| **3. C2B auto-match** | Customer just pays — never returns to type anything | Nothing — system marks order Paid within ~10 seconds via the C2B confirmation webhook | One-time URL registration via `/dashboard/admin/settings/mpesa` after production deploy |
+
+**Recommendation:** Run Level 3 + Level 1 (Level 2 is the in-between, optional). Level 3 covers ~95% of payments without admin work; Level 1 stays as a manual fallback for the rare case where a customer's payment doesn't land in the C2B confirmation feed (rare but possible). The checkout UI already nudges customers in this direction — the receipt-code input is now optional with the message *"Just pay — we'll detect it automatically. The code below is only needed if it doesn't show up."*
+
+### Admin payment reminders
+
+Admins can dispatch SMS + email reminders for any unpaid order from the order detail page (under Financial Settlement → **Send Payment Reminder**). The reminder includes the outstanding amount, a deep link to the user's dashboard for one-tap M-Pesa retry, and the Till number for direct Buy Goods payment. Each reminder is recorded on the order doc (`reminders[]`, `reminderCount`, `lastReminderAt`) so admins can see how many times a customer has been nudged.
+
+The reminder feature uses the same SMTP + Africa's Talking credentials as the rest of the comms stack — no extra setup beyond what's already needed for order confirmations.
+
 ## Paystack API (Required for Card Payments)
 Get these from the [Paystack Dashboard](https://dashboard.paystack.com/).
 ```env
