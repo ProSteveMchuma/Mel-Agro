@@ -10,6 +10,7 @@ import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { db } from '@/lib/firebase';
 import { generateWhatsAppMessage, getWhatsAppUrl } from '@/lib/whatsapp';
 import { useBehavior } from '@/context/BehaviorContext';
@@ -174,7 +175,7 @@ export default function CheckoutPage() {
                 phone: data.shipping.phone,
                 paymentMethod: data.paymentMethod === 'whatsapp' ? 'WhatsApp Order' :
                     (data.paymentMethod === 'cod' ? 'Cash on Delivery' :
-                        (data.paymentMethod === 'manual_mpesa' ? `M-Pesa Paybill (${data.transactionCode})` : 'M-Pesa')),
+                        (data.paymentMethod === 'manual_mpesa' ? `M-Pesa Till (${data.transactionCode})` : 'M-Pesa')),
                 paymentStatus: data.paymentMethod === 'whatsapp' ? 'Pending WhatsApp' :
                     (data.paymentMethod === 'manual_mpesa' ? 'Pending Verification' : 'Unpaid'),
                 shippingMethod: data.shippingMethod,
@@ -219,11 +220,15 @@ export default function CheckoutPage() {
 
                 const loadingToast = toast.loading("Initiating M-Pesa prompt...");
 
-                // 1. Trigger STK Push
+                const idToken = await getAuth().currentUser?.getIdToken();
                 const response = await fetch('/api/payment/mpesa', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+                    },
                     body: JSON.stringify({
+                        orderId: newOrder.id,
                         phoneNumber: data.shipping.phone,
                         amount: total
                     })
@@ -231,47 +236,78 @@ export default function CheckoutPage() {
 
                 const resData = await response.json();
 
-                if (resData.success) {
-                    toast.success("Sent! Check your phone to pay.", { id: loadingToast });
-
-                    // 2. Save CheckoutRequestID to Order
-                    const orderRef = doc(db, 'orders', newOrder.id);
-                    await updateDoc(orderRef, {
-                        checkoutRequestId: resData.checkoutRequestID
-                    });
-
-                    // 3. Listen for Payment Confirmation
-                    const unsubscribe = onSnapshot(orderRef, (snapshot) => {
-                        const updatedOrder = snapshot.data();
-                        if (updatedOrder?.paymentStatus === 'Paid') {
-                            toast.success("Payment Received! Order #" + newOrder.id.slice(0, 5));
-                            unsubscribe();
-                            clearCart();
-                            router.push(`/checkout/success?orderId=${newOrder.id}`);
-                        } else if (updatedOrder?.paymentStatus === 'Failed') {
-                            const errorMsg = getMpesaErrorMessage(updatedOrder.paymentFailureReason || 'Unknown');
-                            toast.error(`Payment Failed: ${errorMsg}`, { duration: 6000 });
-                            unsubscribe();
-                            setIsProcessing(false);
-                        }
-                    });
-
-                    // Auto-timeout listener after 2 minutes
-                    setTimeout(() => {
-                        unsubscribe();
-                        if (isProcessing) {
-                            toast("Payment check timed out. Please check order status in dashboard.");
-                            clearCart();
-                            router.push(`/dashboard/user`);
-                        }
-                    }, 120000);
-
-                    return;
-                } else {
+                if (!resData.success) {
                     toast.error(resData.message || "Failed to initiate M-Pesa.", { id: loadingToast });
                     setIsProcessing(false);
                     return;
                 }
+
+                toast.success("Sent! Check your phone to pay.", { id: loadingToast });
+
+                const orderRef = doc(db, 'orders', newOrder.id);
+                let resolved = false;
+                let pollTimer: ReturnType<typeof setInterval> | null = null;
+                let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+
+                const finish = (status: 'paid' | 'failed' | 'timeout', msg?: string) => {
+                    if (resolved) return;
+                    resolved = true;
+                    if (pollTimer) clearInterval(pollTimer);
+                    if (timeoutTimer) clearTimeout(timeoutTimer);
+                    unsubscribe();
+
+                    if (status === 'paid') {
+                        toast.success("Payment Received! Order #" + newOrder.id.slice(0, 5));
+                        clearCart();
+                        router.push(`/checkout/success?orderId=${newOrder.id}`);
+                    } else if (status === 'failed') {
+                        toast.error(`Payment Failed: ${msg || 'Unknown error'}`, { duration: 6000 });
+                        setIsProcessing(false);
+                    } else {
+                        toast("Payment check timed out. Visit your dashboard to retry.", { duration: 6000 });
+                        clearCart();
+                        router.push(`/dashboard/user?orderId=${newOrder.id}`);
+                    }
+                };
+
+                const unsubscribe = onSnapshot(orderRef, (snapshot) => {
+                    const updatedOrder = snapshot.data();
+                    if (updatedOrder?.paymentStatus === 'Paid') {
+                        finish('paid');
+                    } else if (updatedOrder?.paymentStatus === 'Failed') {
+                        const errorMsg = updatedOrder.paymentFailureMessage ||
+                            getMpesaErrorMessage(updatedOrder.paymentFailureCode || updatedOrder.paymentFailureReason || 'Unknown');
+                        finish('failed', errorMsg);
+                    }
+                });
+
+                const startPolling = () => {
+                    pollTimer = setInterval(async () => {
+                        if (resolved) return;
+                        try {
+                            const tok = await getAuth().currentUser?.getIdToken();
+                            const r = await fetch('/api/payment/mpesa/query', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
+                                },
+                                body: JSON.stringify({ orderId: newOrder.id }),
+                            });
+                            const j = await r.json();
+                            if (j.paid) finish('paid');
+                            else if (j.paymentStatus === 'Failed') finish('failed', j.message);
+                        } catch {
+                            // ignore transient errors
+                        }
+                    }, 5000);
+                };
+
+                setTimeout(() => { if (!resolved) startPolling(); }, 30000);
+
+                timeoutTimer = setTimeout(() => finish('timeout'), 120000);
+
+                return;
             }
 
             if (data.paymentMethod === 'card') {
@@ -593,7 +629,7 @@ export default function CheckoutPage() {
                                                         <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center p-1 border border-gray-100 shadow-sm text-green-600 font-black text-xs">
                                                             P
                                                         </div>
-                                                        <span className="font-bold text-gray-900">Paybill / Till</span>
+                                                        <span className="font-bold text-gray-900">Buy Goods (Till)</span>
                                                     </div>
                                                     <p className="text-sm text-gray-500 font-medium">Pay manually via M-Pesa Menu.</p>
                                                 </div>
@@ -697,16 +733,13 @@ export default function CheckoutPage() {
                                                 {paymentMethod === 'manual_mpesa' && (
                                                     <div className="bg-[#f0f9f1] p-6 rounded-2xl border border-green-100 animate-in fade-in slide-in-from-top-2">
                                                         <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-4">
-                                                            <span className="text-xl">📲</span> Pay via M-Pesa Paybill
+                                                            <span className="text-xl">📲</span> Pay via M-Pesa Buy Goods
                                                         </h3>
+                                                        <p className="text-xs text-gray-500 mb-3">Lipa na M-Pesa → Buy Goods and Services → Enter Till Number</p>
                                                         <div className="bg-white p-4 rounded-xl border border-gray-200 mb-6 space-y-3">
                                                             <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                                                                <span className="text-gray-500 text-sm font-medium">Business No.</span>
-                                                                <span className="font-black text-xl text-gray-900 tracking-wider">522522</span>
-                                                            </div>
-                                                            <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                                                                <span className="text-gray-500 text-sm font-medium">Account No.</span>
-                                                                <span className="font-bold text-gray-900">MELAGRO</span>
+                                                                <span className="text-gray-500 text-sm font-medium">Till No.</span>
+                                                                <span className="font-black text-xl text-gray-900 tracking-wider">3130847</span>
                                                             </div>
                                                             <div className="flex justify-between items-center">
                                                                 <span className="text-gray-500 text-sm font-medium">Amount</span>

@@ -22,14 +22,46 @@ FIREBASE_PRIVATE_KEY="your_private_key_with_newlines"
 
 ## M-Pesa Daraja API (Required for M-Pesa Payments)
 Get these from the [Safaricom Developer Portal](https://developer.safaricom.co.ke/).
+
+### Required for STK Push (Lipa na M-Pesa)
 ```env
+MPESA_ENV=sandbox                # or 'production' once you go live
 MPESA_CONSUMER_KEY=your_consumer_key
 MPESA_CONSUMER_SECRET=your_consumer_secret
 MPESA_PASSKEY=your_passkey
-MPESA_SHORTCODE=174379
-MPESA_TILL_NUMBER=174379 # Same as shortcode for standard Paybill, or your actual Till number for Buy Goods
+MPESA_SHORTCODE=174379           # Sandbox default; in production this is your Head Office / Store Number
+MPESA_TILL_NUMBER=174379         # Same as shortcode for Paybill, OR your Till Number for Buy Goods
 MPESA_CALLBACK_URL=https://your-domain.com/api/payment/mpesa/callback
+NEXT_PUBLIC_BASE_URL=https://your-domain.com
 ```
+
+### Optional: Reversal & TransactionStatus (admin refunds)
+Required only if you want to enable the "Refund / Reverse" admin button. Without these, the rest of M-Pesa works fine.
+```env
+MPESA_INITIATOR_NAME=apitest                # Your Daraja initiator username
+MPESA_INITIATOR_PASSWORD=your_initiator_pwd # Plaintext — encrypted at runtime against Safaricom's public cert
+# Optional override; defaults to src/lib/mpesa-certs/{Production|Sandbox}Certificate.cer
+# MPESA_PUBLIC_CERT_PATH=/absolute/path/to/ProductionCertificate.cer
+```
+
+Download the certificates from [developer.safaricom.co.ke → Get Certificate](https://developer.safaricom.co.ke) and place them at:
+- Production: `src/lib/mpesa-certs/ProductionCertificate.cer`
+- Sandbox: `src/lib/mpesa-certs/SandboxCertificate.cer`
+
+### Going live
+Production credentials only work after Safaricom approves your Daraja app via the Go-Live process. The `MPESA_SHORTCODE` for production is your **Head Office Number** (linked to your Till), not the till number itself.
+
+### Optional: Disable Safaricom IP allowlist
+The callback / reversal-result / c2b-confirmation webhooks check that the request comes from a known Safaricom IP range. The check is auto-disabled when `MPESA_ENV !== 'production'`. To force-disable in production (e.g. when debugging through a proxy), set:
+```env
+MPESA_DISABLE_IP_CHECK=true
+```
+Re-enable as soon as you're done — without this check, anyone who knows your callback URL can post fake payment confirmations.
+
+### Optional: C2B URL registration (auto-match Till payments)
+Once deployed, an admin should visit `/dashboard/admin/settings/mpesa` and click **Register C2B URLs**. This tells Safaricom to call your site every time someone pays into your Till — including manual Buy Goods payments outside the STK push checkout. The system then auto-matches each payment to an unpaid order by phone+amount, eliminating most manual verification.
+
+You only need to register once per environment (sandbox vs production). Re-register if your domain changes.
 
 ## Stripe API (Required for Card Payments)
 Get these from the [Stripe Dashboard](https://dashboard.stripe.com/).

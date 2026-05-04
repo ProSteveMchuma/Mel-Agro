@@ -4,6 +4,19 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
+import { getAuth } from "firebase/auth";
+
+async function authedFetch(url: string, body: any) {
+    const token = await getAuth().currentUser?.getIdToken();
+    return fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+    });
+}
 
 export default function AdminOrderDetailsPage() {
     const { orders, updateOrderStatus, updateOrderPaymentStatus, updateReturnStatus } = useOrders();
@@ -12,6 +25,11 @@ export default function AdminOrderDetailsPage() {
     const [order, setOrder] = useState<any>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
+    const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
+    const [isReverseModalOpen, setIsReverseModalOpen] = useState(false);
+    const [verifyCode, setVerifyCode] = useState('');
+    const [reverseRemarks, setReverseRemarks] = useState('');
+    const [mpesaActionLoading, setMpesaActionLoading] = useState<string | null>(null);
     const [trackingInfo, setTrackingInfo] = useState({ carrier: '', trackingNumber: '' });
     const [paymentRecord, setPaymentRecord] = useState({
         amount: 0,
@@ -41,6 +59,116 @@ export default function AdminOrderDetailsPage() {
             setIsPaymentModalOpen(false);
         } catch (error) {
             toast.error("Failed to record payment");
+        }
+    };
+
+    const handleRetrySTK = async () => {
+        if (!order) return;
+        setMpesaActionLoading('retry');
+        const t = toast.loading("Sending STK Push to customer...");
+        try {
+            const res = await fetch('/api/payment/mpesa/retry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: order.id })
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success("STK Push sent. Customer will see prompt on phone.", { id: t });
+            } else {
+                toast.error(data.message || "Failed to send STK Push", { id: t });
+            }
+        } catch (e: any) {
+            toast.error(e?.message || "Retry failed", { id: t });
+        } finally {
+            setMpesaActionLoading(null);
+        }
+    };
+
+    const handleQueryStatus = async () => {
+        if (!order) return;
+        setMpesaActionLoading('query');
+        const t = toast.loading("Querying Safaricom for status...");
+        try {
+            const res = await fetch('/api/payment/mpesa/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: order.id })
+            });
+            const data = await res.json();
+            if (data.paid) {
+                toast.success("Payment confirmed!", { id: t });
+            } else if (data.success) {
+                toast(`Status: ${data.paymentStatus} — ${data.message}`, { id: t, duration: 5000 });
+            } else {
+                toast.error(data.message || "Query failed", { id: t });
+            }
+        } catch (e: any) {
+            toast.error(e?.message || "Query failed", { id: t });
+        } finally {
+            setMpesaActionLoading(null);
+        }
+    };
+
+    const handleVerifyManual = async (action: 'approve' | 'reject' | 'auto-verify') => {
+        if (!order) return;
+        if ((action === 'approve' || action === 'auto-verify') && !verifyCode.trim()) {
+            toast.error("Enter the M-Pesa transaction code");
+            return;
+        }
+        setMpesaActionLoading('verify');
+        const t = toast.loading(
+            action === 'approve' ? "Verifying..." :
+            action === 'auto-verify' ? "Querying Safaricom..." :
+            "Rejecting..."
+        );
+        try {
+            const res = await authedFetch('/api/payment/mpesa/verify-manual', {
+                orderId: order.id,
+                transactionCode: verifyCode.trim().toUpperCase(),
+                action,
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success(data.message, { id: t, duration: action === 'auto-verify' ? 7000 : 4000 });
+                setIsVerifyModalOpen(false);
+                setVerifyCode('');
+            } else if (data.configurationRequired) {
+                toast.error(data.message, { id: t, duration: 8000 });
+            } else {
+                toast.error(data.message || "Verification failed", { id: t });
+            }
+        } catch (e: any) {
+            toast.error(e?.message || "Verification failed", { id: t });
+        } finally {
+            setMpesaActionLoading(null);
+        }
+    };
+
+    const handleReverse = async () => {
+        if (!order) return;
+        if (!confirm(`Reverse KES ${order.total.toLocaleString()} to customer? This sends real money back via M-Pesa.`)) return;
+        setMpesaActionLoading('reverse');
+        const t = toast.loading("Initiating reversal with Safaricom...");
+        try {
+            const res = await authedFetch('/api/payment/mpesa/reverse', {
+                orderId: order.id,
+                remarks: reverseRemarks || undefined,
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success(data.message, { id: t, duration: 6000 });
+                setIsReverseModalOpen(false);
+                setReverseRemarks('');
+            } else if (data.configurationRequired) {
+                toast.error("Reversal not configured. See README_ENV.md for setup.", { id: t, duration: 8000 });
+            } else {
+                toast.error(data.message || "Reversal failed", { id: t });
+            }
+        } catch (e: any) {
+            toast.error(e?.message || "Reversal failed", { id: t });
+        } finally {
+            setMpesaActionLoading(null);
         }
     };
 
@@ -310,7 +438,112 @@ export default function AdminOrderDetailsPage() {
                                 Revert to Unpaid
                             </button>
                         )}
+
+                        {(order.mpesaReceiptNumber || order.transactionId) && (
+                            <div className="mt-6 pt-6 border-t border-gray-50 space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] font-black text-gray-400 uppercase">Receipt</span>
+                                    <span className="font-mono text-[10px] font-black text-gray-900 tracking-widest bg-green-50 px-2 py-1 rounded">{order.mpesaReceiptNumber || order.transactionId}</span>
+                                </div>
+                                {order.mpesaPhoneNumber && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase">Phone</span>
+                                        <span className="font-mono text-[10px] text-gray-700">{order.mpesaPhoneNumber}</span>
+                                    </div>
+                                )}
+                                {order.amountPaid && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase">Amount Paid</span>
+                                        <span className="font-black text-[10px] text-gray-900">KES {Number(order.amountPaid).toLocaleString()}</span>
+                                    </div>
+                                )}
+                                {order.refundStatus && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-black text-gray-400 uppercase">Refund</span>
+                                        <span className={`font-black text-[10px] px-2 py-1 rounded ${order.refundStatus === 'Reversed' ? 'bg-blue-100 text-blue-700' : order.refundStatus === 'Failed' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>{order.refundStatus}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
+
+                    {/* M-Pesa Controls Card */}
+                    {(() => {
+                        const m = (order.paymentMethod || '').toLowerCase();
+                        const isMpesa = m.includes('m-pesa') || m.includes('mpesa');
+                        if (!isMpesa) return null;
+
+                        const isStkMpesa = m === 'm-pesa' || m === 'mpesa';
+                        const isManualMpesa = m.includes('till') || m.includes('paybill') || m.includes('manual');
+                        const status = order.paymentStatus;
+                        const isUnpaid = status !== 'Paid' && status !== 'Refunded';
+
+                        return (
+                            <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+                                <div className="flex items-center gap-2 mb-6">
+                                    <span className="text-[#22c55e] text-lg">📱</span>
+                                    <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">M-Pesa Controls</h2>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {isStkMpesa && isUnpaid && (
+                                        <button
+                                            onClick={handleRetrySTK}
+                                            disabled={mpesaActionLoading === 'retry'}
+                                            className="w-full bg-[#22c55e] text-white py-3.5 rounded-2xl hover:bg-green-600 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-500/10 active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
+                                        >
+                                            {mpesaActionLoading === 'retry' ? 'Sending...' : '↻ Retry STK Push'}
+                                        </button>
+                                    )}
+
+                                    {isStkMpesa && (
+                                        <button
+                                            onClick={handleQueryStatus}
+                                            disabled={mpesaActionLoading === 'query'}
+                                            className="w-full bg-blue-50 text-blue-700 py-3.5 rounded-2xl hover:bg-blue-100 transition-all font-black uppercase text-[10px] tracking-widest active:scale-95 disabled:opacity-60"
+                                        >
+                                            {mpesaActionLoading === 'query' ? 'Checking...' : '🔍 Query Safaricom Status'}
+                                        </button>
+                                    )}
+
+                                    {isManualMpesa && isUnpaid && (
+                                        <button
+                                            onClick={() => {
+                                                const codeFromOrder = (order.paymentMethod || '').match(/\(([^)]+)\)/)?.[1] || '';
+                                                setVerifyCode(codeFromOrder.toUpperCase());
+                                                setIsVerifyModalOpen(true);
+                                            }}
+                                            className="w-full bg-amber-500 text-white py-3.5 rounded-2xl hover:bg-amber-600 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-amber-500/10 active:scale-95"
+                                        >
+                                            ✓ Verify Manual Code
+                                        </button>
+                                    )}
+
+                                    {status === 'Paid' && !order.refundStatus && (order.mpesaReceiptNumber || order.transactionId) && (
+                                        <button
+                                            onClick={() => setIsReverseModalOpen(true)}
+                                            disabled={mpesaActionLoading === 'reverse'}
+                                            className="w-full bg-red-50 text-red-700 py-3.5 rounded-2xl hover:bg-red-100 transition-all font-black uppercase text-[10px] tracking-widest active:scale-95 border border-red-100 disabled:opacity-60"
+                                        >
+                                            {mpesaActionLoading === 'reverse' ? 'Reversing...' : '⟲ Refund / Reverse'}
+                                        </button>
+                                    )}
+
+                                    {order.retryCount > 0 && (
+                                        <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest text-center pt-2">
+                                            Retried {order.retryCount}× · Last: {order.paymentInitiatedAt ? new Date(order.paymentInitiatedAt).toLocaleString() : 'N/A'}
+                                        </p>
+                                    )}
+                                    {order.paymentFailureMessage && (
+                                        <div className="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl">
+                                            <p className="text-[10px] font-black text-red-700 uppercase tracking-widest">Last Failure</p>
+                                            <p className="text-xs text-red-600 mt-1">{order.paymentFailureMessage}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             </div>
 
@@ -386,6 +619,149 @@ export default function AdminOrderDetailsPage() {
                                 className="flex-1 py-5 text-[10px] font-black text-white bg-green-600 hover:bg-green-700 rounded-[1.5rem] transition-all shadow-xl shadow-green-600/20 uppercase tracking-[0.2em] active:scale-95"
                             >
                                 Secure Record
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Verify Manual M-Pesa Modal */}
+            {isVerifyModalOpen && (
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 transform animate-in slide-in-from-bottom-8 duration-300">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600">
+                                <span className="text-2xl">📲</span>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Verify Manual M-Pesa</h2>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer-submitted Till payment</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4 mb-8">
+                            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2">
+                                <div className="flex justify-between text-xs">
+                                    <span className="font-black text-gray-400 uppercase">Order</span>
+                                    <span className="font-mono font-black text-gray-900">#{order.id.slice(0, 8)}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="font-black text-gray-400 uppercase">Amount</span>
+                                    <span className="font-black text-melagri-primary">KES {order.total.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="font-black text-gray-400 uppercase">Customer</span>
+                                    <span className="font-bold text-gray-900 text-[10px]">{order.userEmail || order.phone}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">M-Pesa Receipt Code</label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. QHG45XYZ"
+                                    className="w-full p-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-4 focus:ring-amber-500/10 focus:bg-white focus:border-amber-500 outline-none transition-all font-mono text-base tracking-widest uppercase"
+                                    value={verifyCode}
+                                    onChange={(e) => setVerifyCode(e.target.value.toUpperCase())}
+                                />
+                                <p className="text-[10px] text-gray-500 mt-2">Cross-check this against the M-Pesa SMS in your registered Till account before approving.</p>
+                            </div>
+                        </div>
+
+                        <button
+                            onClick={() => handleVerifyManual('auto-verify')}
+                            disabled={mpesaActionLoading === 'verify' || !verifyCode.trim()}
+                            className="w-full py-4 mb-3 text-[10px] font-black text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-[1.5rem] transition-all uppercase tracking-[0.2em] disabled:opacity-60 border border-blue-100"
+                        >
+                            🔍 Auto-Verify with Safaricom (recommended)
+                        </button>
+                        <p className="text-[10px] text-gray-400 text-center mb-4">
+                            Asks Daraja to confirm the receipt code is real and matches the amount. Auto-marks Paid on success.
+                        </p>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => { setIsVerifyModalOpen(false); setVerifyCode(''); }}
+                                disabled={mpesaActionLoading === 'verify'}
+                                className="flex-1 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() => handleVerifyManual('reject')}
+                                disabled={mpesaActionLoading === 'verify'}
+                                className="flex-1 py-4 text-[10px] font-black text-red-600 uppercase tracking-widest hover:bg-red-50 rounded-[1.5rem] transition-all border border-red-100 disabled:opacity-60"
+                            >
+                                Reject
+                            </button>
+                            <button
+                                onClick={() => handleVerifyManual('approve')}
+                                disabled={mpesaActionLoading === 'verify' || !verifyCode.trim()}
+                                className="flex-[1.5] py-5 text-[10px] font-black text-white bg-green-600 hover:bg-green-700 rounded-[1.5rem] transition-all shadow-xl shadow-green-600/20 uppercase tracking-[0.2em] active:scale-95 disabled:opacity-60"
+                            >
+                                {mpesaActionLoading === 'verify' ? 'Verifying...' : 'Manual Approve'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Reverse / Refund Modal */}
+            {isReverseModalOpen && (
+                <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 transform animate-in slide-in-from-bottom-8 duration-300">
+                        <div className="flex items-center gap-4 mb-8">
+                            <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600">
+                                <span className="text-2xl">⟲</span>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">M-Pesa Reversal</h2>
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Send funds back to customer</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-red-50 border border-red-100 p-4 rounded-2xl mb-6">
+                            <p className="text-xs text-red-800 font-medium leading-relaxed">
+                                ⚠️ This sends real money. Reversal is final and cannot be cancelled once accepted by Safaricom. Verify the order is correct before continuing.
+                            </p>
+                        </div>
+
+                        <div className="space-y-4 mb-8">
+                            <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-2">
+                                <div className="flex justify-between text-xs">
+                                    <span className="font-black text-gray-400 uppercase">Receipt</span>
+                                    <span className="font-mono font-black text-gray-900">{order.mpesaReceiptNumber || order.transactionId}</span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="font-black text-gray-400 uppercase">Amount to Refund</span>
+                                    <span className="font-black text-red-600 text-base">KES {Number(order.amountPaid || order.total).toLocaleString()}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Reason / Remarks</label>
+                                <input
+                                    type="text"
+                                    placeholder="Optional — visible to Safaricom"
+                                    className="w-full p-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-4 focus:ring-red-500/10 focus:bg-white focus:border-red-500 outline-none transition-all text-sm"
+                                    value={reverseRemarks}
+                                    onChange={(e) => setReverseRemarks(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4">
+                            <button
+                                onClick={() => { setIsReverseModalOpen(false); setReverseRemarks(''); }}
+                                disabled={mpesaActionLoading === 'reverse'}
+                                className="flex-1 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleReverse}
+                                disabled={mpesaActionLoading === 'reverse'}
+                                className="flex-1 py-5 text-[10px] font-black text-white bg-red-600 hover:bg-red-700 rounded-[1.5rem] transition-all shadow-xl shadow-red-600/20 uppercase tracking-[0.2em] active:scale-95 disabled:opacity-60"
+                            >
+                                {mpesaActionLoading === 'reverse' ? 'Reversing...' : 'Confirm Reversal'}
                             </button>
                         </div>
                     </div>
