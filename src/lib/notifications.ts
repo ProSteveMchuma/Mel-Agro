@@ -1,11 +1,21 @@
+import { getAuth } from 'firebase/auth';
+
+async function authedFetch(url: string, body: any) {
+    const token = await getAuth().currentUser?.getIdToken().catch(() => null);
+    return fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(body),
+    });
+}
+
 export const NotificationService = {
     sendEmail: async (to: string, subject: string, body: string) => {
         try {
-            await fetch('/api/notifications/email', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ to, subject, html: body }),
-            });
+            await authedFetch('/api/notifications/email', { to, subject, html: body });
         } catch (error) {
             console.error("Email Notification Error:", error);
         }
@@ -13,11 +23,7 @@ export const NotificationService = {
 
     sendSMS: async (to: string, message: string) => {
         try {
-            await fetch('/api/notifications/sms', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ to, message }),
-            });
+            await authedFetch('/api/notifications/sms', { to, message });
         } catch (error) {
             console.error("SMS Notification Error:", error);
         }
@@ -25,11 +31,7 @@ export const NotificationService = {
 
     sendWhatsApp: async (to: string, message: string) => {
         try {
-            await fetch('/api/notifications/whatsapp', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ to, message }),
-            });
+            await authedFetch('/api/notifications/whatsapp', { to, message });
         } catch (error) {
             console.error("WhatsApp Notification Error:", error);
         }

@@ -42,6 +42,9 @@ export default function CheckoutPage() {
     const [currentStep, setCurrentStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
     const [isProcessing, setIsProcessing] = useState(false);
     const [usePoints, setUsePoints] = useState(false);
+    const [couponInput, setCouponInput] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState<{ id: string; code: string; type: string; value: number; amount: number } | null>(null);
+    const [couponLoading, setCouponLoading] = useState(false);
 
     // Initialize React Hook Form
     const methods = useForm<CheckoutFormData>({
@@ -69,6 +72,13 @@ export default function CheckoutPage() {
     const shippingMethod = watch('shippingMethod');
     const paymentMethod = watch('paymentMethod');
 
+    // Redirect away if cart is empty (defense in depth for the submit guard)
+    useEffect(() => {
+        if (!isProcessing && cartItems.length === 0) {
+            router.replace('/cart');
+        }
+    }, [cartItems.length, isProcessing, router]);
+
     // Sync shipping data with user profile when user loads
     useEffect(() => {
         if (user) {
@@ -95,7 +105,41 @@ export default function CheckoutPage() {
     const shippingCost = shippingMethod === 'standard' ? deliveryInfo.cost : 0;
 
     const discountFromPoints = usePoints ? Math.min(cartTotal, user?.loyaltyPoints || 0) : 0;
-    const total = cartTotal + shippingCost - discountFromPoints;
+    const couponDiscount = appliedCoupon?.amount || 0;
+    const total = Math.max(0, cartTotal + shippingCost - discountFromPoints - couponDiscount);
+
+    const handleApplyCoupon = async () => {
+        if (!couponInput.trim()) return;
+        setCouponLoading(true);
+        try {
+            const idToken = await getAuth().currentUser?.getIdToken();
+            const res = await fetch('/api/discounts/validate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+                },
+                body: JSON.stringify({ code: couponInput.trim().toUpperCase(), cartTotal }),
+            });
+            const data = await res.json();
+            if (data.success && data.discount) {
+                setAppliedCoupon(data.discount);
+                toast.success(data.message || 'Promo code applied');
+                setCouponInput('');
+            } else {
+                toast.error(data.message || 'Invalid promo code');
+            }
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to validate code');
+        } finally {
+            setCouponLoading(false);
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponInput('');
+    };
 
     const handleNextStep = async () => {
         if (currentStep === 1) {
@@ -121,6 +165,22 @@ export default function CheckoutPage() {
             toast.error("Please sign in to complete your order.");
             // Smart Redirect: Save current path as callback
             router.push(`/auth/login?callbackUrl=/checkout`);
+            return;
+        }
+
+        if (cartItems.length === 0) {
+            toast.error("Your cart is empty.");
+            router.push('/products');
+            return;
+        }
+
+        const requiresPayment = ['mpesa', 'manual_mpesa', 'card'].includes(data.paymentMethod);
+        if (requiresPayment && total <= 0) {
+            toast.error("Order total must be greater than zero for this payment method.");
+            return;
+        }
+        if (total < 0) {
+            toast.error("Order total cannot be negative — adjust loyalty points.");
             return;
         }
 
@@ -150,7 +210,11 @@ export default function CheckoutPage() {
                     selectedVariant: item.selectedVariant || null
                 })),
                 subtotal: cartTotal,
-                discountAmount: discountFromPoints,
+                discountAmount: discountFromPoints + couponDiscount,
+                pointsRedeemed: discountFromPoints,
+                couponDiscount: couponDiscount,
+                couponCode: appliedCoupon?.code || null,
+                couponId: appliedCoupon?.id || null,
                 total: total,
                 shippingAddress: {
                     county: data.shipping.county,
@@ -664,7 +728,7 @@ export default function CheckoutPage() {
                                                         </div>
                                                         <span className="font-bold text-gray-900">Card Payment</span>
                                                     </div>
-                                                    <p className="text-sm text-gray-500 font-medium">Visa, Mastercard, AMEX safely processed.</p>
+                                                    <p className="text-sm text-gray-500 font-medium">Visa, Mastercard processed securely via Paystack.</p>
                                                 </div>
 
                                                 {/* Cash on Delivery Option */}
@@ -764,7 +828,7 @@ export default function CheckoutPage() {
                                                             <span className="text-xl">🔒</span> Secure Redirect
                                                         </h3>
                                                         <p className="text-sm text-gray-600">
-                                                            You will be redirected to our secure payment partner (Stripe) to complete your card transaction safely. We do not store your card details.
+                                                            You will be redirected to Paystack to complete your card transaction safely. We do not store your card details.
                                                         </p>
                                                     </div>
                                                 )}
@@ -863,7 +927,7 @@ export default function CheckoutPage() {
                                                     </p>
                                                     <p className="text-gray-600 text-sm">
                                                         {paymentMethod === 'mpesa' && 'Paying via M-Pesa Express (Phone)'}
-                                                        {paymentMethod === 'card' && 'Paying via Secure Card (Stripe)'}
+                                                        {paymentMethod === 'card' && 'Paying via Secure Card (Paystack)'}
                                                         {paymentMethod === 'cod' && 'Pay on Delivery / Collection'}
                                                         {paymentMethod === 'whatsapp' && 'Confirm and complete order on WhatsApp'}
                                                     </p>
@@ -970,6 +1034,40 @@ export default function CheckoutPage() {
                                         ))}
                                     </div>
 
+                                    <div className="mb-4 pb-4 border-b border-gray-100">
+                                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Promo Code</p>
+                                        {appliedCoupon ? (
+                                            <div className="flex items-center justify-between bg-green-50 border border-green-100 rounded-xl px-3 py-2">
+                                                <div className="text-xs">
+                                                    <span className="font-black text-green-700">{appliedCoupon.code}</span>
+                                                    <span className="text-green-600 ml-2">-KES {appliedCoupon.amount.toLocaleString()}</span>
+                                                </div>
+                                                <button type="button" onClick={handleRemoveCoupon} className="text-gray-400 hover:text-red-500" title="Remove">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={couponInput}
+                                                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
+                                                    placeholder="Enter code"
+                                                    className="flex-1 px-3 py-2 text-sm font-mono uppercase tracking-wider rounded-lg border border-gray-200 focus:border-melagri-primary focus:ring-2 focus:ring-melagri-primary/10 outline-none"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={handleApplyCoupon}
+                                                    disabled={couponLoading || !couponInput.trim()}
+                                                    className="px-4 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-black transition-all disabled:opacity-50"
+                                                >
+                                                    {couponLoading ? '...' : 'Apply'}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className="space-y-3 text-sm">
                                         <div className="flex justify-between text-gray-600">
                                             <span>Subtotal</span>
@@ -979,6 +1077,18 @@ export default function CheckoutPage() {
                                             <span>Shipping</span>
                                             <span className="font-semibold">{shippingCost === 0 ? "FREE" : `KES ${shippingCost.toLocaleString()}`}</span>
                                         </div>
+                                        {appliedCoupon && (
+                                            <div className="flex justify-between text-green-600 font-semibold">
+                                                <span>Promo ({appliedCoupon.code})</span>
+                                                <span>- KES {appliedCoupon.amount.toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        {discountFromPoints > 0 && (
+                                            <div className="flex justify-between text-purple-600 font-semibold">
+                                                <span>Loyalty Points</span>
+                                                <span>- KES {discountFromPoints.toLocaleString()}</span>
+                                            </div>
+                                        )}
                                         {shippingMethod === 'standard' && (
                                             <div className="flex justify-end -mt-2">
                                                 <p className="text-[10px] text-gray-400 italic">{deliveryInfo.reason}</p>

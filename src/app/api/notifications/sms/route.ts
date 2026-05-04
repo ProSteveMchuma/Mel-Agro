@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
+import { requireUser } from '@/lib/auth-server';
 
 export async function POST(request: Request) {
+    const auth = await requireUser(request);
+    if (!auth.ok) {
+        return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
+    }
+
     try {
         const { to, message } = await request.json();
 
@@ -9,10 +15,9 @@ export async function POST(request: Request) {
         }
 
         const apiKey = process.env.AFRICASTALKING_API_KEY;
-        const username = process.env.AFRICASTALKING_USERNAME || 'sandbox'; // Default to sandbox
-        const from = process.env.AFRICASTALKING_SENDER_ID; // Optional
+        const username = process.env.AFRICASTALKING_USERNAME || 'sandbox';
+        const from = process.env.AFRICASTALKING_SENDER_ID;
 
-        // Format phone number to E.164 (+254...) required by Africa's Talking
         let formattedPhone = to.replace(/\s+/g, '').replace(/-/g, '');
         if (formattedPhone.startsWith('0')) {
             formattedPhone = '+254' + formattedPhone.substring(1);
@@ -31,9 +36,7 @@ export async function POST(request: Request) {
             });
         }
 
-        // Africa's Talking API Endpoint
         const url = 'https://api.africastalking.com/version1/messaging';
-        // Use sandbox URL if username is 'sandbox'
         const endpoint = username === 'sandbox'
             ? 'https://api.sandbox.africastalking.com/version1/messaging'
             : url;
@@ -43,10 +46,6 @@ export async function POST(request: Request) {
         formData.append('to', formattedPhone);
         formData.append('message', message);
         if (from) formData.append('from', from);
-
-        const fs = require('fs');
-        fs.appendFileSync('sms_debug.log', `[${new Date().toISOString()}] [SMS DEBUG 1] Raw Input Phone: ${to}\n`);
-        fs.appendFileSync('sms_debug.log', `[${new Date().toISOString()}] [SMS DEBUG 2] Sending to: ${formattedPhone} using Africa's Talking\n`);
 
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -59,9 +58,7 @@ export async function POST(request: Request) {
         });
 
         const data = await response.json();
-        fs.appendFileSync('sms_debug.log', `[${new Date().toISOString()}] [SMS DEBUG 3] Africa's Talking Response: ${JSON.stringify(data, null, 2)}\n`);
 
-        // Check for success in AT response structure
         if (data.SMSMessageData && data.SMSMessageData.Recipients && data.SMSMessageData.Recipients.length > 0) {
             return NextResponse.json({
                 success: true,

@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server';
+import twilio from 'twilio';
+import { requireUser } from '@/lib/auth-server';
 
 export async function POST(request: Request) {
+    const auth = await requireUser(request);
+    if (!auth.ok) {
+        return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
+    }
+
     try {
         const { to, message } = await request.json();
 
@@ -10,9 +17,7 @@ export async function POST(request: Request) {
 
         const accountSid = process.env.TWILIO_ACCOUNT_SID;
         const authToken = process.env.TWILIO_AUTH_TOKEN;
-        const from = process.env.TWILIO_WHATSAPP_NUMBER; // e.g., 'whatsapp:+14155238886'
-
-        console.log(`[WHATSAPP API] Attempting to send message to ${to}`);
+        const from = process.env.TWILIO_WHATSAPP_NUMBER;
 
         if (!accountSid || !authToken || !from) {
             console.warn("[WHATSAPP API] Missing Twilio environment variables.");
@@ -23,26 +28,19 @@ export async function POST(request: Request) {
             });
         }
 
-        // Twilio API Integration
-        const client = require('twilio')(accountSid, authToken);
-
-        // Ensure 'to' number has 'whatsapp:' prefix if using Twilio
+        const client = twilio(accountSid, authToken);
         const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
-
-        console.log(`[WHATSAPP API] Sending from ${from} to ${formattedTo}`);
 
         const response = await client.messages.create({
             body: message,
             from: from,
-            to: formattedTo
+            to: formattedTo,
         });
-
-        console.log("[WHATSAPP API] Success:", response.sid);
 
         return NextResponse.json({
             success: true,
             message: 'WhatsApp sent successfully',
-            details: response
+            sid: response.sid,
         });
 
     } catch (error: any) {

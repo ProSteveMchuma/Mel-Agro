@@ -48,10 +48,18 @@ service cloud.firestore {
       );
     }
 
-    // Users: Users can read/write their own profile, Admin can read all
+    // Users: Users can read/update their own profile (excluding sensitive fields),
+    // admins can manage all. Role / status / loyaltyPoints can ONLY be changed by an admin
+    // (or via the server admin SDK which bypasses these rules).
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-      allow read: if isAdmin();
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == userId);
+      allow create: if request.auth != null && request.auth.uid == userId;
+      allow update: if (
+        isAdmin() ||
+        (request.auth != null && request.auth.uid == userId &&
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'loyaltyPoints']))
+      );
+      allow delete: if isAdmin();
     }
 
     // Transactions: Admin only for read, System/Auth for create
@@ -127,6 +135,30 @@ service cloud.firestore {
     match /discounts/{id} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // M-Pesa C2B payment audit log: written only by server (admin SDK bypasses), admin reads
+    match /c2bPayments/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // M-Pesa refunds audit log: written only by server (admin SDK bypasses), admin reads
+    match /refunds/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // M-Pesa configuration (C2B URL registration state): admin only
+    match /mpesaConfig/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Paystack webhook idempotency log: server only
+    match /paystackWebhookEvents/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
   }
 }

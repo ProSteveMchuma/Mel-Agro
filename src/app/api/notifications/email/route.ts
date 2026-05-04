@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { requireUser } from '@/lib/auth-server';
 
 export async function POST(request: Request) {
+    const auth = await requireUser(request);
+    if (!auth.ok) {
+        return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
+    }
+
     try {
         const { to, subject, html } = await request.json();
 

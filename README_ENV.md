@@ -63,11 +63,11 @@ Once deployed, an admin should visit `/dashboard/admin/settings/mpesa` and click
 
 You only need to register once per environment (sandbox vs production). Re-register if your domain changes.
 
-## Stripe API (Required for Card Payments)
-Get these from the [Stripe Dashboard](https://dashboard.stripe.com/).
+## Paystack API (Required for Card Payments)
+Get these from the [Paystack Dashboard](https://dashboard.paystack.com/).
 ```env
-STRIPE_SECRET_KEY=sk_test_...
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+PAYSTACK_SECRET_KEY=sk_live_...
+NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY=pk_live_...
 ```
 
 ## Email (SMTP) Configuration (Required for Emails)
