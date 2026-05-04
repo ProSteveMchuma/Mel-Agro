@@ -85,6 +85,7 @@ export interface SeriesPoint {
     revenue: number;
     orders: number;
     aov: number;
+    [key: string]: any;      // recharts ChartDataInput compatibility
 }
 
 export function revenueSeries(orders: Order[], granularity: Granularity): SeriesPoint[] {
@@ -120,6 +121,7 @@ export interface TopItem {
     label: string;
     revenue: number;
     units: number;
+    [k: string]: any;       // recharts ChartDataInput compatibility
 }
 
 export function topProducts(orders: Order[], limit = 8): TopItem[] {
@@ -172,7 +174,7 @@ export function revenueByCounty(orders: Order[]): TopItem[] {
         .map(p => ({ ...p, revenue: Math.round(p.revenue) }));
 }
 
-export interface SegmentSlice { label: string; orders: number; revenue: number }
+export interface SegmentSlice { label: string; orders: number; revenue: number; [k: string]: any }
 
 export function newVsRepeat(orders: Order[]): SegmentSlice[] {
     const paid = paidOnly(orders);
@@ -199,7 +201,7 @@ export function newVsRepeat(orders: Order[]): SegmentSlice[] {
     ];
 }
 
-export interface PatternBucket { label: string; orders: number; revenue: number }
+export interface PatternBucket { label: string; orders: number; revenue: number; [k: string]: any }
 
 export function ordersByDayOfWeek(orders: Order[]): PatternBucket[] {
     const paid = paidOnly(orders);
@@ -232,7 +234,7 @@ export function ordersByHourOfDay(orders: Order[]): PatternBucket[] {
     return buckets.map(b => ({ ...b, revenue: Math.round(b.revenue) }));
 }
 
-export interface PaymentMixSlice { label: string; orders: number; revenue: number }
+export interface PaymentMixSlice { label: string; orders: number; revenue: number; [k: string]: any }
 
 export function paymentMethodMix(orders: Order[]): PaymentMixSlice[] {
     const paid = paidOnly(orders);
