@@ -1,6 +1,18 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
+
+export const metadata: Metadata = {
+    title: 'Bulk Orders for Farmers, Cooperatives & Institutions',
+    description: 'Special pricing and logistics for bulk agricultural input orders in Kenya. Cooperatives, schools, NGOs and large farms — minimum order KES 100,000. Get a quote today.',
+    alternates: { canonical: '/bulk' },
+    openGraph: {
+        title: 'Bulk Agricultural Inputs in Kenya | Mel-Agro',
+        description: 'Volume discounts on seeds, fertilizers, and agrochemicals for cooperatives and institutions.',
+        url: '/bulk',
+    },
+};
 
 export default function BulkOrders() {
     return (

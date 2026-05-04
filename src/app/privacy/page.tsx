@@ -1,6 +1,14 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
+
+export const metadata: Metadata = {
+    title: 'Privacy Policy',
+    description: 'How Mel-Agro collects, uses, and protects your personal information when you shop for agricultural inputs on our platform.',
+    alternates: { canonical: '/privacy' },
+    robots: { index: true, follow: true },
+};
 
 export default function PrivacyPolicy() {
     return (

@@ -6,6 +6,12 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
     title: "Contact Us | Agriculture Support Kenya",
     description: "Get in touch with Mel-Agri for inquiries about fertilizers, seeds, and bulk orders. Bringing Quality Agricultural Inputs Online in Kenya.",
+    alternates: { canonical: '/contact' },
+    openGraph: {
+        title: 'Contact Mel-Agro',
+        description: 'Reach our agronomy team in Nairobi — phone, WhatsApp, email.',
+        url: '/contact',
+    },
 };
 
 export default function ContactPage() {

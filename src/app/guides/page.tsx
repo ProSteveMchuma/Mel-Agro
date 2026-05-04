@@ -9,6 +9,13 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
     title: "Farmer's Knowledge Base | Mel-Agri Kenya",
     description: 'Expert agricultural guides, pest control protocols, and yield-boosting techniques tailored for Kenyan farmers.',
+    alternates: { canonical: '/guides' },
+    openGraph: {
+        title: "Farmer's Knowledge Base | Mel-Agro",
+        description: 'Pest protocols, climate-smart techniques, and crop-specific guides for Kenyan farmers.',
+        url: '/guides',
+        type: 'website',
+    },
 };
 
 export default async function GuidesPage() {

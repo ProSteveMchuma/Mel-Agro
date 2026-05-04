@@ -1,18 +1,29 @@
 import { MetadataRoute } from 'next';
-import { headers } from 'next/headers';
 
-export default async function robots(): Promise<MetadataRoute.Robots> {
-    const headersList = await headers();
-    const domain = headersList.get('host') || 'melagri.co.ke';
-    const protocol = domain.includes('localhost') ? 'http' : 'https';
-    const baseUrl = `${protocol}://${domain}`;
+const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.melagri.com';
+
+export default function robots(): MetadataRoute.Robots {
+    const baseUrl = SITE_URL.replace(/\/$/, '');
 
     return {
-        rules: {
-            userAgent: '*',
-            allow: '/',
-            disallow: ['/dashboard/', '/api/', '/checkout/', '/cart/'],
-        },
+        rules: [
+            {
+                userAgent: '*',
+                allow: '/',
+                disallow: [
+                    '/dashboard/',
+                    '/api/',
+                    '/checkout/',
+                    '/cart',
+                    '/auth/verify',
+                    '/admin-setup',
+                    '/orders/',
+                    '/wishlist',
+                    '/billing',
+                ],
+            },
+        ],
         sitemap: `${baseUrl}/sitemap.xml`,
+        host: baseUrl,
     };
 }

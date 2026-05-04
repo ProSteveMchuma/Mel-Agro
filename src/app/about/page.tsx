@@ -6,6 +6,12 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
     title: "Our Heritage & Vision",
     description: "Bringing Quality Agricultural Inputs Online in Kenya. Learn about Mel-Agri's mission to transform Kenyan agriculture and our legacy of excellence.",
+    alternates: { canonical: '/about' },
+    openGraph: {
+        title: 'Our Heritage & Vision | Mel-Agro',
+        description: '20+ years of agricultural expertise, now digital. Subsidiary of Makamithi.',
+        url: '/about',
+    },
 };
 
 export default function AboutPage() {
