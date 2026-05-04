@@ -261,6 +261,49 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             console.error("Unified Communications Error:", err);
         }
 
+        // 6. Persist user preferences for smarter checkout next time:
+        //    - Save the shipping address as a savedAddress (deduped by content hash)
+        //    - Remember the preferred payment method
+        try {
+            if (orderData.userId) {
+                const userRef = doc(db, 'users', orderData.userId);
+                const userSnap = await getDoc(userRef);
+                const existing = (userSnap.data()?.savedAddresses || []) as any[];
+
+                const ship = orderData.shippingAddress;
+                if (ship) {
+                    const hashKey = `${(ship.county || '').trim().toLowerCase()}|${(ship.details || '').trim().toLowerCase()}`;
+                    const alreadySaved = existing.some(a => `${(a.county || '').trim().toLowerCase()}|${(a.details || '').trim().toLowerCase()}` === hashKey);
+                    if (!alreadySaved) {
+                        const labelGuess = ship.method === 'pickup' ? 'Pickup' : (existing.length === 0 ? 'Default' : `Address ${existing.length + 1}`);
+                        const newAddress = {
+                            id: `addr_${Date.now()}`,
+                            label: labelGuess,
+                            county: ship.county || '',
+                            city: (ship.details || '').split(',').slice(-1)[0]?.trim() || ship.county || '',
+                            details: ship.details || '',
+                            lat: ship.lat || null,
+                            lng: ship.lng || null,
+                            isPrimary: existing.length === 0,
+                            savedAt: date,
+                        };
+                        await updateDoc(userRef, {
+                            savedAddresses: [...existing, newAddress],
+                            preferredPaymentMethod: orderData.paymentMethod || null,
+                            lastOrderAt: date,
+                        });
+                    } else {
+                        await updateDoc(userRef, {
+                            preferredPaymentMethod: orderData.paymentMethod || null,
+                            lastOrderAt: date,
+                        });
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn("Could not persist user checkout preferences (non-fatal):", err);
+        }
+
         return {
             ...orderData,
             id: orderId,

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import crypto from 'crypto';
+import { CommunicationTemplates } from '@/lib/communication-templates';
+import { sendServerSms, sendServerEmail } from '@/lib/server-notifications';
 
 export async function POST(request: Request) {
     const body = await request.text();
@@ -93,6 +95,27 @@ export async function POST(request: Request) {
                     recordedBy: 'System (Paystack Webhook)',
                     customerEmail: customer?.email || null,
                 });
+
+                // Fire-and-forget customer notification
+                try {
+                    const orderData = orderDoc.data();
+                    const orderForTpl = {
+                        ...orderData,
+                        id: orderId,
+                        paymentMethod: 'Card',
+                        amountPaid: Number(amount) / 100,
+                    } as any;
+                    const tpl = CommunicationTemplates.getPaymentReceived(orderForTpl, {
+                        receipt: reference,
+                        method: 'Card (Paystack)',
+                    });
+                    if (orderData?.phone) sendServerSms(orderData.phone, tpl.smsBody).catch(() => { });
+                    if (orderData?.userEmail || customer?.email) {
+                        sendServerEmail(orderData?.userEmail || customer.email, tpl.subject, tpl.emailBody).catch(() => { });
+                    }
+                } catch (e) {
+                    console.warn('Paystack payment-received notification failed (non-fatal):', e);
+                }
 
                 console.log(`Paystack Webhook: order ${orderId} marked Paid`);
             }

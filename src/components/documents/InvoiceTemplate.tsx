@@ -43,7 +43,11 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, setting
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
                 <div>
                     <h3 className="text-gray-500 uppercase text-xs font-bold tracking-wider mb-4">Bill To</h3>
-                    <div className="font-medium">{order.userEmail}</div>
+                    {order.userName && order.userName !== 'User' && (
+                        <div className="font-bold text-gray-900">{order.userName}</div>
+                    )}
+                    {order.userEmail && <div className="font-medium text-gray-700">{order.userEmail}</div>}
+                    {(order as any).phone && <div className="text-gray-700">{(order as any).phone}</div>}
                     <div className="text-gray-600 mt-1">{order.shippingAddress?.details || 'Address not provided'}</div>
                     <div className="text-gray-600">{order.shippingAddress?.county || ''}</div>
                 </div>

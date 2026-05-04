@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { verifySafaricomCallback } from '@/lib/safaricom-ips';
+import { CommunicationTemplates } from '@/lib/communication-templates';
+import { sendServerSms, sendServerEmail } from '@/lib/server-notifications';
 
 export async function POST(request: Request) {
     const ipCheck = verifySafaricomCallback(request);
@@ -88,6 +90,26 @@ export async function POST(request: Request) {
                 checkoutRequestId: CheckoutRequestID,
                 recordedBy: 'System (M-Pesa)',
             });
+
+            // Fire-and-forget customer notification — don't block the Safaricom ack
+            try {
+                const orderForTpl = {
+                    ...orderData,
+                    id: orderDoc.id,
+                    paymentMethod: 'M-Pesa',
+                    mpesaReceiptNumber,
+                    amountPaid,
+                } as any;
+                const tpl = CommunicationTemplates.getPaymentReceived(orderForTpl, {
+                    receipt: mpesaReceiptNumber,
+                    method: 'M-Pesa',
+                });
+                const customerPhone = phoneNumber || orderData.phone;
+                if (customerPhone) sendServerSms(customerPhone, tpl.smsBody).catch(() => { });
+                if (orderData.userEmail) sendServerEmail(orderData.userEmail, tpl.subject, tpl.emailBody).catch(() => { });
+            } catch (e) {
+                console.warn('Payment-received notification failed (non-fatal):', e);
+            }
         } else {
             await orderRef.update({
                 paymentStatus: 'Failed',

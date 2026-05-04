@@ -1,14 +1,14 @@
 import { Order } from "@/types";
 
+const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.melagri.com';
+
 export const CommunicationTemplates = {
     getOrderConfirmation: (order: Order) => {
         const orderIdShort = order.id.slice(0, 5).toUpperCase();
         const userName = order.userName || "Farmer";
 
-        // SMS & WhatsApp (Brief & Actionable)
         const smsBody = `Habari ${userName}, your Mel-Agri order #${orderIdShort} has been received! We are prepping your items for dispatch. Total: KES ${order.total.toLocaleString()}. Thank you for farming with us!`;
 
-        // Email (Detailed & Professional)
         const emailSubject = `Order Confirmed - Mel-Agri #${orderIdShort}`;
         const emailHtml = `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 20px; overflow: hidden;">
@@ -19,7 +19,7 @@ export const CommunicationTemplates = {
                 <div style="padding: 40px;">
                     <p>Habari <strong>${userName}</strong>,</p>
                     <p>Thank you for choosing Mel-Agri. We've received your order and our team is currently processing it. Here's a brief summary:</p>
-                    
+
                     <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 30px 0;">
                         <h3 style="margin-top: 0; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Order Summary</h3>
                         <table style="width: 100%; border-collapse: collapse;">
@@ -41,11 +41,11 @@ export const CommunicationTemplates = {
                             </tr>
                         </table>
                     </div>
-                    
-                    <p>We will notify you via SMS when your order has been shipped.</p>
-                    
+
+                    <p>We will notify you via SMS when your payment is confirmed and when your order has shipped.</p>
+
                     <div style="text-align: center; margin-top: 40px;">
-                        <a href="https://mel-agri.com/dashboard/user" style="background: #22c55e; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">Track Order Status</a>
+                        <a href="${SITE_URL}/dashboard/user" style="background: #22c55e; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">Track Order Status</a>
                     </div>
                 </div>
                 <div style="background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -59,6 +59,45 @@ export const CommunicationTemplates = {
             emailBody: emailHtml,
             smsBody: smsBody
         };
+    },
+
+    getPaymentReceived: (order: Order, opts: { receipt?: string; method?: string } = {}) => {
+        const orderIdShort = order.id.slice(0, 5).toUpperCase();
+        const userName = order.userName || "Farmer";
+        const receipt = opts.receipt || (order as any).mpesaReceiptNumber || (order as any).transactionId || '';
+        const method = opts.method || (order as any).paymentMethod || 'M-Pesa';
+        const amount = (order as any).amountPaid || order.total;
+
+        const smsBody = `Habari ${userName}! Payment of KES ${Number(amount).toLocaleString()} received for order #${orderIdShort}${receipt ? ` (Receipt: ${receipt})` : ''}. We're packing your order — you'll get another SMS once it ships.`;
+
+        const emailSubject = `Payment Received - Mel-Agri #${orderIdShort}`;
+        const emailHtml = `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 20px; overflow: hidden;">
+                <div style="background: #16a34a; padding: 40px; text-align: center; color: white;">
+                    <h1 style="margin: 0; font-size: 24px;">Payment Received ✓</h1>
+                    <p style="margin-top: 10px; opacity: 0.9;">Order Reference: #${orderIdShort}</p>
+                </div>
+                <div style="padding: 40px;">
+                    <p>Habari <strong>${userName}</strong>,</p>
+                    <p>We've received your payment and your order is moving to dispatch.</p>
+                    <div style="background: #f0fdf4; padding: 20px; border-radius: 12px; margin: 30px 0; border: 1px solid #bbf7d0;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <tr><td style="padding: 6px 0; color: #64748b;">Amount</td><td style="padding: 6px 0; text-align: right; font-weight: bold;">KES ${Number(amount).toLocaleString()}</td></tr>
+                            <tr><td style="padding: 6px 0; color: #64748b;">Method</td><td style="padding: 6px 0; text-align: right;">${method}</td></tr>
+                            ${receipt ? `<tr><td style="padding: 6px 0; color: #64748b;">Receipt</td><td style="padding: 6px 0; text-align: right; font-family: monospace; font-weight: bold;">${receipt}</td></tr>` : ''}
+                        </table>
+                    </div>
+                    <div style="text-align: center; margin-top: 40px;">
+                        <a href="${SITE_URL}/dashboard/user" style="background: #16a34a; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">View Order</a>
+                    </div>
+                </div>
+                <div style="background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+                    &copy; ${new Date().getFullYear()} Mel-Agri Kenya. All rights reserved.
+                </div>
+            </div>
+        `;
+
+        return { subject: emailSubject, emailBody: emailHtml, smsBody };
     },
 
     getStatusUpdate: (order: Order, status: string) => {

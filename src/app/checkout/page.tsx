@@ -91,8 +91,7 @@ export default function CheckoutPage() {
         resolver: zodResolver(checkoutSchema),
         defaultValues: {
             shipping: {
-                firstName: '',
-                lastName: '',
+                fullName: '',
                 email: '',
                 phone: '',
                 county: 'Nairobi',
@@ -119,25 +118,33 @@ export default function CheckoutPage() {
         }
     }, [cartItems.length, isProcessing, router]);
 
-    // Sync shipping data with user profile when user loads
+    // Sync shipping data with user profile when user loads.
+    // Prefer the most recently saved address (auto-saved on first order) over raw profile fields,
+    // and default the payment method to whatever the user used last.
     useEffect(() => {
-        if (user) {
-            reset({
-                shipping: {
-                    firstName: user.name?.split(' ')[0] || '',
-                    lastName: user.name?.split(' ')[1] || '',
-                    email: user.email || '',
-                    phone: user.phone || '',
-                    county: user.county || 'Nairobi',
-                    town: user.city || '',
-                    address: user.address || '',
-                    lat: -1.2921, // Could check if user has saved loc
-                    lng: 36.8219
-                },
-                shippingMethod: 'standard',
-                paymentMethod: 'mpesa'
-            });
-        }
+        if (!user) return;
+        const saved = (user.savedAddresses || []) as any[];
+        const primary = saved.find(a => a.isPrimary) || saved[saved.length - 1];
+
+        const cleanName = user.name && user.name !== 'User' ? user.name : '';
+        const validPaymentMethods = ['mpesa', 'manual_mpesa', 'card', 'cod', 'whatsapp'] as const;
+        const preferred = (user as any).preferredPaymentMethod;
+        const initialPaymentMethod = (preferred && validPaymentMethods.includes(preferred)) ? preferred : 'mpesa';
+
+        reset({
+            shipping: {
+                fullName: cleanName,
+                email: user.email || '',
+                phone: user.phone || '',
+                county: primary?.county || user.county || 'Nairobi',
+                town: primary?.city || user.city || '',
+                address: primary?.details || user.address || '',
+                lat: primary?.lat ?? -1.2921,
+                lng: primary?.lng ?? 36.8219,
+            },
+            shippingMethod: 'standard',
+            paymentMethod: initialPaymentMethod,
+        });
     }, [user, reset]);
 
     // Calculate dynamic shipping
@@ -239,7 +246,7 @@ export default function CheckoutPage() {
 
             const orderData = cleanObject({
                 userId: user.uid,
-                userName: `${data.shipping.firstName} ${data.shipping.lastName}`.trim(),
+                userName: (user?.name && user.name !== 'User') ? user.name : data.shipping.fullName.trim(),
                 userEmail: data.shipping.email,
                 items: cartItems.map(item => ({
                     id: item.id,
@@ -292,7 +299,7 @@ export default function CheckoutPage() {
                         price: item.price
                     })),
                     total: total,
-                    userName: `${data.shipping.firstName} ${data.shipping.lastName}`,
+                    userName: (user?.name && user.name !== 'User') ? user.name : data.shipping.fullName,
                     phone: data.shipping.phone,
                     address: `${data.shipping.address}, ${data.shipping.town}, ${data.shipping.county}`
                 });
@@ -558,10 +565,11 @@ export default function CheckoutPage() {
 
                                                 <h3 className="text-lg font-bold text-gray-900">Shipping Address</h3>
 
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <Input name="shipping.firstName" label="First Name" placeholder="John" />
-                                                    <Input name="shipping.lastName" label="Last Name" placeholder="Doe" />
-                                                </div>
+                                                <Input
+                                                    name="shipping.fullName"
+                                                    label="Full Name"
+                                                    placeholder="e.g. Wanjiku Mwangi"
+                                                />
 
                                                 <Select
                                                     name="shipping.county"
@@ -935,7 +943,7 @@ export default function CheckoutPage() {
                                                             Edit
                                                         </button>
                                                     </div>
-                                                    <p className="text-gray-900 font-semibold">{shippingData.firstName} {shippingData.lastName}</p>
+                                                    <p className="text-gray-900 font-semibold">{shippingData.fullName}</p>
                                                     <p className="text-gray-600">{shippingData.address}</p>
                                                     <p className="text-gray-600">{shippingData.town}, {shippingData.county}</p>
                                                     <p className="text-gray-600">{shippingData.phone}</p>
