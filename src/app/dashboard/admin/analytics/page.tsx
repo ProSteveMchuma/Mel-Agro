@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useOrders } from "@/context/OrderContext";
 import {
     DateRange, Granularity,
@@ -11,6 +11,49 @@ import {
     LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
     XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
+import { getAuth } from "firebase/auth";
+import { toast } from "react-hot-toast";
+
+function renderInsightsMarkdown(md: string) {
+    const html = md
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/^### (.*)$/gm, '<h3 class="text-base font-black text-gray-900 mt-5 mb-2 tracking-tight">$1</h3>')
+        .replace(/^## (.*)$/gm, '<h3 class="text-lg font-black text-gray-900 mt-6 mb-3 tracking-tight">$1</h3>')
+        .replace(/^# (.*)$/gm, '<h2 class="text-xl font-black text-gray-900 mt-6 mb-3 tracking-tight">$1</h2>')
+        .replace(/\*\*(.+?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-[12px] font-mono text-gray-800">$1</code>');
+
+    const lines = html.split('\n');
+    const out: string[] = [];
+    let inList = false;
+    for (const raw of lines) {
+        const line = raw.trim();
+        const isBullet = /^[-*]\s+/.test(line);
+        if (isBullet) {
+            if (!inList) { out.push('<ul class="list-disc pl-6 space-y-1.5 mb-3 text-gray-700">'); inList = true; }
+            out.push(`<li>${line.replace(/^[-*]\s+/, '')}</li>`);
+            continue;
+        }
+        if (inList) { out.push('</ul>'); inList = false; }
+        if (!line) { out.push(''); continue; }
+        if (line.startsWith('<h')) { out.push(line); continue; }
+        out.push(`<p class="mb-3 text-gray-700 leading-relaxed">${line}</p>`);
+    }
+    if (inList) out.push('</ul>');
+    return out.join('\n');
+}
+
+interface InsightsState {
+    loading: boolean;
+    insights: string | null;
+    generatedAt: string | null;
+    cached: boolean;
+    configurationRequired: boolean;
+    error: string | null;
+}
 
 const RANGES: Array<{ value: DateRange; label: string }> = [
     { value: '7d', label: 'Last 7 days' },
@@ -51,6 +94,50 @@ export default function AnalyticsPage() {
     const { orders } = useOrders();
     const [range, setRange] = useState<DateRange>('30d');
     const [granularity, setGranularity] = useState<Granularity>('day');
+    const [aiState, setAiState] = useState<InsightsState>({
+        loading: false, insights: null, generatedAt: null, cached: false, configurationRequired: false, error: null,
+    });
+
+    const loadInsights = async (force: boolean) => {
+        setAiState(s => ({ ...s, loading: true, error: null }));
+        try {
+            const token = await getAuth().currentUser?.getIdToken();
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            };
+            const res = force
+                ? await fetch('/api/admin/ai-insights', { method: 'POST', headers, body: JSON.stringify({ range, force: true }) })
+                : await fetch(`/api/admin/ai-insights?range=${range}`, { headers });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                if (data.configurationRequired) {
+                    setAiState({ loading: false, insights: null, generatedAt: null, cached: false, configurationRequired: true, error: data.message || 'Not configured' });
+                } else {
+                    setAiState(s => ({ ...s, loading: false, error: data.message || 'Failed to load insights' }));
+                    if (force) toast.error(data.message || 'Failed to generate insights');
+                }
+                return;
+            }
+            setAiState({
+                loading: false,
+                insights: data.insights || null,
+                generatedAt: data.generatedAt || null,
+                cached: !!data.cached,
+                configurationRequired: false,
+                error: null,
+            });
+            if (force) toast.success('Fresh insights generated');
+        } catch (e: any) {
+            setAiState(s => ({ ...s, loading: false, error: e?.message || 'Network error' }));
+        }
+    };
+
+    // On mount and when range changes — fetch any cached insight (no LLM call)
+    useEffect(() => {
+        loadInsights(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [range]);
 
     const ranged = useMemo(() => filterByRange(orders, range), [orders, range]);
 
@@ -101,6 +188,80 @@ export default function AnalyticsPage() {
                     <p className="text-xs text-amber-800 mt-1">Try a wider date range, or wait for the first orders to come in.</p>
                 </div>
             )}
+
+            {/* AI Insights — Claude-powered weekly briefing */}
+            <div className="bg-gradient-to-br from-purple-50 via-white to-blue-50 rounded-3xl p-6 md:p-8 border-2 border-purple-100 shadow-sm relative overflow-hidden">
+                <div className="absolute -top-12 -right-12 w-48 h-48 bg-purple-200/30 rounded-full blur-3xl" />
+                <div className="relative z-10">
+                    <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-lg shadow-lg shadow-purple-300/30">✨</div>
+                            <div>
+                                <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">AI Market Briefing</h2>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Claude Opus 4.7 reads your live data and surfaces the actions that matter this {range === 'all' ? 'period' : range}.
+                                    {aiState.generatedAt && (
+                                        <span className="text-gray-400"> · Last generated {new Date(aiState.generatedAt).toLocaleString('en-KE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}{aiState.cached ? ' (cached)' : ''}</span>
+                                    )}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => loadInsights(true)}
+                            disabled={aiState.loading || aiState.configurationRequired}
+                            className="px-5 py-2.5 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-purple-300/40 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                            {aiState.loading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white" />
+                                    Generating...
+                                </>
+                            ) : aiState.insights ? (
+                                <>↻ Refresh</>
+                            ) : (
+                                <>Generate Insights →</>
+                            )}
+                        </button>
+                    </div>
+
+                    {aiState.configurationRequired && (
+                        <div className="bg-white border border-purple-200 rounded-2xl p-5 text-sm text-gray-700">
+                            <p className="font-bold text-gray-900 mb-2">⚙️ AI Insights are not configured</p>
+                            <p className="text-xs text-gray-600 leading-relaxed mb-2">{aiState.error}</p>
+                            <p className="text-xs text-gray-500">Add <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-[11px]">ANTHROPIC_API_KEY</code> to your environment (and Vercel) to enable. Cost is ~$0.05 per fresh briefing; cached for 1 hour.</p>
+                        </div>
+                    )}
+
+                    {!aiState.configurationRequired && !aiState.insights && !aiState.loading && (
+                        <div className="bg-white border border-purple-100 rounded-2xl p-6 text-center">
+                            <p className="text-sm text-gray-600">Click <strong>Generate Insights</strong> to get a Claude-written briefing of this period&apos;s data: top actions, what&apos;s working, what needs attention.</p>
+                        </div>
+                    )}
+
+                    {aiState.loading && !aiState.insights && (
+                        <div className="bg-white border border-purple-100 rounded-2xl p-8 text-center">
+                            <div className="inline-flex items-center gap-3">
+                                <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-200 border-t-purple-600" />
+                                <span className="text-sm text-gray-600">Claude is reading your data...</span>
+                            </div>
+                            <p className="text-xs text-gray-400 mt-3">This usually takes 10–20 seconds.</p>
+                        </div>
+                    )}
+
+                    {aiState.insights && (
+                        <div
+                            className="bg-white border border-purple-100 rounded-2xl p-6 md:p-8 prose-sm max-w-none"
+                            dangerouslySetInnerHTML={{ __html: renderInsightsMarkdown(aiState.insights) }}
+                        />
+                    )}
+
+                    {aiState.error && !aiState.configurationRequired && !aiState.insights && (
+                        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-700 mt-3">
+                            {aiState.error}
+                        </div>
+                    )}
+                </div>
+            </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <Kpi label="Revenue" value={fmtKES(kpis.revenue)} accent="text-melagri-primary" />

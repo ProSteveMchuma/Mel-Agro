@@ -171,6 +171,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // AI Insights cache: server-only writes (admin SDK bypasses), admin read
+    match /aiInsights/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // Bulk inquiry submissions from /bulk page: server-only writes (via API), admin read
     match /bulkInquiries/{id} {
       allow read, update: if isAdmin();

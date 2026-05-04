@@ -98,6 +98,13 @@ SMTP_PASS=your_email_password
 SMTP_FROM="MelAgro" <noreply@melagro.com>
 ```
 
+## AI Market Briefing (Optional — Claude Opus 4.7)
+Enables the **AI Insights** card on the admin analytics dashboard (`/dashboard/admin/analytics`). Click **Generate Insights** to have Claude read your live order data and produce a prioritized weekly briefing — top 3 actions, what's working, what needs attention.
+```env
+ANTHROPIC_API_KEY=sk-ant-api03-...
+```
+Get a key at [console.anthropic.com](https://console.anthropic.com). Approximate cost: ~$0.05 per fresh briefing on Opus 4.7. Each briefing is cached server-side for 1 hour, so multiple admins viewing the page within the same hour share one generation.
+
 ## Admin Setup (Optional — for one-off admin claim)
 Set this only if you need to use the `/admin-setup` page to bootstrap your first admin user. Server-only — does NOT use the `NEXT_PUBLIC_` prefix:
 ```env
