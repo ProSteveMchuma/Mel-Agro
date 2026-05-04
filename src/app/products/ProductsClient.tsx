@@ -272,10 +272,16 @@ function ProductsGrid({
 
     const isSearching = !!searchQuery.trim();
 
-    // Use the full live catalog once it hydrates; fall back to server-rendered initialProducts
-    // until the Firestore snapshot arrives. This way every filter (search, category, brand,
-    // price, in-stock, sort) operates on the same complete dataset.
-    const sourceList: Product[] = catalog.length > 0 ? catalog : initialProducts;
+    // Merge the SSR-rendered baseline with the live Firestore stream by product ID.
+    // The SSR list guarantees the user always sees at least the 12 server-fetched products
+    // (no shrink during onSnapshot hydration); the live catalog overlays fresh data and
+    // adds anything the SSR query missed. Filters operate on the full union.
+    const sourceList: Product[] = useMemo(() => {
+        const byId = new Map<string, Product>();
+        for (const p of initialProducts) byId.set(String(p.id), p);
+        for (const p of catalog) byId.set(String(p.id), p);
+        return Array.from(byId.values());
+    }, [initialProducts, catalog]);
 
     const filteredProducts = useMemo(() => {
         let list = [...sourceList];
