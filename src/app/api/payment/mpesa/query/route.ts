@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { querySTKStatus, getMpesaErrorMessage } from '@/lib/mpesa';
+import { querySTKStatus } from '@/lib/mpesa-server';
+import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 
 export async function POST(request: Request) {

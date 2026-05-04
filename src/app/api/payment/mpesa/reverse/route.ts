@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAdmin } from '@/lib/auth-server';
-import { reverseTransaction } from '@/lib/mpesa';
+import { reverseTransaction } from '@/lib/mpesa-server';
 
 export async function POST(request: Request) {
     try {

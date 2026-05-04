@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { initiateSTKPush } from '@/lib/mpesa';
+import { initiateSTKPush } from '@/lib/mpesa-server';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 
 export async function POST(request: Request) {

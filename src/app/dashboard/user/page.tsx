@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useOrders, Order, OrderItem, Notification } from "@/context/OrderContext";
 import { useCart } from "@/context/CartContext";
 import React, { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { getAuth } from "firebase/auth";
 import Image from "next/image";
 import Link from "next/link";
@@ -32,7 +32,6 @@ export default function UserDashboard() {
     const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
     const { wishlist, removeFromWishlist } = useWishlist();
     const router = useRouter();
-    const searchParams = useSearchParams();
 
     const [activeTab, setActiveTab] = useState<Tab>('dashboard');
     const [retryingPayment, setRetryingPayment] = useState<string | null>(null);
@@ -57,7 +56,8 @@ export default function UserDashboard() {
     }, [user]);
 
     useEffect(() => {
-        const queryOrderId = searchParams?.get('orderId');
+        if (typeof window === 'undefined') return;
+        const queryOrderId = new URLSearchParams(window.location.search).get('orderId');
         if (queryOrderId && orders.length > 0) {
             const order = orders.find(o => o.id === queryOrderId);
             if (order) {
@@ -65,7 +65,7 @@ export default function UserDashboard() {
                 setActiveTab('dashboard');
             }
         }
-    }, [searchParams, orders]);
+    }, [orders]);
 
     useEffect(() => {
         if (user) {
