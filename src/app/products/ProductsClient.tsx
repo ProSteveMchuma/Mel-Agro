@@ -1,11 +1,11 @@
 "use client";
 
-import React, { Suspense, useState, useEffect, useMemo, useCallback, useRef } from "react";
+import React, { Suspense, useState, useEffect, useMemo, useCallback } from "react";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Sidebar, { SortOption } from "@/components/Sidebar";
 import ProductCard from "@/components/ProductCard";
-import { Product, getProductsPage } from "@/lib/products";
+import { Product } from "@/lib/products";
 import { searchProducts, didYouMean } from "@/lib/search";
 import { useProducts } from "@/context/ProductContext";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -270,61 +270,22 @@ function ProductsGrid({
     const router = useRouter();
     const { products: catalog } = useProducts();
 
-    // When the user is searching, we use the full catalog from ProductContext (already streamed
-    // via onSnapshot). When not searching, we use the paginated server flow for performance.
     const isSearching = !!searchQuery.trim();
 
-    // Paginated client state (only used when NOT searching)
-    const [pagedProducts, setPagedProducts] = useState<Product[]>(initialProducts);
-    const [isLoading, setIsLoading] = useState(false);
-    const lastVisibleRef = useRef<any>(null);
-    const [hasMore, setHasMore] = useState(true);
-
-    const loadProducts = useCallback(async (isInitial = false) => {
-        setIsLoading(true);
-        try {
-            const categoryFilter = category === "All Products" || category === "" ? undefined : category;
-            const { products: newProducts, lastVisible } = await getProductsPage(
-                PAGE_SIZE,
-                isInitial ? null : lastVisibleRef.current,
-                categoryFilter,
-                'newest',
-                selectedBrands
-            );
-            if (isInitial) setPagedProducts(newProducts);
-            else setPagedProducts(prev => [...prev, ...newProducts]);
-            lastVisibleRef.current = lastVisible;
-            setHasMore(newProducts.length === PAGE_SIZE);
-        } catch (error) {
-            console.error("Failed to load products:", error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, [category, selectedBrands]);
-
-    // Refetch paginated stream when filters change (and we're not searching)
-    useEffect(() => {
-        if (isSearching) return;
-        lastVisibleRef.current = null;
-        setHasMore(true);
-        loadProducts(true);
-    }, [isSearching, category, selectedBrands.join('|'), loadProducts]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    const baseList: Product[] = isSearching ? catalog : pagedProducts;
+    // Use the full live catalog once it hydrates; fall back to server-rendered initialProducts
+    // until the Firestore snapshot arrives. This way every filter (search, category, brand,
+    // price, in-stock, sort) operates on the same complete dataset.
+    const sourceList: Product[] = catalog.length > 0 ? catalog : initialProducts;
 
     const filteredProducts = useMemo(() => {
-        let list = [...baseList];
+        let list = [...sourceList];
 
         if (isSearching) {
             list = searchProducts(list, searchQuery);
-            // Apply category as a hard filter even when searching
-            if (category) list = list.filter(p => p.category === category);
-            if (selectedBrands.length > 0) list = list.filter(p => p.brand && selectedBrands.includes(p.brand));
-        } else if (selectedBrands.length > 0) {
-            // When NOT searching, brands are already applied server-side, but the local
-            // filter is harmless and also covers the case where the server returns extras.
-            list = list.filter(p => p.brand && selectedBrands.includes(p.brand));
         }
+
+        if (category) list = list.filter(p => p.category === category);
+        if (selectedBrands.length > 0) list = list.filter(p => p.brand && selectedBrands.includes(p.brand));
 
         list = list.filter(p => {
             const price = Number(p.price) || 0;
@@ -345,7 +306,14 @@ function ProductsGrid({
         else if (sortBy === 'top-rated') list.sort((a, b) => (Number((b as any).rating) || 0) - (Number((a as any).rating) || 0));
 
         return list;
-    }, [baseList, isSearching, searchQuery, category, selectedBrands, priceRange, inStockOnly, sortBy]);
+    }, [sourceList, isSearching, searchQuery, category, selectedBrands, priceRange, inStockOnly, sortBy]);
+
+    // Local "show more" pagination over the filtered set.
+    const [displayLimit, setDisplayLimit] = useState(PAGE_SIZE);
+    useEffect(() => { setDisplayLimit(PAGE_SIZE); }, [searchQuery, category, selectedBrands.join('|'), priceRange[0], priceRange[1], inStockOnly, sortBy]);
+
+    const visibleProducts = filteredProducts.slice(0, displayLimit);
+    const hasMore = filteredProducts.length > displayLimit;
 
     const corrections = useMemo(() => {
         if (!isSearching || filteredProducts.length > 0) return [];
@@ -359,7 +327,7 @@ function ProductsGrid({
             .slice(0, 4);
     }, [filteredProducts.length, catalog]);
 
-    if (isLoading && pagedProducts.length === 0 && !isSearching) {
+    if (sourceList.length === 0) {
         return (
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                 {[...Array(6)].map((_, i) => (
@@ -441,13 +409,13 @@ function ProductsGrid({
         <div className="space-y-12">
             <div className="flex items-center justify-between">
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
-                    {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
+                    Showing {visibleProducts.length} of {filteredProducts.length} {filteredProducts.length === 1 ? 'result' : 'results'}
                     {searchQuery && <> for &ldquo;{searchQuery}&rdquo;</>}
                 </p>
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProducts.map(product => (
+                {visibleProducts.map(product => (
                     <ProductCard
                         key={product.id}
                         id={product.id}
@@ -461,16 +429,13 @@ function ProductsGrid({
                 ))}
             </div>
 
-            {/* Pagination only when browsing (not searching) — searching uses full catalog already */}
-            {!isSearching && hasMore && (
+            {hasMore && (
                 <div className="flex justify-center pt-8">
                     <button
-                        onClick={() => loadProducts(false)}
-                        disabled={isLoading || !lastVisibleRef.current}
-                        className="bg-gray-900 hover:bg-[#22c55e] text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl hover:shadow-green-100 disabled:opacity-50 flex items-center gap-3"
+                        onClick={() => setDisplayLimit(n => n + PAGE_SIZE)}
+                        className="bg-gray-900 hover:bg-[#22c55e] text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl hover:shadow-green-100 flex items-center gap-3"
                     >
-                        {isLoading ? <div className="animate-spin rounded-full h-4 w-4 border-2 border-white/20 border-t-white"></div> : null}
-                        {isLoading ? 'Loading more...' : 'Show more products'}
+                        Show more products ({filteredProducts.length - displayLimit} remaining)
                     </button>
                 </div>
             )}
