@@ -2,6 +2,7 @@
 
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import { DELIVERY_ZONES, FREE_SHIPPING_THRESHOLD } from "@/lib/delivery";
 
 export default function ShippingPage() {
     return (
@@ -39,20 +40,17 @@ export default function ShippingPage() {
                                     We understand that timing is critical in agriculture. That's why we've partnered with the most reliable logistics providers in Kenya to ensure your inputs arrive when you need them.
                                 </p>
                                 <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 mb-6">
-                                    <h3 className="font-bold text-gray-900 mb-4">Estimated Timelines:</h3>
-                                    <ul className="space-y-4">
-                                        <li className="flex justify-between border-b border-gray-200 pb-2">
-                                            <span className="text-gray-600">Nairobi & Environs</span>
-                                            <span className="font-bold text-melagri-primary text-sm">Same Day / 24 Hours</span>
-                                        </li>
-                                        <li className="flex justify-between border-b border-gray-200 pb-2">
-                                            <span className="text-gray-600">Major Towns (Nakuru, Kisumu, Eldoret, etc.)</span>
-                                            <span className="font-bold text-melagri-primary text-sm">24 - 48 Hours</span>
-                                        </li>
-                                        <li className="flex justify-between">
-                                            <span className="text-gray-600">Remote / Field Locations</span>
-                                            <span className="font-bold text-melagri-primary text-sm">48 - 72 Hours</span>
-                                        </li>
+                                    <h3 className="font-bold text-gray-900 mb-4">Estimated Timelines by Region:</h3>
+                                    <ul className="space-y-3">
+                                        {DELIVERY_ZONES.filter(z => z.regions[0] !== 'Other').map((zone, idx, arr) => (
+                                            <li key={zone.name} className={`flex justify-between gap-4 ${idx < arr.length - 1 ? 'border-b border-gray-200 pb-2' : ''}`}>
+                                                <div>
+                                                    <p className="text-gray-900 font-semibold text-sm">{zone.name}</p>
+                                                    <p className="text-xs text-gray-500 leading-snug">{zone.regions.slice(0, 4).join(', ')}{zone.regions.length > 4 ? `, +${zone.regions.length - 4} more` : ''}</p>
+                                                </div>
+                                                <span className="font-bold text-melagri-primary text-sm whitespace-nowrap">{zone.etaText}</span>
+                                            </li>
+                                        ))}
                                     </ul>
                                 </div>
                                 <div className="flex items-start gap-4 p-4 bg-amber-50 rounded-xl border border-amber-100 text-amber-800 text-sm">
@@ -66,17 +64,36 @@ export default function ShippingPage() {
                             <section id="shipping-costs" className="mb-12">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Shipping Costs</h2>
                                 <p className="text-gray-600 mb-6">
-                                    Our shipping rates are calculated based on the weight of the items and the delivery distance. You will see the final shipping cost at checkout before you complete your purchase.
+                                    Rates are calculated by delivery zone. You'll see the final cost at checkout once you select your county.
                                 </p>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                                     <div className="p-6 rounded-2xl border-2 border-melagri-primary/10 bg-melagri-primary/[0.02]">
                                         <h4 className="font-bold text-gray-900 mb-2">Free Delivery</h4>
-                                        <p className="text-sm text-gray-600">On all orders above KSh 20,000 within Nairobi.</p>
+                                        <p className="text-sm text-gray-600">On all orders above KSh {FREE_SHIPPING_THRESHOLD.toLocaleString()}, country-wide.</p>
                                     </div>
                                     <div className="p-6 rounded-2xl border-2 border-gray-100">
-                                        <h4 className="font-bold text-gray-900 mb-2">Flexible Rates</h4>
-                                        <p className="text-sm text-gray-600">Competitive rates for bulk orders and country-wide delivery.</p>
+                                        <h4 className="font-bold text-gray-900 mb-2">Free Pickup</h4>
+                                        <p className="text-sm text-gray-600">Collect at our store at no cost — ready in 1–2 hours.</p>
                                     </div>
+                                </div>
+
+                                <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-gray-50">
+                                            <tr>
+                                                <th className="text-left px-4 py-3 font-bold text-gray-700">Zone</th>
+                                                <th className="text-right px-4 py-3 font-bold text-gray-700">Rate</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {DELIVERY_ZONES.filter(z => z.regions[0] !== 'Other').map((zone) => (
+                                                <tr key={zone.name} className="border-t border-gray-100">
+                                                    <td className="px-4 py-3 text-gray-700">{zone.name}</td>
+                                                    <td className="px-4 py-3 text-right font-bold text-melagri-primary">KES {zone.price.toLocaleString()}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </section>
 

@@ -17,7 +17,7 @@ import { useBehavior } from '@/context/BehaviorContext';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { getDeliveryCost } from '@/lib/delivery';
+import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { checkoutSchema, CheckoutFormData } from '@/lib/schemas';
@@ -30,20 +30,7 @@ const LocationPicker = dynamic(() => import('../../components/checkout/LocationP
     loading: () => <div className="h-[300px] w-full bg-gray-100 animate-pulse rounded-xl flex items-center justify-center text-gray-400">Loading Map...</div>
 });
 
-const KENYA_COUNTIES = [
-    // List of major counties or all 47 ideally, kept short for brevity but can be expanded
-    { value: 'Nairobi', label: 'Nairobi' },
-    { value: 'Mombasa', label: 'Mombasa' },
-    { value: 'Kisumu', label: 'Kisumu' },
-    { value: 'Nakuru', label: 'Nakuru' },
-    { value: 'Eldoret', label: 'Eldoret' },
-    { value: 'Kiambu', label: 'Kiambu' },
-    { value: 'Machakos', label: 'Machakos' },
-    { value: 'Kajiado', label: 'Kajiado' },
-    { value: 'Kilifi', label: 'Kilifi' },
-    { value: 'Meru', label: 'Meru' },
-    { value: 'Nyeri', label: 'Nyeri' },
-];
+const KENYA_COUNTIES = KENYAN_COUNTIES.map(c => ({ value: c, label: c }));
 
 export default function CheckoutPage() {
     const router = useRouter();
@@ -105,7 +92,7 @@ export default function CheckoutPage() {
 
     // Calculate dynamic shipping
     const deliveryInfo = getDeliveryCost(shippingData.county, cartTotal);
-    const shippingCost = shippingMethod === 'standard' ? deliveryInfo.cost : 100;
+    const shippingCost = shippingMethod === 'standard' ? deliveryInfo.cost : 0;
 
     const discountFromPoints = usePoints ? Math.min(cartTotal, user?.loyaltyPoints || 0) : 0;
     const total = cartTotal + shippingCost - discountFromPoints;
@@ -527,11 +514,11 @@ export default function CheckoutPage() {
                                                             />
                                                             <div className="flex-1">
                                                                 <p className="font-semibold text-gray-900">Standard Delivery</p>
-                                                                <p className="text-sm text-gray-500">Arrives in 1-3 business days</p>
+                                                                <p className="text-sm text-gray-500">{deliveryInfo.etaText} — {deliveryInfo.zoneName}</p>
                                                             </div>
                                                             <div className="text-right">
                                                                 <p className="font-bold text-melagri-primary">
-                                                                    {shippingCost === 0 ? "FREE" : `KES ${shippingCost.toLocaleString()}`}
+                                                                    {deliveryInfo.cost === 0 ? "FREE" : `KES ${deliveryInfo.cost.toLocaleString()}`}
                                                                 </p>
                                                                 {shippingMethod === 'standard' && (
                                                                     <p className="text-[10px] text-gray-400 font-medium">({deliveryInfo.reason})</p>
@@ -553,9 +540,9 @@ export default function CheckoutPage() {
                                                             />
                                                             <div className="flex-1">
                                                                 <p className="font-semibold text-gray-900">Pick-up Station</p>
-                                                                <p className="text-sm text-gray-500">At our store location</p>
+                                                                <p className="text-sm text-gray-500">Collect at our store — ready in 1–2 hours</p>
                                                             </div>
-                                                            <p className="font-bold text-melagri-primary">KES 100.00</p>
+                                                            <p className="font-bold text-melagri-primary">FREE</p>
                                                         </div>
                                                     </label>
                                                 </div>
@@ -855,7 +842,7 @@ export default function CheckoutPage() {
                                                             Edit
                                                         </button>
                                                     </div>
-                                                    <p className="text-gray-900 font-semibold">{shippingMethod === 'standard' ? 'Standard Delivery (2-3 Days)' : 'Pick-up from Store'}</p>
+                                                    <p className="text-gray-900 font-semibold">{shippingMethod === 'standard' ? `Standard Delivery — ${deliveryInfo.etaText}` : 'Pick-up from Store'}</p>
                                                 </div>
 
                                                 {/* Payment Method */}
