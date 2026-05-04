@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, addDoc, doc, updateDoc, increment, serverTimestamp, getDoc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, increment, serverTimestamp, getDoc, setDoc, query, orderBy, limit, getDocs } from 'firebase/firestore';
 
 export const AnalyticsService = {
     /**
@@ -104,5 +104,27 @@ export const AnalyticsService = {
         } catch (error) {
             console.error("Failed to log purchase:", error);
         }
-    }
+    },
+
+    /**
+     * Fetch the top N most-searched terms (descending by count).
+     * Used to drive the "popular searches" UI in SmartSearch.
+     */
+    getPopularSearches: async (max = 5): Promise<Array<{ term: string; count: number }>> => {
+        try {
+            const q = query(
+                collection(db, 'analytics_search_terms'),
+                orderBy('count', 'desc'),
+                limit(max)
+            );
+            const snap = await getDocs(q);
+            return snap.docs.map(doc => ({
+                term: String(doc.data().term || doc.id),
+                count: Number(doc.data().count) || 0,
+            }));
+        } catch (error) {
+            console.error("Failed to fetch popular searches:", error);
+            return [];
+        }
+    },
 };
