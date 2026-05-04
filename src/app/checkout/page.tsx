@@ -472,18 +472,8 @@ export default function CheckoutPage() {
                     }
                 };
 
-                const unsubscribe = onSnapshot(orderRef, (snapshot) => {
-                    const updatedOrder = snapshot.data();
-                    if (updatedOrder?.paymentStatus === 'Paid') {
-                        finish('paid');
-                    } else if (updatedOrder?.paymentStatus === 'Failed') {
-                        const errorMsg = updatedOrder.paymentFailureMessage ||
-                            getMpesaErrorMessage(updatedOrder.paymentFailureCode || updatedOrder.paymentFailureReason || 'Unknown');
-                        finish('failed', errorMsg);
-                    }
-                });
-
                 const startPolling = () => {
+                    if (pollTimer) return;
                     pollTimer = setInterval(async () => {
                         if (resolved) return;
                         try {
@@ -504,6 +494,20 @@ export default function CheckoutPage() {
                         }
                     }, 5000);
                 };
+
+                const unsubscribe = onSnapshot(orderRef, (snapshot) => {
+                    const updatedOrder = snapshot.data();
+                    if (updatedOrder?.paymentStatus === 'Paid') {
+                        finish('paid');
+                    } else if (updatedOrder?.paymentStatus === 'Failed') {
+                        const errorMsg = updatedOrder.paymentFailureMessage ||
+                            getMpesaErrorMessage(updatedOrder.paymentFailureCode || updatedOrder.paymentFailureReason || 'Unknown');
+                        finish('failed', errorMsg);
+                    }
+                }, (err) => {
+                    console.error('Order listener error, falling back to polling:', err);
+                    if (!resolved) startPolling();
+                });
 
                 setTimeout(() => { if (!resolved) startPolling(); }, 30000);
 
