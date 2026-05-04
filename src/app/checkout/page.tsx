@@ -712,7 +712,9 @@ export default function CheckoutPage() {
                                                     <p className="text-sm text-gray-500 font-medium">Order via WhatsApp and pay on delivery.</p>
                                                 </div>
 
-                                                {/* Card Option */}
+                                                {/* Card Payment (Paystack) — temporarily hidden until Paystack credentials are configured.
+                                                    Re-enable by uncommenting this block AND setting PAYSTACK_SECRET_KEY +
+                                                    NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY in .env.local / Vercel.
                                                 <div
                                                     onClick={() => setValue('paymentMethod', 'card')}
                                                     className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'card'
@@ -734,6 +736,7 @@ export default function CheckoutPage() {
                                                     </div>
                                                     <p className="text-sm text-gray-500 font-medium">Visa, Mastercard processed securely via Paystack.</p>
                                                 </div>
+                                                */}
 
                                                 {/* Cash on Delivery Option */}
                                                 <div
