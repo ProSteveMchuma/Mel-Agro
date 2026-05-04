@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useOrders } from '@/context/OrderContext';
+import { useProducts } from '@/context/ProductContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
@@ -34,10 +35,11 @@ const KENYA_COUNTIES = KENYAN_COUNTIES.map(c => ({ value: c, label: c }));
 
 export default function CheckoutPage() {
     const router = useRouter();
-    const { cartItems, cartTotal, clearCart } = useCart();
+    const { cartItems, cartTotal, clearCart, removeFromCart, updateQuantity } = useCart();
     const { user } = useAuth();
-    const { addOrder } = useOrders();
+    const { addOrder, orders: userOrders } = useOrders();
     const { trackAction } = useBehavior();
+    const { products: catalog } = useProducts();
 
     const [currentStep, setCurrentStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
     const [isProcessing, setIsProcessing] = useState(false);
@@ -45,6 +47,9 @@ export default function CheckoutPage() {
     const [couponInput, setCouponInput] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<{ id: string; code: string; type: string; value: number; amount: number } | null>(null);
     const [couponLoading, setCouponLoading] = useState(false);
+    const [showMap, setShowMap] = useState(false);
+    const [quickCheckoutDismissed, setQuickCheckoutDismissed] = useState(false);
+    const [paymentFailure, setPaymentFailure] = useState<{ orderId: string; message: string } | null>(null);
 
     // Name-capture gate — phone-OTP signups land here without a real name
     const needsName = !!user && (!user.name || user.name === 'User');
@@ -117,6 +122,104 @@ export default function CheckoutPage() {
             router.replace('/cart');
         }
     }, [cartItems.length, isProcessing, router]);
+
+    // Stock revalidation — re-check the catalog for any cart items now under-stocked or removed.
+    // The cart can sit idle for days; ProductContext is streamed via onSnapshot so this stays fresh.
+    const stockIssues = (() => {
+        if (catalog.length === 0) return [] as Array<{ cartItem: any; available: number; reason: 'oos' | 'low' | 'gone' }>;
+        const out: Array<{ cartItem: any; available: number; reason: 'oos' | 'low' | 'gone' }> = [];
+        for (const item of cartItems) {
+            const product: any = catalog.find(p => String(p.id) === String(item.id));
+            if (!product) {
+                out.push({ cartItem: item, available: 0, reason: 'gone' });
+                continue;
+            }
+            let available = Number(product.stockQuantity) || 0;
+            if ((item as any).selectedVariant?.id && Array.isArray(product.variants)) {
+                const v = product.variants.find((x: any) => x.id === (item as any).selectedVariant.id);
+                if (!v) {
+                    out.push({ cartItem: item, available: 0, reason: 'gone' });
+                    continue;
+                }
+                const vStock = Number(v.stockQuantity ?? v.stock);
+                if (Number.isFinite(vStock)) available = vStock;
+            }
+            if (available <= 0) out.push({ cartItem: item, available: 0, reason: 'oos' });
+            else if (available < item.quantity) out.push({ cartItem: item, available, reason: 'low' });
+        }
+        return out;
+    })();
+
+    // One-tap reorder — show a shortcut for returning customers when their cart is OK and
+    // their last order is paid. Pre-fill is already done by the user-sync useEffect.
+    const lastPaidOrder = userOrders.find(o => (o as any).paymentStatus === 'Paid');
+    const showQuickCheckout =
+        currentStep === 1 &&
+        !quickCheckoutDismissed &&
+        !!lastPaidOrder &&
+        !!user?.name && user.name !== 'User' &&
+        stockIssues.length === 0;
+
+    const handleQuickCheckout = async () => {
+        const ok = await trigger('shipping');
+        if (!ok) {
+            toast.error("Some delivery details are missing — please fill them in.");
+            return;
+        }
+        trackAction('quick_checkout_used', { lastOrderId: lastPaidOrder?.id });
+        setCurrentStep(3);
+    };
+
+    // Payment-failure recovery actions — surfaced inline at Step 3 when M-Pesa fails
+    const handleFailureRetry = async () => {
+        if (!paymentFailure) return;
+        setIsProcessing(true);
+        const t = toast.loading("Re-sending M-Pesa prompt...");
+        try {
+            const idToken = await getAuth().currentUser?.getIdToken();
+            const res = await fetch('/api/payment/mpesa/retry', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+                },
+                body: JSON.stringify({ orderId: paymentFailure.orderId, phoneNumber: shippingData.phone }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success("STK Push sent — check your phone, then complete from your dashboard.", { id: t, duration: 7000 });
+                clearCart();
+                router.push(`/dashboard/user?orderId=${paymentFailure.orderId}`);
+            } else {
+                toast.error(data.message || "Couldn't re-send the prompt.", { id: t });
+                setIsProcessing(false);
+            }
+        } catch (e: any) {
+            toast.error(e?.message || "Retry failed", { id: t });
+            setIsProcessing(false);
+        }
+    };
+
+    const handleFailureSwitchToTill = () => {
+        setValue('paymentMethod', 'manual_mpesa');
+        setPaymentFailure(null);
+        setCurrentStep(2);
+        toast("Switched to manual Buy Goods. Pay via your M-Pesa menu, then enter the receipt code.", { duration: 6000 });
+    };
+
+    const handleFailureSwitchToCod = () => {
+        setValue('paymentMethod', 'cod');
+        setPaymentFailure(null);
+        setCurrentStep(3);
+        toast.success("Switched to Cash on Delivery. Confirm to place the order.", { duration: 5000 });
+    };
+
+    const handlePayLater = () => {
+        if (!paymentFailure) return;
+        toast("Order saved as unpaid. Resume payment from your dashboard.", { duration: 5000 });
+        clearCart();
+        router.push(`/dashboard/user?orderId=${paymentFailure.orderId}`);
+    };
 
     // Sync shipping data with user profile when user loads.
     // Prefer the most recently saved address (auto-saved on first order) over raw profile fields,
@@ -360,6 +463,7 @@ export default function CheckoutPage() {
                         router.push(`/checkout/success?orderId=${newOrder.id}`);
                     } else if (status === 'failed') {
                         toast.error(`Payment Failed: ${msg || 'Unknown error'}`, { duration: 6000 });
+                        setPaymentFailure({ orderId: newOrder.id, message: msg || 'Unknown error' });
                         setIsProcessing(false);
                     } else {
                         toast("Payment check timed out. Visit your dashboard to retry.", { duration: 6000 });
@@ -479,6 +583,92 @@ export default function CheckoutPage() {
                             </nav>
                         </div>
 
+                        {/* Stock issues banner — re-validates at entry */}
+                        {stockIssues.length > 0 && (
+                            <div className="mb-8 bg-amber-50 border-2 border-amber-200 rounded-2xl p-5">
+                                <div className="flex items-start gap-3 mb-4">
+                                    <span className="text-2xl">⚠️</span>
+                                    <div>
+                                        <p className="font-black text-amber-900 text-sm uppercase tracking-tight">Some items in your cart need attention</p>
+                                        <p className="text-xs text-amber-800 mt-0.5">Stock changed since you last visited. Update quantities or remove items to continue.</p>
+                                    </div>
+                                </div>
+                                <ul className="space-y-2">
+                                    {stockIssues.map(({ cartItem, available, reason }) => (
+                                        <li key={cartItem.cartItemId || cartItem.id} className="bg-white rounded-xl p-3 flex items-center justify-between gap-3 flex-wrap">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-gray-900 text-sm truncate">
+                                                    {cartItem.name}
+                                                    {cartItem.selectedVariant && <span className="text-gray-500 font-medium"> ({cartItem.selectedVariant.name})</span>}
+                                                </p>
+                                                <p className="text-xs text-amber-700 mt-0.5">
+                                                    {reason === 'gone' && 'No longer available in our catalogue.'}
+                                                    {reason === 'oos' && `Out of stock. You have ${cartItem.quantity} in cart.`}
+                                                    {reason === 'low' && `Only ${available} in stock — you have ${cartItem.quantity} in cart.`}
+                                                </p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {reason === 'low' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateQuantity(cartItem.cartItemId || String(cartItem.id), available)}
+                                                        className="px-3 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700 transition-colors"
+                                                    >
+                                                        Update to {available}
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeFromCart(cartItem.cartItemId || String(cartItem.id))}
+                                                    className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* One-tap reorder for returning customers */}
+                        {showQuickCheckout && (
+                            <div className="mb-8 bg-gradient-to-r from-melagri-primary to-green-600 rounded-2xl p-6 text-white relative overflow-hidden shadow-xl shadow-green-500/10">
+                                <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full" />
+                                <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-white/5 rounded-full" />
+                                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xl">⚡</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded-full">Welcome back, {user?.name?.split(' ')[0]}</span>
+                                        </div>
+                                        <p className="font-black text-lg leading-tight">Same address & payment as last time?</p>
+                                        <p className="text-xs text-white/80 mt-1 truncate">
+                                            {(lastPaidOrder as any)?.shippingAddress?.details || ''}
+                                            {' · '}
+                                            {(lastPaidOrder as any)?.paymentMethod || ''}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={handleQuickCheckout}
+                                            className="px-6 py-3 bg-white text-melagri-primary font-black uppercase text-xs tracking-widest rounded-xl hover:bg-green-50 transition-all shadow-lg"
+                                        >
+                                            Quick Checkout →
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setQuickCheckoutDismissed(true)}
+                                            className="px-4 py-2 text-xs font-bold text-white/70 hover:text-white underline whitespace-nowrap"
+                                        >
+                                            Edit details
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Step Indicators */}
                         <div className="mb-12">
                             <div className="flex items-center justify-between">
@@ -590,26 +780,48 @@ export default function CheckoutPage() {
                                                     rows={3}
                                                 />
 
-                                                {/* Map Location Picker */}
+                                                {/* Map Location Picker — collapsed by default to keep checkout fast */}
                                                 <div className="mt-6">
-                                                    <label className="block text-sm font-semibold text-gray-900 mb-4">Pin Your Exact Delivery Location</label>
-                                                    <LocationPicker
-                                                        onLocationSelect={(lat, lng, address) => {
-                                                            setValue('shipping.lat', lat);
-                                                            setValue('shipping.lng', lng);
-                                                            if (address?.county) setValue('shipping.county', address.county);
-                                                            if (address?.town) setValue('shipping.town', address.town);
+                                                    {!showMap ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowMap(true)}
+                                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 hover:border-melagri-primary hover:bg-green-50/50 rounded-2xl text-sm font-bold text-gray-500 hover:text-melagri-primary transition-all"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                            <span>Pin exact location on map (optional)</span>
+                                                        </button>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex items-center justify-between mb-4">
+                                                                <label className="block text-sm font-semibold text-gray-900">Pin Your Exact Delivery Location</label>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setShowMap(false)}
+                                                                    className="text-xs font-bold text-gray-400 hover:text-gray-700 underline"
+                                                                >
+                                                                    Hide map
+                                                                </button>
+                                                            </div>
+                                                            <LocationPicker
+                                                                onLocationSelect={(lat, lng, address) => {
+                                                                    setValue('shipping.lat', lat);
+                                                                    setValue('shipping.lng', lng);
+                                                                    if (address?.county) setValue('shipping.county', address.county);
+                                                                    if (address?.town) setValue('shipping.town', address.town);
 
-                                                            if (address?.county) {
-                                                                toast.success(`Location detected: ${address.county}`, { id: 'map-toast' });
-                                                            } else {
-                                                                toast.success("Location pinned!", { id: 'map-toast' });
-                                                            }
-                                                        }}
-                                                        initialLat={shippingData.lat}
-                                                        initialLng={shippingData.lng}
-                                                    />
-                                                    <p className="text-[10px] text-gray-400 mt-2 italic">Drag the marker to your precise location for faster delivery.</p>
+                                                                    if (address?.county) {
+                                                                        toast.success(`Location detected: ${address.county}`, { id: 'map-toast' });
+                                                                    } else {
+                                                                        toast.success("Location pinned!", { id: 'map-toast' });
+                                                                    }
+                                                                }}
+                                                                initialLat={shippingData.lat}
+                                                                initialLng={shippingData.lng}
+                                                            />
+                                                            <p className="text-[10px] text-gray-400 mt-2 italic">Drag the marker to your precise location for faster delivery.</p>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -1009,6 +1221,54 @@ export default function CheckoutPage() {
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            {/* Payment failure recovery — shows when an M-Pesa attempt failed on this order */}
+                                            {paymentFailure && (
+                                                <div className="mt-8 bg-red-50 border-2 border-red-200 rounded-2xl p-6">
+                                                    <div className="flex items-start gap-3 mb-4">
+                                                        <span className="text-2xl">⚠️</span>
+                                                        <div className="flex-1">
+                                                            <p className="font-black text-red-900 text-sm uppercase tracking-tight">M-Pesa payment didn&apos;t go through</p>
+                                                            <p className="text-sm text-red-700 mt-1">{paymentFailure.message}</p>
+                                                            <p className="text-xs text-red-600 mt-2">Don&apos;t worry — your order is saved. Pick how you&apos;d like to pay:</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleFailureRetry}
+                                                            disabled={isProcessing}
+                                                            className="px-4 py-3 bg-melagri-primary text-white font-black uppercase text-xs tracking-widest rounded-xl hover:bg-melagri-secondary transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>↻</span> Retry M-Pesa Prompt
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleFailureSwitchToTill}
+                                                            disabled={isProcessing}
+                                                            className="px-4 py-3 bg-white text-gray-900 border-2 border-gray-200 font-black uppercase text-xs tracking-widest rounded-xl hover:bg-gray-50 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>📲</span> Pay via Buy Goods (Till)
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleFailureSwitchToCod}
+                                                            disabled={isProcessing}
+                                                            className="px-4 py-3 bg-white text-gray-900 border-2 border-gray-200 font-black uppercase text-xs tracking-widest rounded-xl hover:bg-gray-50 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>💵</span> Cash on Delivery
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handlePayLater}
+                                                            disabled={isProcessing}
+                                                            className="px-4 py-3 bg-white text-gray-500 border-2 border-gray-100 font-bold uppercase text-xs tracking-widest rounded-xl hover:bg-gray-50 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>⏱</span> Pay Later
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             <div className="mt-8 flex gap-4">
                                                 <button
