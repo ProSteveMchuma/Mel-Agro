@@ -104,18 +104,28 @@ service cloud.firestore {
       allow read, update: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
-    // Analytics: Restricted delete/read, Public write (for tracking)
+    // Analytics: Authenticated-only writes, admin read/delete.
+    // We only accept tracking events from signed-in users (anonymous Firebase auth
+    // will be set up separately if guest tracking is needed). Bounds doc size to
+    // prevent fill-the-bucket abuse.
+    function validAnalyticsEvent() {
+      return request.resource.data.size() < 50 &&
+             request.resource.data.keys().hasAny(['timestamp', 'event', 'term', 'productId', 'page']);
+    }
     match /analytics_search_terms/{id} {
       allow read, delete: if isAdmin();
-      allow create, update: if true;
+      allow create: if request.auth != null && validAnalyticsEvent();
+      allow update: if isAdmin();
     }
     match /analytics_products/{id} {
       allow read, delete: if isAdmin();
-      allow create, update: if true;
+      allow create: if request.auth != null && validAnalyticsEvent();
+      allow update: if isAdmin();
     }
     match /analytics_traffic/{id} {
       allow read, delete: if isAdmin();
-      allow create, update: if true;
+      allow create: if request.auth != null && validAnalyticsEvent();
+      allow update: if isAdmin();
     }
     match /analytics_funnels/{id} {
       allow read, delete: if isAdmin();
@@ -157,6 +167,18 @@ service cloud.firestore {
 
     // Paystack webhook idempotency log: server only
     match /paystackWebhookEvents/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Bulk inquiry submissions from /bulk page: server-only writes (via API), admin read
+    match /bulkInquiries/{id} {
+      allow read, update: if isAdmin();
+      allow create, delete: if false;
+    }
+
+    // Discount usage tracking: server only
+    match /discountUsage/{id} {
       allow read: if isAdmin();
       allow write: if false;
     }

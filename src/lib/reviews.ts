@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, addDoc, query, where, getDocs, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, orderBy, Timestamp, limit } from 'firebase/firestore';
 
 export interface Review {
     id: string;
@@ -10,6 +10,7 @@ export interface Review {
     comment: string;
     date: string;
     status: 'pending' | 'approved' | 'rejected';
+    verifiedPurchase?: boolean;
 }
 
 export async function getProductReviews(productId: string): Promise<Review[]> {
@@ -25,11 +26,9 @@ export async function getProductReviews(productId: string): Promise<Review[]> {
             id: doc.id,
             ...doc.data(),
             date: doc.data().createdAt?.toDate().toLocaleDateString() || new Date().toLocaleDateString(),
-            // Helper for sorting
             timestamp: doc.data().createdAt?.toMillis() || 0
         })) as (Review & { timestamp: number })[];
 
-        // Client-side sort
         return reviews.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
         console.error("Error fetching reviews:", error);
@@ -37,17 +36,67 @@ export async function getProductReviews(productId: string): Promise<Review[]> {
     }
 }
 
-export async function addReview(review: Omit<Review, 'id' | 'date' | 'status'>) {
+async function hasUserAlreadyReviewed(productId: string, userId: string): Promise<boolean> {
+    const q = query(
+        collection(db, 'reviews'),
+        where('productId', '==', productId),
+        where('userId', '==', userId),
+        limit(1)
+    );
+    const snap = await getDocs(q);
+    return !snap.empty;
+}
+
+async function userHasPurchased(productId: string, userId: string): Promise<boolean> {
+    const q = query(
+        collection(db, 'orders'),
+        where('userId', '==', userId),
+        where('paymentStatus', '==', 'Paid')
+    );
+    const snap = await getDocs(q);
+    for (const doc of snap.docs) {
+        const items = (doc.data().items || []) as Array<{ id: string | number }>;
+        if (items.some(i => String(i.id) === String(productId))) return true;
+    }
+    return false;
+}
+
+export async function addReview(review: Omit<Review, 'id' | 'date' | 'status'>): Promise<{ ok: boolean; error?: string; verifiedPurchase?: boolean }> {
+    if (!review.userId) {
+        return { ok: false, error: 'You must be signed in to leave a review.' };
+    }
+    if (!review.productId) {
+        return { ok: false, error: 'Product ID missing.' };
+    }
+    if (!review.rating || review.rating < 1 || review.rating > 5) {
+        return { ok: false, error: 'Rating must be between 1 and 5.' };
+    }
+    if (!review.comment || review.comment.trim().length < 5) {
+        return { ok: false, error: 'Please write at least a few words.' };
+    }
+    if (review.comment.length > 2000) {
+        return { ok: false, error: 'Review is too long (max 2000 characters).' };
+    }
+
     try {
+        if (await hasUserAlreadyReviewed(review.productId, review.userId)) {
+            return { ok: false, error: 'You have already reviewed this product.' };
+        }
+
+        const verifiedPurchase = await userHasPurchased(review.productId, review.userId);
+
         await addDoc(collection(db, 'reviews'), {
             ...review,
-            status: 'pending',
-            createdAt: Timestamp.now()
+            comment: review.comment.trim(),
+            status: verifiedPurchase ? 'approved' : 'pending',
+            verifiedPurchase,
+            createdAt: Timestamp.now(),
         });
-        return true;
-    } catch (error) {
+
+        return { ok: true, verifiedPurchase };
+    } catch (error: any) {
         console.error("Error adding review:", error);
-        return false;
+        return { ok: false, error: error?.message || 'Failed to submit review.' };
     }
 }
 

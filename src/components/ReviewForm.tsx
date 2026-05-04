@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { addReview } from "@/lib/reviews";
+import { toast } from "react-hot-toast";
 
 export default function ReviewForm({ productId, onReviewAdded }: { productId: string, onReviewAdded: () => void }) {
     const { user } = useAuth();
@@ -14,7 +15,7 @@ export default function ReviewForm({ productId, onReviewAdded }: { productId: st
         if (!user) return;
 
         setSubmitting(true);
-        const success = await addReview({
+        const result = await addReview({
             productId,
             userId: user.uid,
             userName: user.name || "Anonymous",
@@ -22,12 +23,17 @@ export default function ReviewForm({ productId, onReviewAdded }: { productId: st
             comment
         });
 
-        if (success) {
+        if (result.ok) {
             setComment("");
             setRating(5);
+            if (result.verifiedPurchase) {
+                toast.success("Thanks! Your verified-purchase review is live.");
+            } else {
+                toast.success("Thanks! Your review is pending admin approval.");
+            }
             onReviewAdded();
         } else {
-            alert("Failed to submit review. Please try again.");
+            toast.error(result.error || "Failed to submit review.");
         }
         setSubmitting(false);
     };

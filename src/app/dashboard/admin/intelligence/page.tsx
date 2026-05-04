@@ -1,10 +1,36 @@
 "use client";
+import { useEffect, useState } from "react";
 import { useUsers } from "@/context/UserContext";
+import { useOrders } from "@/context/OrderContext";
 import { CATEGORY_ICONS } from "@/components/SidebarCategories";
 import Link from "next/link";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function IntelligencePage() {
     const { users } = useUsers();
+    const { orders } = useOrders();
+    const [cartCount, setCartCount] = useState<number | null>(null);
+
+    useEffect(() => {
+        getDocs(collection(db, 'carts'))
+            .then(snap => setCartCount(snap.size))
+            .catch(() => setCartCount(null));
+    }, []);
+
+    const totalOrders = orders.length;
+    const paidOrders = orders.filter(o => (o as any).paymentStatus === 'Paid').length;
+    const ordersWithPayment = orders.filter(o => (o as any).paymentMethod).length;
+    const cartViewed = cartCount ?? users.length;
+
+    const pct = (n: number) => cartViewed > 0 ? `${Math.round((n / cartViewed) * 100)}%` : '—';
+
+    const funnelSteps = [
+        { label: 'Cart Started', count: cartViewed, conversion: '100%', color: 'bg-blue-500' },
+        { label: 'Shipping Info', count: totalOrders, conversion: pct(totalOrders), color: 'bg-indigo-500' },
+        { label: 'Payment Method', count: ordersWithPayment, conversion: pct(ordersWithPayment), color: 'bg-purple-500' },
+        { label: 'Order Paid', count: paidOrders, conversion: pct(paidOrders), color: 'bg-melagri-primary' },
+    ];
 
     // Filter to only show users with behavioral data
     const intelligentUsers = users
@@ -41,12 +67,7 @@ export default function IntelligencePage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
-                    {[
-                        { label: 'Cart Viewed', count: 120, conversion: '100%', color: 'bg-blue-500' },
-                        { label: 'Shipping Info', count: 84, conversion: '70%', color: 'bg-indigo-500' },
-                        { label: 'Payment Method', count: 62, conversion: '51%', color: 'bg-purple-500' },
-                        { label: 'Order Complete', count: 48, conversion: '40%', color: 'bg-melagri-primary' }
-                    ].map((step, i) => (
+                    {funnelSteps.map((step, i) => (
                         <div key={step.label} className="relative group">
                             <div className="h-24 bg-gray-50 rounded-2xl p-6 flex flex-col justify-center border border-gray-100 group-hover:border-melagri-primary/30 transition-all overflow-hidden">
                                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${step.color}`}></div>

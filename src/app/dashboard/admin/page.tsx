@@ -171,8 +171,8 @@ export default function AdminDashboard() {
                                                 <p className="text-xs text-gray-400 mt-1 italic">Interest has increased by ~40% in the last 24hrs. Supply check recommended.</p>
 
                                                 <div className="mt-4 flex gap-2">
-                                                    <button className="px-3 py-1.5 bg-melagri-primary text-white text-[10px] font-black uppercase rounded-lg">Create Bundle</button>
-                                                    <button className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg">Run Campaign</button>
+                                                    <Link href={`/dashboard/admin/products?search=${encodeURIComponent(topSearches[0].term)}`} className="px-3 py-1.5 bg-melagri-primary text-white text-[10px] font-black uppercase rounded-lg hover:bg-melagri-secondary transition-colors">Find in Catalog</Link>
+                                                    <Link href="/dashboard/admin/discounts" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg hover:bg-white/20 transition-colors">Run Promo</Link>
                                                 </div>
                                             </div>
                                         </div>

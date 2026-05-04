@@ -363,9 +363,13 @@ export default function CheckoutPage() {
 
             if (data.paymentMethod === 'card') {
                 const loadingToast = toast.loading("Preparing secure checkout...");
+                const cardToken = await getAuth().currentUser?.getIdToken();
                 const response = await fetch('/api/payment/paystack/initialize', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(cardToken ? { Authorization: `Bearer ${cardToken}` } : {}),
+                    },
                     body: JSON.stringify({
                         items: cartItems,
                         orderId: newOrder.id,

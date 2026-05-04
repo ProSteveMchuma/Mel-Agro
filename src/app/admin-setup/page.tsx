@@ -1,9 +1,8 @@
 "use client";
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { db } from '@/lib/firebase';
-import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
+import { getAuth } from 'firebase/auth';
 
 export default function AdminSetupPage() {
     const { user, isAuthenticated } = useAuth();
@@ -14,45 +13,33 @@ export default function AdminSetupPage() {
 
     const handleMakeAdmin = async () => {
         if (!user) return;
-
-        // SECURITY: Always load secret from environment variables, never hardcode
-        const SECRET = process.env.NEXT_PUBLIC_ADMIN_SECRET_CODE;
-        if (!SECRET) {
-            setMessage('Error: Admin setup is not configured. Contact administrator.');
+        if (!secretCode) {
+            setMessage('Error: Enter the security code');
             return;
         }
-
-        if (secretCode !== SECRET) {
-            setMessage('Error: Invalid Security Code');
-            return;
-        }
-
         setLoading(true);
+        setMessage('');
         try {
-            const userRef = doc(db, 'users', user.uid);
-
-            // Check if user doc exists, if not create it
-            const userSnap = await getDoc(userRef);
-            if (!userSnap.exists()) {
-                await setDoc(userRef, {
-                    email: user.email || '',
-                    role: 'admin',
-                    createdAt: new Date().toISOString()
-                });
+            const idToken = await getAuth().currentUser?.getIdToken();
+            const res = await fetch('/api/admin/claim-admin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+                },
+                body: JSON.stringify({ secretCode }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                setMessage('Success! You are now an Admin. Redirecting...');
+                setTimeout(() => {
+                    window.location.href = '/dashboard/admin';
+                }, 1500);
             } else {
-                await updateDoc(userRef, {
-                    role: 'admin'
-                });
+                setMessage(`Error: ${data.message || 'Verification failed'}`);
             }
-
-            setMessage('Success! You are now an Admin. Redirecting...');
-            setTimeout(() => {
-                // Force reload to update context
-                window.location.href = '/dashboard/admin';
-            }, 2000);
         } catch (error: any) {
-            console.error(error);
-            setMessage(`Error: ${error.message}`);
+            setMessage(`Error: ${error?.message || 'Network error'}`);
         } finally {
             setLoading(false);
         }
@@ -65,7 +52,7 @@ export default function AdminSetupPage() {
                     <h1 className="text-2xl font-bold mb-4">Admin Setup</h1>
                     <p className="mb-4">Please log in first to claim admin rights.</p>
                     <button
-                        onClick={() => router.push('/auth/login?redirect=/admin-setup')}
+                        onClick={() => router.push('/auth/login?callbackUrl=/admin-setup')}
                         className="bg-melagri-primary text-white px-6 py-2 rounded-lg"
                     >
                         Log In
@@ -97,6 +84,7 @@ export default function AdminSetupPage() {
                         onChange={(e) => setSecretCode(e.target.value)}
                         placeholder="Enter admin secret"
                         className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-melagri-primary/20"
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !loading) handleMakeAdmin(); }}
                     />
                 </div>
 
@@ -105,15 +93,11 @@ export default function AdminSetupPage() {
                     disabled={loading || !secretCode}
                     className="w-full bg-melagri-primary text-white py-3 rounded-xl font-bold hover:bg-melagri-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                    {loading ? 'Processing...' : 'Verify & Make Me Admin'}
+                    {loading ? 'Verifying...' : 'Verify & Make Me Admin'}
                 </button>
 
                 <p className="mt-4 text-xs text-gray-400">
-                    ⚠️ SECURITY WARNING: This route should be disabled after admin setup is complete.
-                    <br />
-                    1. Set NEXT_PUBLIC_ADMIN_SECRET_CODE in .env.local
-                    <br />
-                    2. Delete this route from src/app/admin-setup/ after use
+                    ⚠️ Secret code is validated server-side using <code>ADMIN_SECRET_CODE</code> env var. Delete this route once admin setup is done.
                 </p>
             </div>
         </div>

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
+import BulkInquiryForm from '@/components/BulkInquiryForm';
 
 export const metadata: Metadata = {
     title: 'Bulk Orders for Farmers, Cooperatives & Institutions',
@@ -34,11 +35,7 @@ export default function BulkOrders() {
                         <h2 className="text-xl font-bold text-gray-800 mt-6 mb-3">Minimum Order Quantity (MOQ)</h2>
                         <p className="mb-4">Bulk pricing applies to orders exceeding KES 100,000 or 50 bags of inputs.</p>
 
-                        <div className="bg-yellow-50 p-6 rounded-2xl border border-yellow-100 mt-8">
-                            <h3 className="font-bold text-lg text-yellow-800 mb-2">Request a Quote</h3>
-                            <p className="text-sm mb-4">Contact our sales team directly to discuss your needs.</p>
-                            <a href="mailto:sales@Mel-Agri.com" className="inline-block bg-yellow-600 text-white font-bold py-3 px-6 rounded-xl hover:bg-yellow-700 transition-colors">Contact Sales</a>
-                        </div>
+                        <BulkInquiryForm />
                     </div>
                 </div>
             </main>

@@ -108,29 +108,42 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         const date = new Date().toISOString();
 
         await runTransaction(db, async (transaction) => {
-            // 1. Verify Stock for all items first
+            // 1. Verify Stock for all items first (product-level + variant-level if specified)
             const productRefs = orderData.items.map(item => ({
                 ref: doc(db, "products", String(item.id)),
                 quantity: item.quantity,
-                name: item.name
+                name: item.name,
+                variantId: (item as any).selectedVariant?.id || null,
+                variantName: (item as any).selectedVariant?.name || null,
             }));
 
             const productSnaps = await Promise.all(productRefs.map(p => transaction.get(p.ref)));
 
-            // Check if any product is out of stock
             for (let i = 0; i < productSnaps.length; i++) {
                 const snap = productSnaps[i];
-                const requestedQty = productRefs[i].quantity;
+                const p = productRefs[i];
                 if (!snap.exists()) {
-                    throw new Error(`Product ${productRefs[i].name} does not exist.`);
+                    throw new Error(`Product ${p.name} does not exist.`);
                 }
                 const data = snap.data();
                 if (!data) {
-                    throw new Error(`Product ${productRefs[i].name} has no data.`);
+                    throw new Error(`Product ${p.name} has no data.`);
                 }
+
+                if (p.variantId && Array.isArray(data.variants)) {
+                    const variant = data.variants.find((v: any) => v.id === p.variantId);
+                    if (!variant) {
+                        throw new Error(`Variant "${p.variantName}" of ${p.name} no longer exists.`);
+                    }
+                    const variantStock = Number(variant.stockQuantity ?? variant.stock ?? Infinity);
+                    if (Number.isFinite(variantStock) && variantStock < p.quantity) {
+                        throw new Error(`Insufficient stock for ${p.name} (${p.variantName}). Only ${variantStock} left.`);
+                    }
+                }
+
                 const stock = data.stockQuantity || 0;
-                if (stock < requestedQty) {
-                    throw new Error(`Insufficient stock for ${productRefs[i].name}. Only ${stock} left.`);
+                if (stock < p.quantity) {
+                    throw new Error(`Insufficient stock for ${p.name}. Only ${stock} left.`);
                 }
             }
 
@@ -164,10 +177,21 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                 const currentStock = updateData.stockQuantity || 0;
                 const newStock = currentStock - p.quantity;
 
-                transaction.update(p.ref, {
+                const productUpdate: Record<string, any> = {
                     stockQuantity: newStock,
-                    inStock: newStock > 0
-                });
+                    inStock: newStock > 0,
+                };
+
+                if (p.variantId && Array.isArray(updateData.variants)) {
+                    productUpdate.variants = updateData.variants.map((v: any) => {
+                        if (v.id !== p.variantId) return v;
+                        const cur = Number(v.stockQuantity ?? v.stock ?? Infinity);
+                        if (!Number.isFinite(cur)) return v;
+                        return { ...v, stockQuantity: cur - p.quantity };
+                    });
+                }
+
+                transaction.update(p.ref, productUpdate);
 
                 const historyRef = doc(collection(db, "inventory_history"));
                 transaction.set(historyRef, {
@@ -257,21 +281,30 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         await updateDoc(orderRef, { status });
 
-        // Award Loyalty Points if delivered
-        if (status === 'Delivered') {
+        // Award Loyalty Points if delivered — idempotent via loyaltyAwarded flag
+        if (status === 'Delivered' && !orderData.loyaltyAwarded) {
             const pointsToAward = Math.floor(orderData.total / 100);
             try {
-                const userRef = doc(db, 'users', orderData.userId);
-                await updateDoc(userRef, {
-                    loyaltyPoints: increment(pointsToAward)
+                await runTransaction(db, async (tx) => {
+                    const orderRefTx = doc(db, 'orders', orderId);
+                    const userRef = doc(db, 'users', orderData.userId);
+                    const orderSnapTx = await tx.get(orderRefTx);
+                    if (!orderSnapTx.exists()) return;
+                    if (orderSnapTx.data().loyaltyAwarded) return;
+                    tx.update(userRef, { loyaltyPoints: increment(pointsToAward) });
+                    tx.update(orderRefTx, {
+                        loyaltyAwarded: true,
+                        loyaltyAwardedAmount: pointsToAward,
+                        loyaltyAwardedAt: new Date().toISOString(),
+                    });
                 });
             } catch (error) {
                 console.error("Error awarding points:", error);
             }
         }
 
-        // Restore stock if cancelling
-        if (status === 'Cancelled' && previousStatus !== 'Cancelled') {
+        // Restore stock if cancelling — idempotent via stockRestored flag
+        if (status === 'Cancelled' && previousStatus !== 'Cancelled' && !orderData.stockRestored) {
             const orderItems = orderData.items as OrderItem[];
             try {
                 for (const item of orderItems) {
@@ -299,6 +332,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                         });
                     }
                 }
+                await updateDoc(orderRef, { stockRestored: true, stockRestoredAt: new Date().toISOString() });
             } catch (error) {
                 console.error("Error restoring stock:", error);
             }

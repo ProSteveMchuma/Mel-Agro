@@ -3,15 +3,42 @@ import { NextRequest } from 'next/server';
 
 export const runtime = 'edge';
 
+const ALLOWED_IMAGE_HOSTS = [
+    'firebasestorage.googleapis.com',
+    'firebasestorage.app',
+    'images.unsplash.com',
+    'placehold.co',
+    'via.placeholder.com',
+    'cdn-icons-png.flaticon.com',
+];
+
+function isAllowedImageUrl(raw: string | null): string | null {
+    if (!raw) return null;
+    try {
+        const u = new URL(raw);
+        if (u.protocol !== 'https:') return null;
+        const host = u.hostname.toLowerCase();
+        const allowed = ALLOWED_IMAGE_HOSTS.some(h => host === h || host.endsWith(`.${h}`));
+        return allowed ? u.toString() : null;
+    } catch {
+        return null;
+    }
+}
+
+function sanitiseText(s: string | null, fallback: string, max = 120): string {
+    if (!s) return fallback;
+    return s.replace(/[<>]/g, '').slice(0, max);
+}
+
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
 
-        // Params
-        const name = searchParams.get('name') || 'High Quality Product';
-        const price = searchParams.get('price') || '';
-        const category = searchParams.get('category') || 'Agriculture';
-        const image = searchParams.get('image');
+        const name = sanitiseText(searchParams.get('name'), 'High Quality Product', 120);
+        const rawPrice = searchParams.get('price') || '';
+        const price = /^\d+(\.\d+)?$/.test(rawPrice) ? rawPrice : '';
+        const category = sanitiseText(searchParams.get('category'), 'Agriculture', 40);
+        const image = isAllowedImageUrl(searchParams.get('image'));
 
         return new ImageResponse(
             (

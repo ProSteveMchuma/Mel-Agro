@@ -197,6 +197,9 @@ function LoginForm() {
         try {
             await sendSignInLinkToEmail(auth, email, actionCodeSettings);
             window.localStorage.setItem('emailForSignIn', email);
+            if (callbackUrl && callbackUrl !== '/') {
+                window.localStorage.setItem('postLoginRedirect', callbackUrl);
+            }
             setLinkSent(true);
         } catch (err: any) {
             console.error("Magic Link error:", err);

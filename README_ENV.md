@@ -80,6 +80,13 @@ SMTP_PASS=your_email_password
 SMTP_FROM="MelAgro" <noreply@melagro.com>
 ```
 
+## Admin Setup (Optional — for one-off admin claim)
+Set this only if you need to use the `/admin-setup` page to bootstrap your first admin user. Server-only — does NOT use the `NEXT_PUBLIC_` prefix:
+```env
+ADMIN_SECRET_CODE=some-long-random-string
+```
+Once your first admin is set up, delete `/admin-setup` and remove this env var.
+
 ## Africa's Talking SMS (Required for SMS)
 Get these from [Africa's Talking](https://africastalking.com/).
 ```env
