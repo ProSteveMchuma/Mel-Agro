@@ -270,7 +270,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                 const userSnap = await getDoc(userRef);
                 const existing = (userSnap.data()?.savedAddresses || []) as any[];
 
-                const ship = orderData.shippingAddress;
+                const ship = orderData.shippingAddress as (typeof orderData.shippingAddress & { lat?: number; lng?: number }) | undefined;
                 if (ship) {
                     const hashKey = `${(ship.county || '').trim().toLowerCase()}|${(ship.details || '').trim().toLowerCase()}`;
                     const alreadySaved = existing.some(a => `${(a.county || '').trim().toLowerCase()}|${(a.details || '').trim().toLowerCase()}` === hashKey);
@@ -282,8 +282,8 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                             county: ship.county || '',
                             city: (ship.details || '').split(',').slice(-1)[0]?.trim() || ship.county || '',
                             details: ship.details || '',
-                            lat: ship.lat || null,
-                            lng: ship.lng || null,
+                            lat: ship.lat ?? null,
+                            lng: ship.lng ?? null,
                             isPrimary: existing.length === 0,
                             savedAt: date,
                         };
