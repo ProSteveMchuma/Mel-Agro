@@ -9,7 +9,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '@/lib/firebase';
 import { generateWhatsAppMessage, getWhatsAppUrl } from '@/lib/whatsapp';
@@ -45,6 +45,46 @@ export default function CheckoutPage() {
     const [couponInput, setCouponInput] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<{ id: string; code: string; type: string; value: number; amount: number } | null>(null);
     const [couponLoading, setCouponLoading] = useState(false);
+
+    // Name-capture gate — phone-OTP signups land here without a real name
+    const needsName = !!user && (!user.name || user.name === 'User');
+    const [profileName, setProfileName] = useState('');
+    const [savingName, setSavingName] = useState(false);
+    const [profileError, setProfileError] = useState('');
+
+    const handleSaveProfileName = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const trimmed = profileName.trim();
+        if (trimmed.length < 2) {
+            setProfileError('Please enter your name (at least 2 characters)');
+            return;
+        }
+        if (trimmed.length > 80) {
+            setProfileError('Name is too long');
+            return;
+        }
+        if (!user?.uid) {
+            setProfileError('Session expired — please sign in again.');
+            return;
+        }
+        setSavingName(true);
+        setProfileError('');
+        try {
+            await setDoc(doc(db, 'users', user.uid), {
+                name: trimmed,
+                updatedAt: new Date().toISOString(),
+            }, { merge: true });
+            // AuthContext's onAuthStateChanged listener will eventually re-read; meanwhile
+            // close the modal optimistically. The shipping form watches `user.name` via
+            // its useEffect reset, so the next render will pick it up.
+            setProfileName('');
+        } catch (err: any) {
+            console.error('Profile name save failed:', err);
+            setProfileError(err?.message || 'Could not save your name. Please try again.');
+        } finally {
+            setSavingName(false);
+        }
+    };
 
     // Initialize React Hook Form
     const methods = useForm<CheckoutFormData>({
@@ -1116,6 +1156,55 @@ export default function CheckoutPage() {
                         </div>
                     </div>
                 </main>
+
+                {/* Name-capture modal — blocks checkout until phone-only users add their name */}
+                {needsName && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
+                        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 relative animate-in slide-in-from-bottom-8">
+                            <div className="text-center mb-6">
+                                <div className="inline-flex w-14 h-14 bg-melagri-primary/10 text-melagri-primary rounded-2xl items-center justify-center text-2xl mb-3">👋</div>
+                                <h2 className="text-xl font-black text-gray-900">One last thing — what should we call you?</h2>
+                                <p className="text-sm text-gray-500 mt-2">We&apos;ll use this on your receipt and order updates. Just your name — takes a second.</p>
+                            </div>
+
+                            {profileError && (
+                                <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-md mb-4">
+                                    <p className="text-sm text-red-700">{profileError}</p>
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSaveProfileName} className="space-y-5">
+                                <div>
+                                    <label htmlFor="profile-name" className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Full name</label>
+                                    <input
+                                        id="profile-name"
+                                        type="text"
+                                        autoFocus
+                                        autoComplete="name"
+                                        required
+                                        minLength={2}
+                                        maxLength={80}
+                                        placeholder="e.g. Wanjiku Mwangi"
+                                        value={profileName}
+                                        onChange={(e) => setProfileName(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-melagri-primary focus:ring-2 focus:ring-melagri-primary/20 outline-none text-base font-medium"
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={savingName || profileName.trim().length < 2}
+                                    className="w-full py-3.5 bg-melagri-primary text-white rounded-xl font-bold hover:bg-melagri-secondary transition-all disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+                                >
+                                    {savingName ? 'Saving...' : 'Save & Continue'}
+                                </button>
+                            </form>
+
+                            <p className="text-xs text-gray-400 text-center mt-4">
+                                You&apos;re signed in as <span className="font-mono font-bold">{user?.phone || user?.email}</span>
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 <Footer />
             </div>
