@@ -6,48 +6,121 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+
+const ADMIN_EMAILS = new Set([
+    'proinnovationtech@gmail.com',
+    'admin@melagri.com',
+    'admin@melagri.co.ke',
+    'james.wambua@makamithi.com',
+    'shadrack@adifa.co.ke',
+]);
+
+const friendlyAuthError = (err: any): string => {
+    const code = err?.code as string | undefined;
+    switch (code) {
+        case 'auth/email-already-in-use': return 'An account with this email already exists. Try signing in instead.';
+        case 'auth/invalid-email': return 'That email address looks invalid. Please double-check.';
+        case 'auth/weak-password': return 'Password is too weak. Use at least 6 characters.';
+        case 'auth/network-request-failed': return 'Network error. Check your connection and try again.';
+        case 'auth/operation-not-allowed': return 'Email signup is currently disabled. Try Google or phone instead.';
+        case 'auth/popup-closed-by-user': return 'Sign-in window was closed before finishing.';
+        case 'auth/popup-blocked': return 'Your browser blocked the sign-in popup. Please allow popups and try again.';
+        default: return err?.message || 'Failed to create account. Please try again.';
+    }
+};
 
 export default function SignupPage() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const router = useRouter();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setIsLoading(true);
         setError('');
 
+        const trimmedName = name.trim().replace(/\s+/g, ' ');
+        const trimmedEmail = email.trim().toLowerCase();
+
+        if (trimmedName.length < 2) {
+            setError('Please enter your full name (at least 2 characters).');
+            return;
+        }
+        if (trimmedName.length > 80) {
+            setError('Name is too long. Please use 80 characters or fewer.');
+            return;
+        }
+        if (password.length < 6) {
+            setError('Password must be at least 6 characters.');
+            return;
+        }
+
+        setIsLoading(true);
+
         try {
-            // Create user
-            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const userCredential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
+            const fbUser = userCredential.user;
 
-            // Update profile with name
-            await updateProfile(userCredential.user, {
-                displayName: name
-            });
+            // Set Auth displayName so any future onAuthStateChanged fires with the correct name.
+            await updateProfile(fbUser, { displayName: trimmedName });
 
-            // Redirect to dashboard or home
+            // Write the user doc directly. AuthContext's onAuthStateChanged may have already
+            // created a stub with name='User' — merge:true lets us overwrite it with the real
+            // name without clobbering anything else (e.g. role). Without this step, the user
+            // sees "User" on the dashboard until they sign out and back in.
+            const role = ADMIN_EMAILS.has(trimmedEmail)
+                ? (trimmedEmail === 'proinnovationtech@gmail.com' ? 'super-admin' : 'admin')
+                : 'user';
+            await setDoc(doc(db, 'users', fbUser.uid), {
+                name: trimmedName,
+                email: trimmedEmail,
+                role,
+                createdAt: new Date().toISOString(),
+                loyaltyPoints: 0,
+            }, { merge: true });
+
             router.push('/dashboard/user');
         } catch (err: any) {
             console.error("Signup error:", err);
-            setError(err.message || 'Failed to create account. Please try again.');
+            setError(friendlyAuthError(err));
         } finally {
             setIsLoading(false);
         }
     };
 
     const handleGoogleLogin = async () => {
+        setError('');
+        setIsLoading(true);
         try {
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
+            const cred = await signInWithPopup(auth, provider);
+            const fbUser = cred.user;
+
+            // Mirror the email-signup behavior — explicitly write the Firestore doc so the
+            // user's Google name and email show up on first paint, not after a re-login.
+            const trimmedEmail = (fbUser.email || '').trim().toLowerCase();
+            const role = ADMIN_EMAILS.has(trimmedEmail)
+                ? (trimmedEmail === 'proinnovationtech@gmail.com' ? 'super-admin' : 'admin')
+                : 'user';
+            await setDoc(doc(db, 'users', fbUser.uid), {
+                name: fbUser.displayName || trimmedEmail.split('@')[0] || 'User',
+                email: trimmedEmail,
+                role,
+                createdAt: new Date().toISOString(),
+                loyaltyPoints: 0,
+            }, { merge: true });
+
             router.push('/dashboard/user');
         } catch (err: any) {
             console.error("Google login error:", err);
-            setError(err.message || 'Failed to sign up with Google.');
+            setError(friendlyAuthError(err));
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -113,17 +186,28 @@ export default function SignupPage() {
                             </div>
                             <div>
                                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="new-password"
-                                    required
-                                    className="appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary sm:text-sm transition-all"
-                                    placeholder="Create a password (min 6 chars)"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                />
+                                <div className="relative">
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type={showPassword ? 'text' : 'password'}
+                                        autoComplete="new-password"
+                                        required
+                                        minLength={6}
+                                        className="appearance-none rounded-lg block w-full px-4 py-3 pr-12 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary sm:text-sm transition-all"
+                                        placeholder="Create a password (min 6 chars)"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(s => !s)}
+                                        className="absolute inset-y-0 right-0 px-3 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-melagri-primary"
+                                        tabIndex={-1}
+                                    >
+                                        {showPassword ? 'Hide' : 'Show'}
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
