@@ -17,7 +17,7 @@ interface ProductsClientProps {
     initialCategories: string[];
 }
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 100;
 const PRICE_DEFAULT_MIN = 0;
 const PRICE_DEFAULT_MAX = 1000000;
 
@@ -288,7 +288,7 @@ function ProductsGrid({
                 PAGE_SIZE,
                 isInitial ? null : lastVisibleRef.current,
                 categoryFilter,
-                'newest',
+                'default',
                 selectedBrands
             );
             if (isInitial) setPagedProducts(newProducts);
