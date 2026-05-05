@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSettings } from "@/context/SettingsContext";
+import { toast } from "react-hot-toast";
 
 export default function SettingsPage() {
     const { general, tax, notifications, shipping, updateGeneralSettings, updateTaxSettings, updateNotificationSettings, updateShippingSettings, loading } = useSettings();
@@ -19,18 +21,19 @@ export default function SettingsPage() {
 
     const handleSave = async () => {
         setSaving(true);
+        const t = toast.loading('Saving settings…');
         try {
             if (activeTab === "general") await updateGeneralSettings(generalForm);
             if (activeTab === "tax") await updateTaxSettings(taxForm);
             if (activeTab === "notifications") await updateNotificationSettings(notifForm);
             if (activeTab === "shipping") await updateShippingSettings(shippingForm);
-            alert("Settings saved successfully!");
+            toast.success('Settings saved', { id: t });
         } catch (error: any) {
             console.error("Error saving settings:", error);
             if (error.code === 'permission-denied') {
-                alert("Error: You do not have permission to save these settings.");
+                toast.error('You do not have permission to save these settings.', { id: t });
             } else {
-                alert(`Failed to save settings: ${error.message}`);
+                toast.error(error?.message || 'Failed to save settings', { id: t });
             }
         } finally {
             setSaving(false);
@@ -244,8 +247,14 @@ export default function SettingsPage() {
                 )}
 
                 {activeTab === "documents" && (
-                    <div className="text-center py-12 text-gray-500">
-                        This module is coming soon in the next phase.
+                    <div className="text-center py-12">
+                        <p className="text-sm text-gray-600 mb-4">Document templates (invoice, delivery note, receipt) live on a dedicated page.</p>
+                        <Link
+                            href="/dashboard/admin/settings/documents"
+                            className="inline-flex items-center gap-2 px-5 py-3 bg-melagri-primary text-white rounded-xl text-xs font-black uppercase tracking-widest hover:bg-melagri-secondary transition-colors"
+                        >
+                            Open document settings →
+                        </Link>
                     </div>
                 )}
             </div>

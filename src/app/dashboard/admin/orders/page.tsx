@@ -3,6 +3,7 @@ import { useOrders } from "@/context/OrderContext";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 export default function OrderManagement() {
     const { orders, updateOrderStatus } = useOrders();
@@ -98,7 +99,15 @@ export default function OrderManagement() {
                                     <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                                         <select
                                             value={order.status}
-                                            onChange={(e) => updateOrderStatus(order.id, e.target.value as any)}
+                                            onChange={async (e) => {
+                                                const next = e.target.value as any;
+                                                try {
+                                                    await updateOrderStatus(order.id, next);
+                                                    toast.success(`Order moved to ${next}`);
+                                                } catch (err: any) {
+                                                    toast.error(err?.message || 'Could not update status');
+                                                }
+                                            }}
                                             className={`text-xs font-bold px-2 py-1 rounded-full border-0 focus:ring-2 focus:ring-melagri-primary cursor-pointer ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
                                                 order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
                                                     order.status === 'Processing' ? 'bg-yellow-100 text-yellow-700' :

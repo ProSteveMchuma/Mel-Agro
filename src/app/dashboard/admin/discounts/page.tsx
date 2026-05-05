@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, addDoc, getDocs, deleteDoc, doc, Timestamp, query, orderBy } from "firebase/firestore";
+import { toast } from "react-hot-toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface Discount {
     id: string;
@@ -18,6 +20,8 @@ export default function DiscountManagementPage() {
     const [discounts, setDiscounts] = useState<Discount[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreating, setIsCreating] = useState(false);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -65,22 +69,31 @@ export default function DiscountManagementPage() {
             });
             setIsCreating(false);
             setFormData({ code: '', type: 'PERCENTAGE', value: '', minOrderValue: '', usageLimit: '', expiresAt: '' });
-            fetchDiscounts();
-        } catch (error) {
+            await fetchDiscounts();
+            toast.success(`Code ${formData.code.toUpperCase()} created`);
+        } catch (error: any) {
             console.error("Error creating discount:", error);
-            alert("Failed to create discount.");
+            toast.error(error?.message || "Failed to create discount.");
         } finally {
             setLoading(false);
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this discount?")) return;
+    const handleDelete = (id: string) => setDeleteId(id);
+
+    const confirmDelete = async () => {
+        if (!deleteId) return;
+        setDeleting(true);
         try {
-            await deleteDoc(doc(db, "discounts", id));
-            setDiscounts(discounts.filter(d => d.id !== id));
-        } catch (error) {
+            await deleteDoc(doc(db, "discounts", deleteId));
+            setDiscounts(discounts.filter(d => d.id !== deleteId));
+            toast.success('Discount deleted');
+            setDeleteId(null);
+        } catch (error: any) {
             console.error("Error deleting discount:", error);
+            toast.error(error?.message || 'Could not delete discount');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -242,6 +255,16 @@ export default function DiscountManagementPage() {
                     </table>
                 </div>
             </div>
+
+            <ConfirmDialog
+                open={!!deleteId}
+                title="Delete this discount?"
+                message="Customers using this code at checkout will get an error. This can't be undone."
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteId(null)}
+                busy={deleting}
+                confirmLabel="Delete"
+            />
         </div>
     );
 }

@@ -5,6 +5,7 @@ import { collection, query, where, getDocs, orderBy, limit } from "firebase/fire
 import { db } from "@/lib/firebase";
 import Link from "next/link";
 import { generateAbandonedCartNudge, getWhatsAppDirectUrl } from "@/lib/whatsapp";
+import { toast } from "react-hot-toast";
 
 interface AbandonedCart {
     id: string;
@@ -57,7 +58,7 @@ export default function AbandonedCartsPage() {
 
     const handleNudge = (cart: AbandonedCart) => {
         if (!cart.userPhone) {
-            alert("No phone number available for this customer.");
+            toast.error("No phone number on file for this customer.");
             return;
         }
         const message = generateAbandonedCartNudge(cart.userName, cart.items, cart.total);

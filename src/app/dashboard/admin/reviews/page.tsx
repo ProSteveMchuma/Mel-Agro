@@ -72,10 +72,10 @@ export default function AdminReviewsPage() {
                             <div className="flex justify-between items-start mb-4">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center font-bold text-gray-400">
-                                        {review.userName.charAt(0)}
+                                        {(review.userName || 'U').charAt(0).toUpperCase()}
                                     </div>
                                     <div>
-                                        <p className="font-bold text-gray-900">{review.userName}</p>
+                                        <p className="font-bold text-gray-900">{review.userName || 'Anonymous'}</p>
                                         <p className="text-[10px] text-gray-400 font-medium">{review.date}</p>
                                     </div>
                                 </div>

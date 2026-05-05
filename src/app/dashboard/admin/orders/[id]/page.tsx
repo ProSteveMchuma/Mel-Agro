@@ -180,7 +180,7 @@ export default function AdminOrderDetailsPage() {
 
     const handleReverse = async () => {
         if (!order) return;
-        if (!confirm(`Reverse KES ${order.total.toLocaleString()} to customer? This sends real money back via M-Pesa.`)) return;
+        // Confirmation already happens in the styled modal that opens this handler — no native confirm needed.
         setMpesaActionLoading('reverse');
         const t = toast.loading("Initiating reversal with Safaricom...");
         try {
@@ -205,14 +205,21 @@ export default function AdminOrderDetailsPage() {
         }
     };
 
-    const handleDispatch = () => {
+    const handleDispatch = async () => {
+        if (!order) return;
         if (!trackingInfo.carrier || !trackingInfo.trackingNumber) {
             toast.error("Please enter carrier and tracking number.");
             return;
         }
-        updateOrderStatus(order.id, 'Shipped');
-        setIsDispatchModalOpen(false);
-        setOrder({ ...order, status: 'Shipped', tracking: trackingInfo });
+        const t = toast.loading('Marking as shipped…');
+        try {
+            await updateOrderStatus(order.id, 'Shipped');
+            setOrder({ ...order, status: 'Shipped', tracking: trackingInfo });
+            setIsDispatchModalOpen(false);
+            toast.success('Order marked as shipped', { id: t });
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not update order', { id: t });
+        }
     };
 
     if (!order) {

@@ -2,6 +2,7 @@
 import { useProducts } from "@/context/ProductContext";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "react-hot-toast";
 import ProductForm from "@/components/admin/ProductForm";
 import { Product } from "@/types";
 
@@ -12,17 +13,17 @@ export default function AddProductPage() {
 
     const handleSubmit = async (data: Omit<Product, 'id'>) => {
         setIsSubmitting(true);
+        const t = toast.loading('Saving product…');
         try {
             await addProduct(data);
-            // We can assume success if no error thrown
-            alert("Product added successfully!");
+            toast.success('Product added', { id: t });
             router.push('/dashboard/admin/products');
         } catch (error: any) {
             console.error("Error adding product:", error);
             if (error.code === 'permission-denied') {
-                alert("Error: You do not have permission to add products.");
+                toast.error('You do not have permission to add products.', { id: t });
             } else {
-                alert(`Failed to add product: ${error.message}`);
+                toast.error(error?.message || 'Failed to add product', { id: t });
             }
         } finally {
             setIsSubmitting(false);
