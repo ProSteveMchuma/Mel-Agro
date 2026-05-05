@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
@@ -56,6 +56,12 @@ export default function CheckoutPage() {
     const [profileName, setProfileName] = useState('');
     const [savingName, setSavingName] = useState(false);
     const [profileError, setProfileError] = useState('');
+
+    // STK Push wait — populated after STK fires, cleared when callback resolves.
+    // Drives the "Sent to your phone" progress panel + early-cancel button.
+    const [stkWait, setStkWait] = useState<{ totalSec: number; sentAt: number } | null>(null);
+    const [stkRemaining, setStkRemaining] = useState(0);
+    const stkCancelRef = useRef<(() => void) | null>(null);
 
     const handleSaveProfileName = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -450,16 +456,33 @@ export default function CheckoutPage() {
 
                 toast.success("Sent! Check your phone to pay.", { id: loadingToast });
 
+                // Show the progress panel + start the visible countdown
+                const TOTAL_WAIT_SEC = 120;
+                setStkWait({ totalSec: TOTAL_WAIT_SEC, sentAt: Date.now() });
+                setStkRemaining(TOTAL_WAIT_SEC);
+
                 const orderRef = doc(db, 'orders', newOrder.id);
                 let resolved = false;
                 let pollTimer: ReturnType<typeof setInterval> | null = null;
                 let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+                let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
-                const finish = (status: 'paid' | 'failed' | 'timeout', msg?: string) => {
+                const friendly = (msg: string, code?: string | number): string => {
+                    const c = String(code ?? '').toLowerCase();
+                    if (c === '1032' || /cancel/i.test(msg)) {
+                        return "No problem — looks like the prompt wasn't completed. Pick how you'd like to pay:";
+                    }
+                    return msg;
+                };
+
+                const finish = (status: 'paid' | 'failed' | 'timeout', msg?: string, code?: string | number) => {
                     if (resolved) return;
                     resolved = true;
                     if (pollTimer) clearInterval(pollTimer);
                     if (timeoutTimer) clearTimeout(timeoutTimer);
+                    if (countdownTimer) clearInterval(countdownTimer);
+                    setStkWait(null);
+                    stkCancelRef.current = null;
                     unsubscribe();
 
                     if (status === 'paid') {
@@ -467,15 +490,26 @@ export default function CheckoutPage() {
                         clearCart();
                         router.push(`/checkout/success?orderId=${newOrder.id}`);
                     } else if (status === 'failed') {
-                        toast.error(`Payment Failed: ${msg || 'Unknown error'}`, { duration: 6000 });
-                        setPaymentFailure({ orderId: newOrder.id, message: msg || 'Unknown error' });
+                        const friendlyMsg = friendly(msg || 'Unknown error', code);
+                        toast.error(friendlyMsg, { duration: 5000 });
+                        setPaymentFailure({ orderId: newOrder.id, message: friendlyMsg });
                         setIsProcessing(false);
                     } else {
-                        toast("Payment check timed out. Visit your dashboard to retry.", { duration: 6000 });
-                        clearCart();
-                        router.push(`/dashboard/user?orderId=${newOrder.id}`);
+                        // Timeout — keep the user on this page with the same recovery options.
+                        const timeoutMsg = "Payment check timed out — your order is saved. Pick how you'd like to pay:";
+                        toast(timeoutMsg, { duration: 6000 });
+                        setPaymentFailure({ orderId: newOrder.id, message: timeoutMsg });
+                        setIsProcessing(false);
                     }
                 };
+
+                // Expose an early-cancel handler the progress panel can call
+                stkCancelRef.current = () => finish('failed', "No problem — let's try a different way", '1032');
+
+                // Visible countdown — drives the progress panel
+                countdownTimer = setInterval(() => {
+                    setStkRemaining(prev => Math.max(0, prev - 1));
+                }, 1000);
 
                 const startPolling = () => {
                     if (pollTimer) return;
@@ -505,9 +539,10 @@ export default function CheckoutPage() {
                     if (updatedOrder?.paymentStatus === 'Paid') {
                         finish('paid');
                     } else if (updatedOrder?.paymentStatus === 'Failed') {
+                        const code = updatedOrder.paymentFailureCode || updatedOrder.paymentFailureReason;
                         const errorMsg = updatedOrder.paymentFailureMessage ||
-                            getMpesaErrorMessage(updatedOrder.paymentFailureCode || updatedOrder.paymentFailureReason || 'Unknown');
-                        finish('failed', errorMsg);
+                            getMpesaErrorMessage(code || 'Unknown');
+                        finish('failed', errorMsg, code);
                     }
                 }, (err) => {
                     console.error('Order listener error, falling back to polling:', err);
@@ -1237,6 +1272,49 @@ export default function CheckoutPage() {
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            {/* STK Push wait — shown while we're waiting for the callback */}
+                                            {stkWait && !paymentFailure && (
+                                                <div className="mt-8 bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-6">
+                                                    <div className="flex items-start gap-3 mb-4">
+                                                        <span className="text-2xl">📱</span>
+                                                        <div className="flex-1">
+                                                            <p className="font-black text-emerald-900 text-sm uppercase tracking-tight">Sent to your phone</p>
+                                                            <p className="text-sm text-emerald-800 mt-1">
+                                                                Open the M-Pesa prompt on <span className="font-mono font-bold">{shippingData.phone}</span>, enter your PIN, and confirm.
+                                                            </p>
+                                                            <p className="text-xs text-emerald-700 mt-2 font-medium">
+                                                                Checking… {Math.floor(stkRemaining / 60)}:{String(stkRemaining % 60).padStart(2, '0')} remaining
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-full bg-emerald-100 rounded-full h-2 overflow-hidden mb-4">
+                                                        <div
+                                                            className="bg-emerald-500 h-full transition-all duration-1000"
+                                                            style={{ width: `${(stkRemaining / stkWait.totalSec) * 100}%` }}
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => stkCancelRef.current?.()}
+                                                            className="px-4 py-3 bg-white text-gray-900 border-2 border-gray-200 font-black uppercase text-xs tracking-widest rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>📵</span> Didn&apos;t get the prompt?
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => stkCancelRef.current?.()}
+                                                            className="px-4 py-3 bg-white text-gray-500 border-2 border-gray-100 font-bold uppercase text-xs tracking-widest rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>✕</span> Cancel & try another way
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-[11px] text-emerald-700 mt-4 text-center font-medium">
+                                                        💡 Phone locked or no prompt? Tap &ldquo;Didn&apos;t get the prompt?&rdquo; to switch to Buy Goods or Cash on Delivery.
+                                                    </p>
+                                                </div>
+                                            )}
 
                                             {/* Payment failure recovery — shows when an M-Pesa attempt failed on this order */}
                                             {paymentFailure && (
