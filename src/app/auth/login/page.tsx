@@ -9,20 +9,10 @@ import { sendSignInLinkToEmail, GoogleAuthProvider, signInWithPopup, RecaptchaVe
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
-const ADMIN_EMAILS = new Set([
-    'proinnovationtech@gmail.com',
-    'admin@melagri.com',
-    'admin@melagri.co.ke',
-    'james.wambua@makamithi.com',
-    'shadrack@adifa.co.ke',
-]);
-
-const roleForEmail = (email: string | null | undefined): 'user' | 'admin' | 'super-admin' => {
-    const e = (email || '').trim().toLowerCase();
-    if (!e) return 'user';
-    if (e === 'proinnovationtech@gmail.com') return 'super-admin';
-    return ADMIN_EMAILS.has(e) ? 'admin' : 'user';
-};
+// Role assignment for new users happens inside AuthContext.onAuthStateChanged on
+// the initial CREATE — not here. Firestore rules forbid the user from updating
+// their own role / status / loyaltyPoints fields (firestore.rules:60), so any
+// merge-update from this page must skip those.
 
 declare global {
     interface Window {
@@ -232,15 +222,14 @@ function LoginForm() {
             // server route that reads request.auth.token.name) see the correct value.
             await updateProfile(fbUser, { displayName: trimmed });
 
-            // Write the full user doc with merge:true. AuthContext's onAuthStateChanged may
-            // have already created a stub with name='User' — this overwrites just the fields
-            // we own without clobbering anything else (e.g. role for admin emails).
+            // Write only the fields the user is allowed to update on their own profile.
+            // Firestore rules forbid non-admins from changing role / status / loyaltyPoints
+            // (firestore.rules:60). Those are already set correctly during the initial CREATE
+            // inside AuthContext.onAuthStateChanged, so we don't touch them here.
             await setDoc(doc(db, 'users', fbUser.uid), {
                 name: trimmed,
                 phone: fbUser.phoneNumber || phone || null,
                 email: fbUser.email || null,
-                role: roleForEmail(fbUser.email),
-                loyaltyPoints: 0,
                 updatedAt: new Date().toISOString(),
             }, { merge: true });
 
@@ -289,13 +278,13 @@ function LoginForm() {
             const fbUser = cred.user;
 
             // Pre-write the Firestore doc so the dashboard greets new Google users by name
-            // immediately, instead of "User" until the next sign-in.
+            // immediately, instead of "User" until the next sign-in. Skip role/loyaltyPoints
+            // here — those are owned by AuthContext's CREATE path (Firestore rules don't
+            // let non-admins update them after the doc exists).
             const trimmedEmail = (fbUser.email || '').trim().toLowerCase();
             await setDoc(doc(db, 'users', fbUser.uid), {
                 name: fbUser.displayName || (trimmedEmail ? trimmedEmail.split('@')[0] : 'User'),
                 email: trimmedEmail || null,
-                role: roleForEmail(fbUser.email),
-                loyaltyPoints: 0,
                 updatedAt: new Date().toISOString(),
             }, { merge: true });
 
