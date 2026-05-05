@@ -24,7 +24,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         { url: `${baseUrl}/terms`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
         { url: `${baseUrl}/privacy`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
         { url: `${baseUrl}/auth/login`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
-        { url: `${baseUrl}/auth/signup`, lastModified: now, changeFrequency: 'yearly', priority: 0.3 },
     ];
 
     let productRoutes: MetadataRoute.Sitemap = [];

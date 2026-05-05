@@ -5,9 +5,24 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Logo from '@/components/Logo';
-import { sendSignInLinkToEmail, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+import { sendSignInLinkToEmail, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, updateProfile } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
+
+const ADMIN_EMAILS = new Set([
+    'proinnovationtech@gmail.com',
+    'admin@melagri.com',
+    'admin@melagri.co.ke',
+    'james.wambua@makamithi.com',
+    'shadrack@adifa.co.ke',
+]);
+
+const roleForEmail = (email: string | null | undefined): 'user' | 'admin' | 'super-admin' => {
+    const e = (email || '').trim().toLowerCase();
+    if (!e) return 'user';
+    if (e === 'proinnovationtech@gmail.com') return 'super-admin';
+    return ADMIN_EMAILS.has(e) ? 'admin' : 'user';
+};
 
 declare global {
     interface Window {
@@ -196,13 +211,13 @@ function LoginForm() {
 
     const handleSaveName = async (e: React.FormEvent) => {
         e.preventDefault();
-        const trimmed = nameInput.trim();
+        const trimmed = nameInput.trim().replace(/\s+/g, ' ');
         if (trimmed.length < 2) {
             setError('Please enter your name (at least 2 characters)');
             return;
         }
         if (trimmed.length > 80) {
-            setError('Name is too long');
+            setError('Name is too long. Please use 80 characters or fewer.');
             return;
         }
         const fbUser = auth.currentUser;
@@ -213,11 +228,22 @@ function LoginForm() {
         setIsLoading(true);
         setError('');
         try {
+            // Update Firebase Auth displayName so future onAuthStateChanged callbacks (and any
+            // server route that reads request.auth.token.name) see the correct value.
+            await updateProfile(fbUser, { displayName: trimmed });
+
+            // Write the full user doc with merge:true. AuthContext's onAuthStateChanged may
+            // have already created a stub with name='User' — this overwrites just the fields
+            // we own without clobbering anything else (e.g. role for admin emails).
             await setDoc(doc(db, 'users', fbUser.uid), {
                 name: trimmed,
-                phone: fbUser.phoneNumber || phone,
+                phone: fbUser.phoneNumber || phone || null,
+                email: fbUser.email || null,
+                role: roleForEmail(fbUser.email),
+                loyaltyPoints: 0,
                 updatedAt: new Date().toISOString(),
             }, { merge: true });
+
             router.push(callbackUrl);
         } catch (err: any) {
             console.error('Save name error:', err);
@@ -259,7 +285,20 @@ function LoginForm() {
     const handleGoogleLogin = async () => {
         try {
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
+            const cred = await signInWithPopup(auth, provider);
+            const fbUser = cred.user;
+
+            // Pre-write the Firestore doc so the dashboard greets new Google users by name
+            // immediately, instead of "User" until the next sign-in.
+            const trimmedEmail = (fbUser.email || '').trim().toLowerCase();
+            await setDoc(doc(db, 'users', fbUser.uid), {
+                name: fbUser.displayName || (trimmedEmail ? trimmedEmail.split('@')[0] : 'User'),
+                email: trimmedEmail || null,
+                role: roleForEmail(fbUser.email),
+                loyaltyPoints: 0,
+                updatedAt: new Date().toISOString(),
+            }, { merge: true });
+
             router.push(callbackUrl);
         } catch (err: any) {
             console.error("Google login error:", err);
@@ -277,10 +316,10 @@ function LoginForm() {
                             <Logo />
                         </div>
                         <h2 className="mt-2 text-3xl font-extrabold text-gray-900 tracking-tight">
-                            Welcome Back
+                            Welcome to Mel-Agri
                         </h2>
                         <p className="mt-2 text-sm text-gray-600">
-                            Sign in to your Mel-Agri account
+                            Sign in or create your account in seconds — no separate signup needed.
                         </p>
                     </div>
 
