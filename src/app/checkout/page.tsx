@@ -11,7 +11,7 @@ import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { doc, updateDoc, setDoc, onSnapshot } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
+import { getAuth, updateProfile as updateAuthProfile } from 'firebase/auth';
 import { db } from '@/lib/firebase';
 import { generateWhatsAppMessage, getWhatsAppUrl } from '@/lib/whatsapp';
 import { useBehavior } from '@/context/BehaviorContext';
@@ -59,13 +59,13 @@ export default function CheckoutPage() {
 
     const handleSaveProfileName = async (e: React.FormEvent) => {
         e.preventDefault();
-        const trimmed = profileName.trim();
+        const trimmed = profileName.trim().replace(/\s+/g, ' ');
         if (trimmed.length < 2) {
             setProfileError('Please enter your name (at least 2 characters)');
             return;
         }
         if (trimmed.length > 80) {
-            setProfileError('Name is too long');
+            setProfileError('Name is too long. Please use 80 characters or fewer.');
             return;
         }
         if (!user?.uid) {
@@ -75,13 +75,18 @@ export default function CheckoutPage() {
         setSavingName(true);
         setProfileError('');
         try {
+            // Update Auth displayName so future onAuthStateChanged events see the right name.
+            const fbUser = getAuth().currentUser;
+            if (fbUser) {
+                try { await updateAuthProfile(fbUser, { displayName: trimmed }); }
+                catch (e) { console.warn('Auth displayName update failed (non-fatal):', e); }
+            }
             await setDoc(doc(db, 'users', user.uid), {
                 name: trimmed,
                 updatedAt: new Date().toISOString(),
             }, { merge: true });
-            // AuthContext's onAuthStateChanged listener will eventually re-read; meanwhile
-            // close the modal optimistically. The shipping form watches `user.name` via
-            // its useEffect reset, so the next render will pick it up.
+            // AuthContext now listens via onSnapshot, so user.name updates within ~100ms
+            // and the modal auto-closes. Just clear the local input.
             setProfileName('');
         } catch (err: any) {
             console.error('Profile name save failed:', err);
