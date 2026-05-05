@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function ProductsPage() {
     // Fetch initial data on the server
     const [{ products: initialProducts }, brands, categories] = await Promise.all([
-        getProductsPage(100, null, undefined, 'default'), // Load up to 100 products with no createdAt-based exclusion
+        getProductsPage(12), // Initial page size 12
         getUniqueBrandsCached(),
         getUniqueCategoriesCached()
     ]);
