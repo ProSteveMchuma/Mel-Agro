@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, doc, updateDoc, deleteDoc, query, orderBy, getDocs, onSnapshot, QuerySnapshot, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteDoc, query, orderBy, getDocs, onSnapshot, QuerySnapshot, QueryDocumentSnapshot, limit } from 'firebase/firestore';
 
 import { User } from '@/types';
 
@@ -32,7 +32,9 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
             }
 
             try {
-                const q = query(collection(db, "users"));
+                // Cap admin live stream. Beyond 500 users, the dedicated /dashboard/admin/users
+                // page should add its own paginated query rather than relying on this context.
+                const q = query(collection(db, "users"), limit(500));
 
                 unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
                     const userList: User[] = [];

@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction, limit } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { NotificationService } from '@/lib/notifications';
 import { SmsService } from '@/lib/sms';
@@ -51,8 +51,10 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         let q;
         if (user.role === 'admin' || user.role === 'super-admin') {
-            // Remove orderBy to avoid missing index issue
-            q = query(collection(db, 'orders'));
+            // Cap admin live stream — analytics / dashboards already work fine with the most
+            // recent N orders, and pulling thousands wastes memory on every admin session.
+            // Older orders remain accessible via direct order detail pages and reports.
+            q = query(collection(db, 'orders'), orderBy('date', 'desc'), limit(500));
         } else {
             q = query(collection(db, 'orders'), where('userId', '==', user.uid));
         }

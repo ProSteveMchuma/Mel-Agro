@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, doc, query, orderBy, onSnapshot, where, getDocs, setDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, query, orderBy, onSnapshot, where, getDocs, setDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
 export interface ChatMessage {
@@ -55,8 +55,9 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         let unsubscribe: () => void;
 
         if (user.role === 'admin' || user.role === 'super-admin') {
-            // Admin sees all conversations
-            const q = query(collection(db, 'conversations'), orderBy('lastMessageAt', 'desc'));
+            // Admin sees the most recent conversations. Older threads remain in Firestore but
+            // aren't streamed live; if needed, the messages page can paginate further on demand.
+            const q = query(collection(db, 'conversations'), orderBy('lastMessageAt', 'desc'), limit(100));
             unsubscribe = onSnapshot(q, (snapshot) => {
                 const convs = snapshot.docs.map(doc => ({
                     id: doc.id,
