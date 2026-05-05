@@ -19,6 +19,7 @@ import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
+import { useShippingZones } from '@/hooks/useShippingZones';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { checkoutSchema, CheckoutFormData } from '@/lib/schemas';
@@ -261,8 +262,9 @@ export default function CheckoutPage() {
         });
     }, [user, reset]);
 
-    // Calculate dynamic shipping
-    const deliveryInfo = getDeliveryCost(shippingData.county, cartTotal);
+    // Calculate dynamic shipping using live admin-managed zones
+    const { zones: liveZones } = useShippingZones();
+    const deliveryInfo = getDeliveryCost(shippingData.county, cartTotal, liveZones);
     const shippingCost = shippingMethod === 'standard' ? deliveryInfo.cost : 0;
 
     const discountFromPoints = usePoints ? Math.min(cartTotal, user?.loyaltyPoints || 0) : 0;

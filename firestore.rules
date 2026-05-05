@@ -73,6 +73,12 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+
+    // Shipping zones: Public read (checkout reads to compute delivery cost), Admin write
+    match /shipping_zones/{zoneId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
     
     // Content: Public read, Admin write (for banners etc)
     match /content/{docId} {
