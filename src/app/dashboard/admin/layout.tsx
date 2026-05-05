@@ -87,6 +87,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )
         },
         {
+            name: 'Payments', href: '/dashboard/admin/payments', icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2zm2 8h4" />
+                </svg>
+            )
+        },
+        {
             name: 'Operations', href: '/dashboard/admin/operations', icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M5 19h14a2 2 0 001.85-2.75L13.85 4.25a2 2 0 00-3.7 0L3.15 16.25A2 2 0 005 19z" />
