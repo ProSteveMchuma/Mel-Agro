@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction, limit } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { NotificationService } from '@/lib/notifications';
 import { SmsService } from '@/lib/sms';
@@ -51,8 +51,10 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         let q;
         if (user.role === 'admin' || user.role === 'super-admin') {
-            // Remove orderBy to avoid missing index issue
-            q = query(collection(db, 'orders'));
+            // Cap admin live stream — analytics / dashboards already work fine with the most
+            // recent N orders, and pulling thousands wastes memory on every admin session.
+            // Older orders remain accessible via direct order detail pages and reports.
+            q = query(collection(db, 'orders'), orderBy('date', 'desc'), limit(500));
         } else {
             q = query(collection(db, 'orders'), where('userId', '==', user.uid));
         }
@@ -108,29 +110,42 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         const date = new Date().toISOString();
 
         await runTransaction(db, async (transaction) => {
-            // 1. Verify Stock for all items first
+            // 1. Verify Stock for all items first (product-level + variant-level if specified)
             const productRefs = orderData.items.map(item => ({
                 ref: doc(db, "products", String(item.id)),
                 quantity: item.quantity,
-                name: item.name
+                name: item.name,
+                variantId: (item as any).selectedVariant?.id || null,
+                variantName: (item as any).selectedVariant?.name || null,
             }));
 
             const productSnaps = await Promise.all(productRefs.map(p => transaction.get(p.ref)));
 
-            // Check if any product is out of stock
             for (let i = 0; i < productSnaps.length; i++) {
                 const snap = productSnaps[i];
-                const requestedQty = productRefs[i].quantity;
+                const p = productRefs[i];
                 if (!snap.exists()) {
-                    throw new Error(`Product ${productRefs[i].name} does not exist.`);
+                    throw new Error(`Product ${p.name} does not exist.`);
                 }
                 const data = snap.data();
                 if (!data) {
-                    throw new Error(`Product ${productRefs[i].name} has no data.`);
+                    throw new Error(`Product ${p.name} has no data.`);
                 }
+
+                if (p.variantId && Array.isArray(data.variants)) {
+                    const variant = data.variants.find((v: any) => v.id === p.variantId);
+                    if (!variant) {
+                        throw new Error(`Variant "${p.variantName}" of ${p.name} no longer exists.`);
+                    }
+                    const variantStock = Number(variant.stockQuantity ?? variant.stock ?? Infinity);
+                    if (Number.isFinite(variantStock) && variantStock < p.quantity) {
+                        throw new Error(`Insufficient stock for ${p.name} (${p.variantName}). Only ${variantStock} left.`);
+                    }
+                }
+
                 const stock = data.stockQuantity || 0;
-                if (stock < requestedQty) {
-                    throw new Error(`Insufficient stock for ${productRefs[i].name}. Only ${stock} left.`);
+                if (stock < p.quantity) {
+                    throw new Error(`Insufficient stock for ${p.name}. Only ${stock} left.`);
                 }
             }
 
@@ -164,10 +179,21 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                 const currentStock = updateData.stockQuantity || 0;
                 const newStock = currentStock - p.quantity;
 
-                transaction.update(p.ref, {
+                const productUpdate: Record<string, any> = {
                     stockQuantity: newStock,
-                    inStock: newStock > 0
-                });
+                    inStock: newStock > 0,
+                };
+
+                if (p.variantId && Array.isArray(updateData.variants)) {
+                    productUpdate.variants = updateData.variants.map((v: any) => {
+                        if (v.id !== p.variantId) return v;
+                        const cur = Number(v.stockQuantity ?? v.stock ?? Infinity);
+                        if (!Number.isFinite(cur)) return v;
+                        return { ...v, stockQuantity: cur - p.quantity };
+                    });
+                }
+
+                transaction.update(p.ref, productUpdate);
 
                 const historyRef = doc(collection(db, "inventory_history"));
                 transaction.set(historyRef, {
@@ -237,6 +263,49 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             console.error("Unified Communications Error:", err);
         }
 
+        // 6. Persist user preferences for smarter checkout next time:
+        //    - Save the shipping address as a savedAddress (deduped by content hash)
+        //    - Remember the preferred payment method
+        try {
+            if (orderData.userId) {
+                const userRef = doc(db, 'users', orderData.userId);
+                const userSnap = await getDoc(userRef);
+                const existing = (userSnap.data()?.savedAddresses || []) as any[];
+
+                const ship = orderData.shippingAddress as (typeof orderData.shippingAddress & { lat?: number; lng?: number }) | undefined;
+                if (ship) {
+                    const hashKey = `${(ship.county || '').trim().toLowerCase()}|${(ship.details || '').trim().toLowerCase()}`;
+                    const alreadySaved = existing.some(a => `${(a.county || '').trim().toLowerCase()}|${(a.details || '').trim().toLowerCase()}` === hashKey);
+                    if (!alreadySaved) {
+                        const labelGuess = ship.method === 'pickup' ? 'Pickup' : (existing.length === 0 ? 'Default' : `Address ${existing.length + 1}`);
+                        const newAddress = {
+                            id: `addr_${Date.now()}`,
+                            label: labelGuess,
+                            county: ship.county || '',
+                            city: (ship.details || '').split(',').slice(-1)[0]?.trim() || ship.county || '',
+                            details: ship.details || '',
+                            lat: ship.lat ?? null,
+                            lng: ship.lng ?? null,
+                            isPrimary: existing.length === 0,
+                            savedAt: date,
+                        };
+                        await updateDoc(userRef, {
+                            savedAddresses: [...existing, newAddress],
+                            preferredPaymentMethod: orderData.paymentMethod || null,
+                            lastOrderAt: date,
+                        });
+                    } else {
+                        await updateDoc(userRef, {
+                            preferredPaymentMethod: orderData.paymentMethod || null,
+                            lastOrderAt: date,
+                        });
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn("Could not persist user checkout preferences (non-fatal):", err);
+        }
+
         return {
             ...orderData,
             id: orderId,
@@ -257,21 +326,30 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         await updateDoc(orderRef, { status });
 
-        // Award Loyalty Points if delivered
-        if (status === 'Delivered') {
+        // Award Loyalty Points if delivered — idempotent via loyaltyAwarded flag
+        if (status === 'Delivered' && !orderData.loyaltyAwarded) {
             const pointsToAward = Math.floor(orderData.total / 100);
             try {
-                const userRef = doc(db, 'users', orderData.userId);
-                await updateDoc(userRef, {
-                    loyaltyPoints: increment(pointsToAward)
+                await runTransaction(db, async (tx) => {
+                    const orderRefTx = doc(db, 'orders', orderId);
+                    const userRef = doc(db, 'users', orderData.userId);
+                    const orderSnapTx = await tx.get(orderRefTx);
+                    if (!orderSnapTx.exists()) return;
+                    if (orderSnapTx.data().loyaltyAwarded) return;
+                    tx.update(userRef, { loyaltyPoints: increment(pointsToAward) });
+                    tx.update(orderRefTx, {
+                        loyaltyAwarded: true,
+                        loyaltyAwardedAmount: pointsToAward,
+                        loyaltyAwardedAt: new Date().toISOString(),
+                    });
                 });
             } catch (error) {
                 console.error("Error awarding points:", error);
             }
         }
 
-        // Restore stock if cancelling
-        if (status === 'Cancelled' && previousStatus !== 'Cancelled') {
+        // Restore stock if cancelling — idempotent via stockRestored flag
+        if (status === 'Cancelled' && previousStatus !== 'Cancelled' && !orderData.stockRestored) {
             const orderItems = orderData.items as OrderItem[];
             try {
                 for (const item of orderItems) {
@@ -299,6 +377,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                         });
                     }
                 }
+                await updateDoc(orderRef, { stockRestored: true, stockRestoredAt: new Date().toISOString() });
             } catch (error) {
                 console.error("Error restoring stock:", error);
             }

@@ -1,6 +1,18 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
+
+export const metadata: Metadata = {
+    title: 'Delivery Information — Nationwide Farm Input Delivery in Kenya',
+    description: 'Reliable nationwide delivery of seeds, fertilizers, and agrochemicals across Kenya. Same-day Nairobi delivery, 1–4 days nationwide. Wells Fargo & G4S partnerships.',
+    alternates: { canonical: '/delivery' },
+    openGraph: {
+        title: 'Delivery Information | Mel-Agro',
+        description: 'Same-day Nairobi delivery, nationwide coverage in 1–4 business days.',
+        url: '/delivery',
+    },
+};
 
 export default function DeliveryInfo() {
     return (

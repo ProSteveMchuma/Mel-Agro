@@ -2,8 +2,9 @@
 import { useState, useEffect } from 'react';
 import { useOrders } from '@/context/OrderContext';
 import { useProducts } from '@/context/ProductContext';
-import { useUsers } from '@/context/UserContext'; // Assuming this exists and exposes users
+import { useUsers } from '@/context/UserContext';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
 
 export default function CreateOrderPage() {
     const { addOrder } = useOrders();
@@ -52,6 +53,7 @@ export default function CreateOrderPage() {
         if (!selectedUser || cart.length === 0) return;
 
         setLoading(true);
+        const t = toast.loading('Creating order…');
         try {
             const user = users.find(u => u.id === selectedUser);
             const orderItems = cart.map(item => {
@@ -76,10 +78,11 @@ export default function CreateOrderPage() {
                 paymentStatus: 'Unpaid'
             });
 
+            toast.success('Order created', { id: t });
             router.push('/dashboard/admin/orders');
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            alert('Failed to create order');
+            toast.error(error?.message || 'Failed to create order', { id: t });
         } finally {
             setLoading(false);
         }

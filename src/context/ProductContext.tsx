@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs, limit } from 'firebase/firestore';
 import { Product } from '@/types';
 export type { Product };
 
@@ -23,7 +23,10 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
 
 
     useEffect(() => {
-        const q = query(collection(db, "products"));
+        // Cap the live stream to keep first-paint payload bounded. Stores beyond this size
+        // should rely on the paginated /products page (which uses getProductsPage) rather
+        // than the global context. The catalog page itself already paginates server-side.
+        const q = query(collection(db, "products"), limit(500));
         const unsubscribe = onSnapshot(q, (snapshot: any) => {
             const productList: Product[] = [];
             snapshot.forEach((doc: any) => {

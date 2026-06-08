@@ -1,22 +1,25 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useOrders } from '@/context/OrderContext';
+import { useProducts } from '@/context/ProductContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import { doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getAuth, updateProfile as updateAuthProfile } from 'firebase/auth';
 import { db } from '@/lib/firebase';
 import { generateWhatsAppMessage, getWhatsAppUrl } from '@/lib/whatsapp';
 import { useBehavior } from '@/context/BehaviorContext';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { getDeliveryCost } from '@/lib/delivery';
+import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
+import { useShippingZones } from '@/hooks/useShippingZones';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { checkoutSchema, CheckoutFormData } from '@/lib/schemas';
@@ -29,39 +32,83 @@ const LocationPicker = dynamic(() => import('../../components/checkout/LocationP
     loading: () => <div className="h-[300px] w-full bg-gray-100 animate-pulse rounded-xl flex items-center justify-center text-gray-400">Loading Map...</div>
 });
 
-const KENYA_COUNTIES = [
-    // List of major counties or all 47 ideally, kept short for brevity but can be expanded
-    { value: 'Nairobi', label: 'Nairobi' },
-    { value: 'Mombasa', label: 'Mombasa' },
-    { value: 'Kisumu', label: 'Kisumu' },
-    { value: 'Nakuru', label: 'Nakuru' },
-    { value: 'Eldoret', label: 'Eldoret' },
-    { value: 'Kiambu', label: 'Kiambu' },
-    { value: 'Machakos', label: 'Machakos' },
-    { value: 'Kajiado', label: 'Kajiado' },
-    { value: 'Kilifi', label: 'Kilifi' },
-    { value: 'Meru', label: 'Meru' },
-    { value: 'Nyeri', label: 'Nyeri' },
-];
+const KENYA_COUNTIES = KENYAN_COUNTIES.map(c => ({ value: c, label: c }));
 
 export default function CheckoutPage() {
     const router = useRouter();
-    const { cartItems, cartTotal, clearCart } = useCart();
+    const { cartItems, cartTotal, clearCart, removeFromCart, updateQuantity } = useCart();
     const { user } = useAuth();
-    const { addOrder } = useOrders();
+    const { addOrder, orders: userOrders } = useOrders();
     const { trackAction } = useBehavior();
+    const { products: catalog } = useProducts();
 
     const [currentStep, setCurrentStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
     const [isProcessing, setIsProcessing] = useState(false);
     const [usePoints, setUsePoints] = useState(false);
+    const [couponInput, setCouponInput] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState<{ id: string; code: string; type: string; value: number; amount: number } | null>(null);
+    const [couponLoading, setCouponLoading] = useState(false);
+    const [showMap, setShowMap] = useState(false);
+    const [quickCheckoutDismissed, setQuickCheckoutDismissed] = useState(false);
+    const [paymentFailure, setPaymentFailure] = useState<{ orderId: string; message: string } | null>(null);
+
+    // Name-capture gate — phone-OTP signups land here without a real name
+    const needsName = !!user && (!user.name || user.name === 'User');
+    const [profileName, setProfileName] = useState('');
+    const [savingName, setSavingName] = useState(false);
+    const [profileError, setProfileError] = useState('');
+
+    // STK Push wait — populated after STK fires, cleared when callback resolves.
+    // Drives the "Sent to your phone" progress panel + early-cancel button.
+    const [stkWait, setStkWait] = useState<{ totalSec: number; sentAt: number } | null>(null);
+    const [stkRemaining, setStkRemaining] = useState(0);
+    const stkCancelRef = useRef<(() => void) | null>(null);
+
+    const handleSaveProfileName = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const trimmed = profileName.trim().replace(/\s+/g, ' ');
+        if (trimmed.length < 2) {
+            setProfileError('Please enter your name (at least 2 characters)');
+            return;
+        }
+        if (trimmed.length > 80) {
+            setProfileError('Name is too long. Please use 80 characters or fewer.');
+            return;
+        }
+        if (!user?.uid) {
+            setProfileError('Session expired — please sign in again.');
+            return;
+        }
+        setSavingName(true);
+        setProfileError('');
+        try {
+            // Update Auth displayName so future onAuthStateChanged events see the right name.
+            const fbUser = getAuth().currentUser;
+            if (fbUser) {
+                try { await updateAuthProfile(fbUser, { displayName: trimmed }); }
+                catch (e) { console.warn('Auth displayName update failed (non-fatal):', e); }
+            }
+            await setDoc(doc(db, 'users', user.uid), {
+                name: trimmed,
+                updatedAt: new Date().toISOString(),
+            }, { merge: true });
+            // AuthContext now listens via onSnapshot, so user.name updates within ~100ms
+            // and the modal auto-closes. Just clear the local input.
+            setProfileName('');
+        } catch (err: any) {
+            console.error('Profile name save failed:', err);
+            setProfileError(err?.message || 'Could not save your name. Please try again.');
+        } finally {
+            setSavingName(false);
+        }
+    };
 
     // Initialize React Hook Form
     const methods = useForm<CheckoutFormData>({
         resolver: zodResolver(checkoutSchema),
         defaultValues: {
             shipping: {
-                firstName: '',
-                lastName: '',
+                fullName: '',
                 email: '',
                 phone: '',
                 county: 'Nairobi',
@@ -81,33 +128,181 @@ export default function CheckoutPage() {
     const shippingMethod = watch('shippingMethod');
     const paymentMethod = watch('paymentMethod');
 
-    // Sync shipping data with user profile when user loads
+    // Redirect away if cart is empty (defense in depth for the submit guard)
     useEffect(() => {
-        if (user) {
-            reset({
-                shipping: {
-                    firstName: user.name?.split(' ')[0] || '',
-                    lastName: user.name?.split(' ')[1] || '',
-                    email: user.email || '',
-                    phone: user.phone || '',
-                    county: user.county || 'Nairobi',
-                    town: user.city || '',
-                    address: user.address || '',
-                    lat: -1.2921, // Could check if user has saved loc
-                    lng: 36.8219
-                },
-                shippingMethod: 'standard',
-                paymentMethod: 'mpesa'
-            });
+        if (!isProcessing && cartItems.length === 0) {
+            router.replace('/cart');
         }
+    }, [cartItems.length, isProcessing, router]);
+
+    // Stock revalidation — re-check the catalog for any cart items now under-stocked or removed.
+    // The cart can sit idle for days; ProductContext is streamed via onSnapshot so this stays fresh.
+    const stockIssues = (() => {
+        if (catalog.length === 0) return [] as Array<{ cartItem: any; available: number; reason: 'oos' | 'low' | 'gone' }>;
+        const out: Array<{ cartItem: any; available: number; reason: 'oos' | 'low' | 'gone' }> = [];
+        for (const item of cartItems) {
+            const product: any = catalog.find(p => String(p.id) === String(item.id));
+            if (!product) {
+                out.push({ cartItem: item, available: 0, reason: 'gone' });
+                continue;
+            }
+            let available = Number(product.stockQuantity) || 0;
+            if ((item as any).selectedVariant?.id && Array.isArray(product.variants)) {
+                const v = product.variants.find((x: any) => x.id === (item as any).selectedVariant.id);
+                if (!v) {
+                    out.push({ cartItem: item, available: 0, reason: 'gone' });
+                    continue;
+                }
+                const vStock = Number(v.stockQuantity ?? v.stock);
+                if (Number.isFinite(vStock)) available = vStock;
+            }
+            if (available <= 0) out.push({ cartItem: item, available: 0, reason: 'oos' });
+            else if (available < item.quantity) out.push({ cartItem: item, available, reason: 'low' });
+        }
+        return out;
+    })();
+
+    // One-tap reorder — show a shortcut for returning customers when their cart is OK and
+    // their last order is paid. Pre-fill is already done by the user-sync useEffect.
+    const lastPaidOrder = userOrders.find(o => (o as any).paymentStatus === 'Paid');
+    const showQuickCheckout =
+        currentStep === 1 &&
+        !quickCheckoutDismissed &&
+        !!lastPaidOrder &&
+        !!user?.name && user.name !== 'User' &&
+        stockIssues.length === 0;
+
+    const handleQuickCheckout = async () => {
+        const ok = await trigger('shipping');
+        if (!ok) {
+            toast.error("Some delivery details are missing — please fill them in.");
+            return;
+        }
+        trackAction('quick_checkout_used', { lastOrderId: lastPaidOrder?.id });
+        setCurrentStep(3);
+    };
+
+    // Payment-failure recovery actions — surfaced inline at Step 3 when M-Pesa fails
+    const handleFailureRetry = async () => {
+        if (!paymentFailure) return;
+        setIsProcessing(true);
+        const t = toast.loading("Re-sending M-Pesa prompt...");
+        try {
+            const idToken = await getAuth().currentUser?.getIdToken();
+            const res = await fetch('/api/payment/mpesa/retry', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+                },
+                body: JSON.stringify({ orderId: paymentFailure.orderId, phoneNumber: shippingData.phone }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast.success("STK Push sent — check your phone, then complete from your dashboard.", { id: t, duration: 7000 });
+                clearCart();
+                router.push(`/dashboard/user?orderId=${paymentFailure.orderId}`);
+            } else {
+                toast.error(data.message || "Couldn't re-send the prompt.", { id: t });
+                setIsProcessing(false);
+            }
+        } catch (e: any) {
+            toast.error(e?.message || "Retry failed", { id: t });
+            setIsProcessing(false);
+        }
+    };
+
+    const handleFailureSwitchToTill = () => {
+        setValue('paymentMethod', 'manual_mpesa');
+        setPaymentFailure(null);
+        setCurrentStep(2);
+        toast("Switched to manual Buy Goods. Pay via your M-Pesa menu, then enter the receipt code.", { duration: 6000 });
+    };
+
+    const handleFailureSwitchToCod = () => {
+        setValue('paymentMethod', 'cod');
+        setPaymentFailure(null);
+        setCurrentStep(3);
+        toast.success("Switched to Cash on Delivery. Confirm to place the order.", { duration: 5000 });
+    };
+
+    const handlePayLater = () => {
+        if (!paymentFailure) return;
+        toast("Order saved as unpaid. Resume payment from your dashboard.", { duration: 5000 });
+        clearCart();
+        router.push(`/dashboard/user?orderId=${paymentFailure.orderId}`);
+    };
+
+    // Sync shipping data with user profile when user loads.
+    // Prefer the most recently saved address (auto-saved on first order) over raw profile fields,
+    // and default the payment method to whatever the user used last.
+    useEffect(() => {
+        if (!user) return;
+        const saved = (user.savedAddresses || []) as any[];
+        const primary = saved.find(a => a.isPrimary) || saved[saved.length - 1];
+
+        const cleanName = user.name && user.name !== 'User' ? user.name : '';
+        const validPaymentMethods = ['mpesa', 'manual_mpesa', 'card', 'cod', 'whatsapp'] as const;
+        const preferred = (user as any).preferredPaymentMethod;
+        const initialPaymentMethod = (preferred && validPaymentMethods.includes(preferred)) ? preferred : 'mpesa';
+
+        reset({
+            shipping: {
+                fullName: cleanName,
+                email: user.email || '',
+                phone: user.phone || '',
+                county: primary?.county || user.county || 'Nairobi',
+                town: primary?.city || user.city || '',
+                address: primary?.details || user.address || '',
+                lat: primary?.lat ?? -1.2921,
+                lng: primary?.lng ?? 36.8219,
+            },
+            shippingMethod: 'standard',
+            paymentMethod: initialPaymentMethod,
+        });
     }, [user, reset]);
 
-    // Calculate dynamic shipping
-    const deliveryInfo = getDeliveryCost(shippingData.county, cartTotal);
-    const shippingCost = shippingMethod === 'standard' ? deliveryInfo.cost : 100;
+    // Calculate dynamic shipping using live admin-managed zones
+    const { zones: liveZones } = useShippingZones();
+    const deliveryInfo = getDeliveryCost(shippingData.county, cartTotal, liveZones);
+    const shippingCost = shippingMethod === 'standard' ? deliveryInfo.cost : 0;
 
     const discountFromPoints = usePoints ? Math.min(cartTotal, user?.loyaltyPoints || 0) : 0;
-    const total = cartTotal + shippingCost - discountFromPoints;
+    const couponDiscount = appliedCoupon?.amount || 0;
+    const total = Math.max(0, cartTotal + shippingCost - discountFromPoints - couponDiscount);
+
+    const handleApplyCoupon = async () => {
+        if (!couponInput.trim()) return;
+        setCouponLoading(true);
+        try {
+            const idToken = await getAuth().currentUser?.getIdToken();
+            const res = await fetch('/api/discounts/validate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+                },
+                body: JSON.stringify({ code: couponInput.trim().toUpperCase(), cartTotal }),
+            });
+            const data = await res.json();
+            if (data.success && data.discount) {
+                setAppliedCoupon(data.discount);
+                toast.success(data.message || 'Promo code applied');
+                setCouponInput('');
+            } else {
+                toast.error(data.message || 'Invalid promo code');
+            }
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to validate code');
+        } finally {
+            setCouponLoading(false);
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponInput('');
+    };
 
     const handleNextStep = async () => {
         if (currentStep === 1) {
@@ -136,6 +331,22 @@ export default function CheckoutPage() {
             return;
         }
 
+        if (cartItems.length === 0) {
+            toast.error("Your cart is empty.");
+            router.push('/products');
+            return;
+        }
+
+        const requiresPayment = ['mpesa', 'manual_mpesa', 'card'].includes(data.paymentMethod);
+        if (requiresPayment && total <= 0) {
+            toast.error("Order total must be greater than zero for this payment method.");
+            return;
+        }
+        if (total < 0) {
+            toast.error("Order total cannot be negative — adjust loyalty points.");
+            return;
+        }
+
         setIsProcessing(true);
         try {
             // Helper to remove undefined values recursively
@@ -151,7 +362,7 @@ export default function CheckoutPage() {
 
             const orderData = cleanObject({
                 userId: user.uid,
-                userName: `${data.shipping.firstName} ${data.shipping.lastName}`.trim(),
+                userName: (user?.name && user.name !== 'User') ? user.name : data.shipping.fullName.trim(),
                 userEmail: data.shipping.email,
                 items: cartItems.map(item => ({
                     id: item.id,
@@ -162,7 +373,11 @@ export default function CheckoutPage() {
                     selectedVariant: item.selectedVariant || null
                 })),
                 subtotal: cartTotal,
-                discountAmount: discountFromPoints,
+                discountAmount: discountFromPoints + couponDiscount,
+                pointsRedeemed: discountFromPoints,
+                couponDiscount: couponDiscount,
+                couponCode: appliedCoupon?.code || null,
+                couponId: appliedCoupon?.id || null,
                 total: total,
                 shippingAddress: {
                     county: data.shipping.county,
@@ -174,7 +389,7 @@ export default function CheckoutPage() {
                 phone: data.shipping.phone,
                 paymentMethod: data.paymentMethod === 'whatsapp' ? 'WhatsApp Order' :
                     (data.paymentMethod === 'cod' ? 'Cash on Delivery' :
-                        (data.paymentMethod === 'manual_mpesa' ? `M-Pesa Paybill (${data.transactionCode})` : 'M-Pesa')),
+                        (data.paymentMethod === 'manual_mpesa' ? `M-Pesa Till (${data.transactionCode})` : 'M-Pesa')),
                 paymentStatus: data.paymentMethod === 'whatsapp' ? 'Pending WhatsApp' :
                     (data.paymentMethod === 'manual_mpesa' ? 'Pending Verification' : 'Unpaid'),
                 shippingMethod: data.shippingMethod,
@@ -200,7 +415,7 @@ export default function CheckoutPage() {
                         price: item.price
                     })),
                     total: total,
-                    userName: `${data.shipping.firstName} ${data.shipping.lastName}`,
+                    userName: (user?.name && user.name !== 'User') ? user.name : data.shipping.fullName,
                     phone: data.shipping.phone,
                     address: `${data.shipping.address}, ${data.shipping.town}, ${data.shipping.county}`
                 });
@@ -219,11 +434,15 @@ export default function CheckoutPage() {
 
                 const loadingToast = toast.loading("Initiating M-Pesa prompt...");
 
-                // 1. Trigger STK Push
+                const idToken = await getAuth().currentUser?.getIdToken();
                 const response = await fetch('/api/payment/mpesa', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+                    },
                     body: JSON.stringify({
+                        orderId: newOrder.id,
                         phoneNumber: data.shipping.phone,
                         amount: total
                     })
@@ -231,54 +450,123 @@ export default function CheckoutPage() {
 
                 const resData = await response.json();
 
-                if (resData.success) {
-                    toast.success("Sent! Check your phone to pay.", { id: loadingToast });
-
-                    // 2. Save CheckoutRequestID to Order
-                    const orderRef = doc(db, 'orders', newOrder.id);
-                    await updateDoc(orderRef, {
-                        checkoutRequestId: resData.checkoutRequestID
-                    });
-
-                    // 3. Listen for Payment Confirmation
-                    const unsubscribe = onSnapshot(orderRef, (snapshot) => {
-                        const updatedOrder = snapshot.data();
-                        if (updatedOrder?.paymentStatus === 'Paid') {
-                            toast.success("Payment Received! Order #" + newOrder.id.slice(0, 5));
-                            unsubscribe();
-                            clearCart();
-                            router.push(`/checkout/success?orderId=${newOrder.id}`);
-                        } else if (updatedOrder?.paymentStatus === 'Failed') {
-                            const errorMsg = getMpesaErrorMessage(updatedOrder.paymentFailureReason || 'Unknown');
-                            toast.error(`Payment Failed: ${errorMsg}`, { duration: 6000 });
-                            unsubscribe();
-                            setIsProcessing(false);
-                        }
-                    });
-
-                    // Auto-timeout listener after 2 minutes
-                    setTimeout(() => {
-                        unsubscribe();
-                        if (isProcessing) {
-                            toast("Payment check timed out. Please check order status in dashboard.");
-                            clearCart();
-                            router.push(`/dashboard/user`);
-                        }
-                    }, 120000);
-
-                    return;
-                } else {
+                if (!resData.success) {
                     toast.error(resData.message || "Failed to initiate M-Pesa.", { id: loadingToast });
                     setIsProcessing(false);
                     return;
                 }
+
+                toast.success("Sent! Check your phone to pay.", { id: loadingToast });
+
+                // Show the progress panel + start the visible countdown
+                const TOTAL_WAIT_SEC = 120;
+                setStkWait({ totalSec: TOTAL_WAIT_SEC, sentAt: Date.now() });
+                setStkRemaining(TOTAL_WAIT_SEC);
+
+                const orderRef = doc(db, 'orders', newOrder.id);
+                let resolved = false;
+                let pollTimer: ReturnType<typeof setInterval> | null = null;
+                let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
+                let countdownTimer: ReturnType<typeof setInterval> | null = null;
+
+                const friendly = (msg: string, code?: string | number): string => {
+                    const c = String(code ?? '').toLowerCase();
+                    if (c === '1032' || /cancel/i.test(msg)) {
+                        return "No problem — looks like the prompt wasn't completed. Pick how you'd like to pay:";
+                    }
+                    return msg;
+                };
+
+                const finish = (status: 'paid' | 'failed' | 'timeout', msg?: string, code?: string | number) => {
+                    if (resolved) return;
+                    resolved = true;
+                    if (pollTimer) clearInterval(pollTimer);
+                    if (timeoutTimer) clearTimeout(timeoutTimer);
+                    if (countdownTimer) clearInterval(countdownTimer);
+                    setStkWait(null);
+                    stkCancelRef.current = null;
+                    unsubscribe();
+
+                    if (status === 'paid') {
+                        toast.success("Payment Received! Order #" + newOrder.id.slice(0, 5));
+                        clearCart();
+                        router.push(`/checkout/success?orderId=${newOrder.id}`);
+                    } else if (status === 'failed') {
+                        const friendlyMsg = friendly(msg || 'Unknown error', code);
+                        toast.error(friendlyMsg, { duration: 5000 });
+                        setPaymentFailure({ orderId: newOrder.id, message: friendlyMsg });
+                        setIsProcessing(false);
+                    } else {
+                        // Timeout — keep the user on this page with the same recovery options.
+                        const timeoutMsg = "Payment check timed out — your order is saved. Pick how you'd like to pay:";
+                        toast(timeoutMsg, { duration: 6000 });
+                        setPaymentFailure({ orderId: newOrder.id, message: timeoutMsg });
+                        setIsProcessing(false);
+                    }
+                };
+
+                // Expose an early-cancel handler the progress panel can call
+                stkCancelRef.current = () => finish('failed', "No problem — let's try a different way", '1032');
+
+                // Visible countdown — drives the progress panel
+                countdownTimer = setInterval(() => {
+                    setStkRemaining(prev => Math.max(0, prev - 1));
+                }, 1000);
+
+                const startPolling = () => {
+                    if (pollTimer) return;
+                    pollTimer = setInterval(async () => {
+                        if (resolved) return;
+                        try {
+                            const tok = await getAuth().currentUser?.getIdToken();
+                            const r = await fetch('/api/payment/mpesa/query', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
+                                },
+                                body: JSON.stringify({ orderId: newOrder.id }),
+                            });
+                            const j = await r.json();
+                            if (j.paid) finish('paid');
+                            else if (j.paymentStatus === 'Failed') finish('failed', j.message);
+                        } catch {
+                            // ignore transient errors
+                        }
+                    }, 5000);
+                };
+
+                const unsubscribe = onSnapshot(orderRef, (snapshot) => {
+                    const updatedOrder = snapshot.data();
+                    if (updatedOrder?.paymentStatus === 'Paid') {
+                        finish('paid');
+                    } else if (updatedOrder?.paymentStatus === 'Failed') {
+                        const code = updatedOrder.paymentFailureCode || updatedOrder.paymentFailureReason;
+                        const errorMsg = updatedOrder.paymentFailureMessage ||
+                            getMpesaErrorMessage(code || 'Unknown');
+                        finish('failed', errorMsg, code);
+                    }
+                }, (err) => {
+                    console.error('Order listener error, falling back to polling:', err);
+                    if (!resolved) startPolling();
+                });
+
+                setTimeout(() => { if (!resolved) startPolling(); }, 30000);
+
+                timeoutTimer = setTimeout(() => finish('timeout'), 120000);
+
+                return;
             }
 
             if (data.paymentMethod === 'card') {
                 const loadingToast = toast.loading("Preparing secure checkout...");
+                const cardToken = await getAuth().currentUser?.getIdToken();
                 const response = await fetch('/api/payment/paystack/initialize', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(cardToken ? { Authorization: `Bearer ${cardToken}` } : {}),
+                    },
                     body: JSON.stringify({
                         items: cartItems,
                         orderId: newOrder.id,
@@ -340,6 +628,92 @@ export default function CheckoutPage() {
                                 <span className="text-melagri-primary font-semibold">Secure Checkout</span>
                             </nav>
                         </div>
+
+                        {/* Stock issues banner — re-validates at entry */}
+                        {stockIssues.length > 0 && (
+                            <div className="mb-8 bg-amber-50 border-2 border-amber-200 rounded-2xl p-5">
+                                <div className="flex items-start gap-3 mb-4">
+                                    <span className="text-2xl">⚠️</span>
+                                    <div>
+                                        <p className="font-black text-amber-900 text-sm uppercase tracking-tight">Some items in your cart need attention</p>
+                                        <p className="text-xs text-amber-800 mt-0.5">Stock changed since you last visited. Update quantities or remove items to continue.</p>
+                                    </div>
+                                </div>
+                                <ul className="space-y-2">
+                                    {stockIssues.map(({ cartItem, available, reason }) => (
+                                        <li key={cartItem.cartItemId || cartItem.id} className="bg-white rounded-xl p-3 flex items-center justify-between gap-3 flex-wrap">
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-bold text-gray-900 text-sm truncate">
+                                                    {cartItem.name}
+                                                    {cartItem.selectedVariant && <span className="text-gray-500 font-medium"> ({cartItem.selectedVariant.name})</span>}
+                                                </p>
+                                                <p className="text-xs text-amber-700 mt-0.5">
+                                                    {reason === 'gone' && 'No longer available in our catalogue.'}
+                                                    {reason === 'oos' && `Out of stock. You have ${cartItem.quantity} in cart.`}
+                                                    {reason === 'low' && `Only ${available} in stock — you have ${cartItem.quantity} in cart.`}
+                                                </p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                {reason === 'low' && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => updateQuantity(cartItem.cartItemId || String(cartItem.id), available)}
+                                                        className="px-3 py-1.5 bg-amber-600 text-white text-xs font-bold rounded-lg hover:bg-amber-700 transition-colors"
+                                                    >
+                                                        Update to {available}
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeFromCart(cartItem.cartItemId || String(cartItem.id))}
+                                                    className="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {/* One-tap reorder for returning customers */}
+                        {showQuickCheckout && (
+                            <div className="mb-8 bg-gradient-to-r from-melagri-primary to-green-600 rounded-2xl p-6 text-white relative overflow-hidden shadow-xl shadow-green-500/10">
+                                <div className="absolute -top-12 -right-12 w-32 h-32 bg-white/10 rounded-full" />
+                                <div className="absolute -bottom-8 -right-8 w-24 h-24 bg-white/5 rounded-full" />
+                                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xl">⚡</span>
+                                            <span className="text-[10px] font-black uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded-full">Welcome back, {user?.name?.split(' ')[0]}</span>
+                                        </div>
+                                        <p className="font-black text-lg leading-tight">Same address & payment as last time?</p>
+                                        <p className="text-xs text-white/80 mt-1 truncate">
+                                            {(lastPaidOrder as any)?.shippingAddress?.details || ''}
+                                            {' · '}
+                                            {(lastPaidOrder as any)?.paymentMethod || ''}
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={handleQuickCheckout}
+                                            className="px-6 py-3 bg-white text-melagri-primary font-black uppercase text-xs tracking-widest rounded-xl hover:bg-green-50 transition-all shadow-lg"
+                                        >
+                                            Quick Checkout →
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setQuickCheckoutDismissed(true)}
+                                            className="px-4 py-2 text-xs font-bold text-white/70 hover:text-white underline whitespace-nowrap"
+                                        >
+                                            Edit details
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Step Indicators */}
                         <div className="mb-12">
@@ -427,10 +801,11 @@ export default function CheckoutPage() {
 
                                                 <h3 className="text-lg font-bold text-gray-900">Shipping Address</h3>
 
-                                                <div className="grid grid-cols-2 gap-4">
-                                                    <Input name="shipping.firstName" label="First Name" placeholder="John" />
-                                                    <Input name="shipping.lastName" label="Last Name" placeholder="Doe" />
-                                                </div>
+                                                <Input
+                                                    name="shipping.fullName"
+                                                    label="Full Name"
+                                                    placeholder="e.g. Wanjiku Mwangi"
+                                                />
 
                                                 <Select
                                                     name="shipping.county"
@@ -451,26 +826,48 @@ export default function CheckoutPage() {
                                                     rows={3}
                                                 />
 
-                                                {/* Map Location Picker */}
+                                                {/* Map Location Picker — collapsed by default to keep checkout fast */}
                                                 <div className="mt-6">
-                                                    <label className="block text-sm font-semibold text-gray-900 mb-4">Pin Your Exact Delivery Location</label>
-                                                    <LocationPicker
-                                                        onLocationSelect={(lat, lng, address) => {
-                                                            setValue('shipping.lat', lat);
-                                                            setValue('shipping.lng', lng);
-                                                            if (address?.county) setValue('shipping.county', address.county);
-                                                            if (address?.town) setValue('shipping.town', address.town);
+                                                    {!showMap ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowMap(true)}
+                                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 hover:border-melagri-primary hover:bg-green-50/50 rounded-2xl text-sm font-bold text-gray-500 hover:text-melagri-primary transition-all"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                            <span>Pin exact location on map (optional)</span>
+                                                        </button>
+                                                    ) : (
+                                                        <>
+                                                            <div className="flex items-center justify-between mb-4">
+                                                                <label className="block text-sm font-semibold text-gray-900">Pin Your Exact Delivery Location</label>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setShowMap(false)}
+                                                                    className="text-xs font-bold text-gray-400 hover:text-gray-700 underline"
+                                                                >
+                                                                    Hide map
+                                                                </button>
+                                                            </div>
+                                                            <LocationPicker
+                                                                onLocationSelect={(lat, lng, address) => {
+                                                                    setValue('shipping.lat', lat);
+                                                                    setValue('shipping.lng', lng);
+                                                                    if (address?.county) setValue('shipping.county', address.county);
+                                                                    if (address?.town) setValue('shipping.town', address.town);
 
-                                                            if (address?.county) {
-                                                                toast.success(`Location detected: ${address.county}`, { id: 'map-toast' });
-                                                            } else {
-                                                                toast.success("Location pinned!", { id: 'map-toast' });
-                                                            }
-                                                        }}
-                                                        initialLat={shippingData.lat}
-                                                        initialLng={shippingData.lng}
-                                                    />
-                                                    <p className="text-[10px] text-gray-400 mt-2 italic">Drag the marker to your precise location for faster delivery.</p>
+                                                                    if (address?.county) {
+                                                                        toast.success(`Location detected: ${address.county}`, { id: 'map-toast' });
+                                                                    } else {
+                                                                        toast.success("Location pinned!", { id: 'map-toast' });
+                                                                    }
+                                                                }}
+                                                                initialLat={shippingData.lat}
+                                                                initialLng={shippingData.lng}
+                                                            />
+                                                            <p className="text-[10px] text-gray-400 mt-2 italic">Drag the marker to your precise location for faster delivery.</p>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -491,11 +888,11 @@ export default function CheckoutPage() {
                                                             />
                                                             <div className="flex-1">
                                                                 <p className="font-semibold text-gray-900">Standard Delivery</p>
-                                                                <p className="text-sm text-gray-500">Arrives in 1-3 business days</p>
+                                                                <p className="text-sm text-gray-500">{deliveryInfo.etaText} — {deliveryInfo.zoneName}</p>
                                                             </div>
                                                             <div className="text-right">
                                                                 <p className="font-bold text-melagri-primary">
-                                                                    {shippingCost === 0 ? "FREE" : `KES ${shippingCost.toLocaleString()}`}
+                                                                    {deliveryInfo.cost === 0 ? "FREE" : `KES ${deliveryInfo.cost.toLocaleString()}`}
                                                                 </p>
                                                                 {shippingMethod === 'standard' && (
                                                                     <p className="text-[10px] text-gray-400 font-medium">({deliveryInfo.reason})</p>
@@ -517,9 +914,9 @@ export default function CheckoutPage() {
                                                             />
                                                             <div className="flex-1">
                                                                 <p className="font-semibold text-gray-900">Pick-up Station</p>
-                                                                <p className="text-sm text-gray-500">At our store location</p>
+                                                                <p className="text-sm text-gray-500">Collect at our store — ready in 1–2 hours</p>
                                                             </div>
-                                                            <p className="font-bold text-melagri-primary">KES 100.00</p>
+                                                            <p className="font-bold text-melagri-primary">FREE</p>
                                                         </div>
                                                     </label>
                                                 </div>
@@ -593,7 +990,7 @@ export default function CheckoutPage() {
                                                         <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center p-1 border border-gray-100 shadow-sm text-green-600 font-black text-xs">
                                                             P
                                                         </div>
-                                                        <span className="font-bold text-gray-900">Paybill / Till</span>
+                                                        <span className="font-bold text-gray-900">Buy Goods (Till)</span>
                                                     </div>
                                                     <p className="text-sm text-gray-500 font-medium">Pay manually via M-Pesa Menu.</p>
                                                 </div>
@@ -621,7 +1018,9 @@ export default function CheckoutPage() {
                                                     <p className="text-sm text-gray-500 font-medium">Order via WhatsApp and pay on delivery.</p>
                                                 </div>
 
-                                                {/* Card Option */}
+                                                {/* Card Payment (Paystack) — temporarily hidden until Paystack credentials are configured.
+                                                    Re-enable by uncommenting this block AND setting PAYSTACK_SECRET_KEY +
+                                                    NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY in .env.local / Vercel.
                                                 <div
                                                     onClick={() => setValue('paymentMethod', 'card')}
                                                     className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'card'
@@ -641,8 +1040,9 @@ export default function CheckoutPage() {
                                                         </div>
                                                         <span className="font-bold text-gray-900">Card Payment</span>
                                                     </div>
-                                                    <p className="text-sm text-gray-500 font-medium">Visa, Mastercard, AMEX safely processed.</p>
+                                                    <p className="text-sm text-gray-500 font-medium">Visa, Mastercard processed securely via Paystack.</p>
                                                 </div>
+                                                */}
 
                                                 {/* Cash on Delivery Option */}
                                                 <div
@@ -697,16 +1097,13 @@ export default function CheckoutPage() {
                                                 {paymentMethod === 'manual_mpesa' && (
                                                     <div className="bg-[#f0f9f1] p-6 rounded-2xl border border-green-100 animate-in fade-in slide-in-from-top-2">
                                                         <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-4">
-                                                            <span className="text-xl">📲</span> Pay via M-Pesa Paybill
+                                                            <span className="text-xl">📲</span> Pay via M-Pesa Buy Goods
                                                         </h3>
-                                                        <div className="bg-white p-4 rounded-xl border border-gray-200 mb-6 space-y-3">
+                                                        <p className="text-xs text-gray-500 mb-3">Lipa na M-Pesa → Buy Goods and Services → Enter Till Number</p>
+                                                        <div className="bg-white p-4 rounded-xl border border-gray-200 mb-4 space-y-3">
                                                             <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                                                                <span className="text-gray-500 text-sm font-medium">Business No.</span>
-                                                                <span className="font-black text-xl text-gray-900 tracking-wider">522522</span>
-                                                            </div>
-                                                            <div className="flex justify-between items-center border-b border-gray-100 pb-2">
-                                                                <span className="text-gray-500 text-sm font-medium">Account No.</span>
-                                                                <span className="font-bold text-gray-900">MELAGRO</span>
+                                                                <span className="text-gray-500 text-sm font-medium">Till No.</span>
+                                                                <span className="font-black text-xl text-gray-900 tracking-wider">3130847</span>
                                                             </div>
                                                             <div className="flex justify-between items-center">
                                                                 <span className="text-gray-500 text-sm font-medium">Amount</span>
@@ -714,15 +1111,22 @@ export default function CheckoutPage() {
                                                             </div>
                                                         </div>
 
+                                                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 mb-4 flex items-start gap-2">
+                                                            <span className="text-emerald-600 text-sm mt-0.5">⚡</span>
+                                                            <p className="text-xs text-emerald-800 leading-relaxed">
+                                                                <span className="font-bold">Just pay — we&apos;ll detect it automatically</span> within seconds. The code field below is only a backup if it doesn&apos;t show up.
+                                                            </p>
+                                                        </div>
+
                                                         <div className="space-y-2">
-                                                            <label className="block text-sm font-bold text-gray-900">Enter M-Pesa Transaction Code</label>
+                                                            <label className="block text-sm font-bold text-gray-900">M-Pesa Transaction Code <span className="text-gray-400 font-normal">(optional)</span></label>
                                                             <Input
                                                                 name="transactionCode"
                                                                 placeholder="e.g. QHG45..."
                                                                 className="uppercase tracking-widest font-mono"
                                                                 format="uppercase"
                                                             />
-                                                            <p className="text-xs text-gray-500">You will receive this code in the SMS from M-Pesa.</p>
+                                                            <p className="text-xs text-gray-500">Only enter if our auto-detection didn&apos;t catch your payment.</p>
                                                         </div>
                                                     </div>
                                                 )}
@@ -744,7 +1148,7 @@ export default function CheckoutPage() {
                                                             <span className="text-xl">🔒</span> Secure Redirect
                                                         </h3>
                                                         <p className="text-sm text-gray-600">
-                                                            You will be redirected to our secure payment partner (Stripe) to complete your card transaction safely. We do not store your card details.
+                                                            You will be redirected to Paystack to complete your card transaction safely. We do not store your card details.
                                                         </p>
                                                     </div>
                                                 )}
@@ -804,7 +1208,7 @@ export default function CheckoutPage() {
                                                             Edit
                                                         </button>
                                                     </div>
-                                                    <p className="text-gray-900 font-semibold">{shippingData.firstName} {shippingData.lastName}</p>
+                                                    <p className="text-gray-900 font-semibold">{shippingData.fullName}</p>
                                                     <p className="text-gray-600">{shippingData.address}</p>
                                                     <p className="text-gray-600">{shippingData.town}, {shippingData.county}</p>
                                                     <p className="text-gray-600">{shippingData.phone}</p>
@@ -822,7 +1226,7 @@ export default function CheckoutPage() {
                                                             Edit
                                                         </button>
                                                     </div>
-                                                    <p className="text-gray-900 font-semibold">{shippingMethod === 'standard' ? 'Standard Delivery (2-3 Days)' : 'Pick-up from Store'}</p>
+                                                    <p className="text-gray-900 font-semibold">{shippingMethod === 'standard' ? `Standard Delivery — ${deliveryInfo.etaText}` : 'Pick-up from Store'}</p>
                                                 </div>
 
                                                 {/* Payment Method */}
@@ -843,7 +1247,7 @@ export default function CheckoutPage() {
                                                     </p>
                                                     <p className="text-gray-600 text-sm">
                                                         {paymentMethod === 'mpesa' && 'Paying via M-Pesa Express (Phone)'}
-                                                        {paymentMethod === 'card' && 'Paying via Secure Card (Stripe)'}
+                                                        {paymentMethod === 'card' && 'Paying via Secure Card (Paystack)'}
                                                         {paymentMethod === 'cod' && 'Pay on Delivery / Collection'}
                                                         {paymentMethod === 'whatsapp' && 'Confirm and complete order on WhatsApp'}
                                                     </p>
@@ -870,6 +1274,97 @@ export default function CheckoutPage() {
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            {/* STK Push wait — shown while we're waiting for the callback */}
+                                            {stkWait && !paymentFailure && (
+                                                <div className="mt-8 bg-emerald-50 border-2 border-emerald-200 rounded-2xl p-6">
+                                                    <div className="flex items-start gap-3 mb-4">
+                                                        <span className="text-2xl">📱</span>
+                                                        <div className="flex-1">
+                                                            <p className="font-black text-emerald-900 text-sm uppercase tracking-tight">Sent to your phone</p>
+                                                            <p className="text-sm text-emerald-800 mt-1">
+                                                                Open the M-Pesa prompt on <span className="font-mono font-bold">{shippingData.phone}</span>, enter your PIN, and confirm.
+                                                            </p>
+                                                            <p className="text-xs text-emerald-700 mt-2 font-medium">
+                                                                Checking… {Math.floor(stkRemaining / 60)}:{String(stkRemaining % 60).padStart(2, '0')} remaining
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-full bg-emerald-100 rounded-full h-2 overflow-hidden mb-4">
+                                                        <div
+                                                            className="bg-emerald-500 h-full transition-all duration-1000"
+                                                            style={{ width: `${(stkRemaining / stkWait.totalSec) * 100}%` }}
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => stkCancelRef.current?.()}
+                                                            className="px-4 py-3 bg-white text-gray-900 border-2 border-gray-200 font-black uppercase text-xs tracking-widest rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>📵</span> Didn&apos;t get the prompt?
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => stkCancelRef.current?.()}
+                                                            className="px-4 py-3 bg-white text-gray-500 border-2 border-gray-100 font-bold uppercase text-xs tracking-widest rounded-xl hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>✕</span> Cancel & try another way
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-[11px] text-emerald-700 mt-4 text-center font-medium">
+                                                        💡 Phone locked or no prompt? Tap &ldquo;Didn&apos;t get the prompt?&rdquo; to switch to Buy Goods or Cash on Delivery.
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Payment failure recovery — shows when an M-Pesa attempt failed on this order */}
+                                            {paymentFailure && (
+                                                <div className="mt-8 bg-red-50 border-2 border-red-200 rounded-2xl p-6">
+                                                    <div className="flex items-start gap-3 mb-4">
+                                                        <span className="text-2xl">⚠️</span>
+                                                        <div className="flex-1">
+                                                            <p className="font-black text-red-900 text-sm uppercase tracking-tight">M-Pesa payment didn&apos;t go through</p>
+                                                            <p className="text-sm text-red-700 mt-1">{paymentFailure.message}</p>
+                                                            <p className="text-xs text-red-600 mt-2">Don&apos;t worry — your order is saved. Pick how you&apos;d like to pay:</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleFailureRetry}
+                                                            disabled={isProcessing}
+                                                            className="px-4 py-3 bg-melagri-primary text-white font-black uppercase text-xs tracking-widest rounded-xl hover:bg-melagri-secondary transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>↻</span> Retry M-Pesa Prompt
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleFailureSwitchToTill}
+                                                            disabled={isProcessing}
+                                                            className="px-4 py-3 bg-white text-gray-900 border-2 border-gray-200 font-black uppercase text-xs tracking-widest rounded-xl hover:bg-gray-50 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>📲</span> Pay via Buy Goods (Till)
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleFailureSwitchToCod}
+                                                            disabled={isProcessing}
+                                                            className="px-4 py-3 bg-white text-gray-900 border-2 border-gray-200 font-black uppercase text-xs tracking-widest rounded-xl hover:bg-gray-50 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>💵</span> Cash on Delivery
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handlePayLater}
+                                                            disabled={isProcessing}
+                                                            className="px-4 py-3 bg-white text-gray-500 border-2 border-gray-100 font-bold uppercase text-xs tracking-widest rounded-xl hover:bg-gray-50 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                                                        >
+                                                            <span>⏱</span> Pay Later
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
 
                                             <div className="mt-8 flex gap-4">
                                                 <button
@@ -950,6 +1445,40 @@ export default function CheckoutPage() {
                                         ))}
                                     </div>
 
+                                    <div className="mb-4 pb-4 border-b border-gray-100">
+                                        <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Promo Code</p>
+                                        {appliedCoupon ? (
+                                            <div className="flex items-center justify-between bg-green-50 border border-green-100 rounded-xl px-3 py-2">
+                                                <div className="text-xs">
+                                                    <span className="font-black text-green-700">{appliedCoupon.code}</span>
+                                                    <span className="text-green-600 ml-2">-KES {appliedCoupon.amount.toLocaleString()}</span>
+                                                </div>
+                                                <button type="button" onClick={handleRemoveCoupon} className="text-gray-400 hover:text-red-500" title="Remove">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={couponInput}
+                                                    onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                                                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleApplyCoupon(); } }}
+                                                    placeholder="Enter code"
+                                                    className="flex-1 px-3 py-2 text-sm font-mono uppercase tracking-wider rounded-lg border border-gray-200 focus:border-melagri-primary focus:ring-2 focus:ring-melagri-primary/10 outline-none"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={handleApplyCoupon}
+                                                    disabled={couponLoading || !couponInput.trim()}
+                                                    className="px-4 py-2 bg-gray-900 text-white text-xs font-bold rounded-lg hover:bg-black transition-all disabled:opacity-50"
+                                                >
+                                                    {couponLoading ? '...' : 'Apply'}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className="space-y-3 text-sm">
                                         <div className="flex justify-between text-gray-600">
                                             <span>Subtotal</span>
@@ -959,6 +1488,18 @@ export default function CheckoutPage() {
                                             <span>Shipping</span>
                                             <span className="font-semibold">{shippingCost === 0 ? "FREE" : `KES ${shippingCost.toLocaleString()}`}</span>
                                         </div>
+                                        {appliedCoupon && (
+                                            <div className="flex justify-between text-green-600 font-semibold">
+                                                <span>Promo ({appliedCoupon.code})</span>
+                                                <span>- KES {appliedCoupon.amount.toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        {discountFromPoints > 0 && (
+                                            <div className="flex justify-between text-purple-600 font-semibold">
+                                                <span>Loyalty Points</span>
+                                                <span>- KES {discountFromPoints.toLocaleString()}</span>
+                                            </div>
+                                        )}
                                         {shippingMethod === 'standard' && (
                                             <div className="flex justify-end -mt-2">
                                                 <p className="text-[10px] text-gray-400 italic">{deliveryInfo.reason}</p>
@@ -979,6 +1520,55 @@ export default function CheckoutPage() {
                         </div>
                     </div>
                 </main>
+
+                {/* Name-capture modal — blocks checkout until phone-only users add their name */}
+                {needsName && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
+                        <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 relative animate-in slide-in-from-bottom-8">
+                            <div className="text-center mb-6">
+                                <div className="inline-flex w-14 h-14 bg-melagri-primary/10 text-melagri-primary rounded-2xl items-center justify-center text-2xl mb-3">👋</div>
+                                <h2 className="text-xl font-black text-gray-900">One last thing — what should we call you?</h2>
+                                <p className="text-sm text-gray-500 mt-2">We&apos;ll use this on your receipt and order updates. Just your name — takes a second.</p>
+                            </div>
+
+                            {profileError && (
+                                <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-md mb-4">
+                                    <p className="text-sm text-red-700">{profileError}</p>
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSaveProfileName} className="space-y-5">
+                                <div>
+                                    <label htmlFor="profile-name" className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Full name</label>
+                                    <input
+                                        id="profile-name"
+                                        type="text"
+                                        autoFocus
+                                        autoComplete="name"
+                                        required
+                                        minLength={2}
+                                        maxLength={80}
+                                        placeholder="e.g. Wanjiku Mwangi"
+                                        value={profileName}
+                                        onChange={(e) => setProfileName(e.target.value)}
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-melagri-primary focus:ring-2 focus:ring-melagri-primary/20 outline-none text-base font-medium"
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={savingName || profileName.trim().length < 2}
+                                    className="w-full py-3.5 bg-melagri-primary text-white rounded-xl font-bold hover:bg-melagri-secondary transition-all disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+                                >
+                                    {savingName ? 'Saving...' : 'Save & Continue'}
+                                </button>
+                            </form>
+
+                            <p className="text-xs text-gray-400 text-center mt-4">
+                                You&apos;re signed in as <span className="font-mono font-bold">{user?.phone || user?.email}</span>
+                            </p>
+                        </div>
+                    </div>
+                )}
 
                 <Footer />
             </div>

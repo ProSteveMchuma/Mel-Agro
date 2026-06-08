@@ -1,5 +1,17 @@
+import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+
+export const metadata: Metadata = {
+    title: 'Agricultural Services — Crop Advisory, Soil Testing & Pest Control',
+    description: 'Expert agronomic services for Kenyan farmers: soil testing, crop advisory, pest & disease management, and farm planning. Backed by 20+ years of agricultural expertise.',
+    alternates: { canonical: '/services' },
+    openGraph: {
+        title: 'Agricultural Services in Kenya | Mel-Agro',
+        description: 'Soil testing, crop advisory, and pest control services for Kenyan farmers.',
+        url: '/services',
+    },
+};
 
 export default function ServicesPage() {
     return (

@@ -152,7 +152,7 @@ export default function Header() {
                         Sign In
                       </Link>
                       <Link
-                        href="/auth/signup"
+                        href="/auth/login"
                         className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium"
                         onClick={() => setIsAccountOpen(false)}
                       >
@@ -208,7 +208,7 @@ export default function Header() {
                     Contact Us
                   </Link>
                   <Link
-                    href="/faq"
+                    href="/help"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium"
                     onClick={() => setIsHelpOpen(false)}
                   >

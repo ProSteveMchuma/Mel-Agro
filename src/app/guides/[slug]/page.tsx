@@ -6,6 +6,8 @@ import WhatsAppButton from '@/components/WhatsAppButton';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
 
+const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.melagri.com';
+
 type Props = {
     params: Promise<{ slug: string }>;
 };
@@ -26,15 +28,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         return { title: 'Guide Not Found | Mel-Agri' };
     }
 
+    const canonical = `/guides/${guide.slug}`;
+    const imageUrl = guide.image?.startsWith('http') ? guide.image : `${SITE_URL}${guide.image || '/og-image.jpg'}`;
+
     return {
         title: `${guide.title} | Farmer's Knowledge Base`,
         description: guide.description,
+        alternates: { canonical },
         openGraph: {
             title: guide.title,
             description: guide.description,
             type: 'article',
+            url: canonical,
             publishedTime: guide.publishedAt,
+            modifiedTime: guide.updatedAt,
             authors: [guide.author],
+            tags: guide.tags,
+            images: [{ url: imageUrl, alt: guide.title }],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: guide.title,
+            description: guide.description,
+            images: [imageUrl],
         },
     };
 }
@@ -96,31 +112,33 @@ export default async function GuidePage({ params }: Props) {
         notFound();
     }
 
+    const guideImageUrl = guide.image?.startsWith('http') ? guide.image : `${SITE_URL}${guide.image || '/og-image.jpg'}`;
+
     // 1. Article JSON-LD for Standard SEO
     const articleJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Article',
         headline: guide.title,
         description: guide.description,
-        image: `https://melagri.co.ke${guide.image}`,
+        image: guideImageUrl,
         datePublished: guide.publishedAt,
         dateModified: guide.updatedAt,
         author: {
             '@type': 'Organization',
             name: guide.author,
-            url: 'https://mel-agri.com',
+            url: SITE_URL,
         },
         publisher: {
             '@type': 'Organization',
-            name: 'Mel-Agri',
+            name: 'Mel-Agro',
             logo: {
                 '@type': 'ImageObject',
-                url: 'https://mel-agri.com/logo.png',
+                url: `${SITE_URL}/logo.png`,
             },
         },
         mainEntityOfPage: {
             '@type': 'WebPage',
-            '@id': `https://melagri.co.ke/guides/${guide.slug}`,
+            '@id': `${SITE_URL}/guides/${guide.slug}`,
         },
     };
 

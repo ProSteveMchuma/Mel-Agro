@@ -1,79 +1,129 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, updateDoc, doc, addDoc } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
+import { getMpesaErrorMessage } from '@/lib/mpesa';
+import { verifySafaricomCallback } from '@/lib/safaricom-ips';
+import { CommunicationTemplates } from '@/lib/communication-templates';
+import { sendServerSms, sendServerEmail } from '@/lib/server-notifications';
 
 export async function POST(request: Request) {
+    const ipCheck = verifySafaricomCallback(request);
+    if (!ipCheck.ok) {
+        console.warn(`M-Pesa Callback REJECTED — ${ipCheck.reason}`);
+        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    }
+
+    let payload: any;
     try {
-        const data = await request.json();
+        payload = await request.json();
+    } catch {
+        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+    }
 
-        // Log raw callback for debugging
-        console.log("M-Pesa Callback:", JSON.stringify(data));
+    console.log("M-Pesa Callback:", JSON.stringify(payload));
 
-        const { Body } = data;
-        const { stkCallback } = Body;
-
+    try {
+        const stkCallback = payload?.Body?.stkCallback;
         if (!stkCallback) {
-            return NextResponse.json({ message: 'Invalid callback data' }, { status: 400 });
+            return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
         }
 
         const { CheckoutRequestID, ResultCode, ResultDesc, CallbackMetadata } = stkCallback;
 
-        // Find the order associated with this CheckoutRequestID
-        // Note: You need to have saved CheckoutRequestID to the order when initiating payment
-        // We will assume 'orders' collection has a field 'checkoutRequestId'
-        const ordersRef = collection(db, "orders");
-        const q = query(ordersRef, where("checkoutRequestId", "==", CheckoutRequestID));
-        const querySnapshot = await getDocs(q);
+        const ordersSnap = await adminDb
+            .collection('orders')
+            .where('checkoutRequestId', '==', CheckoutRequestID)
+            .limit(1)
+            .get();
 
-        if (querySnapshot.empty) {
+        if (ordersSnap.empty) {
             console.warn(`Order not found for CheckoutRequestID: ${CheckoutRequestID}`);
-            return NextResponse.json({ message: 'Order not found' }, { status: 200 }); // Return 200 to ack Safaricom
+            return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
         }
 
-        const orderDoc = querySnapshot.docs[0];
-        const orderId = orderDoc.id;
+        const orderDoc = ordersSnap.docs[0];
+        const orderData = orderDoc.data();
+        const orderRef = orderDoc.ref;
+
+        if (orderData.paymentStatus === 'Paid') {
+            console.log(`Idempotent skip — order ${orderDoc.id} already Paid`);
+            return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+        }
+
+        const callbackEventId = `${CheckoutRequestID}-${ResultCode}`;
+        if (orderData.lastCallbackEventId === callbackEventId) {
+            console.log(`Idempotent skip — duplicate callback for ${callbackEventId}`);
+            return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+        }
 
         if (ResultCode === 0) {
-            // Payment Successful
-            let mpesaReceiptNumber = '';
+            const items = (CallbackMetadata?.Item || []) as Array<{ Name: string; Value: any }>;
+            const findVal = (name: string) => items.find(i => i.Name === name)?.Value;
 
-            if (CallbackMetadata && CallbackMetadata.Item) {
-                const receiptItem = CallbackMetadata.Item.find((item: any) => item.Name === 'MpesaReceiptNumber');
-                if (receiptItem) mpesaReceiptNumber = receiptItem.Value;
-            }
+            const mpesaReceiptNumber = String(findVal('MpesaReceiptNumber') || '');
+            const amountPaid = Number(findVal('Amount') || 0);
+            const phoneNumber = String(findVal('PhoneNumber') || '');
+            const transactionDate = String(findVal('TransactionDate') || '');
 
-            await updateDoc(doc(db, "orders", orderId), {
+            await orderRef.update({
                 paymentStatus: 'Paid',
                 paymentMethod: 'M-Pesa',
                 transactionId: mpesaReceiptNumber,
-                status: 'Processing', // Move from 'Pending Payment' if applicable, or keep as Processing
-                updatedAt: new Date().toISOString()
+                mpesaReceiptNumber,
+                mpesaPhoneNumber: phoneNumber,
+                mpesaTransactionDate: transactionDate,
+                amountPaid,
+                status: 'Processing',
+                lastCallbackEventId: callbackEventId,
+                paidAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
             });
 
-            // Log transaction
-            await addDoc(collection(db, "transactions"), {
-                orderId,
-                amount: stkCallback.CallbackMetadata?.Item?.find((i: any) => i.Name === 'Amount')?.Value,
+            await adminDb.collection('transactions').add({
+                orderId: orderDoc.id,
+                userId: orderData.userId || null,
+                amount: amountPaid,
                 receipt: mpesaReceiptNumber,
+                phone: phoneNumber,
                 method: 'M-Pesa',
                 date: new Date().toISOString(),
                 status: 'Success',
-                recordedBy: 'System (M-Pesa)'
+                checkoutRequestId: CheckoutRequestID,
+                recordedBy: 'System (M-Pesa)',
             });
 
+            // Fire-and-forget customer notification — don't block the Safaricom ack
+            try {
+                const orderForTpl = {
+                    ...orderData,
+                    id: orderDoc.id,
+                    paymentMethod: 'M-Pesa',
+                    mpesaReceiptNumber,
+                    amountPaid,
+                } as any;
+                const tpl = CommunicationTemplates.getPaymentReceived(orderForTpl, {
+                    receipt: mpesaReceiptNumber,
+                    method: 'M-Pesa',
+                });
+                const customerPhone = phoneNumber || orderData.phone;
+                if (customerPhone) sendServerSms(customerPhone, tpl.smsBody).catch(() => { });
+                if (orderData.userEmail) sendServerEmail(orderData.userEmail, tpl.subject, tpl.emailBody).catch(() => { });
+            } catch (e) {
+                console.warn('Payment-received notification failed (non-fatal):', e);
+            }
         } else {
-            // Payment Failed / Cancelled
-            await updateDoc(doc(db, "orders", orderId), {
+            await orderRef.update({
                 paymentStatus: 'Failed',
                 paymentFailureReason: ResultDesc,
-                updatedAt: new Date().toISOString()
+                paymentFailureCode: String(ResultCode),
+                paymentFailureMessage: getMpesaErrorMessage(ResultCode),
+                lastCallbackEventId: callbackEventId,
+                updatedAt: new Date().toISOString(),
             });
         }
 
-        return NextResponse.json({ success: true });
-
+        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     } catch (error) {
         console.error("Callback Processing Error:", error);
-        return NextResponse.json({ message: 'Error processing callback' }, { status: 500 });
+        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
 }

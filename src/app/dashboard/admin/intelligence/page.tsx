@@ -1,10 +1,55 @@
 "use client";
+import { useEffect, useMemo, useState } from "react";
 import { useUsers } from "@/context/UserContext";
+import { useOrders } from "@/context/OrderContext";
 import { CATEGORY_ICONS } from "@/components/SidebarCategories";
 import Link from "next/link";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { buildCustomerProfiles, summariseSegments, computeIntelKPIs, segmentColor, segmentDescription, Segment, CustomerProfile } from "@/lib/customer-intelligence";
+
+const fmtKES = (n: number) => `KES ${Math.round(n).toLocaleString()}`;
+const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
 export default function IntelligencePage() {
     const { users } = useUsers();
+    const { orders } = useOrders();
+    const [cartCount, setCartCount] = useState<number | null>(null);
+    const [activeSegment, setActiveSegment] = useState<Segment | 'all'>('all');
+    const [tableSort, setTableSort] = useState<'ltv' | 'frequency' | 'recency'>('ltv');
+
+    const profiles = useMemo(() => buildCustomerProfiles(orders), [orders]);
+    const segments = useMemo(() => summariseSegments(profiles), [profiles]);
+    const kpis = useMemo(() => computeIntelKPIs(profiles), [profiles]);
+
+    const filtered = useMemo(() => {
+        const list = activeSegment === 'all' ? profiles : profiles.filter(p => p.segment === activeSegment);
+        if (tableSort === 'ltv') return [...list].sort((a, b) => b.totalRevenue - a.totalRevenue);
+        if (tableSort === 'frequency') return [...list].sort((a, b) => b.paidOrderCount - a.paidOrderCount);
+        return [...list].sort((a, b) => a.daysSinceLastOrder - b.daysSinceLastOrder);
+    }, [profiles, activeSegment, tableSort]);
+
+    const visible = filtered.slice(0, 50);
+
+    useEffect(() => {
+        getDocs(collection(db, 'carts'))
+            .then(snap => setCartCount(snap.size))
+            .catch(() => setCartCount(null));
+    }, []);
+
+    const totalOrders = orders.length;
+    const paidOrders = orders.filter(o => (o as any).paymentStatus === 'Paid').length;
+    const ordersWithPayment = orders.filter(o => (o as any).paymentMethod).length;
+    const cartViewed = cartCount ?? users.length;
+
+    const pct = (n: number) => cartViewed > 0 ? `${Math.round((n / cartViewed) * 100)}%` : '—';
+
+    const funnelSteps = [
+        { label: 'Cart Started', count: cartViewed, conversion: '100%', color: 'bg-blue-500' },
+        { label: 'Shipping Info', count: totalOrders, conversion: pct(totalOrders), color: 'bg-indigo-500' },
+        { label: 'Payment Method', count: ordersWithPayment, conversion: pct(ordersWithPayment), color: 'bg-purple-500' },
+        { label: 'Order Paid', count: paidOrders, conversion: pct(paidOrders), color: 'bg-melagri-primary' },
+    ];
 
     // Filter to only show users with behavioral data
     const intelligentUsers = users
@@ -41,12 +86,7 @@ export default function IntelligencePage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
-                    {[
-                        { label: 'Cart Viewed', count: 120, conversion: '100%', color: 'bg-blue-500' },
-                        { label: 'Shipping Info', count: 84, conversion: '70%', color: 'bg-indigo-500' },
-                        { label: 'Payment Method', count: 62, conversion: '51%', color: 'bg-purple-500' },
-                        { label: 'Order Complete', count: 48, conversion: '40%', color: 'bg-melagri-primary' }
-                    ].map((step, i) => (
+                    {funnelSteps.map((step, i) => (
                         <div key={step.label} className="relative group">
                             <div className="h-24 bg-gray-50 rounded-2xl p-6 flex flex-col justify-center border border-gray-100 group-hover:border-melagri-primary/30 transition-all overflow-hidden">
                                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${step.color}`}></div>
@@ -66,6 +106,159 @@ export default function IntelligencePage() {
                         </div>
                     ))}
                 </div>
+            </div>
+
+            {/* CUSTOMER INTELLIGENCE — RFM segments + LTV */}
+            <div className="space-y-8">
+                <div>
+                    <h2 className="text-2xl font-black text-gray-900 tracking-tight">Customer Intelligence</h2>
+                    <p className="text-gray-500 text-sm mt-1">RFM segmentation across {kpis.totalCustomers.toLocaleString()} paying customer{kpis.totalCustomers === 1 ? '' : 's'}.</p>
+                </div>
+
+                {kpis.totalCustomers === 0 ? (
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-amber-900">
+                        <p className="font-black text-sm uppercase tracking-tight">No paying customers yet</p>
+                        <p className="text-xs text-amber-800 mt-1">Customer segments unlock once at least one order is marked Paid.</p>
+                    </div>
+                ) : (
+                    <>
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Customers</p>
+                                <p className="text-2xl font-black text-gray-900 mt-1 tracking-tighter">{kpis.totalCustomers.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Avg LTV</p>
+                                <p className="text-2xl font-black text-melagri-primary mt-1 tracking-tighter">{fmtKES(kpis.avgLtv)}</p>
+                                <p className="text-[10px] text-gray-500 mt-1">median {fmtKES(kpis.medianLtv)}</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Repeat Rate</p>
+                                <p className="text-2xl font-black text-blue-600 mt-1 tracking-tighter">{fmtPct(kpis.repeatRate)}</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Avg Orders</p>
+                                <p className="text-2xl font-black text-purple-600 mt-1 tracking-tighter">{kpis.avgOrdersPerCustomer.toFixed(1)}</p>
+                                <p className="text-[10px] text-gray-500 mt-1">per customer</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">New (30d)</p>
+                                <p className="text-2xl font-black text-emerald-600 mt-1 tracking-tighter">{kpis.newCustomers30d}</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Churn Risk</p>
+                                <p className="text-2xl font-black text-amber-600 mt-1 tracking-tighter">{kpis.churnRiskCount}</p>
+                                <p className="text-[10px] text-gray-500 mt-1">need attention</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4">Segments</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                <button
+                                    onClick={() => setActiveSegment('all')}
+                                    className={`text-left bg-white rounded-2xl p-5 border-2 transition-all ${activeSegment === 'all' ? 'border-gray-900 shadow-md' : 'border-gray-100 hover:border-gray-300'}`}
+                                >
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">All Customers</p>
+                                    <p className="text-2xl font-black text-gray-900 tracking-tighter">{kpis.totalCustomers.toLocaleString()}</p>
+                                    <p className="text-xs text-gray-500 mt-2">Click any segment to filter the list below.</p>
+                                </button>
+                                {segments.map(s => (
+                                    <button
+                                        key={s.segment}
+                                        onClick={() => setActiveSegment(s.segment)}
+                                        className={`text-left bg-white rounded-2xl p-5 border-2 transition-all ${activeSegment === s.segment ? 'shadow-md' : 'border-gray-100 hover:border-gray-300'}`}
+                                        style={activeSegment === s.segment ? { borderColor: s.color } : {}}
+                                    >
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{s.count} {s.count === 1 ? 'person' : 'people'}</p>
+                                        </div>
+                                        <p className="text-base font-black text-gray-900 tracking-tight">{s.segment}</p>
+                                        <p className="text-xs font-bold mt-1" style={{ color: s.color }}>{fmtKES(s.revenue)}</p>
+                                        <p className="text-[10px] text-gray-500 mt-1">avg LTV {fmtKES(s.avgLtv)}</p>
+                                        <p className="text-[10px] text-gray-400 mt-2 leading-snug">{s.description}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+                            <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-wrap gap-3">
+                                <div>
+                                    <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">
+                                        {activeSegment === 'all' ? 'Top Customers' : activeSegment}
+                                    </h3>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Showing {Math.min(visible.length, filtered.length)} of {filtered.length}
+                                        {activeSegment !== 'all' && (
+                                            <> · <span className="italic">{segmentDescription(activeSegment)}</span></>
+                                        )}
+                                    </p>
+                                </div>
+                                <div className="flex bg-gray-50 border border-gray-100 rounded-xl overflow-hidden text-xs font-black uppercase tracking-widest">
+                                    {(['ltv', 'frequency', 'recency'] as const).map(s => (
+                                        <button
+                                            key={s}
+                                            onClick={() => setTableSort(s)}
+                                            className={`px-3 py-2 transition-colors ${tableSort === s ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}
+                                        >
+                                            {s}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-gray-50 text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                        <tr>
+                                            <th className="text-left px-6 py-3">Customer</th>
+                                            <th className="text-left px-6 py-3">Segment</th>
+                                            <th className="text-right px-6 py-3">LTV</th>
+                                            <th className="text-right px-6 py-3">Orders</th>
+                                            <th className="text-right px-6 py-3">AOV</th>
+                                            <th className="text-right px-6 py-3">Last Order</th>
+                                            <th className="text-right px-6 py-3">RFM</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {visible.map(p => (
+                                            <tr key={p.userId} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-6 py-3">
+                                                    <div className="font-bold text-gray-900 truncate max-w-[200px]">{p.name || 'Anonymous'}</div>
+                                                    <div className="text-[10px] text-gray-500 truncate max-w-[200px]">{p.email || p.phone || p.userId.slice(0, 12)}</div>
+                                                </td>
+                                                <td className="px-6 py-3">
+                                                    <span className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest" style={{ backgroundColor: `${segmentColor(p.segment)}1a`, color: segmentColor(p.segment) }}>
+                                                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: segmentColor(p.segment) }} />
+                                                        {p.segment}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-3 text-right font-black text-gray-900">{fmtKES(p.totalRevenue)}</td>
+                                                <td className="px-6 py-3 text-right font-bold text-gray-700">{p.paidOrderCount}</td>
+                                                <td className="px-6 py-3 text-right text-gray-600">{fmtKES(p.avgOrderValue)}</td>
+                                                <td className="px-6 py-3 text-right text-gray-600">
+                                                    {p.daysSinceLastOrder === 0 ? 'today' : `${p.daysSinceLastOrder}d ago`}
+                                                </td>
+                                                <td className="px-6 py-3 text-right">
+                                                    <span className="font-mono text-[10px] font-black text-gray-400">{p.recency}-{p.frequency}-{p.monetary}</span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {visible.length === 0 && (
+                                            <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400 text-sm">No customers in this segment.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </>
+                )}
+            </div>
+
+            <div>
+                <h2 className="text-2xl font-black text-gray-900 tracking-tight mb-1">Behavioral Affinities</h2>
+                <p className="text-gray-500 text-sm mb-6">Cross-session product affinity from browse + cart events.</p>
             </div>
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">

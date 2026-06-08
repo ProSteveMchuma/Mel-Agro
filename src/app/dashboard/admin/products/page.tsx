@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 import BulkUploadButton from "@/components/admin/BulkUploadButton";
 import ExportProductsButton from "@/components/admin/ExportProductsButton";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 export default function ProductManagement() {
     const { products, deleteProduct } = useProducts();
@@ -14,6 +16,8 @@ export default function ProductManagement() {
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [filterCategory, setFilterCategory] = useState("All");
     const [filterStock, setFilterStock] = useState("All"); // All, In Stock, Low Stock, Out of Stock
+    const [deleteId, setDeleteId] = useState<string | number | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     // Get unique categories
     const categories = ["All", ...Array.from(new Set(products.map(p => p.category)))];
@@ -211,11 +215,7 @@ export default function ProductManagement() {
                                         <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
-                                                    onClick={() => {
-                                                        if (confirm('Are you sure you want to delete this product?')) {
-                                                            deleteProduct(product.id);
-                                                        }
-                                                    }}
+                                                    onClick={() => setDeleteId(product.id)}
                                                     className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                                                     title="Delete"
                                                 >
@@ -237,6 +237,28 @@ export default function ProductManagement() {
                     </div>
                 )}
             </div>
+
+            <ConfirmDialog
+                open={deleteId !== null}
+                title="Delete this product?"
+                message="The product will be removed from the catalog and search index. This can't be undone."
+                onConfirm={async () => {
+                    if (deleteId === null) return;
+                    setDeleting(true);
+                    try {
+                        await deleteProduct(deleteId);
+                        toast.success('Product deleted');
+                        setDeleteId(null);
+                    } catch (err: any) {
+                        toast.error(err?.message || 'Could not delete product');
+                    } finally {
+                        setDeleting(false);
+                    }
+                }}
+                onCancel={() => setDeleteId(null)}
+                busy={deleting}
+                confirmLabel="Delete"
+            />
         </div>
     );
 }

@@ -25,10 +25,15 @@ function VerifyContent() {
                         await signInWithEmailLink(auth, email, window.location.href);
                         window.localStorage.removeItem('emailForSignIn');
                         setStatus('Success! Redirecting...');
-                        // Get callbackUrl from query params if passed in the link, or default to home
-                        // Note: Firebase link might strip custom params, but we can try.
-                        // Usually we redirect to dashboard or home.
-                        setTimeout(() => router.push('/'), 1500);
+
+                        const fromQuery = searchParams.get('callbackUrl');
+                        const fromStorage = window.localStorage.getItem('postLoginRedirect');
+                        const candidate = fromQuery || fromStorage || '/';
+                        // Only allow same-origin relative paths to prevent open-redirect abuse
+                        const safe = candidate.startsWith('/') && !candidate.startsWith('//') ? candidate : '/';
+                        window.localStorage.removeItem('postLoginRedirect');
+
+                        setTimeout(() => router.push(safe), 1500);
                     } catch (error: any) {
                         console.error('Error signing in with email link', error);
                         setStatus(`Error: ${error.message}`);

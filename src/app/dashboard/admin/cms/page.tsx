@@ -2,11 +2,15 @@
 import { useState } from 'react';
 import { useContent, Banner } from '@/context/ContentContext';
 import Image from 'next/image';
+import { toast } from 'react-hot-toast';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 export default function CMSPage() {
     const { banners, updateBanners, loading } = useContent();
     const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [deleteId, setDeleteId] = useState<string | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     const handleAddBanner = () => {
         setEditingBanner({
@@ -25,10 +29,21 @@ export default function CMSPage() {
         setIsModalOpen(true);
     };
 
-    const handleDeleteBanner = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this banner?')) return;
-        const newBanners = banners.filter(b => b.id !== id);
-        await updateBanners(newBanners);
+    const handleDeleteBanner = (id: string) => setDeleteId(id);
+
+    const confirmDeleteBanner = async () => {
+        if (!deleteId) return;
+        setDeleting(true);
+        try {
+            const newBanners = banners.filter(b => b.id !== deleteId);
+            await updateBanners(newBanners);
+            toast.success('Banner deleted');
+            setDeleteId(null);
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not delete banner');
+        } finally {
+            setDeleting(false);
+        }
     };
 
     const handleSave = async (e: React.FormEvent) => {
@@ -206,6 +221,16 @@ export default function CMSPage() {
                     </div>
                 </div>
             )}
+
+            <ConfirmDialog
+                open={!!deleteId}
+                title="Delete this banner?"
+                message="It will disappear from the homepage immediately. This can't be undone."
+                onConfirm={confirmDeleteBanner}
+                onCancel={() => setDeleteId(null)}
+                busy={deleting}
+                confirmLabel="Delete"
+            />
         </div>
     );
 }

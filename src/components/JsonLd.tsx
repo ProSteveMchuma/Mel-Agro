@@ -1,42 +1,47 @@
+const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.melagri.com';
+
 export default function JsonLd() {
     const orgJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Organization',
         name: 'Mel-Agro',
-        alternateName: 'Mel Agro',
-        description: 'Kenya\'s premier online agrovet and digital marketplace for high-quality certified agricultural inputs, seeds, fertilizers, and tools. Fast nationwide delivery.',
-        url: 'https://Mel-Agri.com',
-        logo: 'https://Mel-Agri.com/logo.png',
+        alternateName: ['Mel Agro', 'Mel-Agri', 'Melagri'],
+        description: "Kenya's premier online agrovet and digital marketplace for high-quality certified agricultural inputs, seeds, fertilizers, and tools. Fast nationwide delivery.",
+        url: SITE_URL,
+        logo: `${SITE_URL}/logo.png`,
         contactPoint: {
             '@type': 'ContactPoint',
             telephone: '+254748970757',
             contactType: 'customer service',
             areaServed: 'KE',
-            availableLanguage: 'en',
+            availableLanguage: ['en', 'sw'],
         },
         sameAs: [
-            'https://facebook.com/Mel-Agri',
-            'https://twitter.com/Mel-Agri',
-            'https://instagram.com/Mel-Agri',
+            'https://facebook.com/Melagri',
+            'https://twitter.com/Melagri',
+            'https://instagram.com/Melagri',
         ],
         address: {
             '@type': 'PostalAddress',
             streetAddress: 'Makamithi Towers, 4th Floor, Ngong Road',
             addressLocality: 'Nairobi',
-            addressCountry: 'KE'
-        }
+            addressCountry: 'KE',
+        },
     };
 
     const websiteJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
         name: 'Mel-Agro',
-        url: 'https://Mel-Agri.com',
+        url: SITE_URL,
         potentialAction: {
             '@type': 'SearchAction',
-            target: 'https://Mel-Agri.com/products?search={search_term_string}',
-            'query-input': 'required name=search_term_string'
-        }
+            target: {
+                '@type': 'EntryPoint',
+                urlTemplate: `${SITE_URL}/products?search={search_term_string}`,
+            },
+            'query-input': 'required name=search_term_string',
+        },
     };
 
     return (

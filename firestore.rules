@@ -48,12 +48,15 @@ service cloud.firestore {
       );
     }
 
-    // Users: Users can read their own profile, Admin can read all
+    // Users: Users can read/update their own profile (excluding sensitive fields),
+    // admins can manage all. Role / status / loyaltyPoints can ONLY be changed by an admin
     match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == userId);
       allow create: if request.auth != null && request.auth.uid == userId && request.resource.data.get('role', 'user') == 'user';
-      allow update: if request.auth != null && request.auth.uid == userId && (
-        isAdmin() || request.resource.data.role == resource.data.role || (!('role' in request.resource.data) && !('role' in resource.data))
+      allow update: if (
+        isAdmin() ||
+        (request.auth != null && request.auth.uid == userId &&
+         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'loyaltyPoints']))
       );
       allow delete: if isAdmin();
     }
@@ -66,6 +69,12 @@ service cloud.firestore {
 
     // Settings: Public read (for shipping rates), Admin write
     match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Shipping zones: Public read (checkout reads to compute delivery cost), Admin write
+    match /shipping_zones/{zoneId} {
       allow read: if true;
       allow write: if isAdmin();
     }
@@ -100,18 +109,28 @@ service cloud.firestore {
       allow read, update: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
-    // Analytics: Restricted delete/read, Public write (for tracking)
+    // Analytics: Authenticated-only writes, admin read/delete.
+    // We only accept tracking events from signed-in users (anonymous Firebase auth
+    // will be set up separately if guest tracking is needed). Bounds doc size to
+    // prevent fill-the-bucket abuse.
+    function validAnalyticsEvent() {
+      return request.resource.data.size() < 50 &&
+             request.resource.data.keys().hasAny(['timestamp', 'event', 'term', 'productId', 'page']);
+    }
     match /analytics_search_terms/{id} {
       allow read, delete: if isAdmin();
-      allow create, update: if true;
+      allow create: if request.auth != null && validAnalyticsEvent();
+      allow update: if isAdmin();
     }
     match /analytics_products/{id} {
       allow read, delete: if isAdmin();
-      allow create, update: if true;
+      allow create: if request.auth != null && validAnalyticsEvent();
+      allow update: if isAdmin();
     }
     match /analytics_traffic/{id} {
       allow read, delete: if isAdmin();
-      allow create, update: if true;
+      allow create: if request.auth != null && validAnalyticsEvent();
+      allow update: if isAdmin();
     }
     match /analytics_funnels/{id} {
       allow read, delete: if isAdmin();
@@ -131,6 +150,48 @@ service cloud.firestore {
     match /discounts/{id} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // M-Pesa C2B payment audit log: written only by server (admin SDK bypasses), admin reads
+    match /c2bPayments/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // M-Pesa refunds audit log: written only by server (admin SDK bypasses), admin reads
+    match /refunds/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // M-Pesa configuration (C2B URL registration state): admin only
+    match /mpesaConfig/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Paystack webhook idempotency log: server only
+    match /paystackWebhookEvents/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // AI Insights cache: server-only writes (admin SDK bypasses), admin read
+    match /aiInsights/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Bulk inquiry submissions from /bulk page: server-only writes (via API), admin read
+    match /bulkInquiries/{id} {
+      allow read, update: if isAdmin();
+      allow create, delete: if false;
+    }
+
+    // Discount usage tracking: server only
+    match /discountUsage/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
     }
   }
 }

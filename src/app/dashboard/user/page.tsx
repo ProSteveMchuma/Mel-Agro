@@ -7,6 +7,7 @@ import { useOrders, Order, OrderItem, Notification } from "@/context/OrderContex
 import { useCart } from "@/context/CartContext";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getAuth } from "firebase/auth";
 import Image from "next/image";
 import Link from "next/link";
 import { useMessages } from "@/context/MessageContext";
@@ -33,6 +34,7 @@ export default function UserDashboard() {
     const router = useRouter();
 
     const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+    const [retryingPayment, setRetryingPayment] = useState<string | null>(null);
     const [isEditingProfile, setIsEditingProfile] = useState(false);
     const [profileForm, setProfileForm] = useState({
         name: user?.name || '',
@@ -52,6 +54,18 @@ export default function UserDashboard() {
             setShowProfileModal(true);
         }
     }, [user]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const queryOrderId = new URLSearchParams(window.location.search).get('orderId');
+        if (queryOrderId && orders.length > 0) {
+            const order = orders.find(o => o.id === queryOrderId);
+            if (order) {
+                setSelectedOrder(order);
+                setActiveTab('dashboard');
+            }
+        }
+    }, [orders]);
 
     useEffect(() => {
         if (user) {
@@ -102,6 +116,72 @@ export default function UserDashboard() {
         }
     };
 
+    const handleRetryMpesa = async (orderId: string, phoneOverride?: string) => {
+        const order = orders.find(o => o.id === orderId);
+        if (!order) {
+            toast.error("Order not found");
+            return;
+        }
+        if (order.paymentStatus === 'Paid') {
+            toast.success("This order is already paid");
+            return;
+        }
+
+        setRetryingPayment(orderId);
+        const loadingToast = toast.loading("Sending M-Pesa prompt...");
+        try {
+            const idToken = await getAuth().currentUser?.getIdToken();
+            const authHeaders: Record<string, string> = {
+                'Content-Type': 'application/json',
+                ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+            };
+            const res = await fetch('/api/payment/mpesa/retry', {
+                method: 'POST',
+                headers: authHeaders,
+                body: JSON.stringify({ orderId, phoneNumber: phoneOverride || (order as any).phone })
+            });
+            const data = await res.json();
+            if (!data.success) {
+                toast.error(data.message || "Failed to send M-Pesa prompt", { id: loadingToast });
+                setRetryingPayment(null);
+                return;
+            }
+            toast.success("Sent! Check your phone to enter PIN.", { id: loadingToast, duration: 5000 });
+
+            const start = Date.now();
+            const pollInterval = setInterval(async () => {
+                try {
+                    const tok = await getAuth().currentUser?.getIdToken();
+                    const r = await fetch('/api/payment/mpesa/query', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
+                        },
+                        body: JSON.stringify({ orderId })
+                    });
+                    const j = await r.json();
+                    if (j.paid) {
+                        clearInterval(pollInterval);
+                        setRetryingPayment(null);
+                        toast.success("Payment confirmed!");
+                    } else if (j.paymentStatus === 'Failed') {
+                        clearInterval(pollInterval);
+                        setRetryingPayment(null);
+                        toast.error(j.message || "Payment failed");
+                    } else if (Date.now() - start > 120000) {
+                        clearInterval(pollInterval);
+                        setRetryingPayment(null);
+                        toast("Payment status check timed out. Refresh to see latest.");
+                    }
+                } catch { /* ignore transient */ }
+            }, 4000);
+        } catch (e: any) {
+            toast.error(e?.message || "Retry failed", { id: loadingToast });
+            setRetryingPayment(null);
+        }
+    };
+
     const handleCancelOrder = async (orderId: string) => {
         if (confirm("Are you sure you want to cancel this order? This action cannot be undone.")) {
             try {
@@ -147,12 +227,60 @@ export default function UserDashboard() {
         }
     };
 
+    const retryableOrders = orders.filter((o: Order) => {
+        const m = ((o as any).paymentMethod || '').toLowerCase();
+        const isStkMpesa = m === 'm-pesa' || m === 'mpesa';
+        const isRetryable = ['Unpaid', 'Failed'].includes((o as any).paymentStatus || '') && o.status !== 'Cancelled';
+        return isStkMpesa && isRetryable;
+    });
+
     const renderDashboard = () => (
         <div className="space-y-8">
             <div className="bg-white rounded-2xl p-8 border border-gray-200">
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">Jambo, {user.name?.split(' ')[0]}! 👋</h1>
                 <p className="text-gray-600">Here's what's happening with your farm inputs today.</p>
             </div>
+
+            {retryableOrders.length > 0 && (
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-6 shadow-sm">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                        <div className="flex items-start gap-3">
+                            <span className="text-2xl">⚠️</span>
+                            <div>
+                                <h3 className="font-black text-amber-900 uppercase text-sm tracking-tight">Action Required: Pending Payment</h3>
+                                <p className="text-amber-800 text-sm mt-1">
+                                    You have {retryableOrders.length} order{retryableOrders.length > 1 ? 's' : ''} awaiting M-Pesa payment.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                        {retryableOrders.slice(0, 3).map((order: Order) => (
+                            <div key={order.id} className="bg-white rounded-xl p-4 flex items-center justify-between flex-wrap gap-3 border border-amber-100">
+                                <div>
+                                    <p className="font-bold text-gray-900 text-sm">Order #{order.id.slice(0, 8)}</p>
+                                    <p className="text-xs text-gray-500">KES {order.total.toLocaleString()} · {(order as any).paymentStatus}{(order as any).paymentFailureMessage ? ` — ${(order as any).paymentFailureMessage}` : ''}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setSelectedOrder(order)}
+                                        className="px-3 py-2 text-xs font-bold text-gray-600 hover:text-gray-900"
+                                    >
+                                        Details
+                                    </button>
+                                    <button
+                                        onClick={() => handleRetryMpesa(order.id)}
+                                        disabled={retryingPayment === order.id}
+                                        className="px-4 py-2 bg-melagri-primary text-white text-xs font-bold rounded-lg hover:bg-melagri-secondary transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                                    >
+                                        {retryingPayment === order.id ? 'Sending...' : 'Complete Payment'}
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Active Order Progress - Difference Maker */}
             {orders.filter(o => o.status === 'Processing' || o.status === 'Shipped').slice(0, 1).map(activeOrder => (
@@ -700,6 +828,32 @@ export default function UserDashboard() {
                                     </div>
                                 ))}
                             </div>
+                            {(() => {
+                                const m = ((selectedOrder as any).paymentMethod || '').toLowerCase();
+                                const isStkMpesa = m === 'm-pesa' || m === 'mpesa';
+                                const status = (selectedOrder as any).paymentStatus;
+                                const isRetryable = isStkMpesa && ['Unpaid', 'Failed'].includes(status || '') && selectedOrder.status !== 'Cancelled';
+                                if (!isRetryable) return null;
+                                return (
+                                    <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                                            <div>
+                                                <p className="text-xs font-black uppercase text-amber-900 tracking-widest">Pending M-Pesa Payment</p>
+                                                <p className="text-xs text-amber-800 mt-1">
+                                                    {(selectedOrder as any).paymentFailureMessage || 'Tap below to receive a new STK Push prompt.'}
+                                                </p>
+                                            </div>
+                                            <button
+                                                onClick={() => handleRetryMpesa(selectedOrder.id)}
+                                                disabled={retryingPayment === selectedOrder.id}
+                                                className="px-4 py-2 bg-melagri-primary text-white text-xs font-bold rounded-lg hover:bg-melagri-secondary transition-all disabled:opacity-60"
+                                            >
+                                                {retryingPayment === selectedOrder.id ? 'Sending...' : 'Complete Payment'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                             <div className="grid grid-cols-3 gap-2 md:gap-3">
                                 <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('invoice'); }} className="py-2.5 md:py-3 px-2 md:px-4 bg-gray-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:scale-[1.02] transition-all">Invoice</button>
                                 <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('receipt'); }} className="py-2.5 md:py-3 px-2 md:px-4 bg-gray-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:scale-[1.02] transition-all">Receipt</button>

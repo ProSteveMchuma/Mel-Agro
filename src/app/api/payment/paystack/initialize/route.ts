@@ -1,14 +1,38 @@
 import { NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebase-admin';
+import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 
 export async function POST(request: Request) {
     try {
         const { amount, email, orderId, items } = await request.json();
         const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL;
 
-        const customerEmail = email || `customer_${orderId}@melagri-temp.com`;
+        if (!orderId) {
+            return NextResponse.json({ success: false, message: 'orderId is required' }, { status: 400 });
+        }
 
-        if (!amount || !customerEmail || !orderId) {
-            return NextResponse.json({ success: false, message: 'Missing required payment data' }, { status: 400 });
+        const auth = await requireOrderOwnerOrAdmin(request, orderId);
+        if (!auth.ok) {
+            return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
+        }
+
+        const orderSnap = await adminDb.collection('orders').doc(orderId).get();
+        if (!orderSnap.exists) {
+            return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
+        }
+        const order: any = orderSnap.data();
+        if (order.paymentStatus === 'Paid') {
+            return NextResponse.json({ success: false, message: 'Order is already paid' }, { status: 409 });
+        }
+
+        const verifiedAmount = Number(order.total);
+        if (Math.abs(verifiedAmount - Number(amount || 0)) > 1) {
+            console.warn(`Paystack init amount mismatch: client ${amount} vs order ${verifiedAmount}; using server amount`);
+        }
+        const customerEmail = email || order.userEmail || `customer_${orderId}@melagri-temp.com`;
+
+        if (!verifiedAmount || verifiedAmount <= 0) {
+            return NextResponse.json({ success: false, message: 'Invalid order amount' }, { status: 400 });
         }
 
         const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
@@ -33,12 +57,13 @@ export async function POST(request: Request) {
             },
             body: JSON.stringify({
                 email: customerEmail,
-                amount: Math.round(amount * 100),
+                amount: Math.round(verifiedAmount * 100),
                 reference: `MEL_${orderId}_${Date.now()}`,
                 callback_url: `${origin}/checkout/success?orderId=${orderId}`,
                 metadata: {
                     orderId,
-                    items: items.map((item: any) => ({
+                    userId: order.userId || null,
+                    items: (items || order.items || []).map((item: any) => ({
                         id: item.id,
                         name: item.name,
                         quantity: item.quantity,

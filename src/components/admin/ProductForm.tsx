@@ -16,13 +16,16 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
     const [dynamicCategories, setDynamicCategories] = useState<string[]>(['Animal Feeds', 'Fertilizers', 'Seeds', 'Crop Protection Products', 'Veterinary Products', 'Farm Tools']);
 
     useEffect(() => {
-        getUniqueCategories().then(cats => {
-            if (cats.length > 0) {
-                // Merge with defaults and remove duplicates
-                const merged = Array.from(new Set([...cats, 'Animal Feeds', 'Fertilizers', 'Seeds', 'Crop Protection Products', 'Veterinary Products', 'Farm Tools'])).sort();
-                setDynamicCategories(merged);
-            }
-        });
+        getUniqueCategories()
+            .then(cats => {
+                if (cats.length > 0) {
+                    const merged = Array.from(new Set([...cats, 'Animal Feeds', 'Fertilizers', 'Seeds', 'Crop Protection Products', 'Veterinary Products', 'Farm Tools'])).sort();
+                    setDynamicCategories(merged);
+                }
+            })
+            .catch(err => {
+                console.warn('Failed to load product categories, using defaults:', err);
+            });
     }, []);
 
     const [formData, setFormData] = useState({

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useOrders } from "@/context/OrderContext";
+import { toast } from "react-hot-toast";
 
 export default function InventoryManagement() {
     const { products, updateProduct } = useProducts();
@@ -41,7 +42,13 @@ export default function InventoryManagement() {
 
     const handleAdjustStock = async (id: string | number, currentStock: number, adjustment: number) => {
         const newStock = Math.max(0, currentStock + adjustment);
-        await updateProduct(id, { stockQuantity: newStock, inStock: newStock > 0 });
+        try {
+            await updateProduct(id, { stockQuantity: newStock, inStock: newStock > 0 });
+            toast.success(`Stock ${adjustment > 0 ? 'increased' : 'reduced'} to ${newStock}`);
+        } catch (err: any) {
+            console.error('Stock adjust failed:', err);
+            toast.error(err?.message || 'Could not update stock');
+        }
     };
 
     return (

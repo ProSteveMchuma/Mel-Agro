@@ -21,8 +21,8 @@ function OrderSuccessContent() {
     const [order, setOrder] = useState<Order | null>(null);
     const [isNotFound, setIsNotFound] = useState(false);
     const [activeDocument, setActiveDocument] = useState<'invoice' | 'receipt' | null>(null);
-    const [countdown, setCountdown] = useState(15);
 
+    // Confetti on first paint of the order; no auto-redirect — let the user read at their pace.
     useEffect(() => {
         if (order) {
             confetti({
@@ -31,22 +31,8 @@ function OrderSuccessContent() {
                 origin: { y: 0.6 },
                 colors: ['#22c55e', '#16a34a', '#ffffff']
             });
-
-            // Auto redirect timer
-            const timer = setInterval(() => {
-                setCountdown(prev => {
-                    if (prev <= 1) {
-                        clearInterval(timer);
-                        router.push('/dashboard/user');
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-
-            return () => clearInterval(timer);
         }
-    }, [order, router]);
+    }, [order]);
 
     useEffect(() => {
         const fetchOrder = async () => {
@@ -178,7 +164,7 @@ function OrderSuccessContent() {
                                     ? "Your order has been received. Please prepare payment for when your items are ready for delivery/pickup."
                                     : "We've sent an Email, SMS and WhatsApp confirmation to your registered contacts."}
                             </p>
-                            <p className="text-xs text-gray-400 mb-4 italic">Redirecting to dashboard in {countdown}s...</p>
+                            <p className="text-xs text-gray-400 mb-4 italic">Save your receipt below — you can return to your dashboard anytime.</p>
                             <div className="flex flex-col sm:flex-row gap-4">
                                 <Link href="/dashboard/user" className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-200 text-center print:hidden flex items-center justify-center gap-2">
                                     <span>🏠</span> Go to Dashboard
@@ -234,20 +220,35 @@ function OrderSuccessContent() {
                                 ))}
                             </div>
 
-                            <div className="space-y-3 text-sm">
-                                <div className="flex justify-between text-gray-600">
-                                    <span>Subtotal</span>
-                                    <span className="font-semibold">KES {order.total.toLocaleString()}</span>
-                                </div>
-                                <div className="flex justify-between text-gray-600">
-                                    <span>Shipping</span>
-                                    <span className="font-semibold">Calculated at checkout</span>
-                                </div>
-                                <div className="border-t pt-3 flex justify-between text-lg font-bold text-melagri-primary">
-                                    <span>Total</span>
-                                    <span>KES {order.total.toLocaleString()}</span>
-                                </div>
-                            </div>
+                            {(() => {
+                                const subtotal = (order as any).subtotal ?? order.items.reduce((acc: number, it: any) => acc + (Number(it.price) || 0) * (Number(it.quantity) || 0), 0);
+                                const shippingCost = Number((order as any).shippingCost) || 0;
+                                const discount = Number((order as any).discountAmount) || 0;
+                                const couponCode = (order as any).couponCode;
+                                const total = Number(order.total) || (subtotal + shippingCost - discount);
+                                return (
+                                    <div className="space-y-3 text-sm">
+                                        <div className="flex justify-between text-gray-600">
+                                            <span>Subtotal</span>
+                                            <span className="font-semibold">KES {subtotal.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-gray-600">
+                                            <span>Shipping</span>
+                                            <span className="font-semibold">{shippingCost === 0 ? 'FREE' : `KES ${shippingCost.toLocaleString()}`}</span>
+                                        </div>
+                                        {discount > 0 && (
+                                            <div className="flex justify-between text-green-600 font-semibold">
+                                                <span>Discount{couponCode ? ` (${couponCode})` : ''}</span>
+                                                <span>- KES {discount.toLocaleString()}</span>
+                                            </div>
+                                        )}
+                                        <div className="border-t pt-3 flex justify-between text-lg font-bold text-melagri-primary">
+                                            <span>Total</span>
+                                            <span>KES {total.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     </div>
 

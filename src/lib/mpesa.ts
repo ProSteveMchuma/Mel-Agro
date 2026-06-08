@@ -1,50 +1,3 @@
-export async function getAccessToken() {
-    const consumerKey = process.env.MPESA_CONSUMER_KEY;
-    const consumerSecret = process.env.MPESA_CONSUMER_SECRET;
-
-    if (!consumerKey || !consumerSecret) {
-        throw new Error("Missing M-Pesa Consumer Key or Secret");
-    }
-
-    const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
-
-    const baseUrl = process.env.MPESA_ENV === 'production'
-        ? 'https://api.safaricom.co.ke'
-        : 'https://sandbox.safaricom.co.ke';
-
-    try {
-        const response = await fetch(`${baseUrl}/oauth/v1/generate?grant_type=client_credentials`, {
-            headers: {
-                Authorization: `Basic ${auth}`,
-            },
-            next: { revalidate: 3500 } // Cache token for ~1 hour
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to fetch access token');
-        }
-
-        const data = await response.json();
-        return data.access_token;
-    } catch (error) {
-        console.error("M-Pesa Token Error:", error);
-        throw error;
-    }
-}
-
-export function generatePassword() {
-    const shortcode = process.env.MPESA_SHORTCODE;
-    const passkey = process.env.MPESA_PASSKEY;
-
-    if (!shortcode || !passkey) {
-        throw new Error("Missing M-Pesa Shortcode or Passkey");
-    }
-
-    const timestamp = new Date().toISOString().replace(/[^0-9]/g, '').slice(0, 14);
-    const password = Buffer.from(`${shortcode}${passkey}${timestamp}`).toString('base64');
-
-    return { password, timestamp, shortcode };
-}
 export const getMpesaErrorMessage = (resultCode: number | string): string => {
     const codes: Record<string, string> = {
         '1': 'The balance is insufficient for the transaction.',
@@ -57,3 +10,48 @@ export const getMpesaErrorMessage = (resultCode: number | string): string => {
     };
     return codes[String(resultCode)] || 'An error occurred during payment. Please check your phone or try again.';
 };
+
+export function formatKenyanPhone(phone: string): string {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.startsWith('254')) return cleaned;
+    if (cleaned.startsWith('0')) return `254${cleaned.slice(1)}`;
+    if (cleaned.startsWith('7') || cleaned.startsWith('1')) return `254${cleaned}`;
+    return cleaned;
+}
+
+export const MPESA_RESULT_CODES = {
+    SUCCESS: '0',
+    INSUFFICIENT_FUNDS: '1',
+    USER_CANCELLED: '1032',
+    TIMEOUT: '1037',
+    INVALID_INITIATOR: '2001',
+    REJECTED: '17',
+    DUPLICATE: '1019',
+} as const;
+
+export interface STKPushParams {
+    phoneNumber: string;
+    amount: number;
+    accountReference?: string;
+    transactionDesc?: string;
+}
+
+export interface ReversalParams {
+    transactionId: string;
+    amount: number;
+    remarks?: string;
+    occasion?: string;
+}
+
+export interface TransactionStatusParams {
+    transactionId: string;
+    originatorConversationId?: string;
+    remarks?: string;
+}
+
+export interface RegisterC2BParams {
+    confirmationURL: string;
+    validationURL: string;
+    responseType?: 'Completed' | 'Cancelled';
+    shortCode?: string;
+}

@@ -5,8 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Logo from '@/components/Logo';
-import { sendSignInLinkToEmail, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { sendSignInLinkToEmail, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, updateProfile } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+
+// Role assignment for new users happens inside AuthContext.onAuthStateChanged on
+// the initial CREATE — not here. Firestore rules forbid the user from updating
+// their own role / status / loyaltyPoints fields (firestore.rules:60), so any
+// merge-update from this page must skip those.
 
 declare global {
     interface Window {
@@ -52,6 +58,8 @@ function LoginForm() {
     const [error, setError] = useState('');
     const [linkSent, setLinkSent] = useState(false);
     const [otpSent, setOtpSent] = useState(false);
+    const [needsName, setNeedsName] = useState(false);
+    const [nameInput, setNameInput] = useState('');
 
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -174,14 +182,68 @@ function LoginForm() {
         if (!otp || !confirmationResult) return;
 
         try {
-            await confirmationResult.confirm(otp);
+            const cred = await confirmationResult.confirm(otp);
+            const fbUser = cred.user;
+            const dn = (fbUser.displayName || '').trim();
+            // Phone OTP doesn't carry a displayName, so prompt for one before redirecting.
+            if (!dn || dn === 'User') {
+                setNeedsName(true);
+                setIsLoading(false);
+                return;
+            }
             router.push(callbackUrl);
         } catch (err: any) {
             console.error("OTP Verify Error:", err);
             setError(getErrorMessage(err));
-        } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleSaveName = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const trimmed = nameInput.trim().replace(/\s+/g, ' ');
+        if (trimmed.length < 2) {
+            setError('Please enter your name (at least 2 characters)');
+            return;
+        }
+        if (trimmed.length > 80) {
+            setError('Name is too long. Please use 80 characters or fewer.');
+            return;
+        }
+        const fbUser = auth.currentUser;
+        if (!fbUser) {
+            setError('Session expired. Please try again.');
+            return;
+        }
+        setIsLoading(true);
+        setError('');
+        try {
+            // Update Firebase Auth displayName so future onAuthStateChanged callbacks (and any
+            // server route that reads request.auth.token.name) see the correct value.
+            await updateProfile(fbUser, { displayName: trimmed });
+
+            // Write only the fields the user is allowed to update on their own profile.
+            // Firestore rules forbid non-admins from changing role / status / loyaltyPoints
+            // (firestore.rules:60). Those are already set correctly during the initial CREATE
+            // inside AuthContext.onAuthStateChanged, so we don't touch them here.
+            await setDoc(doc(db, 'users', fbUser.uid), {
+                name: trimmed,
+                phone: fbUser.phoneNumber || phone || null,
+                email: fbUser.email || null,
+                updatedAt: new Date().toISOString(),
+            }, { merge: true });
+
+            router.push(callbackUrl);
+        } catch (err: any) {
+            console.error('Save name error:', err);
+            setError(err?.message || 'Could not save your name. Please try again.');
+            setIsLoading(false);
+        }
+    };
+
+    const handleSkipName = () => {
+        // Edge case: user really wants to skip. We allow it but the checkout guard will catch it later.
+        router.push(callbackUrl);
     };
 
     const handleMagicLinkLogin = async (e: React.FormEvent) => {
@@ -197,6 +259,9 @@ function LoginForm() {
         try {
             await sendSignInLinkToEmail(auth, email, actionCodeSettings);
             window.localStorage.setItem('emailForSignIn', email);
+            if (callbackUrl && callbackUrl !== '/') {
+                window.localStorage.setItem('postLoginRedirect', callbackUrl);
+            }
             setLinkSent(true);
         } catch (err: any) {
             console.error("Magic Link error:", err);
@@ -209,7 +274,20 @@ function LoginForm() {
     const handleGoogleLogin = async () => {
         try {
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
+            const cred = await signInWithPopup(auth, provider);
+            const fbUser = cred.user;
+
+            // Pre-write the Firestore doc so the dashboard greets new Google users by name
+            // immediately, instead of "User" until the next sign-in. Skip role/loyaltyPoints
+            // here — those are owned by AuthContext's CREATE path (Firestore rules don't
+            // let non-admins update them after the doc exists).
+            const trimmedEmail = (fbUser.email || '').trim().toLowerCase();
+            await setDoc(doc(db, 'users', fbUser.uid), {
+                name: fbUser.displayName || (trimmedEmail ? trimmedEmail.split('@')[0] : 'User'),
+                email: trimmedEmail || null,
+                updatedAt: new Date().toISOString(),
+            }, { merge: true });
+
             router.push(callbackUrl);
         } catch (err: any) {
             console.error("Google login error:", err);
@@ -227,28 +305,30 @@ function LoginForm() {
                             <Logo />
                         </div>
                         <h2 className="mt-2 text-3xl font-extrabold text-gray-900 tracking-tight">
-                            Welcome Back
+                            Welcome to Mel-Agri
                         </h2>
                         <p className="mt-2 text-sm text-gray-600">
-                            Sign in to your Mel-Agri account
+                            Sign in or create your account in seconds — no separate signup needed.
                         </p>
                     </div>
 
-                    {/* Method Switcher */}
-                    <div className="flex border-b border-gray-200">
-                        <button
-                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${loginMethod === 'phone' ? 'border-melagri-primary text-melagri-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                            onClick={() => { setLoginMethod('phone'); setError(''); setOtpSent(false); }}
-                        >
-                            Phone Number
-                        </button>
-                        <button
-                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${loginMethod === 'email' ? 'border-melagri-primary text-melagri-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
-                            onClick={() => { setLoginMethod('email'); setError(''); setLinkSent(false); }}
-                        >
-                            Email Address
-                        </button>
-                    </div>
+                    {/* Method Switcher (hidden during the post-OTP name capture step) */}
+                    {!needsName && (
+                        <div className="flex border-b border-gray-200">
+                            <button
+                                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${loginMethod === 'phone' ? 'border-melagri-primary text-melagri-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                onClick={() => { setLoginMethod('phone'); setError(''); setOtpSent(false); }}
+                            >
+                                Phone Number
+                            </button>
+                            <button
+                                className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${loginMethod === 'email' ? 'border-melagri-primary text-melagri-primary' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                                onClick={() => { setLoginMethod('email'); setError(''); setLinkSent(false); }}
+                            >
+                                Email Address
+                            </button>
+                        </div>
+                    )}
 
                     {error && (
                         <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md">
@@ -258,8 +338,50 @@ function LoginForm() {
                         </div>
                     )}
 
+                    {/* Name Capture (after successful OTP for phone-only signups) */}
+                    {needsName ? (
+                        <form onSubmit={handleSaveName} className="mt-6 space-y-6">
+                            <div className="text-center">
+                                <div className="inline-flex w-14 h-14 bg-melagri-primary/10 text-melagri-primary rounded-2xl items-center justify-center text-2xl mb-3">👋</div>
+                                <h3 className="text-lg font-bold text-gray-900">One last thing — what should we call you?</h3>
+                                <p className="text-xs text-gray-500 mt-1">We&apos;ll use this on receipts, support chats, and order updates.</p>
+                            </div>
+                            <div>
+                                <label htmlFor="name" className="block text-sm font-medium text-gray-700">Full name</label>
+                                <input
+                                    id="name"
+                                    name="name"
+                                    type="text"
+                                    autoComplete="name"
+                                    autoFocus
+                                    required
+                                    minLength={2}
+                                    maxLength={80}
+                                    className="mt-1 appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary sm:text-sm"
+                                    placeholder="e.g. Wanjiku Mwangi"
+                                    value={nameInput}
+                                    onChange={(e) => setNameInput(e.target.value)}
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isLoading || nameInput.trim().length < 2}
+                                className="w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-melagri-primary hover:bg-melagri-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-melagri-primary transition-all disabled:opacity-70"
+                            >
+                                {isLoading ? 'Saving...' : 'Save & Continue'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSkipName}
+                                className="w-full text-xs text-gray-400 hover:text-gray-600 underline"
+                            >
+                                Skip for now
+                            </button>
+                        </form>
+                    ) : null}
+
                     {/* Phone Login Form */}
-                    {loginMethod === 'phone' && (
+                    {!needsName && loginMethod === 'phone' && (
                         <div className="mt-6 space-y-6">
                             {!otpSent ? (
                                 <form onSubmit={handleSendOtp} className="space-y-6">
@@ -318,7 +440,7 @@ function LoginForm() {
                     )}
 
                     {/* Email Login Form */}
-                    {loginMethod === 'email' && (
+                    {!needsName && loginMethod === 'email' && (
                         <>
                             {linkSent ? (
                                 <div className="bg-green-50 border-l-4 border-green-500 p-6 rounded-md text-center">

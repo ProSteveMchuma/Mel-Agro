@@ -4,6 +4,7 @@ import { useOrders } from "@/context/OrderContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 
 export default function UserProfilePage() {
     const { users, updateUserRole, updateUserStatus, deleteUser } = useUsers();
@@ -30,14 +31,14 @@ export default function UserProfilePage() {
     const handleSuspendToggle = async () => {
         if (!user) return;
         const newStatus = user.status === 'active' ? 'suspended' : 'active';
+        const t = toast.loading('Updating status…');
         try {
             await updateUserStatus(user.id, newStatus);
-            // Update local state to reflect change immediately
             setUser({ ...user, status: newStatus });
-            alert(`User ${user.name} has been ${newStatus}.`);
-        } catch (error) {
+            toast.success(`${user.name || 'User'} is now ${newStatus}.`, { id: t });
+        } catch (error: any) {
             console.error("Failed to update user status:", error);
-            alert("Failed to update user status.");
+            toast.error(error?.message || "Failed to update user status.", { id: t });
         }
     };
 
@@ -50,7 +51,7 @@ export default function UserProfilePage() {
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-2xl">
-                        {user.name.charAt(0)}
+                        {(user.name || user.email || 'U').charAt(0).toUpperCase()}
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">{user.name}</h1>
@@ -60,12 +61,13 @@ export default function UserProfilePage() {
                                 value={user.role}
                                 onChange={async (e) => {
                                     const newRole = e.target.value as 'admin' | 'customer';
+                                    const t = toast.loading('Updating role…');
                                     try {
                                         await updateUserRole(user.id, newRole);
                                         setUser({ ...user, role: newRole });
-                                        alert(`${user.name} is now an ${newRole}.`);
-                                    } catch (err) {
-                                        alert("Failed to update role.");
+                                        toast.success(`${user.name || 'User'} is now ${newRole}.`, { id: t });
+                                    } catch (err: any) {
+                                        toast.error(err?.message || 'Failed to update role.', { id: t });
                                     }
                                 }}
                                 className={`text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm focus:ring-2 focus:ring-melagri-primary/20 cursor-pointer outline-none ${(user.role === 'admin' || user.role === 'super-admin') ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}

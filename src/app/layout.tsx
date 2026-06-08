@@ -48,7 +48,10 @@ export const viewport = {
   userScalable: 0,
 };
 
+const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.melagri.com';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "Mel-Agro | Buy Premium Agricultural Inputs & Seeds Online Kenya",
     template: "%s | Mel-Agro"
@@ -66,6 +69,20 @@ export const metadata: Metadata = {
   authors: [{ name: "Mel-Agro" }],
   creator: "Mel-Agro",
   publisher: "Mel-Agro",
+  applicationName: "Mel-Agro",
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/icon.png', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  alternates: {
+    canonical: '/',
+  },
   robots: {
     index: true,
     follow: true,
@@ -80,7 +97,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_KE',
-    url: 'https://melagri.co.ke',
+    url: SITE_URL,
     title: 'Mel-Agro | Buy Premium Agricultural Inputs & Seeds Online Kenya',
     description: 'Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests. Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection with fast nationwide delivery.',
     siteName: 'Mel-Agro',
@@ -89,7 +106,7 @@ export const metadata: Metadata = {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'Mel-Agro Agricultural Solutions',
+        alt: 'Mel-Agro — Premium Agricultural Inputs in Kenya',
       },
     ],
   },
@@ -101,7 +118,8 @@ export const metadata: Metadata = {
   },
   verification: {
     google: 'SmMoEZQ9Z1KQVluCgL0QUSjhPN9QqNwCXDUWq83DoO4',
-  }
+  },
+  category: 'shopping',
 };
 
 export default function RootLayout({

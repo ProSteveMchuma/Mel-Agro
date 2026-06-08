@@ -61,6 +61,18 @@ const withPWA = require("next-pwa")({
   disable: process.env.NODE_ENV === "development",
   register: true,
   skipWaiting: true,
+  // Don't ever serve stale API responses — auth, payment status, stock,
+  // and order data must always come from the network. Static assets keep
+  // next-pwa's defaults via the runtimeCaching fallthrough.
+  runtimeCaching: [
+    {
+      urlPattern: ({ url }: { url: URL }) => url.pathname.startsWith('/api/'),
+      handler: 'NetworkOnly',
+      options: {
+        cacheName: 'api-no-cache',
+      },
+    },
+  ],
 });
 
 export default withPWA(nextConfig);
