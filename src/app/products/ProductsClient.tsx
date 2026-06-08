@@ -9,6 +9,7 @@ import { Product, getProductsPage, getUniqueBrands, getUniqueCategories } from "
 import { fuzzySearch } from "@/components/SmartSearch";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useProducts } from "@/context/ProductContext";
 
 
 interface ProductsClientProps {
@@ -103,7 +104,7 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
 
             <main className="flex-grow">
                 {/* Breadcrumb & Mobile Filter Toggle */}
-                <div className="bg-white border-b border-gray-100 sticky top-16 z-30 shadow-sm">
+                <div className="bg-white border-b border-gray-100 sticky top-[124px] sm:top-[152px] md:top-[104px] z-30 shadow-sm">
                     <div className="container-custom px-4 md:px-8 py-3 flex items-center justify-between">
                         <nav className="flex items-center gap-2 text-[10px] md:text-sm">
                             <Link href="/" className="text-gray-400 hover:text-melagri-primary transition-colors font-bold uppercase tracking-widest">Home</Link>
@@ -293,6 +294,7 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
 }
 
 function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }: { category: string, priceRange: [number, number], selectedBrands: string[], initialProducts: Product[] }) {
+    const { products: allProducts } = useProducts();
     // Only use initialProducts if they match the current category filter (simple check)
     // Actually, on mount, category should match what page.tsx used. 
     // But if user changes category, we discard initialProducts.
@@ -387,8 +389,9 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
     }, [category, selectedBrands]);
 
     const filteredProducts = useMemo(() => {
-        let filtered = [...products];
         const searchQuery = searchParams.get("search");
+        let baseProducts = searchQuery ? allProducts : products;
+        let filtered = [...baseProducts];
 
         if (searchQuery) {
             filtered = fuzzySearch(filtered, searchQuery);
@@ -402,8 +405,13 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
             filtered = filtered.filter(p => p.brand && selectedBrands.includes(p.brand));
         }
 
+        // Apply category filter on client if searching globally
+        if (searchQuery && category && category !== "All Products") {
+            filtered = filtered.filter(p => p.category === category);
+        }
+
         return filtered;
-    }, [products, searchParams, priceRange, selectedBrands]); // Added selectedBrands dep
+    }, [products, allProducts, searchParams, priceRange, selectedBrands, category]);
 
     if (isLoading && products.length === 0) return (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
@@ -440,7 +448,7 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
                 ))}
             </div>
 
-            {hasMore && (
+            {hasMore && !searchParams.get("search") && (
                 <div className="flex justify-center pt-8">
                     <button
                         onClick={() => loadProducts(false)}

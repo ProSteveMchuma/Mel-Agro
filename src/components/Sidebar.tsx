@@ -58,7 +58,7 @@ export default function Sidebar({
     const brandsToDisplay = showAllBrands ? brands : brands.slice(0, 10);
 
     return (
-        <aside className="w-full lg:w-64 bg-white border border-gray-100 rounded-3xl h-fit sticky top-24 shadow-sm overflow-hidden">
+        <aside className="w-full lg:w-64 bg-white border border-gray-100 rounded-3xl h-fit sticky top-[120px] shadow-sm overflow-hidden">
             <div className="p-8 space-y-10">
                 {/* Categories */}
                 <div>

@@ -44,9 +44,8 @@ export async function POST(request: Request) {
         formData.append('message', message);
         if (from) formData.append('from', from);
 
-        const fs = require('fs');
-        fs.appendFileSync('sms_debug.log', `[${new Date().toISOString()}] [SMS DEBUG 1] Raw Input Phone: ${to}\n`);
-        fs.appendFileSync('sms_debug.log', `[${new Date().toISOString()}] [SMS DEBUG 2] Sending to: ${formattedPhone} using Africa's Talking\n`);
+        console.log(`[SMS DEBUG 1] Raw Input Phone: ${to}`);
+        console.log(`[SMS DEBUG 2] Sending to: ${formattedPhone} using Africa's Talking`);
 
         const response = await fetch(endpoint, {
             method: 'POST',
@@ -59,7 +58,7 @@ export async function POST(request: Request) {
         });
 
         const data = await response.json();
-        fs.appendFileSync('sms_debug.log', `[${new Date().toISOString()}] [SMS DEBUG 3] Africa's Talking Response: ${JSON.stringify(data, null, 2)}\n`);
+        console.log(`[SMS DEBUG 3] Africa's Talking Response:`, JSON.stringify(data, null, 2));
 
         // Check for success in AT response structure
         if (data.SMSMessageData && data.SMSMessageData.Recipients && data.SMSMessageData.Recipients.length > 0) {

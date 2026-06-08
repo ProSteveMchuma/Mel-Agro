@@ -26,7 +26,7 @@ export default function SidebarCategories({ categories }: SidebarCategoriesProps
     const pathname = usePathname();
 
     return (
-        <aside className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden sticky top-24">
+        <aside className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden sticky top-[120px]">
             <div className="p-6 border-b border-gray-50 bg-gray-50/50">
                 <h3 className="text-xs font-black text-gray-900 uppercase tracking-widest flex items-center gap-2">
                     <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>

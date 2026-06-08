@@ -906,7 +906,7 @@ export default function CheckoutPage() {
 
                             {/* Order Summary Sidebar */}
                             <div className="lg:col-span-1">
-                                <div className="bg-white rounded-2xl p-6 border border-gray-200 sticky top-24 h-fit">
+                                <div className="bg-white rounded-2xl p-6 border border-gray-200 sticky top-[120px] h-fit">
                                     <h3 className="font-bold text-gray-900 mb-6 text-lg">Order Summary</h3>
 
                                     <div className="space-y-3 mb-6 pb-6 border-b">

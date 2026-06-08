@@ -46,7 +46,7 @@ export default function AboutPage() {
                                         Our Heritage
                                     </div>
                                     <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 tracking-tight">
-                                        A Proud Subsidiary of <span className="text-melagri-primary">Mel-Agri</span>
+                                        A Proud Subsidiary of <span className="text-melagri-primary">Makamithi</span>
                                     </h2>
                                     <div className="space-y-6 text-gray-600 text-lg leading-relaxed">
                                         <p>

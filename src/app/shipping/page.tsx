@@ -23,7 +23,7 @@ export default function ShippingPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
                         {/* Sidebar */}
                         <div className="md:col-span-1">
-                            <nav className="sticky top-24 space-y-4">
+                            <nav className="sticky top-[120px] space-y-4">
                                 <a href="#delivery-times" className="block text-melagri-primary font-bold">Delivery Times</a>
                                 <a href="#shipping-costs" className="block text-gray-500 hover:text-melagri-primary transition-colors">Shipping Costs</a>
                                 <a href="#tracking" className="block text-gray-500 hover:text-melagri-primary transition-colors">Order Tracking</a>
