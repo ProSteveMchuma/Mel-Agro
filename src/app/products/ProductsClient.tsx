@@ -163,9 +163,9 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                             <div className="flex-1">
                                 {/* Page Title & Controls */}
                                 <div className="mb-6 md:mb-8 group">
-                                    {/* Desktop Title - Hidden on Mobile */}
-                                    <div className="hidden md:flex items-center mb-3">
-                                        <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">
+                                    {/* Page Title */}
+                                    <div className="flex items-center mb-3">
+                                        <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">
                                             {currentCategory || "Global Catalogue"}
                                         </h1>
                                     </div>
@@ -431,8 +431,31 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
         </div>
     );
 
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://www.melagri.com';
+    const itemListJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        itemListElement: filteredProducts.map((product, idx) => ({
+            '@type': 'ListItem',
+            position: idx + 1,
+            url: `${baseUrl}/products/${product.id}`,
+            name: product.name,
+            image: product.image,
+            offers: {
+                '@type': 'Offer',
+                price: product.price,
+                priceCurrency: 'KES',
+                availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+            }
+        }))
+    };
+
     return (
         <div className="space-y-12">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+            />
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProducts.map(product => (
                     <ProductCard

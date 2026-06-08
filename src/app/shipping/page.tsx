@@ -1,8 +1,13 @@
-"use client";
-
+import { Metadata } from 'next';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { DELIVERY_ZONES, FREE_SHIPPING_THRESHOLD } from "@/lib/delivery";
+
+export const metadata: Metadata = {
+    title: "Shipping & Delivery Rates Kenya | Mel-Agro Online Agrovet",
+    description: "Learn about our nationwide shipping and delivery rates in Kenya. We deliver agricultural inputs, certified seeds, and fertilizers to Nairobi, Nakuru, Eldoret, Kisumu, and other counties.",
+    alternates: { canonical: '/shipping' },
+};
 
 export default function ShippingPage() {
     return (

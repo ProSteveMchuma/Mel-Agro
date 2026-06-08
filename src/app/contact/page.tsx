@@ -4,12 +4,12 @@ import Link from "next/link";
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: "Contact Us | Agriculture Support Kenya",
-    description: "Get in touch with Mel-Agri for inquiries about fertilizers, seeds, and bulk orders. Bringing Quality Agricultural Inputs Online in Kenya.",
+    title: "Contact Mel-Agro | Agrovet Customer Support & Location Nairobi",
+    description: "Get in touch with Mel-Agro for inquiries about crop fertilizers, hybrid seeds, and bulk farm orders. Reach our agronomy support team in Nairobi via Phone, Email or WhatsApp.",
     alternates: { canonical: '/contact' },
     openGraph: {
-        title: 'Contact Mel-Agro',
-        description: 'Reach our agronomy team in Nairobi — phone, WhatsApp, email.',
+        title: 'Contact Mel-Agro | Agrovet Customer Support & Location Nairobi',
+        description: 'Reach our agronomy team in Nairobi — phone, WhatsApp, email. Located at Makamithi Towers.',
         url: '/contact',
     },
 };

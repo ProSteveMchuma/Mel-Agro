@@ -5,12 +5,12 @@ import Header from '@/components/Header';
 import BulkInquiryForm from '@/components/BulkInquiryForm';
 
 export const metadata: Metadata = {
-    title: 'Bulk Orders for Farmers, Cooperatives & Institutions',
-    description: 'Special pricing and logistics for bulk agricultural input orders in Kenya. Cooperatives, schools, NGOs and large farms — minimum order KES 100,000. Get a quote today.',
+    title: 'Bulk Farm Inputs & Wholesale Agrochemicals Kenya | Mel-Agro',
+    description: 'Special wholesale pricing and direct shipping logistics for bulk agricultural inputs in Kenya. Cooperatives, large farms, and institutions — get a bulk quote online today.',
     alternates: { canonical: '/bulk' },
     openGraph: {
-        title: 'Bulk Agricultural Inputs in Kenya | Mel-Agro',
-        description: 'Volume discounts on seeds, fertilizers, and agrochemicals for cooperatives and institutions.',
+        title: 'Bulk Farm Inputs & Wholesale Agrochemicals Kenya | Mel-Agro',
+        description: 'Special wholesale pricing and direct shipping logistics for bulk agricultural inputs in Kenya.',
         url: '/bulk',
     },
 };
