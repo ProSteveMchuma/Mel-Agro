@@ -13,6 +13,7 @@ import { useAuth } from '@/context/AuthContext';
 import { toast } from "react-hot-toast";
 import Logo from '@/components/Logo';
 import IntelligentDescription from '@/components/IntelligentDescription';
+import ProductFaqs from '@/components/ProductFaqs';
 
 export default function ProductDetails({ id }: { id: string }) {
     const [product, setProduct] = useState<Product | undefined>(undefined);
@@ -510,7 +511,7 @@ export default function ProductDetails({ id }: { id: string }) {
                     </div>
                 </div>
 
-
+                <ProductFaqs product={product} />
             </main >
 
             <Footer />
