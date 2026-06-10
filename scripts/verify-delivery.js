@@ -1,6 +1,6 @@
 const { getDeliveryCost } = require('../src/lib/delivery');
 
-console.log("=== MEL-AGRO DELIVERY LOGIC VERIFICATION ===");
+console.log("=== MEL-AGRI DELIVERY LOGIC VERIFICATION ===");
 
 const testCases = [
     { county: "Nairobi", weight: 2, total: 5000, expected: 200 },

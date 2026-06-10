@@ -32,7 +32,7 @@ async function claimGuestOrders(guestToken: string, firebaseUser: any) {
         const data = await res.json();
         if (data.success) {
             console.log("Guest orders and loyalty points claimed successfully");
-            sessionStorage.removeItem('melagro_guest_id_token');
+            sessionStorage.removeItem('melagri_guest_id_token');
         } else {
             console.warn("Failed to claim guest orders:", data.message);
         }
@@ -68,19 +68,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(null);
                 setIsAuthenticated(false);
                 setIsLoading(false);
-                sessionStorage.removeItem('melagro_guest_id_token');
+                sessionStorage.removeItem('melagri_guest_id_token');
                 return;
             }
 
             if (firebaseUser.isAnonymous) {
                 try {
                     const token = await firebaseUser.getIdToken();
-                    sessionStorage.setItem('melagro_guest_id_token', token);
+                    sessionStorage.setItem('melagri_guest_id_token', token);
                 } catch (e) {
                     console.warn('AuthContext: failed to cache guest token', e);
                 }
             } else {
-                const guestToken = sessionStorage.getItem('melagro_guest_id_token');
+                const guestToken = sessionStorage.getItem('melagri_guest_id_token');
                 if (guestToken) {
                     claimGuestOrders(guestToken, firebaseUser);
                 }

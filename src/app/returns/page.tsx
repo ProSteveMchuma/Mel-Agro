@@ -5,7 +5,7 @@ import Header from '@/components/Header';
 
 export const metadata: Metadata = {
     title: 'Returns & Refunds Policy',
-    description: 'Mel-Agro return policy: 7-day returns on defective or incorrect agricultural inputs. Original packaging required, sealed seed packs only. Read our full return guidelines.',
+    description: 'Mel-Agri return policy: 7-day returns on defective or incorrect agricultural inputs. Original packaging required, sealed seed packs only. Read our full return guidelines.',
     alternates: { canonical: '/returns' },
     robots: { index: true, follow: true },
 };

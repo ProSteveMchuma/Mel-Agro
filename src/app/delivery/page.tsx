@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     description: 'Reliable nationwide delivery of seeds, fertilizers, and agrochemicals across Kenya. Same-day Nairobi delivery, 1–4 days nationwide. Wells Fargo & G4S partnerships.',
     alternates: { canonical: '/delivery' },
     openGraph: {
-        title: 'Delivery Information | Mel-Agro',
+        title: 'Delivery Information | Mel-Agri',
         description: 'Same-day Nairobi delivery, nationwide coverage in 1–4 business days.',
         url: '/delivery',
     },

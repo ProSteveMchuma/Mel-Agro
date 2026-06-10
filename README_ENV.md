@@ -95,7 +95,7 @@ SMTP_HOST=smtp.yourprovider.com
 SMTP_PORT=587
 SMTP_USER=your_email@domain.com
 SMTP_PASS=your_email_password
-SMTP_FROM="MelAgro" <noreply@melagro.com>
+SMTP_FROM="MelAgri" <noreply@melagri.com>
 ```
 
 ## AI Market Briefing (Optional — Claude Opus 4.7)

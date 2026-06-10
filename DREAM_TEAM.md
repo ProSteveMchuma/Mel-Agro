@@ -1,6 +1,6 @@
-# 🏗️ Mel-Agro: The Elite 48-Hour Execution Squad
+# 🏗️ Mel-Agri: The Elite 48-Hour Execution Squad
 
-Welcome to the automated development squad for Mel-Agro. This team is armed with decades of senior-level expertise, focused on delivering a world-class e-commerce platform within a **48-hour window**.
+Welcome to the automated development squad for Mel-Agri. This team is armed with decades of senior-level expertise, focused on delivering a world-class e-commerce platform within a **48-hour window**.
 
 ## 🕴️ The Senior Lead Squad
 

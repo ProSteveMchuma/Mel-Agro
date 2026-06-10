@@ -178,8 +178,8 @@ const SETTINGS = {
         freeShippingThreshold: 50000
     },
     site: {
-        name: "MelAgro",
-        contactEmail: "support@melagro.com",
+        name: "MelAgri",
+        contactEmail: "support@melagri.com",
         contactPhone: "+254 700 000 000"
     }
 };
@@ -187,8 +187,8 @@ const SETTINGS = {
 const USERS = [
     {
         uid: 'admin_user_id', // In real app, this comes from Auth. We'll simulate it.
-        email: 'admin@melagro.com',
-        name: 'MelAgro Admin',
+        email: 'admin@melagri.com',
+        name: 'MelAgri Admin',
         role: 'admin',
         createdAt: admin.firestore.FieldValue.serverTimestamp()
     },

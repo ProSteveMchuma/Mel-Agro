@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     const description = (product.description || '').substring(0, 150);
-    const seoDescription = `Buy original ${product.name} online at Mel-Agro Kenya for KES ${product.price.toLocaleString()}. Certified ${product.category} with fast farm delivery to Nakuru, Eldoret, Kisumu, Nairobi, and countrywide. ${description}`;
+    const seoDescription = `Buy original ${product.name} online at Mel-Agri Kenya for KES ${product.price.toLocaleString()}. Certified ${product.category} with fast farm delivery to Nakuru, Eldoret, Kisumu, Nairobi, and countrywide. ${description}`;
 
     const ogImage = `${baseUrl}/api/og/product?name=${encodeURIComponent(product.name)}&price=${product.price}&category=${encodeURIComponent(product.category)}&image=${encodeURIComponent(product.image)}`;
 
@@ -42,17 +42,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         `Buy ${product.name} Nairobi`,
         `Buy ${product.name} Nakuru`,
         `Buy ${product.name} Eldoret`,
-        `Mel-Agro products`,
+        `Mel-Agri products`,
         "certified agrovet Kenya",
         "agricultural inputs online"
     ].filter(Boolean);
 
     return {
-        title: `Buy ${product.name} Online - Fast Delivery in Kenya | Mel-Agro`,
+        title: `Buy ${product.name} Online - Fast Delivery in Kenya | Mel-Agri`,
         description: seoDescription,
         keywords,
         openGraph: {
-            title: `Buy ${product.name} Online | Mel-Agro Kenya`,
+            title: `Buy ${product.name} Online | Mel-Agri Kenya`,
             description: seoDescription,
             images: [
                 {
@@ -63,15 +63,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
                 }
             ],
             type: 'website',
-            siteName: 'Mel-Agro',
+            siteName: 'Mel-Agri',
             locale: 'en_KE',
         },
         twitter: {
             card: 'summary_large_image',
-            title: `Buy ${product.name} Online | Mel-Agro`,
+            title: `Buy ${product.name} Online | Mel-Agri`,
             description: seoDescription,
             images: [ogImage],
-            site: '@melagro',
+            site: '@melagri',
         },
         other: {
             'product:price:amount': product.price.toString(),
@@ -102,7 +102,7 @@ export default async function Page({ params }: Props) {
         mpn: product.productCode || product.id,
         brand: {
             '@type': 'Brand',
-            name: product.brand || 'Mel-Agro'
+            name: product.brand || 'Mel-Agri'
         },
         offers: {
             '@type': 'Offer',

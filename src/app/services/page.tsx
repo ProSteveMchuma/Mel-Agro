@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     description: 'Expert agronomic services for Kenyan farmers: soil testing, crop advisory, pest & disease management, and farm planning. Backed by 20+ years of agricultural expertise.',
     alternates: { canonical: '/services' },
     openGraph: {
-        title: 'Agricultural Services in Kenya | Mel-Agro',
+        title: 'Agricultural Services in Kenya | Mel-Agri',
         description: 'Soil testing, crop advisory, and pest control services for Kenyan farmers.',
         url: '/services',
     },

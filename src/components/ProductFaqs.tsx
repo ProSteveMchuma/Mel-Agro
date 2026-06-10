@@ -21,15 +21,15 @@ export default function ProductFaqs({ product }: ProductFaqsProps) {
 
     const faqsList = [
         {
-            question: `Is the ${name} sold at Mel-Agro original and certified?`,
-            answer: `Yes, absolutely. Mel-Agro is an authorized dealer of certified agricultural inputs in Kenya. Every package of ${name} is sourced directly from ${brand} and verified for authenticity, quality, and expiration dates. We do not sell counterfeit or uncertified products.`
+            question: `Is the ${name} sold at Mel-Agri original and certified?`,
+            answer: `Yes, absolutely. Mel-Agri is an authorized dealer of certified agricultural inputs in Kenya. Every package of ${name} is sourced directly from ${brand} and verified for authenticity, quality, and expiration dates. We do not sell counterfeit or uncertified products.`
         },
         {
             question: `What is the price of ${name} in Kenya?`,
-            answer: `The current price of ${name} is KES ${price} at Mel-Agro. We strive to offer the most competitive market rates for genuine inputs, ensuring farmers get original quality at fair prices.`
+            answer: `The current price of ${name} is KES ${price} at Mel-Agri. We strive to offer the most competitive market rates for genuine inputs, ensuring farmers get original quality at fair prices.`
         },
         {
-            question: `How does Mel-Agro deliver ${name} to Nakuru, Eldoret, and other counties?`,
+            question: `How does Mel-Agri deliver ${name} to Nakuru, Eldoret, and other counties?`,
             answer: `We offer fast nationwide delivery across all 47 counties in Kenya, including Nakuru, Eldoret, Kisumu, Mombasa, Nyeri, and Meru. Orders above KES 10,000 qualify for free delivery. For orders under KES 10,000, we charge a flat delivery fee of KES 300. Orders are dispatched within 24 hours and delivered within 1 to 3 business days.`
         }
     ];
@@ -54,7 +54,7 @@ export default function ProductFaqs({ product }: ProductFaqsProps) {
     } else {
         faqsList.push({
             question: `What crops or livestock is ${name} recommended for?`,
-            answer: `This product is recommended for general agricultural and farming use. For specific crop schedules, feed formulations, or dosage guidelines, please contact Mel-Agro's agronomy support team via WhatsApp or call our support lines.`
+            answer: `This product is recommended for general agricultural and farming use. For specific crop schedules, feed formulations, or dosage guidelines, please contact Mel-Agri's agronomy support team via WhatsApp or call our support lines.`
         });
     }
 

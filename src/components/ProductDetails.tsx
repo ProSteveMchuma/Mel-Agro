@@ -169,7 +169,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                 >
                                     <Image
                                         src={safeImage}
-                                        alt={`${product.name} - ${product.brand || 'Premium'} ${product.category} in Kenya | Mel-Agro`}
+                                        alt={`${product.name} - ${product.brand || 'Premium'} ${product.category} in Kenya | Mel-Agri`}
                                         fill
                                         className="object-contain p-8 hover:scale-105 transition-transform duration-500"
                                         priority

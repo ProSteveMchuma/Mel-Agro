@@ -1,6 +1,6 @@
 {
-    "name": "MelAgro - Farm Inputs",
-    "short_name": "MelAgro",
+    "name": "MelAgri - Farm Inputs",
+    "short_name": "MelAgri",
     "description": "Quality farm inputs delivered to your farm.",
     "start_url": "/",
     "display": "standalone",

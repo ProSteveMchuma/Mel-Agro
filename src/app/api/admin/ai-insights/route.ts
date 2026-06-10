@@ -112,7 +112,7 @@ export async function POST(request: Request) {
 
         const client = new Anthropic({ apiKey });
 
-        const SYSTEM_PROMPT = `You are a senior agribusiness analyst for Mel-Agro, a Kenyan online agrovet selling certified seeds, fertilizers, agrochemicals, animal feeds, and farm tools to farmers across all 47 counties. You read live e-commerce metrics and produce clear, prioritized weekly briefings.
+        const SYSTEM_PROMPT = `You are a senior agribusiness analyst for Mel-Agri, a Kenyan online agrovet selling certified seeds, fertilizers, agrochemicals, animal feeds, and farm tools to farmers across all 47 counties. You read live e-commerce metrics and produce clear, prioritized weekly briefings.
 
 Your output style:
 - Open with a one-line headline of the most important thing this week.
@@ -127,7 +127,7 @@ Style rules:
 - Be specific and operational, not vague. "Restock NPK" not "improve inventory".
 - ≤ 350 words.`;
 
-        const userPrompt = `Here is Mel-Agro's live performance snapshot for the **${range}** window. Read it carefully and write your briefing.
+        const userPrompt = `Here is Mel-Agri's live performance snapshot for the **${range}** window. Read it carefully and write your briefing.
 
 \`\`\`json
 ${JSON.stringify(snapshot, null, 2)}

@@ -5,11 +5,11 @@ import Header from '@/components/Header';
 import BulkInquiryForm from '@/components/BulkInquiryForm';
 
 export const metadata: Metadata = {
-    title: 'Bulk Farm Inputs & Wholesale Agrochemicals Kenya | Mel-Agro',
+    title: 'Bulk Farm Inputs & Wholesale Agrochemicals Kenya | Mel-Agri',
     description: 'Special wholesale pricing and direct shipping logistics for bulk agricultural inputs in Kenya. Cooperatives, large farms, and institutions — get a bulk quote online today.',
     alternates: { canonical: '/bulk' },
     openGraph: {
-        title: 'Bulk Farm Inputs & Wholesale Agrochemicals Kenya | Mel-Agro',
+        title: 'Bulk Farm Inputs & Wholesale Agrochemicals Kenya | Mel-Agri',
         description: 'Special wholesale pricing and direct shipping logistics for bulk agricultural inputs in Kenya.',
         url: '/bulk',
     },

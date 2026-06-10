@@ -1,6 +1,6 @@
 const XLSX = require('xlsx');
 
-const filePath = `c:\\Users\\Steve\\OneDrive - House Of Procurement\\Desktop\\Documents\\GitHub\\Mel-Agro\\excel\\Product List Pest control and crop protection.xlsx`;
+const filePath = `c:\\Users\\Steve\\OneDrive - House Of Procurement\\Desktop\\Documents\\GitHub\\Mel-Agri\\excel\\Product List Pest control and crop protection.xlsx`;
 try {
     const workbook = XLSX.readFile(filePath);
     const sheetName = workbook.SheetNames[0];

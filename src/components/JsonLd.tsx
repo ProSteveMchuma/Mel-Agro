@@ -4,7 +4,7 @@ export default function JsonLd() {
     const orgJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Organization',
-        name: 'Mel-Agro',
+        name: 'Mel-Agri',
         alternateName: ['Mel Agro', 'Mel-Agri', 'Melagri'],
         description: "Kenya's premier online agrovet and digital marketplace for high-quality certified agricultural inputs, seeds, fertilizers, and tools. Fast nationwide delivery.",
         url: SITE_URL,
@@ -32,7 +32,7 @@ export default function JsonLd() {
     const websiteJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
-        name: 'Mel-Agro',
+        name: 'Mel-Agri',
         url: SITE_URL,
         potentialAction: {
             '@type': 'SearchAction',
@@ -47,7 +47,7 @@ export default function JsonLd() {
     const localBusinessJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Store',
-        name: 'Mel-Agro Digital Agrovet',
+        name: 'Mel-Agri Digital Agrovet',
         image: `${SITE_URL}/og-image.jpg`,
         '@id': `${SITE_URL}/#localbusiness`,
         url: SITE_URL,

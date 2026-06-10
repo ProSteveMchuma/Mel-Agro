@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     description: 'Expert agricultural guides, pest control protocols, and yield-boosting techniques tailored for Kenyan farmers.',
     alternates: { canonical: '/guides' },
     openGraph: {
-        title: "Farmer's Knowledge Base | Mel-Agro",
+        title: "Farmer's Knowledge Base | Mel-Agri",
         description: 'Pest protocols, climate-smart techniques, and crop-specific guides for Kenyan farmers.',
         url: '/guides',
         type: 'website',

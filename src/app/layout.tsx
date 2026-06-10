@@ -53,8 +53,8 @@ const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.melagri.com';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "Mel-Agro | Buy Premium Agricultural Inputs & Seeds Online Kenya",
-    template: "%s | Mel-Agro"
+    default: "Mel-Agri | Buy Premium Agricultural Inputs & Seeds Online Kenya",
+    template: "%s | Mel-Agri"
   },
   description: "Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests. Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection with fast nationwide delivery.",
   keywords: [
@@ -66,10 +66,10 @@ export const metadata: Metadata = {
     "DAP fertilizer price kenya",
     "certified agrochemicals kenya"
   ],
-  authors: [{ name: "Mel-Agro" }],
-  creator: "Mel-Agro",
-  publisher: "Mel-Agro",
-  applicationName: "Mel-Agro",
+  authors: [{ name: "Mel-Agri" }],
+  creator: "Mel-Agri",
+  publisher: "Mel-Agri",
+  applicationName: "Mel-Agri",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -98,21 +98,21 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_KE',
     url: SITE_URL,
-    title: 'Mel-Agro | Buy Premium Agricultural Inputs & Seeds Online Kenya',
+    title: 'Mel-Agri | Buy Premium Agricultural Inputs & Seeds Online Kenya',
     description: 'Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests. Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection with fast nationwide delivery.',
-    siteName: 'Mel-Agro',
+    siteName: 'Mel-Agri',
     images: [
       {
         url: '/og-image.jpg',
         width: 1200,
         height: 630,
-        alt: 'Mel-Agro — Premium Agricultural Inputs in Kenya',
+        alt: 'Mel-Agri — Premium Agricultural Inputs in Kenya',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Mel-Agro | Buy Premium Agricultural Inputs & Seeds Online Kenya',
+    title: 'Mel-Agri | Buy Premium Agricultural Inputs & Seeds Online Kenya',
     description: 'Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests.',
     images: ['/og-image.jpg'],
   },

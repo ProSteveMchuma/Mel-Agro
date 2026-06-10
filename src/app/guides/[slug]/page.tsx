@@ -130,7 +130,7 @@ export default async function GuidePage({ params }: Props) {
         },
         publisher: {
             '@type': 'Organization',
-            name: 'Mel-Agro',
+            name: 'Mel-Agri',
             logo: {
                 '@type': 'ImageObject',
                 url: `${SITE_URL}/logo.png`,
