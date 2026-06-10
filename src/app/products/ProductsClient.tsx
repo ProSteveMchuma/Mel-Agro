@@ -21,7 +21,6 @@ interface ProductsClientProps {
 export default function ProductsClient({ initialProducts, initialBrands, initialCategories }: ProductsClientProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
-    const { products: allCatalogProducts } = useProducts();
 
     // State for filters - initialize from URL
     const [selectedBrands, setSelectedBrands] = useState<string[]>(() => {
@@ -105,7 +104,7 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
 
             <main className="flex-grow">
                 {/* Breadcrumb & Mobile Filter Toggle */}
-                <div className="bg-white border-b border-gray-100 sticky top-16 z-30 shadow-sm">
+                <div className="bg-white border-b border-gray-100 sticky top-[124px] sm:top-[152px] md:top-[104px] z-30 shadow-sm">
                     <div className="container-custom px-4 md:px-8 py-3 flex items-center justify-between">
                         <nav className="flex items-center gap-2 text-[10px] md:text-sm">
                             <Link href="/" className="text-gray-400 hover:text-melagri-primary transition-colors font-bold uppercase tracking-widest">Home</Link>
@@ -164,9 +163,9 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                             <div className="flex-1">
                                 {/* Page Title & Controls */}
                                 <div className="mb-6 md:mb-8 group">
-                                    {/* Desktop Title - Hidden on Mobile */}
-                                    <div className="hidden md:flex items-center mb-3">
-                                        <h1 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">
+                                    {/* Page Title */}
+                                    <div className="flex items-center mb-3">
+                                        <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">
                                             {currentCategory || "Global Catalogue"}
                                         </h1>
                                     </div>
@@ -283,7 +282,6 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                                 priceRange={priceRange}
                                 selectedBrands={selectedBrands}
                                 initialProducts={initialProducts}
-                                allCatalogProducts={allCatalogProducts}
                             />
                         </Suspense>
                     </div>
@@ -295,19 +293,8 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
     );
 }
 
-function ProductsGrid({ 
-    category, 
-    priceRange, 
-    selectedBrands, 
-    initialProducts,
-    allCatalogProducts 
-}: { 
-    category: string, 
-    priceRange: [number, number], 
-    selectedBrands: string[], 
-    initialProducts: Product[],
-    allCatalogProducts: Product[] 
-}) {
+function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }: { category: string, priceRange: [number, number], selectedBrands: string[], initialProducts: Product[] }) {
+    const { products: allProducts } = useProducts();
     // Only use initialProducts if they match the current category filter (simple check)
     // Actually, on mount, category should match what page.tsx used. 
     // But if user changes category, we discard initialProducts.
@@ -409,9 +396,7 @@ function ProductsGrid({
 
     const filteredProducts = useMemo(() => {
         const searchQuery = searchParams.get("search");
-        // If a search query is active, filter the entire catalog from the context.
-        // Otherwise, filter the paginated batch of products.
-        const baseProducts = searchQuery ? allCatalogProducts : products;
+        let baseProducts = searchQuery ? allProducts : products;
         let filtered = [...baseProducts];
 
         if (searchQuery) {
@@ -426,12 +411,13 @@ function ProductsGrid({
             filtered = filtered.filter(p => p.brand && selectedBrands.includes(p.brand));
         }
 
-        if (searchQuery && category && category !== "All Products" && category !== "") {
+        // Apply category filter on client if searching globally
+        if (searchQuery && category && category !== "All Products") {
             filtered = filtered.filter(p => p.category === category);
         }
 
         return filtered;
-    }, [products, allCatalogProducts, searchParams, priceRange, selectedBrands, category]);
+    }, [products, allProducts, searchParams, priceRange, selectedBrands, category]);
 
     if (isLoading && products.length === 0) return (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
@@ -451,8 +437,31 @@ function ProductsGrid({
         </div>
     );
 
+    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://www.melagri.com';
+    const itemListJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        itemListElement: filteredProducts.map((product, idx) => ({
+            '@type': 'ListItem',
+            position: idx + 1,
+            url: `${baseUrl}/products/${product.id}`,
+            name: product.name,
+            image: product.image,
+            offers: {
+                '@type': 'Offer',
+                price: product.price,
+                priceCurrency: 'KES',
+                availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+            }
+        }))
+    };
+
     return (
         <div className="space-y-12">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+            />
             <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredProducts.map(product => (
                     <ProductCard
@@ -468,7 +477,7 @@ function ProductsGrid({
                 ))}
             </div>
 
-            {!searchParams.get("search") && hasMore && (
+            {hasMore && !searchParams.get("search") && (
                 <div className="flex justify-center pt-8">
                     <button
                         onClick={() => loadProducts(false)}

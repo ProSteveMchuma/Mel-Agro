@@ -50,6 +50,36 @@ if (!admin.apps.length) {
     }
 }
 
-export const adminDb = admin.firestore();
-export const adminAuth = admin.auth();
-export const adminStorage = admin.storage();
+export const adminDb = new Proxy({} as admin.firestore.Firestore, {
+    get(target, prop, receiver) {
+        if (!admin.apps.length) {
+            throw new Error("Firebase Admin app is not initialized. Check your environment variables.");
+        }
+        const db = admin.firestore();
+        const value = Reflect.get(db, prop, receiver);
+        return typeof value === 'function' ? value.bind(db) : value;
+    }
+});
+
+export const adminAuth = new Proxy({} as admin.auth.Auth, {
+    get(target, prop, receiver) {
+        if (!admin.apps.length) {
+            throw new Error("Firebase Admin app is not initialized. Check your environment variables.");
+        }
+        const auth = admin.auth();
+        const value = Reflect.get(auth, prop, receiver);
+        return typeof value === 'function' ? value.bind(auth) : value;
+    }
+});
+
+export const adminStorage = new Proxy({} as admin.storage.Storage, {
+    get(target, prop, receiver) {
+        if (!admin.apps.length) {
+            throw new Error("Firebase Admin app is not initialized. Check your environment variables.");
+        }
+        const storage = admin.storage();
+        const value = Reflect.get(storage, prop, receiver);
+        return typeof value === 'function' ? value.bind(storage) : value;
+    }
+});
+

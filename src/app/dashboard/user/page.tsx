@@ -711,7 +711,7 @@ export default function UserDashboard() {
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
                     {/* Sidebar (Desktop only) */}
                     <div className="hidden lg:block lg:col-span-1">
-                        <div className="bg-white rounded-3xl p-6 border border-gray-100 sticky top-24 shadow-sm">
+                        <div className="bg-white rounded-3xl p-6 border border-gray-100 sticky top-[120px] shadow-sm">
                             <div className="flex items-center gap-4 mb-8">
                                 <div className="w-16 h-16 bg-gradient-to-tr from-melagri-primary to-green-400 rounded-2xl flex items-center justify-center text-white font-bold text-2xl shadow-lg ring-4 ring-melagri-primary/10">
                                     {user.name?.charAt(0)}

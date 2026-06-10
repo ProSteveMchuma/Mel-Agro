@@ -32,7 +32,7 @@ export default function OrderSummary({
     const total = cartTotal + shippingCost - discountAmount;
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-24">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sticky top-[120px]">
             <h2 className="text-lg font-bold text-gray-900 mb-4">Order Summary</h2>
 
             <div className="space-y-4 mb-6 max-h-60 overflow-y-auto pr-2 custom-scrollbar">

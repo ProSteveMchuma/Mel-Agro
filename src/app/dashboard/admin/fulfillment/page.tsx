@@ -106,7 +106,7 @@ export default function FulfillmentPage() {
                 {/* Details / Actions Sidebar */}
                 <div className="lg:col-span-1">
                     {selectedOrder ? (
-                        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-24 space-y-6">
+                        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-[120px] space-y-6">
                             <h3 className="text-lg font-bold text-gray-900 border-b pb-4">Fulfillment Actions</h3>
 
                             <div className="space-y-4">

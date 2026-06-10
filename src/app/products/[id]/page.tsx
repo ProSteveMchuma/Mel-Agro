@@ -26,15 +26,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         };
     }
 
-    const description = (product.description || '').substring(0, 160);
-    const seoDescription = `Buy original ${product.name} online at Mel-Agro. ${description} Fast nationwide delivery in Kenya.`;
+    const description = (product.description || '').substring(0, 150);
+    const seoDescription = `Buy original ${product.name} online at Mel-Agro Kenya for KES ${product.price.toLocaleString()}. Certified ${product.category} with fast farm delivery to Nakuru, Eldoret, Kisumu, Nairobi, and countrywide. ${description}`;
 
     const ogImage = `${baseUrl}/api/og/product?name=${encodeURIComponent(product.name)}&price=${product.price}&category=${encodeURIComponent(product.category)}&image=${encodeURIComponent(product.image)}`;
+
+    const keywords = [
+        product.name,
+        product.brand || "",
+        product.category,
+        `Buy ${product.name} online`,
+        `Original ${product.name} price Kenya`,
+        `Where to buy ${product.name}`,
+        `Certified ${product.category} Kenya`,
+        `Buy ${product.name} Nairobi`,
+        `Buy ${product.name} Nakuru`,
+        `Buy ${product.name} Eldoret`,
+        `Mel-Agro products`,
+        "certified agrovet Kenya",
+        "agricultural inputs online"
+    ].filter(Boolean);
 
     return {
         title: `Buy ${product.name} Online - Fast Delivery in Kenya | Mel-Agro`,
         description: seoDescription,
-        keywords: [product.name, product.category, `Buy ${product.name} Kenya`, `Buy ${product.category} online Kenya`, "Mel-Agro", "Certified Agrochemicals"],
+        keywords,
         openGraph: {
             title: `Buy ${product.name} Online | Mel-Agro Kenya`,
             description: seoDescription,
@@ -83,6 +99,7 @@ export default async function Page({ params }: Props) {
         image: product.image,
         description: product.description || '',
         sku: product.id,
+        mpn: product.productCode || product.id,
         brand: {
             '@type': 'Brand',
             name: product.brand || 'Mel-Agro'
@@ -93,6 +110,43 @@ export default async function Page({ params }: Props) {
             priceCurrency: 'KES',
             availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
             url: `https://${domain}/products/${id}`,
+            priceValidUntil: `${new Date().getFullYear() + 1}-12-31`,
+            itemCondition: 'https://schema.org/NewCondition',
+            shippingDetails: {
+                '@type': 'OfferShippingDetails',
+                shippingRate: {
+                    '@type': 'MonetaryAmount',
+                    value: product.price >= 10000 ? 0 : 300,
+                    currency: 'KES'
+                },
+                shippingDestination: {
+                    '@type': 'DefinedRegion',
+                    addressCountry: 'KE'
+                },
+                deliveryTime: {
+                    '@type': 'ShippingDeliveryTime',
+                    handlingTime: {
+                        '@type': 'QuantitativeValue',
+                        minValue: 0,
+                        maxValue: 1,
+                        unitCode: 'DAY'
+                    },
+                    transitTime: {
+                        '@type': 'QuantitativeValue',
+                        minValue: 1,
+                        maxValue: 3,
+                        unitCode: 'DAY'
+                    }
+                }
+            },
+            hasMerchantReturnPolicy: {
+                '@type': 'MerchantReturnPolicy',
+                applicableCountry: 'KE',
+                returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnPeriod',
+                merchantReturnDays: 7,
+                returnMethod: 'https://schema.org/ReturnByMail',
+                returnFees: 'https://schema.org/FreeReturn'
+            }
         },
         ...(product.rating ? {
             aggregateRating: {

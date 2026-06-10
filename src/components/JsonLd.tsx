@@ -44,6 +44,48 @@ export default function JsonLd() {
         },
     };
 
+    const localBusinessJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'Store',
+        name: 'Mel-Agro Digital Agrovet',
+        image: `${SITE_URL}/og-image.jpg`,
+        '@id': `${SITE_URL}/#localbusiness`,
+        url: SITE_URL,
+        telephone: '+254748970757',
+        priceRange: '$$',
+        address: {
+            '@type': 'PostalAddress',
+            streetAddress: 'Makamithi Towers, 4th Floor, Ngong Road',
+            addressLocality: 'Nairobi',
+            addressRegion: 'Nairobi County',
+            postalCode: '00100',
+            addressCountry: 'KE',
+        },
+        geo: {
+            '@type': 'GeoCoordinates',
+            latitude: -1.3005,
+            longitude: 36.7869
+        },
+        openingHoursSpecification: {
+            '@type': 'OpeningHoursSpecification',
+            dayOfWeek: [
+                'Monday',
+                'Tuesday',
+                'Wednesday',
+                'Thursday',
+                'Friday',
+                'Saturday'
+            ],
+            opens: '08:00',
+            closes: '18:00'
+        },
+        sameAs: [
+            'https://facebook.com/Melagri',
+            'https://twitter.com/Melagri',
+            'https://instagram.com/Melagri',
+        ]
+    };
+
     return (
         <>
             <script
@@ -53,6 +95,10 @@ export default function JsonLd() {
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+            />
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
             />
         </>
     );

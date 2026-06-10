@@ -4,12 +4,12 @@ import Link from "next/link";
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: "Our Heritage & Vision",
-    description: "Bringing Quality Agricultural Inputs Online in Kenya. Learn about Mel-Agri's mission to transform Kenyan agriculture and our legacy of excellence.",
+    title: "About Mel-Agro | Premium Agritech & Agrovet Supplier Kenya",
+    description: "Learn about Mel-Agro, a proud subsidiary of Makamithi. For over 20 years, we have supplied premium certified hybrid seeds, high-yield fertilizers, and agrochemicals to Kenyan farmers.",
     alternates: { canonical: '/about' },
     openGraph: {
-        title: 'Our Heritage & Vision | Mel-Agro',
-        description: '20+ years of agricultural expertise, now digital. Subsidiary of Makamithi.',
+        title: 'About Mel-Agro | Premium Agritech & Agrovet Supplier Kenya',
+        description: '20+ years of agricultural expertise, now digital. Proud subsidiary of Makamithi.',
         url: '/about',
     },
 };
@@ -52,7 +52,7 @@ export default function AboutPage() {
                                         Our Heritage
                                     </div>
                                     <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 tracking-tight">
-                                        A Proud Subsidiary of <span className="text-melagri-primary">Mel-Agri</span>
+                                        A Proud Subsidiary of <span className="text-melagri-primary">Makamithi</span>
                                     </h2>
                                     <div className="space-y-6 text-gray-600 text-lg leading-relaxed">
                                         <p>

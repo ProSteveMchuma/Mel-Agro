@@ -8,16 +8,16 @@ export default function AdminReviewsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
 
-    useEffect(() => {
-        loadReviews();
-    }, []);
-
     const loadReviews = async () => {
         setIsLoading(true);
         const data = await getAllReviewsForAdmin();
         setReviews(data);
         setIsLoading(false);
     };
+
+    useEffect(() => {
+        loadReviews();
+    }, []);
 
     const handleStatusUpdate = async (id: string, status: 'approved' | 'rejected') => {
         const success = await updateReviewStatus(id, status);

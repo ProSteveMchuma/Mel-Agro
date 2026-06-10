@@ -105,7 +105,7 @@ export default function CartPage() {
 
                             {/* Order Summary */}
                             <div className="lg:w-1/3">
-                                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 sticky top-24">
+                                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 sticky top-[120px]">
                                     <h2 className="text-xl font-bold mb-6 text-gray-900">Order Summary</h2>
 
                                     <div className="space-y-4 mb-6 text-gray-600">
