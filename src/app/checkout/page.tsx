@@ -11,8 +11,8 @@ import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import { doc, updateDoc, setDoc, onSnapshot } from 'firebase/firestore';
-import { getAuth, updateProfile as updateAuthProfile } from 'firebase/auth';
-import { db } from '@/lib/firebase';
+import { getAuth, updateProfile as updateAuthProfile, signInAnonymously } from 'firebase/auth';
+import { db, auth } from '@/lib/firebase';
 import { generateWhatsAppMessage, getWhatsAppUrl } from '@/lib/whatsapp';
 import { useBehavior } from '@/context/BehaviorContext';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
@@ -38,6 +38,7 @@ export default function CheckoutPage() {
     const router = useRouter();
     const { cartItems, cartTotal, clearCart, removeFromCart, updateQuantity } = useCart();
     const { user } = useAuth();
+    const isGuest = !user || user.isAnonymous;
     const { addOrder, orders: userOrders } = useOrders();
     const { trackAction } = useBehavior();
     const { products: catalog } = useProducts();
@@ -53,7 +54,7 @@ export default function CheckoutPage() {
     const [paymentFailure, setPaymentFailure] = useState<{ orderId: string; message: string } | null>(null);
 
     // Name-capture gate — phone-OTP signups land here without a real name
-    const needsName = !!user && (!user.name || user.name === 'User');
+    const needsName = !!user && !user.isAnonymous && (!user.name || user.name === 'User');
     const [profileName, setProfileName] = useState('');
     const [savingName, setSavingName] = useState(false);
     const [profileError, setProfileError] = useState('');
@@ -324,30 +325,61 @@ export default function CheckoutPage() {
     };
 
     const onSubmit = async (data: CheckoutFormData) => {
-        if (!user) {
-            toast.error("Please sign in to complete your order.");
-            // Smart Redirect: Save current path as callback
-            router.push(`/auth/login?callbackUrl=/checkout`);
-            return;
+        let activeUser = user;
+        if (!activeUser) {
+            setIsProcessing(true);
+            const loadingToast = toast.loading("Processing guest checkout...");
+            try {
+                const credential = await signInAnonymously(auth);
+                // Pre-populate Firestore document with the guest details
+                await setDoc(doc(db, 'users', credential.user.uid), {
+                    name: data.shipping.fullName.trim(),
+                    email: data.shipping.email || '',
+                    phone: data.shipping.phone || '',
+                    address: data.shipping.address || '',
+                    city: data.shipping.town || '',
+                    county: data.shipping.county || '',
+                    role: 'user',
+                    createdAt: new Date().toISOString()
+                });
+                activeUser = {
+                    uid: credential.user.uid,
+                    name: data.shipping.fullName.trim(),
+                    email: data.shipping.email || '',
+                    role: 'user',
+                    phone: data.shipping.phone,
+                    isAnonymous: true
+                };
+                toast.dismiss(loadingToast);
+            } catch (err: any) {
+                console.error("Anonymous authentication failed:", err);
+                toast.error("Failed to process guest checkout. Please try logging in.", { id: loadingToast });
+                setIsProcessing(false);
+                return;
+            }
+        } else {
+            setIsProcessing(true);
         }
 
         if (cartItems.length === 0) {
             toast.error("Your cart is empty.");
             router.push('/products');
+            setIsProcessing(false);
             return;
         }
 
         const requiresPayment = ['mpesa', 'manual_mpesa', 'card'].includes(data.paymentMethod);
         if (requiresPayment && total <= 0) {
             toast.error("Order total must be greater than zero for this payment method.");
+            setIsProcessing(false);
             return;
         }
         if (total < 0) {
             toast.error("Order total cannot be negative — adjust loyalty points.");
+            setIsProcessing(false);
             return;
         }
 
-        setIsProcessing(true);
         try {
             // Helper to remove undefined values recursively
             const cleanObject = (obj: any): any => {
@@ -361,8 +393,8 @@ export default function CheckoutPage() {
             };
 
             const orderData = cleanObject({
-                userId: user.uid,
-                userName: (user?.name && user.name !== 'User') ? user.name : data.shipping.fullName.trim(),
+                userId: activeUser.uid,
+                userName: (activeUser?.name && activeUser.name !== 'User') ? activeUser.name : data.shipping.fullName.trim(),
                 userEmail: data.shipping.email,
                 items: cartItems.map(item => ({
                     id: item.id,
@@ -400,11 +432,11 @@ export default function CheckoutPage() {
             const newOrder = await addOrder(orderData, discountFromPoints);
 
             // Mark cart as converted for analytics
-            await updateDoc(doc(db, 'carts', user.uid), {
+            await setDoc(doc(db, 'carts', activeUser.uid), {
                 status: 'converted',
                 convertedAt: new Date().toISOString(),
                 lastOrderId: newOrder.id
-            }).catch(() => { });
+            }, { merge: true }).catch(() => { });
 
             if (data.paymentMethod === 'whatsapp') {
                 const message = generateWhatsAppMessage({
@@ -415,7 +447,7 @@ export default function CheckoutPage() {
                         price: item.price
                     })),
                     total: total,
-                    userName: (user?.name && user.name !== 'User') ? user.name : data.shipping.fullName,
+                    userName: (activeUser?.name && activeUser.name !== 'User') ? activeUser.name : data.shipping.fullName,
                     phone: data.shipping.phone,
                     address: `${data.shipping.address}, ${data.shipping.town}, ${data.shipping.county}`
                 });
@@ -757,6 +789,24 @@ export default function CheckoutPage() {
                                             className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm"
                                         >
                                             <h2 className="text-2xl font-bold mb-8 text-gray-900">Contact Information</h2>
+
+                                            {isGuest && (
+                                                <div className="mb-8 p-6 bg-gradient-to-r from-emerald-50/50 to-green-50/20 rounded-2xl border border-green-100 flex items-center justify-between gap-4 flex-wrap">
+                                                    <div className="flex items-start gap-3 flex-1 min-w-[240px]">
+                                                        <span className="text-xl mt-0.5">💡</span>
+                                                        <div>
+                                                            <p className="text-sm font-black text-gray-900 tracking-tight">Checking out as a Guest</p>
+                                                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">Sign in or create an account to instantly retrieve saved addresses and earn loyalty points on this purchase.</p>
+                                                        </div>
+                                                    </div>
+                                                    <Link 
+                                                        href="/auth/login?callbackUrl=/checkout"
+                                                        className="px-5 py-2.5 bg-white border border-gray-200 hover:border-melagri-primary text-gray-700 hover:text-melagri-primary text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-sm shrink-0"
+                                                    >
+                                                        Log In / Register
+                                                    </Link>
+                                                </div>
+                                            )}
 
                                             {user?.savedAddresses && user.savedAddresses.length > 0 && (
                                                 <div className="mb-8 p-6 bg-gray-50 rounded-2xl border border-gray-100">

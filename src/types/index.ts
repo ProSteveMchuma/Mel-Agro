@@ -16,6 +16,7 @@ export interface User {
     affinityIndex?: Record<string, number>;
     intentScore?: number;
     lastBehavioralSync?: string;
+    isAnonymous?: boolean;
 }
 
 export interface SavedAddress {

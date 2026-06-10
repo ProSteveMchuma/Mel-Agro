@@ -46,21 +46,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
                     const cartDoc = await getDoc(doc(db, 'carts', user.uid));
                     if (cartDoc.exists()) {
                         const cloudItems = (cartDoc.data().items || []) as CartItem[];
-                        // Merge strategy: keep all unique cart items, summing quantities for duplicates.
-                        // Key = cartItemId (which already encodes product+variant uniqueness) so a 5kg
-                        // and 50kg variant of the same product won't collide.
-                        const keyOf = (it: CartItem) => it.cartItemId || `${it.id}-${it.selectedVariant?.id || 'base'}`;
-                        const merged = new Map<string, CartItem>();
-                        for (const it of [...items, ...cloudItems]) {
-                            const k = keyOf(it);
-                            const existing = merged.get(k);
-                            if (existing) {
-                                merged.set(k, { ...existing, quantity: existing.quantity + it.quantity });
-                            } else {
-                                merged.set(k, { ...it });
-                            }
+                        // If local/guest cart has items, we do NOT merge with cloud items to prevent duplicate quantities.
+                        // We only load cloud items if the local cart is empty.
+                        if (items.length === 0) {
+                            items = cloudItems;
                         }
-                        items = Array.from(merged.values());
                     }
                 } catch (e) {
                     console.error("Failed to sync cloud cart", e);

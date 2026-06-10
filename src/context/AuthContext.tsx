@@ -18,6 +18,29 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+async function claimGuestOrders(guestToken: string, firebaseUser: any) {
+    try {
+        const idToken = await firebaseUser.getIdToken();
+        const res = await fetch('/api/orders/claim', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ guestToken })
+        });
+        const data = await res.json();
+        if (data.success) {
+            console.log("Guest orders and loyalty points claimed successfully");
+            sessionStorage.removeItem('melagro_guest_id_token');
+        } else {
+            console.warn("Failed to claim guest orders:", data.message);
+        }
+    } catch (err) {
+        console.error("Error claiming guest orders:", err);
+    }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -45,7 +68,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(null);
                 setIsAuthenticated(false);
                 setIsLoading(false);
+                sessionStorage.removeItem('melagro_guest_id_token');
                 return;
+            }
+
+            if (firebaseUser.isAnonymous) {
+                try {
+                    const token = await firebaseUser.getIdToken();
+                    sessionStorage.setItem('melagro_guest_id_token', token);
+                } catch (e) {
+                    console.warn('AuthContext: failed to cache guest token', e);
+                }
+            } else {
+                const guestToken = sessionStorage.getItem('melagro_guest_id_token');
+                if (guestToken) {
+                    claimGuestOrders(guestToken, firebaseUser);
+                }
             }
 
             const userEmail = (firebaseUser.email || '').toLowerCase();
@@ -93,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         county: data.county,
                         loyaltyPoints: data.loyaltyPoints || 0,
                         savedAddresses: data.savedAddresses || [],
+                        isAnonymous: firebaseUser.isAnonymous,
                     });
                     setIsAuthenticated(true);
                     setIsLoading(false);

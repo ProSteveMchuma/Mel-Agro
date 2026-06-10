@@ -241,6 +241,23 @@ export default function UserDashboard() {
                 <p className="text-gray-600">Here's what's happening with your farm inputs today.</p>
             </div>
 
+            {user.isAnonymous && (
+                <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-green-900/10">
+                    <div className="absolute top-0 right-0 p-8 opacity-10 transform scale-150 rotate-12">🔐</div>
+                    <div className="relative z-10">
+                        <h3 className="text-xl font-black mb-2 leading-tight">Secure Your Farmer Account 🌾</h3>
+                        <p className="text-white/90 text-sm leading-relaxed max-w-2xl">
+                            You are logged in as a Guest. To permanently save your order history, delivery addresses, and earn Mel-Agri loyalty points, link this session to a permanent account now.
+                        </p>
+                        <div className="mt-6">
+                            <Link href="/auth/login?callbackUrl=/dashboard/user" className="inline-block bg-white text-green-700 hover:bg-green-50 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all hover:scale-105">
+                                Sign In / Create Account
+                            </Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {retryableOrders.length > 0 && (
                 <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-2xl p-6 shadow-sm">
                     <div className="flex items-start justify-between gap-4 flex-wrap">

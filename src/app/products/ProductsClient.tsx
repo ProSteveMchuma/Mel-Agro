@@ -9,6 +9,7 @@ import { Product, getProductsPage, getUniqueBrands, getUniqueCategories } from "
 import { fuzzySearch } from "@/components/SmartSearch";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useProducts } from "@/context/ProductContext";
 
 
 interface ProductsClientProps {
@@ -20,6 +21,7 @@ interface ProductsClientProps {
 export default function ProductsClient({ initialProducts, initialBrands, initialCategories }: ProductsClientProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
+    const { products: allCatalogProducts } = useProducts();
 
     // State for filters - initialize from URL
     const [selectedBrands, setSelectedBrands] = useState<string[]>(() => {
@@ -281,6 +283,7 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                                 priceRange={priceRange}
                                 selectedBrands={selectedBrands}
                                 initialProducts={initialProducts}
+                                allCatalogProducts={allCatalogProducts}
                             />
                         </Suspense>
                     </div>
@@ -292,7 +295,19 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
     );
 }
 
-function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }: { category: string, priceRange: [number, number], selectedBrands: string[], initialProducts: Product[] }) {
+function ProductsGrid({ 
+    category, 
+    priceRange, 
+    selectedBrands, 
+    initialProducts,
+    allCatalogProducts 
+}: { 
+    category: string, 
+    priceRange: [number, number], 
+    selectedBrands: string[], 
+    initialProducts: Product[],
+    allCatalogProducts: Product[] 
+}) {
     // Only use initialProducts if they match the current category filter (simple check)
     // Actually, on mount, category should match what page.tsx used. 
     // But if user changes category, we discard initialProducts.
@@ -386,9 +401,18 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
         }
     }, [category, selectedBrands]);
 
+    const searchQuery = searchParams.get("search");
+
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }, [searchQuery, category, selectedBrands]);
+
     const filteredProducts = useMemo(() => {
-        let filtered = [...products];
         const searchQuery = searchParams.get("search");
+        // If a search query is active, filter the entire catalog from the context.
+        // Otherwise, filter the paginated batch of products.
+        const baseProducts = searchQuery ? allCatalogProducts : products;
+        let filtered = [...baseProducts];
 
         if (searchQuery) {
             filtered = fuzzySearch(filtered, searchQuery);
@@ -402,8 +426,12 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
             filtered = filtered.filter(p => p.brand && selectedBrands.includes(p.brand));
         }
 
+        if (searchQuery && category && category !== "All Products" && category !== "") {
+            filtered = filtered.filter(p => p.category === category);
+        }
+
         return filtered;
-    }, [products, searchParams, priceRange, selectedBrands]); // Added selectedBrands dep
+    }, [products, allCatalogProducts, searchParams, priceRange, selectedBrands, category]);
 
     if (isLoading && products.length === 0) return (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
@@ -440,7 +468,7 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
                 ))}
             </div>
 
-            {hasMore && (
+            {!searchParams.get("search") && hasMore && (
                 <div className="flex justify-center pt-8">
                     <button
                         onClick={() => loadProducts(false)}

@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction, limit } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, setDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction, limit } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { NotificationService } from '@/lib/notifications';
 import { SmsService } from '@/lib/sms';
@@ -289,16 +289,16 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                             isPrimary: existing.length === 0,
                             savedAt: date,
                         };
-                        await updateDoc(userRef, {
+                        await setDoc(userRef, {
                             savedAddresses: [...existing, newAddress],
                             preferredPaymentMethod: orderData.paymentMethod || null,
                             lastOrderAt: date,
-                        });
+                        }, { merge: true });
                     } else {
-                        await updateDoc(userRef, {
+                        await setDoc(userRef, {
                             preferredPaymentMethod: orderData.paymentMethod || null,
                             lastOrderAt: date,
-                        });
+                        }, { merge: true });
                     }
                 }
             }

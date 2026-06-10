@@ -17,11 +17,7 @@ export default function CartPage() {
     const total = cartTotal + shipping;
 
     const handleCheckout = () => {
-        if (!isAuthenticated) {
-            router.push('/auth/login?callbackUrl=/checkout');
-        } else {
-            router.push('/checkout');
-        }
+        router.push('/checkout');
     };
 
     return (
