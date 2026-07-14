@@ -76,7 +76,7 @@ export default function MobileNav() {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md shadow-[0_-5px_20px_rgba(0,0,0,0.03)] lg:hidden z-50 safe-area-bottom pb-safe">
+        <nav aria-label="Mobile navigation" className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md shadow-[0_-5px_20px_rgba(0,0,0,0.03)] lg:hidden z-50 safe-area-bottom pb-safe">
             <div className="flex items-center justify-around">
                 {navItems.map((item) => {
                     const isActive = pathname === item.href;
@@ -84,7 +84,8 @@ export default function MobileNav() {
                         <Link
                             key={item.name}
                             href={item.href}
-                            className={`flex flex-col items-center justify-center py-3 px-2 w-full transition-colors ${isActive ? 'text-melagri-primary' : 'text-gray-500 hover:text-gray-900'}`}
+                            aria-current={isActive ? "page" : undefined}
+                            className={`min-h-14 flex flex-col items-center justify-center py-2 px-2 w-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-green-600 ${isActive ? 'text-melagri-primary' : 'text-gray-600 hover:text-gray-900'}`}
                         >
                             {item.icon(isActive)}
                             <span className="text-[10px] font-medium mt-1">{item.name}</span>
@@ -92,6 +93,6 @@ export default function MobileNav() {
                     )
                 })}
             </div>
-        </div>
+        </nav>
     );
 }

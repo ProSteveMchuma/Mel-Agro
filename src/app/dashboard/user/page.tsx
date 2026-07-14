@@ -48,6 +48,15 @@ export default function UserDashboard() {
     const [showProfileModal, setShowProfileModal] = useState(false);
 
     useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const requestedTab = new URLSearchParams(window.location.search).get('tab');
+        const validTabs: Tab[] = ['dashboard', 'orders', 'returns', 'notifications', 'profile', 'support', 'wishlist', 'addresses', 'payments'];
+        if (requestedTab && validTabs.includes(requestedTab as Tab)) {
+            setActiveTab(requestedTab as Tab);
+        }
+    }, []);
+
+    useEffect(() => {
         // Smart Profile Prompt: Only annoy user if they have NEITHER phone nor email
         // or if they have a generic name but are trying to do something active.
         if (user && !user.phone && !user.email) {
@@ -656,7 +665,7 @@ export default function UserDashboard() {
                         <p className="text-[10px] text-gray-400">Fastest response</p>
                     </div>
                 </a>
-                <a href="mailto:support@Mel-Agri.com" className="p-6 bg-white border border-gray-100 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                <a href="mailto:proinnovationtech@gmail.com" className="p-6 bg-white border border-gray-100 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
                     <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     </div>
@@ -871,6 +880,43 @@ export default function UserDashboard() {
                                     </div>
                                 );
                             })()}
+                            <div className="flex flex-wrap gap-3 mb-4">
+                                {selectedOrder.status === 'Processing' && selectedOrder.paymentStatus !== 'Paid' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleCancelOrder(selectedOrder.id)}
+                                        className="min-h-11 px-4 py-2 border border-red-200 bg-red-50 text-red-700 text-xs font-bold rounded-xl hover:bg-red-100 transition-colors"
+                                    >
+                                        Cancel Order
+                                    </button>
+                                )}
+                                {selectedOrder.status === 'Shipped' && (
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            await handleConfirmReceipt(selectedOrder.id);
+                                            toast.success('Delivery confirmed');
+                                        }}
+                                        className="min-h-11 px-4 py-2 bg-melagri-primary text-white text-xs font-bold rounded-xl hover:bg-melagri-secondary transition-colors"
+                                    >
+                                        Confirm Delivery
+                                    </button>
+                                )}
+                                {selectedOrder.status === 'Delivered' && !selectedOrder.returnStatus && (
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRequestReturn(selectedOrder.id)}
+                                        className="min-h-11 px-4 py-2 border border-amber-200 bg-amber-50 text-amber-800 text-xs font-bold rounded-xl hover:bg-amber-100 transition-colors"
+                                    >
+                                        Request Return
+                                    </button>
+                                )}
+                                {selectedOrder.returnStatus && (
+                                    <span className="min-h-11 inline-flex items-center px-4 py-2 bg-amber-50 text-amber-800 text-xs font-bold rounded-xl">
+                                        Return: {selectedOrder.returnStatus}
+                                    </span>
+                                )}
+                            </div>
                             <div className="grid grid-cols-3 gap-2 md:gap-3">
                                 <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('invoice'); }} className="py-2.5 md:py-3 px-2 md:px-4 bg-gray-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:scale-[1.02] transition-all">Invoice</button>
                                 <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('receipt'); }} className="py-2.5 md:py-3 px-2 md:px-4 bg-gray-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:scale-[1.02] transition-all">Receipt</button>

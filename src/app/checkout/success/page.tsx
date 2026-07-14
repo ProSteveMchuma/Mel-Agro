@@ -12,19 +12,21 @@ import { motion } from 'framer-motion';
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { format } from "date-fns";
+import { useCart } from "@/context/CartContext";
 
 function OrderSuccessContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const orderId = searchParams.get("orderId");
     const { orders } = useOrders();
+    const { clearCart } = useCart();
     const [order, setOrder] = useState<Order | null>(null);
     const [isNotFound, setIsNotFound] = useState(false);
     const [activeDocument, setActiveDocument] = useState<'invoice' | 'receipt' | null>(null);
 
     // Confetti on first paint of the order; no auto-redirect — let the user read at their pace.
     useEffect(() => {
-        if (order) {
+        if (order && (order.paymentStatus === 'Paid' || order.paymentMethod.includes('Cash') || order.paymentMethod.includes('WhatsApp'))) {
             confetti({
                 particleCount: 150,
                 spread: 70,
@@ -33,6 +35,12 @@ function OrderSuccessContent() {
             });
         }
     }, [order]);
+
+    useEffect(() => {
+        if (order?.paymentStatus === 'Paid') {
+            clearCart();
+        }
+    }, [order?.paymentStatus, clearCart]);
 
     useEffect(() => {
         const fetchOrder = async () => {
@@ -102,6 +110,8 @@ function OrderSuccessContent() {
         );
     }
 
+    const isCardPending = order.paymentMethod.toLowerCase().includes('card') && order.paymentStatus !== 'Paid';
+
     return (
         <main className="flex-grow py-12 px-4">
             {/* Document Overlay (Invoice or Receipt) */}
@@ -155,14 +165,16 @@ function OrderSuccessContent() {
                         <div className="md:w-2/3">
                             <div className="inline-flex items-center gap-2 bg-green-100 px-3 py-1 rounded-full mb-6">
                                 <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold">✓</div>
-                                <span className="text-[10px] font-black text-green-700 uppercase tracking-widest">Order Verified</span>
+                                <span className="text-[10px] font-black text-green-700 uppercase tracking-widest">{isCardPending ? 'Payment Pending' : 'Order Confirmed'}</span>
                             </div>
-                            <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Success!</h1>
+                            <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">{isCardPending ? 'Complete your payment' : 'Success!'}</h1>
                             <p className="text-gray-600 mb-8 text-lg leading-relaxed">
                                 Thank you for your order <span className="font-black text-gray-900">#{order.id.slice(0, 8)}</span>.
-                                {order.paymentMethod.includes('Cash') || order.paymentMethod.includes('WhatsApp')
+                                {isCardPending
+                                    ? "Your order is saved, but payment has not been confirmed yet. Return to Paystack or use your dashboard to choose another payment option."
+                                    : order.paymentMethod.includes('Cash') || order.paymentMethod.includes('WhatsApp')
                                     ? "Your order has been received. Please prepare payment for when your items are ready for delivery/pickup."
-                                    : "We've sent an Email, SMS and WhatsApp confirmation to your registered contacts."}
+                                    : "Payment is confirmed. We'll send order updates using the contact details you provided."}
                             </p>
                             <p className="text-xs text-gray-400 mb-4 italic">Save your receipt below — you can return to your dashboard anytime.</p>
                             <div className="flex flex-col sm:flex-row gap-4">

@@ -421,9 +421,14 @@ export default function CheckoutPage() {
                 phone: data.shipping.phone,
                 paymentMethod: data.paymentMethod === 'whatsapp' ? 'WhatsApp Order' :
                     (data.paymentMethod === 'cod' ? 'Cash on Delivery' :
-                        (data.paymentMethod === 'manual_mpesa' ? `M-Pesa Till (${data.transactionCode})` : 'M-Pesa')),
+                        (data.paymentMethod === 'manual_mpesa' ? `M-Pesa Till${data.transactionCode ? ` (${data.transactionCode})` : ''}` :
+                            (data.paymentMethod === 'card' ? 'Card (Paystack)' : 'M-Pesa'))),
+                paymentMethodCode: data.paymentMethod,
                 paymentStatus: data.paymentMethod === 'whatsapp' ? 'Pending WhatsApp' :
                     (data.paymentMethod === 'manual_mpesa' ? 'Pending Verification' : 'Unpaid'),
+                reservationExpiresAt: ['mpesa', 'card'].includes(data.paymentMethod)
+                    ? new Date(Date.now() + 30 * 60 * 1000).toISOString()
+                    : null,
                 shippingMethod: data.shippingMethod,
                 shippingCost: shippingCost,
                 notificationPreferences: ['sms', 'email']
@@ -610,7 +615,6 @@ export default function CheckoutPage() {
                 const resData = await response.json();
                 if (resData.success && resData.url) {
                     toast.success("Redirecting to secure payment...", { id: loadingToast });
-                    clearCart();
                     window.location.href = resData.url;
                     return;
                 } else {
@@ -998,9 +1002,11 @@ export default function CheckoutPage() {
 
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {/* M-Pesa Option */}
-                                                <div
+                                                <button
+                                                    type="button"
                                                     onClick={() => setValue('paymentMethod', 'mpesa')}
-                                                    className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'mpesa'
+                                                    aria-pressed={paymentMethod === 'mpesa'}
+                                                    className={`relative w-full text-left cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 ${paymentMethod === 'mpesa'
                                                         ? 'border-[#22c55e] bg-green-50/50 shadow-sm ring-2 ring-[#22c55e]/20'
                                                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                                         }`}
@@ -1020,12 +1026,14 @@ export default function CheckoutPage() {
                                                         <span className="font-bold text-gray-900">M-Pesa Express</span>
                                                     </div>
                                                     <p className="text-sm text-gray-500 font-medium">Instant payment directly from your phone.</p>
-                                                </div>
+                                                </button>
 
                                                 {/* M-Pesa Manual (Paybill) */}
-                                                <div
+                                                <button
+                                                    type="button"
                                                     onClick={() => setValue('paymentMethod', 'manual_mpesa')}
-                                                    className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'manual_mpesa'
+                                                    aria-pressed={paymentMethod === 'manual_mpesa'}
+                                                    className={`relative w-full text-left cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 ${paymentMethod === 'manual_mpesa'
                                                         ? 'border-[#22c55e] bg-green-50/50 shadow-sm ring-2 ring-[#22c55e]/20'
                                                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                                         }`}
@@ -1043,12 +1051,14 @@ export default function CheckoutPage() {
                                                         <span className="font-bold text-gray-900">Buy Goods (Till)</span>
                                                     </div>
                                                     <p className="text-sm text-gray-500 font-medium">Pay manually via M-Pesa Menu.</p>
-                                                </div>
+                                                </button>
 
                                                 {/* WhatsApp Order Option */}
-                                                <div
+                                                <button
+                                                    type="button"
                                                     onClick={() => setValue('paymentMethod', 'whatsapp')}
-                                                    className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'whatsapp'
+                                                    aria-pressed={paymentMethod === 'whatsapp'}
+                                                    className={`relative w-full text-left cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 ${paymentMethod === 'whatsapp'
                                                         ? 'border-[#25D366] bg-green-50 shadow-sm ring-2 ring-[#25D366]/20'
                                                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                                         }`}
@@ -1066,7 +1076,7 @@ export default function CheckoutPage() {
                                                         <span className="font-bold text-gray-900">WhatsApp Order</span>
                                                     </div>
                                                     <p className="text-sm text-gray-500 font-medium">Order via WhatsApp and pay on delivery.</p>
-                                                </div>
+                                                </button>
 
                                                 {/* Card Payment (Paystack) — temporarily hidden until Paystack credentials are configured.
                                                     Re-enable by uncommenting this block AND setting PAYSTACK_SECRET_KEY +
@@ -1095,9 +1105,11 @@ export default function CheckoutPage() {
                                                 */}
 
                                                 {/* Cash on Delivery Option */}
-                                                <div
+                                                <button
+                                                    type="button"
                                                     onClick={() => setValue('paymentMethod', 'cod')}
-                                                    className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'cod'
+                                                    aria-pressed={paymentMethod === 'cod'}
+                                                    className={`relative w-full text-left cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-800 focus-visible:ring-offset-2 ${paymentMethod === 'cod'
                                                         ? 'border-gray-800 bg-gray-100 shadow-sm ring-2 ring-gray-800/20'
                                                         : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                                                         }`}
@@ -1115,7 +1127,7 @@ export default function CheckoutPage() {
                                                         <span className="font-bold text-gray-900">Cash on Delivery</span>
                                                     </div>
                                                     <p className="text-sm text-gray-500 font-medium">Pay with cash or M-Pesa upon delivery/pickup.</p>
-                                                </div>
+                                                </button>
                                             </div>
 
                                             {/* Selected Payment Details */}
