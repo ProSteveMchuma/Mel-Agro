@@ -180,7 +180,7 @@ export default function ContactPage() {
                                 },
                                 {
                                     question: "Can I return items?",
-                                    answer: "Yes! We have a 14-day return policy for unopened items. Contact support for returns."
+                                    answer: "Eligible unopened, defective, or incorrect items can be returned within 7 days of delivery. Some seeds, live plants, and opened crop-protection products are excluded."
                                 }
                             ].map((faq, idx) => (
                                 <div key={idx} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
@@ -202,7 +202,7 @@ export default function ContactPage() {
                             <Link href="tel:+254748970757" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">
                                 📞 Call Us
                             </Link>
-                            <Link href="mailto:proinnovationtech@gmail.com" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">
+                            <Link href="mailto:support@melagri.com" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">
                                 📧 Email
                             </Link>
                         </div>

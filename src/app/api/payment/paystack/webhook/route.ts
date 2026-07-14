@@ -68,26 +68,41 @@ export async function POST(request: Request) {
                     return NextResponse.json({ status: 'already_paid' });
                 }
 
+                const orderTotal = Number(orderDoc.data()?.total || 0);
+                const amountPaid = Number(amount) / 100;
+                if (!orderTotal || Math.abs(amountPaid - orderTotal) > 1) {
+                    await orderRef.update({
+                        paymentStatus: 'Pending Verification',
+                        status: 'Pending Payment',
+                        amountPaid,
+                        paystackReference: reference,
+                        paymentFailureReason: `Amount mismatch: received KES ${amountPaid}, expected KES ${orderTotal}`,
+                        updatedAt: new Date().toISOString(),
+                    });
+                    console.warn(`Paystack amount mismatch for order ${orderId}: received ${amountPaid}, expected ${orderTotal}`);
+                    return NextResponse.json({ status: 'amount_mismatch' });
+                }
+
                 await orderRef.update({
                     paymentStatus: 'Paid',
                     paymentMethod: 'Card',
                     paystackReference: reference,
                     paystackId: String(id),
                     transactionId: reference,
-                    amountPaid: Number(amount) / 100,
+                    amountPaid,
                     paidAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     history: admin.firestore.FieldValue.arrayUnion({
                         status: 'Paid',
                         timestamp: new Date().toISOString(),
-                        message: `Payment of ${Number(amount) / 100} KES confirmed via Paystack (Ref: ${reference})`,
+                        message: `Payment of ${amountPaid} KES confirmed via Paystack (Ref: ${reference})`,
                     }),
                 });
 
                 await adminDb.collection('transactions').add({
                     orderId,
                     userId: orderDoc.data()?.userId || null,
-                    amount: Number(amount) / 100,
+                    amount: amountPaid,
                     receipt: reference,
                     method: 'Card (Paystack)',
                     date: new Date().toISOString(),
@@ -103,7 +118,7 @@ export async function POST(request: Request) {
                         ...orderData,
                         id: orderId,
                         paymentMethod: 'Card',
-                        amountPaid: Number(amount) / 100,
+                        amountPaid,
                     } as any;
                     const tpl = CommunicationTemplates.getPaymentReceived(orderForTpl, {
                         receipt: reference,

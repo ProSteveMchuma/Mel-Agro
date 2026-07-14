@@ -42,7 +42,14 @@ service cloud.firestore {
       allow update: if request.auth != null && (
         isAdmin() || (
           resource.data.userId == request.auth.uid && (
-            request.resource.data.diff(resource.data).affectedKeys().hasAny(['returnStatus', 'returnReason', 'checkoutRequestId', 'status'])
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['returnStatus', 'returnReason', 'checkoutRequestId', 'status']) &&
+            request.resource.data.get('paymentStatus', resource.data.get('paymentStatus', 'Unpaid')) == resource.data.get('paymentStatus', 'Unpaid') &&
+            request.resource.data.get('total', resource.data.get('total', 0)) == resource.data.get('total', 0) &&
+            request.resource.data.get('userId', resource.data.get('userId', '')) == resource.data.get('userId', '') &&
+            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
+              (request.resource.data.status == 'Cancelled' && resource.data.status in ['Pending Payment', 'Processing'])) &&
+            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['returnStatus']) ||
+              request.resource.data.returnStatus == 'Requested')
           )
         )
       );

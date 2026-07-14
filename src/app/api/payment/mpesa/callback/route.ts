@@ -63,6 +63,24 @@ export async function POST(request: Request) {
             const amountPaid = Number(findVal('Amount') || 0);
             const phoneNumber = String(findVal('PhoneNumber') || '');
             const transactionDate = String(findVal('TransactionDate') || '');
+            const orderTotal = Number(orderData.total || 0);
+            const amountMatches = orderTotal > 0 && Math.abs(amountPaid - orderTotal) < 1;
+
+            if (!amountMatches) {
+                await orderRef.update({
+                    paymentStatus: 'Pending Verification',
+                    status: 'Pending Payment',
+                    amountPaid,
+                    mpesaReceiptNumber,
+                    mpesaPhoneNumber: phoneNumber,
+                    mpesaTransactionDate: transactionDate,
+                    paymentFailureReason: `Amount mismatch: received KES ${amountPaid}, expected KES ${orderTotal}`,
+                    lastCallbackEventId: callbackEventId,
+                    updatedAt: new Date().toISOString(),
+                });
+                console.warn(`M-Pesa amount mismatch for order ${orderDoc.id}: received ${amountPaid}, expected ${orderTotal}`);
+                return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+            }
 
             await orderRef.update({
                 paymentStatus: 'Paid',
@@ -113,6 +131,7 @@ export async function POST(request: Request) {
         } else {
             await orderRef.update({
                 paymentStatus: 'Failed',
+                status: 'Pending Payment',
                 paymentFailureReason: ResultDesc,
                 paymentFailureCode: String(ResultCode),
                 paymentFailureMessage: getMpesaErrorMessage(ResultCode),

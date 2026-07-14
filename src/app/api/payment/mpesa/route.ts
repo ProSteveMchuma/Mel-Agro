@@ -5,7 +5,7 @@ import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 
 export async function POST(request: Request) {
     try {
-        const { orderId, phoneNumber, amount } = await request.json();
+        const { orderId, phoneNumber } = await request.json();
 
         if (!orderId) {
             return NextResponse.json(
@@ -13,9 +13,9 @@ export async function POST(request: Request) {
                 { status: 400 }
             );
         }
-        if (!phoneNumber || !amount) {
+        if (!phoneNumber) {
             return NextResponse.json(
-                { success: false, message: 'phoneNumber and amount are required' },
+                { success: false, message: 'phoneNumber is required' },
                 { status: 400 }
             );
         }
@@ -23,6 +23,22 @@ export async function POST(request: Request) {
         const auth = await requireOrderOwnerOrAdmin(request, orderId);
         if (!auth.ok) {
             return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
+        }
+
+        const snap = await adminDb.collection('orders').doc(orderId).get();
+        if (!snap.exists) {
+            return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
+        }
+        const order = snap.data();
+        const verifiedAmount = Number(order?.total);
+        if (!Number.isFinite(verifiedAmount) || verifiedAmount <= 0) {
+            return NextResponse.json({ success: false, message: 'Invalid order amount' }, { status: 400 });
+        }
+        if (order?.paymentStatus === 'Paid') {
+            return NextResponse.json(
+                { success: false, message: 'Order is already paid' },
+                { status: 409 }
+            );
         }
 
         if (!process.env.MPESA_CONSUMER_KEY) {
@@ -40,21 +56,9 @@ export async function POST(request: Request) {
             });
         }
 
-        const snap = await adminDb.collection('orders').doc(orderId).get();
-        if (!snap.exists) {
-            return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
-        }
-        const order = snap.data();
-        if (order?.paymentStatus === 'Paid') {
-            return NextResponse.json(
-                { success: false, message: 'Order is already paid' },
-                { status: 409 }
-            );
-        }
-
         const stkData = await initiateSTKPush({
             phoneNumber,
-            amount,
+            amount: verifiedAmount,
             accountReference: `Order-${String(orderId).slice(0, 8)}`,
             transactionDesc: `Mel-Agri Order ${String(orderId).slice(0, 8)}`,
         });

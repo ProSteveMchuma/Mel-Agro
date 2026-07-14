@@ -84,8 +84,8 @@ export interface Order {
         details: string;
         method?: string;
     };
-    paymentStatus?: 'Paid' | 'Unpaid' | 'Pending WhatsApp' | 'Failed';
-    status: 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
+    paymentStatus?: 'Paid' | 'Unpaid' | 'Pending Verification' | 'Pending WhatsApp' | 'Failed';
+    status: 'Pending Payment' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
     items: OrderItem[];
     createdAt?: string; // Compat
     notificationPreferences?: string[];

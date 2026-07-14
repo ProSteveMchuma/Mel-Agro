@@ -102,6 +102,19 @@ function OrderSuccessContent() {
         );
     }
 
+    const isPaid = order.paymentStatus === 'Paid';
+    const isPayOnDelivery = order.paymentMethod.includes('Cash') || order.paymentMethod.includes('WhatsApp');
+    const isPendingVerification = order.paymentStatus === 'Pending Verification';
+    const confirmationLabel = isPaid ? 'Payment Confirmed' : isPendingVerification ? 'Payment Under Review' : 'Order Received';
+    const confirmationTitle = isPaid ? 'Payment successful' : 'Your order is saved';
+    const confirmationMessage = isPaid
+        ? 'Your payment is confirmed and your order is now being prepared.'
+        : isPendingVerification
+            ? 'We received your payment details and will begin processing after our team verifies the transaction.'
+            : isPayOnDelivery
+                ? 'Your order has been received. Please prepare payment for delivery or collection.'
+                : 'Your order is awaiting payment confirmation. You can complete or retry payment from your dashboard.';
+
     return (
         <main className="flex-grow py-12 px-4">
             {/* Document Overlay (Invoice or Receipt) */}
@@ -153,16 +166,14 @@ function OrderSuccessContent() {
 
                         {/* Success Message */}
                         <div className="md:w-2/3">
-                            <div className="inline-flex items-center gap-2 bg-green-100 px-3 py-1 rounded-full mb-6">
-                                <div className="w-5 h-5 bg-green-600 rounded-full flex items-center justify-center text-white text-[10px] font-bold">✓</div>
-                                <span className="text-[10px] font-black text-green-700 uppercase tracking-widest">Order Verified</span>
+                            <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full mb-6 ${isPaid ? 'bg-green-100' : 'bg-amber-100'}`}>
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold ${isPaid ? 'bg-green-600' : 'bg-amber-500'}`}>✓</div>
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${isPaid ? 'text-green-700' : 'text-amber-800'}`}>{confirmationLabel}</span>
                             </div>
-                            <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">Success!</h1>
+                            <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">{confirmationTitle}</h1>
                             <p className="text-gray-600 mb-8 text-lg leading-relaxed">
                                 Thank you for your order <span className="font-black text-gray-900">#{order.id.slice(0, 8)}</span>.
-                                {order.paymentMethod.includes('Cash') || order.paymentMethod.includes('WhatsApp')
-                                    ? "Your order has been received. Please prepare payment for when your items are ready for delivery/pickup."
-                                    : "We've sent an Email, SMS and WhatsApp confirmation to your registered contacts."}
+                                {' '}{confirmationMessage}
                             </p>
                             <p className="text-xs text-gray-400 mb-4 italic">Save your receipt below — you can return to your dashboard anytime.</p>
                             <div className="flex flex-col sm:flex-row gap-4">
@@ -273,14 +284,14 @@ function OrderSuccessContent() {
                                     </div>
                                 </div>
 
-                                {/* Step 2: Processing */}
+                                {/* Step 2: Payment / Processing */}
                                 <div className="flex items-start gap-4 relative">
-                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 ${order.status === 'Processing' ? 'bg-melagri-primary animate-pulse shadow-lg shadow-green-500/20' : 'bg-melagri-primary'}`}>
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center z-10 ${order.status === 'Pending Payment' ? 'bg-amber-400 animate-pulse' : 'bg-melagri-primary shadow-lg shadow-green-500/20'}`}>
                                         <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
                                     </div>
                                     <div>
-                                        <p className="text-sm font-black text-gray-900">Processing</p>
-                                        <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase">Prepping for dispatch</p>
+                                        <p className="text-sm font-black text-gray-900">{order.status === 'Pending Payment' ? 'Awaiting Payment' : 'Processing'}</p>
+                                        <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase">{order.status === 'Pending Payment' ? 'Fulfilment starts after confirmation' : 'Preparing for dispatch'}</p>
                                     </div>
                                 </div>
 

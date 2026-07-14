@@ -357,7 +357,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                     </button>
                                 </div>
                                 <p className="text-xs text-gray-600 leading-normal">
-                                    Order now for delivery by <span className="font-bold text-gray-900">tomorrow</span>. Free delivery on orders over KES 10,000.
+                                    Delivery timing and cost are calculated for your county at checkout. Your final estimate is shown before you place the order.
                                 </p>
                             </div>
 

@@ -67,22 +67,14 @@ export async function POST(request: Request) {
         const resultDesc = data.ResultDesc || data.errorMessage || 'Unknown';
 
         if (resultCode === '0') {
-            if (orderRef && order && order.paymentStatus !== 'Paid') {
-                await orderRef.update({
-                    paymentStatus: 'Paid',
-                    paymentMethod: 'M-Pesa',
-                    status: 'Processing',
-                    paidAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    paymentResolvedVia: 'STK_QUERY',
-                });
-            }
+            // A successful query response does not include enough transaction detail to
+            // validate the paid amount. The signed callback is the source of truth.
             return NextResponse.json({
                 success: true,
-                paid: true,
-                paymentStatus: 'Paid',
+                paid: false,
+                paymentStatus: 'Pending',
                 resultCode,
-                message: 'Payment confirmed via STK Query',
+                message: 'Payment completed; awaiting callback confirmation',
             });
         }
 
@@ -92,6 +84,7 @@ export async function POST(request: Request) {
         if (resultCode && resultCode !== '0' && !stillPending && orderRef && order?.paymentStatus !== 'Paid') {
             await orderRef.update({
                 paymentStatus: 'Failed',
+                status: 'Pending Payment',
                 paymentFailureReason: resultDesc,
                 paymentFailureCode: resultCode,
                 paymentFailureMessage: getMpesaErrorMessage(resultCode),

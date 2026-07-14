@@ -421,7 +421,8 @@ export default function CheckoutPage() {
                 phone: data.shipping.phone,
                 paymentMethod: data.paymentMethod === 'whatsapp' ? 'WhatsApp Order' :
                     (data.paymentMethod === 'cod' ? 'Cash on Delivery' :
-                        (data.paymentMethod === 'manual_mpesa' ? `M-Pesa Till (${data.transactionCode})` : 'M-Pesa')),
+                        (data.paymentMethod === 'manual_mpesa' ? `M-Pesa Till (${data.transactionCode})` :
+                            (data.paymentMethod === 'card' ? 'Card (Paystack)' : 'M-Pesa'))),
                 paymentStatus: data.paymentMethod === 'whatsapp' ? 'Pending WhatsApp' :
                     (data.paymentMethod === 'manual_mpesa' ? 'Pending Verification' : 'Unpaid'),
                 shippingMethod: data.shippingMethod,
@@ -476,7 +477,7 @@ export default function CheckoutPage() {
                     body: JSON.stringify({
                         orderId: newOrder.id,
                         phoneNumber: data.shipping.phone,
-                        amount: total
+                        amount: total // Display-only; the API always uses the stored order total.
                     })
                 });
 
@@ -1440,7 +1441,11 @@ export default function CheckoutPage() {
                                                             Processing...
                                                         </>
                                                     ) : (
-                                                        paymentMethod === 'whatsapp' ? 'Complete on WhatsApp' : 'Place Order'
+                                                        paymentMethod === 'whatsapp' ? 'Complete on WhatsApp' :
+                                                            paymentMethod === 'mpesa' ? 'Send M-Pesa Prompt' :
+                                                                paymentMethod === 'card' ? 'Continue to Secure Card Payment' :
+                                                                    paymentMethod === 'manual_mpesa' ? 'Submit Payment for Verification' :
+                                                                        'Place Cash-on-Delivery Order'
                                                     )}
                                                 </button>
                                             </div>

@@ -108,6 +108,8 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     const addOrder = async (orderData: Omit<Order, 'id' | 'date' | 'status'>, pointsToRedeem: number = 0) => {
         const orderId = doc(collection(db, "orders")).id;
         const date = new Date().toISOString();
+        const requiresPaymentConfirmation = ['Unpaid', 'Pending Verification'].includes(orderData.paymentStatus || '');
+        const initialStatus: Order['status'] = requiresPaymentConfirmation ? 'Pending Payment' : 'Processing';
 
         await runTransaction(db, async (transaction) => {
             // 1. Verify Stock for all items first (product-level + variant-level if specified)
@@ -155,7 +157,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                 ...orderData,
                 id: orderId,
                 date,
-                status: 'Processing' as const,
+                status: initialStatus,
             };
             transaction.set(newOrderRef, newOrderBase);
 
@@ -163,7 +165,9 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             const userNotifRef = doc(collection(db, 'notifications'));
             transaction.set(userNotifRef, {
                 userId: orderData.userId,
-                message: `Order #${orderId.substr(0, 5)} has been placed successfully!`,
+                message: requiresPaymentConfirmation
+                    ? `Order #${orderId.substr(0, 5)} is awaiting payment confirmation.`
+                    : `Order #${orderId.substr(0, 5)} has been placed successfully!`,
                 date,
                 read: false,
                 type: 'order'
@@ -255,7 +259,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                 ...orderData,
                 id: orderId,
                 date,
-                status: 'Processing'
+                status: initialStatus
             } as Order);
 
             await NotificationService.notify(preferences, contact, message);
@@ -310,7 +314,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             ...orderData,
             id: orderId,
             date,
-            status: 'Processing' as const,
+            status: initialStatus,
         } as Order;
     };
 

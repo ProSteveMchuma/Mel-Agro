@@ -44,8 +44,6 @@ export const viewport = {
   themeColor: "#16a34a",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: 0,
 };
 
 const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.melagri.com';
