@@ -53,7 +53,7 @@ export default function AgroBot() {
 
     const handleOptionClick = (option: string) => {
         if (option === "WhatsApp Expert") {
-            window.open("https://wa.me/254700000000", "_blank");
+            window.open("https://wa.me/254748970757", "_blank", "noopener,noreferrer");
             return;
         }
         if (option === "Browse Shop") {

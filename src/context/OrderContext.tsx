@@ -291,12 +291,12 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                         };
                         await setDoc(userRef, {
                             savedAddresses: [...existing, newAddress],
-                            preferredPaymentMethod: orderData.paymentMethod || null,
+                            preferredPaymentMethod: (orderData as any).paymentMethodCode || orderData.paymentMethod || null,
                             lastOrderAt: date,
                         }, { merge: true });
                     } else {
                         await setDoc(userRef, {
-                            preferredPaymentMethod: orderData.paymentMethod || null,
+                            preferredPaymentMethod: (orderData as any).paymentMethodCode || orderData.paymentMethod || null,
                             lastOrderAt: date,
                         }, { merge: true });
                     }
@@ -360,10 +360,22 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                         const currentStock = productSnap.data().stockQuantity || 0;
                         const newStock = currentStock + item.quantity;
 
-                        await updateDoc(productRef, {
+                        const productData = productSnap.data();
+                        const productUpdate: Record<string, any> = {
                             stockQuantity: newStock,
                             inStock: newStock > 0
-                        });
+                        };
+
+                        if ((item as any).selectedVariant?.id && Array.isArray(productData.variants)) {
+                            const variantId = (item as any).selectedVariant.id;
+                            productUpdate.variants = productData.variants.map((variant: any) => {
+                                if (variant.id !== variantId) return variant;
+                                const currentVariantStock = Number(variant.stockQuantity ?? variant.stock ?? 0);
+                                return { ...variant, stockQuantity: currentVariantStock + item.quantity };
+                            });
+                        }
+
+                        await updateDoc(productRef, productUpdate);
 
                         // Log Inventory History
                         await addDoc(collection(db, "inventory_history"), {
@@ -494,24 +506,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     };
 
     const handleConfirmReceipt = async (orderId: string) => {
-        const orderRef = doc(db, "orders", orderId);
-        await updateDoc(orderRef, { status: 'Delivered' });
-
-        // Create Notification
-        const order = orders.find(o => o.id === orderId);
-        if (order) {
-            try {
-                await addDoc(collection(db, 'notifications'), {
-                    userId: order.userId,
-                    message: `Order #${orderId.slice(0, 5)} has been successfully delivered and confirmed.`,
-                    date: new Date().toISOString(),
-                    read: false,
-                    type: 'order'
-                });
-            } catch (error) {
-                console.error("Error creating receipt confirmation notification:", error);
-            }
-        }
+        await updateOrderStatus(orderId, 'Delivered');
     };
 
     const markNotificationRead = async (id: string) => {

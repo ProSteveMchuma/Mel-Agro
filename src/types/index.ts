@@ -78,6 +78,8 @@ export interface Order {
     discountAmount?: number;
     couponCode?: string | null;
     paymentMethod: string;
+    paymentMethodCode?: 'mpesa' | 'manual_mpesa' | 'card' | 'cod' | 'whatsapp';
+    reservationExpiresAt?: string | null;
     transactionId?: string;
     shippingAddress: {
         county: string;
@@ -91,6 +93,7 @@ export interface Order {
     notificationPreferences?: string[];
     returnStatus?: 'Requested' | 'Approved' | 'Rejected';
     returnReason?: string;
+    stockRestored?: boolean;
     internalNotes?: string;
     internalHistory?: {
         date: string;

@@ -28,7 +28,9 @@ export default function ProductCard({ id, name, price, image, images = [], categ
 
     // Use image if provided, otherwise first image from gallery, otherwise placeholder
     const rawImage = image || (images.length > 0 ? images[0] : "");
-    const imageSrc = (typeof rawImage === 'string' && rawImage.startsWith('http')) ? rawImage : "https://placehold.co/400x400?text=No+Image";
+    const imageSrc = typeof rawImage === 'string' && rawImage.trim()
+        ? rawImage
+        : "https://placehold.co/400x400?text=No+Image";
 
     const inWishlist = isInWishlist(id);
     const router = useRouter();
@@ -86,36 +88,36 @@ export default function ProductCard({ id, name, price, image, images = [], categ
         }
     };
 
-    const originalPrice = safePrice;
-    const discountPercent = 0;
-
     return (
-        <Link href={`/products/${id}`}>
-            <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-green-200 flex flex-col h-full cursor-pointer relative">
+        <article className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-green-200 flex flex-col h-full relative">
                 {/* Image Section */}
                 <div className="relative aspect-square overflow-hidden bg-[#f8fcf9] flex items-center justify-center p-3 md:p-6 text-center">
-                    <Image
-                        src={imageSrc}
-                        alt={`Buy ${name} online at Mel-Agri ${category}`}
-                        fill
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                        className="object-contain p-2 md:p-3 group-hover:scale-110 transition-transform duration-700 ease-out"
-                        unoptimized={imageSrc.includes('firebasestorage')}
-                    />
+                    <Link href={`/products/${id}`} aria-label={`View ${name}`} className="absolute inset-0 rounded-t-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-green-600">
+                        <Image
+                            src={imageSrc}
+                            alt={name}
+                            fill
+                            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                            className="object-contain p-2 md:p-3 group-hover:scale-110 transition-transform duration-700 ease-out"
+                            unoptimized={imageSrc.includes('firebasestorage')}
+                        />
+                    </Link>
 
                     {/* Quick Action Overlay - Hidden on mobile, shown on md+ hover */}
                     <div className="hidden md:flex absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 items-center justify-center gap-4">
                         <button
+                            type="button"
                             onClick={handleAddToCart}
                             className="bg-white text-gray-900 p-3 rounded-full shadow-lg transform translate-y-10 group-hover:translate-y-0 transition-transform duration-500 delay-75 hover:bg-green-500 hover:text-white"
-                            title="Quick Add"
+                            aria-label={`Add ${name} to cart`}
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
                         </button>
                         <button
+                            type="button"
                             onClick={handleView}
                             className="bg-white text-gray-900 p-3 rounded-full shadow-lg transform translate-y-10 group-hover:translate-y-0 transition-transform duration-500 delay-150 hover:bg-green-500 hover:text-white"
-                            title="View Details"
+                            aria-label={`View details for ${name}`}
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                         </button>
@@ -124,8 +126,11 @@ export default function ProductCard({ id, name, price, image, images = [], categ
 
                     {/* Wishlist Button */}
                     <button
+                        type="button"
                         onClick={toggleWishlist}
-                        className={`absolute top-2 right-2 md:top-4 md:right-4 p-2 md:p-2.5 rounded-full z-10 transition-all duration-300 backdrop-blur-md ${inWishlist
+                        aria-label={inWishlist ? `Remove ${name} from wishlist` : `Add ${name} to wishlist`}
+                        aria-pressed={inWishlist}
+                        className={`absolute top-2 right-2 md:top-4 md:right-4 min-h-11 min-w-11 p-2 md:p-2.5 rounded-full z-10 transition-all duration-300 backdrop-blur-md flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 ${inWishlist
                             ? "bg-red-500 text-white shadow-lg scale-110"
                             : "bg-white/90 text-gray-300 hover:text-red-500 border border-gray-100 opacity-100 md:opacity-0 md:group-hover:opacity-100"
                             }`}
@@ -139,13 +144,13 @@ export default function ProductCard({ id, name, price, image, images = [], categ
                 {/* Content Section */}
                 <div className="p-3 md:p-5 flex flex-col flex-grow">
                     {/* Category Label */}
-                    <p className="text-[8px] md:text-[10px] font-black text-green-600 uppercase tracking-[0.1em] mb-1 opacity-70">
+                    <p className="text-[11px] font-black text-green-700 uppercase tracking-[0.08em] mb-1">
                         {category}
                     </p>
 
                     {/* Product Name */}
-                    <h3 className="font-bold text-gray-900 mb-2 md:mb-3 line-clamp-2 leading-tight group-hover:text-green-600 transition-colors min-h-[2.2rem] md:min-h-[2.5rem] tracking-tight text-xs md:text-sm">
-                        {name}
+                    <h3 className="font-bold text-gray-900 mb-2 md:mb-3 line-clamp-2 leading-tight group-hover:text-green-600 transition-colors min-h-[2.5rem] tracking-tight text-sm">
+                        <Link href={`/products/${id}`} className="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600">{name}</Link>
                     </h3>
 
                     {/* Price Section */}
@@ -163,10 +168,11 @@ export default function ProductCard({ id, name, price, image, images = [], categ
                     {/* Double Buttons */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 md:gap-2 mt-auto">
                         <button
+                            type="button"
                             onClick={handleAddToCart}
                             disabled={isAdding}
                             className={`
-                                w-full py-3 md:py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all duration-200 active:scale-95
+                                min-h-11 w-full py-3 md:py-2.5 rounded-xl font-bold text-xs uppercase tracking-wide transition-all duration-200 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2
                                 ${isAdding
                                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                                     : "bg-gray-900 text-white hover:bg-[#22c55e] shadow-md hover:shadow-green-200"
@@ -177,14 +183,14 @@ export default function ProductCard({ id, name, price, image, images = [], categ
                         </button>
 
                         <button
+                            type="button"
                             onClick={handleView}
-                            className="hidden md:block w-full py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-widest bg-white border border-gray-200 text-gray-900 hover:border-gray-900 transition-all shadow-sm hover:bg-gray-50 active:scale-95"
+                            className="hidden md:block min-h-11 w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wide bg-white border border-gray-200 text-gray-900 hover:border-gray-900 transition-all shadow-sm hover:bg-gray-50 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2"
                         >
                             View
                         </button>
                     </div>
                 </div>
-            </div>
-        </Link>
+        </article>
     );
 }

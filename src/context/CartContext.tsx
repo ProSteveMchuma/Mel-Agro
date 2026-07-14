@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { CartItem, Product, ProductVariant } from '@/types';
 import { toast } from 'react-hot-toast';
 import { useAuth } from './AuthContext';
@@ -132,13 +132,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
         ));
     };
 
-    const clearCart = () => {
+    const clearCart = useCallback(() => {
         setCartItems([]);
-    };
+    }, []);
 
-    const toggleCart = () => {
+    const toggleCart = useCallback(() => {
         setIsCartOpen(prev => !prev);
-    };
+    }, []);
 
     const cartTotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
     const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);

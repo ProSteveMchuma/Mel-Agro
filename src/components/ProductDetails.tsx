@@ -127,7 +127,7 @@ export default function ProductDetails({ id }: { id: string }) {
     const images = product.images && product.images.length > 0 ? product.images : [product.image];
     const displayImage = selectedImage || product.image;
 
-    const safeImage = (typeof displayImage === 'string' && displayImage.startsWith('http'))
+    const safeImage = typeof displayImage === 'string' && displayImage.trim()
         ? displayImage
         : "https://placehold.co/400x400?text=No+Image";
 
@@ -250,7 +250,7 @@ export default function ProductDetails({ id }: { id: string }) {
                                     </svg>
                                 ))}
                             </div>
-                            <span className="text-xs text-gray-500 font-medium">120 Reviews</span>
+                            <span className="text-xs text-gray-500 font-medium">{product.reviews.toLocaleString()} Reviews</span>
                         </div>
 
                         {/* Price & Stock Urgency */}
@@ -342,22 +342,10 @@ export default function ProductDetails({ id }: { id: string }) {
                                         <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
                                         <span className="text-sm font-bold text-gray-900">Delivery to {userCity || 'Your Location'}</span>
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            const newCounty = prompt("Enter your county (e.g., Nairobi, Machakos):", userCity || "Nairobi");
-                                            if (newCounty) {
-                                                // Normally update user profile, but for now just local feedback
-                                                toast.success(`Delivery location updated to ${newCounty}`);
-                                                // Logic depends on how user city is synced (profile update needed)
-                                            }
-                                        }}
-                                        className="text-xs font-bold text-green-600 hover:underline"
-                                    >
-                                        Change
-                                    </button>
+                                    <Link href="/delivery" className="text-xs font-bold text-green-700 hover:underline">Delivery options</Link>
                                 </div>
                                 <p className="text-xs text-gray-600 leading-normal">
-                                    Order now for delivery by <span className="font-bold text-gray-900">tomorrow</span>. Free delivery on orders over KES 10,000.
+                                    Delivery timing is confirmed at checkout. Free Nairobi delivery on orders over KES 5,000.
                                 </p>
                             </div>
 
