@@ -1,6 +1,6 @@
 import { Order } from "@/types";
 
-const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.melagri.com';
+import { SITE_URL } from '@/lib/site';
 
 export const CommunicationTemplates = {
     getOrderConfirmation: (order: Order) => {

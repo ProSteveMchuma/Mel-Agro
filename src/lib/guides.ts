@@ -21,7 +21,7 @@ export const guides: Guide[] = [
         author: 'Mel-Agri Agronomy Team',
         publishedAt: '2026-03-01T08:00:00Z',
         updatedAt: '2026-03-10T10:00:00Z',
-        image: '/assets/blogs/armyworm.jpg',
+        image: '/images/kenyan-farmer-banner.png',
         tags: ['Maize', 'Pest Control', 'Armyworm'],
         qaList: [
             { question: "What is the best pesticide for Fall Armyworm in Kenya?", answer: "We recommend a combination of contact and systemic insecticides such as Coragen or Radiant, applied at the first sign of window-pane damage on leaves." },
@@ -56,7 +56,7 @@ For organic farmers or as part of IPM (Integrated Pest Management):
         author: 'Mel-Agri Agronomy Team',
         publishedAt: '2026-02-15T08:00:00Z',
         updatedAt: '2026-02-15T08:00:00Z',
-        image: '/assets/blogs/tomatoes.jpg',
+        image: '/images/kenyan-farmer-banner.png',
         tags: ['Tomatoes', 'Fertilizer', 'Short Rains'],
         qaList: [
             { question: "Should I use DAP or NPK for planting tomatoes?", answer: "For planting, NPK 17:17:17 or NPK 23:23:0 is better than standard DAP because tomatoes need Potassium (K) early on for root development and disease resistance." },

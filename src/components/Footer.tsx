@@ -47,8 +47,6 @@ export default function Footer() {
                         <h3 className="text-white font-bold uppercase tracking-wider text-xs mb-6">Payment Methods</h3>
                         <div className="flex gap-2 mb-8">
                             <span className="bg-white px-2 py-1 rounded text-[10px] font-bold text-gray-800">M-PESA</span>
-                            <span className="bg-white px-2 py-1 rounded text-[10px] font-bold text-gray-800">VISA</span>
-                            <span className="bg-white px-2 py-1 rounded text-[10px] font-bold text-gray-800">MasterCard</span>
                         </div>
 
                         <h3 className="text-white font-bold uppercase tracking-wider text-xs mb-4">Newsletter</h3>
@@ -63,7 +61,7 @@ export default function Footer() {
 
                 {/* Copyright */}
                 <div className="border-t border-gray-800 pt-8 text-center">
-                    <p className="text-xs text-gray-500">© 2025 Mel-Agri. All rights reserved.</p>
+                    <p className="text-xs text-gray-500">© {new Date().getFullYear()} Mel-Agri. All rights reserved.</p>
                 </div>
             </div>
         </footer>

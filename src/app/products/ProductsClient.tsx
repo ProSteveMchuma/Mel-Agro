@@ -10,6 +10,7 @@ import { fuzzySearch } from "@/components/SmartSearch";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useProducts } from "@/context/ProductContext";
+import { SITE_URL } from '@/lib/site';
 
 
 interface ProductsClientProps {
@@ -437,21 +438,24 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
         </div>
     );
 
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://www.melagri.com';
     const itemListJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'ItemList',
         itemListElement: filteredProducts.map((product, idx) => ({
             '@type': 'ListItem',
             position: idx + 1,
-            url: `${baseUrl}/products/${product.id}`,
-            name: product.name,
-            image: product.image,
-            offers: {
-                '@type': 'Offer',
-                price: product.price,
-                priceCurrency: 'KES',
-                availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock'
+            url: `${SITE_URL}/products/${product.id}`,
+            item: {
+                '@type': 'Product',
+                name: product.name,
+                image: product.image,
+                offers: {
+                    '@type': 'Offer',
+                    price: product.price,
+                    priceCurrency: 'KES',
+                    availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                    url: `${SITE_URL}/products/${product.id}`,
+                },
             }
         }))
     };

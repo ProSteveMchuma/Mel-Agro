@@ -22,6 +22,7 @@ import { BehaviorProvider } from "@/context/BehaviorContext";
 import TrafficTracker from "@/components/TrafficTracker";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { SITE_SOCIAL_IMAGE, SITE_URL } from '@/lib/site';
 
 
 const geistSans = Geist({
@@ -45,8 +46,6 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
 };
-
-const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.melagri.com';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -72,10 +71,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.ico' },
-      { url: '/icon.png', type: 'image/png' },
+      { url: '/icon-192x192.png', type: 'image/png', sizes: '192x192' },
     ],
     apple: [
-      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
     ],
   },
   alternates: {
@@ -101,9 +100,9 @@ export const metadata: Metadata = {
     siteName: 'Mel-Agri',
     images: [
       {
-        url: '/og-image.jpg',
-        width: 1200,
-        height: 630,
+        url: SITE_SOCIAL_IMAGE,
+        width: 640,
+        height: 640,
         alt: 'Mel-Agri — Premium Agricultural Inputs in Kenya',
       },
     ],
@@ -112,7 +111,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Mel-Agri | Buy Premium Agricultural Inputs & Seeds Online Kenya',
     description: 'Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests.',
-    images: ['/og-image.jpg'],
+    images: [SITE_SOCIAL_IMAGE],
   },
   verification: {
     google: 'SmMoEZQ9Z1KQVluCgL0QUSjhPN9QqNwCXDUWq83DoO4',

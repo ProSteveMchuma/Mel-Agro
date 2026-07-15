@@ -39,7 +39,7 @@ export default async function GuidesPage() {
                                 <div className="relative h-60 w-full bg-gray-200 overflow-hidden">
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent z-10" />
                                     <Image
-                                        src={guide.image || '/assets/blogs/placeholder.jpg'}
+                                        src={guide.image || '/images/kenyan-farmer-banner.png'}
                                         alt={guide.title}
                                         fill
                                         className="object-cover group-hover:scale-110 transition-transform duration-500"

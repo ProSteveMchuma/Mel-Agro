@@ -5,8 +5,7 @@ import Footer from '@/components/Footer';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import { notFound } from 'next/navigation';
 import Image from 'next/image';
-
-const SITE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.melagri.com';
+import { SITE_LOGO, SITE_SOCIAL_IMAGE, SITE_URL } from '@/lib/site';
 
 type Props = {
     params: Promise<{ slug: string }>;
@@ -29,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     const canonical = `/guides/${guide.slug}`;
-    const imageUrl = guide.image?.startsWith('http') ? guide.image : `${SITE_URL}${guide.image || '/og-image.jpg'}`;
+    const imageUrl = guide.image?.startsWith('http') ? guide.image : `${SITE_URL}${guide.image || '/images/kenyan-farmer-banner.png'}`;
 
     return {
         title: `${guide.title} | Farmer's Knowledge Base`,
@@ -112,7 +111,7 @@ export default async function GuidePage({ params }: Props) {
         notFound();
     }
 
-    const guideImageUrl = guide.image?.startsWith('http') ? guide.image : `${SITE_URL}${guide.image || '/og-image.jpg'}`;
+    const guideImageUrl = guide.image?.startsWith('http') ? guide.image : `${SITE_URL}${guide.image || '/images/kenyan-farmer-banner.png'}`;
 
     // 1. Article JSON-LD for Standard SEO
     const articleJsonLd = {
@@ -133,7 +132,7 @@ export default async function GuidePage({ params }: Props) {
             name: 'Mel-Agri',
             logo: {
                 '@type': 'ImageObject',
-                url: `${SITE_URL}/logo.png`,
+                url: SITE_LOGO,
             },
         },
         mainEntityOfPage: {
@@ -199,7 +198,7 @@ export default async function GuidePage({ params }: Props) {
                     {/* Hero Image */}
                     <div className="relative w-full h-[300px] md:h-[500px] rounded-[2rem] overflow-hidden shadow-2xl mb-16">
                         <Image
-                            src={guide.image || '/assets/blogs/placeholder.jpg'}
+                            src={guide.image || SITE_SOCIAL_IMAGE}
                             alt={guide.title}
                             fill
                             className="object-cover"

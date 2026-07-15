@@ -2,8 +2,8 @@ import { Metadata } from 'next';
 import ProductDetails from '@/components/ProductDetails';
 import { getProductById } from '@/lib/products';
 import { Suspense } from 'react';
-
-import { headers } from 'next/headers';
+import { absoluteUrl, SITE_URL } from '@/lib/site';
+import { notFound } from 'next/navigation';
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -13,23 +13,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id } = await params;
     const product = await getProductById(id);
     
-    // Resolve dynamic domain
-    const headersList = await headers();
-    const domain = headersList.get('host') || 'melagri.co.ke';
-    const protocol = domain.includes('localhost') ? 'http' : 'https';
-    const baseUrl = `${protocol}://${domain}`;
-
     if (!product) {
         return {
             title: 'Product Not Found | Mel-Agri',
             description: 'The product you are looking for is not available.',
+            robots: { index: false, follow: false },
         };
     }
 
     const description = (product.description || '').substring(0, 150);
     const seoDescription = `Buy original ${product.name} online at Mel-Agri Kenya for KES ${product.price.toLocaleString()}. Certified ${product.category} with fast farm delivery to Nakuru, Eldoret, Kisumu, Nairobi, and countrywide. ${description}`;
 
-    const ogImage = `${baseUrl}/api/og/product?name=${encodeURIComponent(product.name)}&price=${product.price}&category=${encodeURIComponent(product.category)}&image=${encodeURIComponent(product.image)}`;
+    const ogImage = `${SITE_URL}/api/og/product?name=${encodeURIComponent(product.name)}&price=${product.price}&category=${encodeURIComponent(product.category)}&image=${encodeURIComponent(product.image)}`;
 
     const keywords = [
         product.name,
@@ -80,7 +75,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             'product:category': product.category,
         },
         alternates: {
-            canonical: `${baseUrl}/products/${id}` // Force explicit canonical based on visited domain
+            canonical: absoluteUrl(`/products/${id}`),
         }
     };
 }
@@ -88,15 +83,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function Page({ params }: Props) {
     const { id } = await params;
     const product = await getProductById(id);
+    if (!product) notFound();
 
-    const headersList = await headers();
-    const domain = headersList.get('host') || 'melagri.co.ke';
+    const productImages = (product.images?.length ? product.images : [product.image])
+        .filter(Boolean)
+        .map(image => image.startsWith('http') ? image : absoluteUrl(image));
 
-    const productJsonLd = product ? {
+    const productJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Product',
         name: product.name,
-        image: product.image,
+        image: productImages,
         description: product.description || '',
         sku: product.id,
         mpn: product.productCode || product.id,
@@ -109,53 +106,18 @@ export default async function Page({ params }: Props) {
             price: product.price,
             priceCurrency: 'KES',
             availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            url: `https://${domain}/products/${id}`,
-            priceValidUntil: `${new Date().getFullYear() + 1}-12-31`,
+            url: absoluteUrl(`/products/${id}`),
             itemCondition: 'https://schema.org/NewCondition',
-            shippingDetails: {
-                '@type': 'OfferShippingDetails',
-                shippingRate: {
-                    '@type': 'MonetaryAmount',
-                    value: product.price >= 10000 ? 0 : 300,
-                    currency: 'KES'
-                },
-                shippingDestination: {
-                    '@type': 'DefinedRegion',
-                    addressCountry: 'KE'
-                },
-                deliveryTime: {
-                    '@type': 'ShippingDeliveryTime',
-                    handlingTime: {
-                        '@type': 'QuantitativeValue',
-                        minValue: 0,
-                        maxValue: 1,
-                        unitCode: 'DAY'
-                    },
-                    transitTime: {
-                        '@type': 'QuantitativeValue',
-                        minValue: 1,
-                        maxValue: 3,
-                        unitCode: 'DAY'
-                    }
-                }
-            },
-            hasMerchantReturnPolicy: {
-                '@type': 'MerchantReturnPolicy',
-                applicableCountry: 'KE',
-                returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnPeriod',
-                merchantReturnDays: 7,
-                returnMethod: 'https://schema.org/ReturnByMail',
-                returnFees: 'https://schema.org/FreeReturn'
-            }
+            seller: { '@id': `${SITE_URL}/#store` },
         },
-        ...(product.rating ? {
+        ...(product.rating && Number(product.reviews) > 0 ? {
             aggregateRating: {
                 '@type': 'AggregateRating',
                 ratingValue: product.rating,
-                reviewCount: product.reviews || 1,
+                reviewCount: product.reviews,
             }
         } : {})
-    } : null;
+    };
 
     const breadcrumbJsonLd = {
         '@context': 'https://schema.org',
@@ -165,31 +127,29 @@ export default async function Page({ params }: Props) {
                 '@type': 'ListItem',
                 position: 1,
                 name: 'Home',
-                item: `https://${domain}`,
+                item: SITE_URL,
             },
             {
                 '@type': 'ListItem',
                 position: 2,
                 name: 'Products',
-                item: `https://${domain}/products`,
+                item: absoluteUrl('/products'),
             },
             {
                 '@type': 'ListItem',
                 position: 3,
                 name: product?.name || 'Product',
-                item: `https://${domain}/products/${id}`,
+                item: absoluteUrl(`/products/${id}`),
             },
         ],
     };
 
     return (
         <>
-            {productJsonLd && (
-                <script
-                    type="application/ld+json"
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
-                />
-            )}
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+            />
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}

@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import ProductsClient from "./ProductsClient";
 import { getProductsPage } from "@/lib/products";
 import { getUniqueBrandsCached, getUniqueCategoriesCached } from "@/lib/products-server";
+import { absoluteUrl } from '@/lib/site';
 
 type Props = {
     searchParams: Promise<{ category?: string; brand?: string; search?: string }>;
@@ -14,25 +15,38 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     let title = "Buy Agricultural Inputs, Seeds & Fertilizers Online Kenya | Mel-Agri";
     let description = "Order certified high-quality agricultural inputs online at Mel-Agri Kenya. Shop hybrid seeds, fertilizers, crop protection chemicals, and farm tools with fast farm delivery.";
     let keywords = ["buy agricultural inputs", "agrovet online Kenya", "certified seeds supplier", "fertilizer price Kenya", "farm tools online", "Mel-Agri"];
+    let canonical = '/products';
     
     if (category) {
         title = `Buy Premium ${category} Online Kenya - Fast Farm Delivery | Mel-Agri`;
         description = `Buy certified ${category} online at Mel-Agri. Select from premium brands with fast shipping to Nakuru, Eldoret, Nairobi, Kisumu, and all 47 counties in Kenya.`;
         keywords = [category, `buy ${category} online`, `${category} price Kenya`, `certified ${category} supplier`, "agrovet Kenya", "farm inputs"];
+        canonical = `/products?category=${encodeURIComponent(category)}`;
     } else if (brand) {
         title = `Buy Original ${brand} Products Online Kenya - Best Prices | Mel-Agri`;
         description = `Shop certified crop protection and seed products from ${brand} online at Mel-Agri. Authorized dealer with fast farm delivery to Nakuru, Eldoret, Kisumu, and countrywide in Kenya.`;
         keywords = [brand, `original ${brand} products`, `${brand} distributor Kenya`, `buy ${brand} online`, "authorized agrovet"];
+        canonical = `/products?brand=${encodeURIComponent(brand)}`;
     } else if (search) {
         title = `Search Results for "${search}" | Mel-Agri Online Marketplace`;
         description = `Find premium certified agricultural inputs matching "${search}" at Mel-Agri Kenya. Shop seeds, fertilizers, and farm equipment online with secure payment and fast delivery.`;
         keywords = [search, `buy ${search} Kenya`, `${search} price`, "online agrovet"];
+        canonical = '/products';
     }
 
     return {
         title,
         description,
         keywords: keywords.map(k => k.toLowerCase()),
+        alternates: { canonical },
+        robots: search ? { index: false, follow: true } : { index: true, follow: true },
+        openGraph: {
+            title,
+            description,
+            url: absoluteUrl(canonical),
+            type: 'website',
+            images: ['/images/kenyan-farmer-banner.png'],
+        },
     };
 }
 
@@ -49,7 +63,7 @@ export default async function ProductsPage() {
         '@type': 'CollectionPage',
         name: 'Agricultural Products Market | Mel-Agri',
         description: 'Bringing Quality Agricultural Inputs Online in Kenya. Browse our comprehensive catalogue of agricultural inputs.',
-        url: 'https://melagri.co.ke/products',
+        url: absoluteUrl('/products'),
         breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [
@@ -57,13 +71,13 @@ export default async function ProductsPage() {
                     '@type': 'ListItem',
                     position: 1,
                     name: 'Home',
-                    item: 'https://melagri.co.ke',
+                    item: absoluteUrl('/'),
                 },
                 {
                     '@type': 'ListItem',
                     position: 2,
                     name: 'Products',
-                    item: 'https://melagri.co.ke/products',
+                    item: absoluteUrl('/products'),
                 },
             ],
         },

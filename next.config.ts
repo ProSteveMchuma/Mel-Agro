@@ -2,6 +2,20 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   turbopack: {},
+  redirects: async () => [
+    {
+      source: '/:path*',
+      has: [{ type: 'host', value: 'melagri.co.ke' }],
+      destination: 'https://www.melagri.com/:path*',
+      permanent: true,
+    },
+    {
+      source: '/:path*',
+      has: [{ type: 'host', value: 'www.melagri.co.ke' }],
+      destination: 'https://www.melagri.com/:path*',
+      permanent: true,
+    },
+  ],
   headers: async () => [
     {
       source: '/:path*',
