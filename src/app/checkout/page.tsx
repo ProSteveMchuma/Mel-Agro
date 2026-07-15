@@ -243,7 +243,9 @@ export default function CheckoutPage() {
         const primary = saved.find(a => a.isPrimary) || saved[saved.length - 1];
 
         const cleanName = user.name && user.name !== 'User' ? user.name : '';
-        const validPaymentMethods = ['mpesa', 'manual_mpesa', 'card', 'cod', 'whatsapp'] as const;
+        // Card and WhatsApp checkout are temporarily unavailable to customers.
+        // Keep their processing code intact so existing orders remain supported.
+        const validPaymentMethods = ['mpesa', 'manual_mpesa', 'cod'] as const;
         const preferred = (user as any).preferredPaymentMethod;
         const initialPaymentMethod = (preferred && validPaymentMethods.includes(preferred)) ? preferred : 'mpesa';
 
@@ -1046,29 +1048,6 @@ export default function CheckoutPage() {
                                                     <p className="text-sm text-gray-500 font-medium">Pay manually via M-Pesa Menu.</p>
                                                 </div>
 
-                                                {/* WhatsApp Order Option */}
-                                                <div
-                                                    onClick={() => setValue('paymentMethod', 'whatsapp')}
-                                                    className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'whatsapp'
-                                                        ? 'border-[#25D366] bg-green-50 shadow-sm ring-2 ring-[#25D366]/20'
-                                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                                        }`}
-                                                >
-                                                    {paymentMethod === 'whatsapp' && (
-                                                        <div className="absolute top-3 right-3 text-[#25D366]">
-                                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                                                        </div>
-                                                    )}
-                                                    <div className="mb-4 h-[22px]"></div>
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-100 shadow-sm text-[#25D366]">
-                                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.038 3.284l-.54 1.964 2.009-.528c.954.524 1.942.85 3.037.852 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.586-5.772-5.744-5.772zm3.374 8.086c-.1.272-.58.513-.801.551-.237.042-.46.079-.769-.015-.297-.091-.676-.239-1.144-.442-1.99-.861-3.284-2.885-3.383-3.018-.099-.134-.736-.979-.736-1.959 0-.979.512-1.46.694-1.658.183-.198.396-.247.53-.247.13 0 .26.012.37.012.11 0 .26-.041.408.321.148.36.512 1.25.56 1.348.049.099.083.214.016.347-.066.13-.1.214-.2.33-.1.115-.208.261-.297.35-.099.099-.198.198-.083.396.115.198.512.845 1.099 1.366.759.673 1.398.882 1.596.981.198.099.313.082.43-.049.115-.132.512-.596.644-.793.132-.198.26-.165.43-.099.172.066 1.09.514 1.277.613.183.1.312.148.363.23.049.082.049.479-.05.751z" /></svg>
-                                                        </div>
-                                                        <span className="font-bold text-gray-900">WhatsApp Order</span>
-                                                    </div>
-                                                    <p className="text-sm text-gray-500 font-medium">Order via WhatsApp and pay on delivery.</p>
-                                                </div>
-
                                                 {/* Card Payment (Paystack) — temporarily hidden until Paystack credentials are configured.
                                                     Re-enable by uncommenting this block AND setting PAYSTACK_SECRET_KEY +
                                                     NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY in .env.local / Vercel.
@@ -1179,17 +1158,6 @@ export default function CheckoutPage() {
                                                             />
                                                             <p className="text-xs text-gray-500">Only enter if our auto-detection didn&apos;t catch your payment.</p>
                                                         </div>
-                                                    </div>
-                                                )}
-
-                                                {paymentMethod === 'whatsapp' && (
-                                                    <div className="bg-green-50 p-6 rounded-2xl border border-green-100">
-                                                        <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
-                                                            <span className="text-xl">💬</span> WhatsApp Ordering
-                                                        </h3>
-                                                        <p className="text-sm text-gray-600">
-                                                            Complete your order on WhatsApp. Our team will confirm your items and arrange delivery details via chat.
-                                                        </p>
                                                     </div>
                                                 )}
 
