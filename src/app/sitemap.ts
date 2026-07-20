@@ -5,6 +5,15 @@ import { getGuides } from '@/lib/guides';
 import { SITE_URL } from '@/lib/site';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+    const toDate = (value: unknown): Date | undefined => {
+        if (!value) return undefined;
+        if (typeof value === 'object' && value !== null && 'toDate' in value && typeof (value as { toDate: () => Date }).toDate === 'function') {
+            return (value as { toDate: () => Date }).toDate();
+        }
+        const date = new Date(value as string | number | Date);
+        return Number.isNaN(date.getTime()) ? undefined : date;
+    };
+
     const staticRoutes: MetadataRoute.Sitemap = [
         { url: `${SITE_URL}/`, changeFrequency: 'daily', priority: 1.0 },
         { url: `${SITE_URL}/products`, changeFrequency: 'daily', priority: 0.9 },
@@ -27,10 +36,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         const querySnapshot = await getDocs(collection(db, 'products'));
         productRoutes = querySnapshot.docs.map((doc) => {
             const data = doc.data();
-            const updated = data.updatedAt ? new Date(data.updatedAt) : null;
+            const updated = toDate(data.updatedAt) || toDate(data.createdAt);
             return {
                 url: `${SITE_URL}/products/${doc.id}`,
-                ...(updated && !isNaN(updated.getTime()) ? { lastModified: updated } : {}),
+                ...(updated ? { lastModified: updated } : {}),
                 changeFrequency: 'weekly' as const,
                 priority: 0.7,
             };

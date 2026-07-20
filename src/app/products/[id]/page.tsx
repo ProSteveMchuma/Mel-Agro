@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import ProductDetails from '@/components/ProductDetails';
 import { getProductById } from '@/lib/products';
-import { Suspense } from 'react';
+import { getRelatedProductsCached } from '@/lib/products-server';
 import { absoluteUrl, SITE_URL } from '@/lib/site';
 import { notFound } from 'next/navigation';
 
@@ -21,8 +21,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         };
     }
 
-    const description = (product.description || '').substring(0, 150);
-    const seoDescription = `Buy original ${product.name} online at Mel-Agri Kenya for KES ${product.price.toLocaleString()}. Certified ${product.category} with fast farm delivery to Nakuru, Eldoret, Kisumu, Nairobi, and countrywide. ${description}`;
+    const productSummary = (product.description || `Certified ${product.category} available for delivery across Kenya.`)
+        .replace(/\s+/g, ' ')
+        .trim();
+    const seoDescription = `Buy ${product.name} online in Kenya for KES ${product.price.toLocaleString()}. ${productSummary}`.slice(0, 158).trim();
 
     const ogImage = `${SITE_URL}/api/og/product?name=${encodeURIComponent(product.name)}&price=${product.price}&category=${encodeURIComponent(product.category)}&image=${encodeURIComponent(product.image)}`;
 
@@ -43,7 +45,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ].filter(Boolean);
 
     return {
-        title: `Buy ${product.name} Online - Fast Delivery in Kenya | Mel-Agri`,
+        title: { absolute: `Buy ${product.name} Online in Kenya | Mel-Agri` },
         description: seoDescription,
         keywords,
         openGraph: {
@@ -60,6 +62,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             type: 'website',
             siteName: 'Mel-Agri',
             locale: 'en_KE',
+            url: absoluteUrl(`/products/${id}`),
         },
         twitter: {
             card: 'summary_large_image',
@@ -76,7 +79,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         },
         alternates: {
             canonical: absoluteUrl(`/products/${id}`),
-        }
+        },
+        robots: {
+            index: true,
+            follow: true,
+            googleBot: {
+                index: true,
+                follow: true,
+                'max-image-preview': 'large',
+                'max-snippet': -1,
+                'max-video-preview': -1,
+            },
+        },
     };
 }
 
@@ -84,6 +98,12 @@ export default async function Page({ params }: Props) {
     const { id } = await params;
     const product = await getProductById(id);
     if (!product) notFound();
+    const relatedProducts = await getRelatedProductsCached(product.category, String(product.id));
+
+    // Firestore timestamps and class instances cannot cross the Server/Client boundary.
+    // Product fields used by the storefront are plain JSON values after normalization.
+    const initialProduct = JSON.parse(JSON.stringify(product));
+    const initialRelatedProducts = JSON.parse(JSON.stringify(relatedProducts));
 
     const productImages = (product.images?.length ? product.images : [product.image])
         .filter(Boolean)
@@ -92,11 +112,14 @@ export default async function Page({ params }: Props) {
     const productJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Product',
+        '@id': `${absoluteUrl(`/products/${id}`)}#product`,
+        url: absoluteUrl(`/products/${id}`),
         name: product.name,
         image: productImages,
         description: product.description || '',
-        sku: product.id,
-        mpn: product.productCode || product.id,
+        sku: product.productCode || String(product.id),
+        ...(product.productCode ? { mpn: product.productCode } : {}),
+        category: product.category,
         brand: {
             '@type': 'Brand',
             name: product.brand || 'Mel-Agri'
@@ -154,9 +177,11 @@ export default async function Page({ params }: Props) {
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
             />
-            <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
-                <ProductDetails id={id} />
-            </Suspense>
+            <ProductDetails
+                id={id}
+                initialProduct={initialProduct}
+                initialRelatedProducts={initialRelatedProducts}
+            />
         </>
     );
 }

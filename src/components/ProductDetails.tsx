@@ -7,7 +7,7 @@ import Footer from "@/components/Footer";
 import ProductCard from "@/components/ProductCard";
 import Link from 'next/link';
 import Image from 'next/image';
-import { getProductById, getRelatedProducts, Product } from '@/lib/products';
+import type { Product } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from "react-hot-toast";
@@ -15,44 +15,33 @@ import Logo from '@/components/Logo';
 import IntelligentDescription from '@/components/IntelligentDescription';
 import ProductFaqs from '@/components/ProductFaqs';
 
-export default function ProductDetails({ id }: { id: string }) {
-    const [product, setProduct] = useState<Product | undefined>(undefined);
-    const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
+interface ProductDetailsProps {
+    id: string;
+    initialProduct: Product;
+    initialRelatedProducts?: Product[];
+}
+
+export default function ProductDetails({ id, initialProduct, initialRelatedProducts = [] }: ProductDetailsProps) {
+    // Seed the interactive view with server-fetched data so the complete product
+    // content is present in the first HTML response for customers and crawlers.
+    const [product] = useState<Product>(initialProduct);
+    const [relatedProducts] = useState<Product[]>(initialRelatedProducts);
     const [quantity, setQuantity] = useState(1);
     const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'usage'>('description');
     const { user } = useAuth();
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const [selectedImage, setSelectedImage] = useState<string>("");
-    const [selectedVariant, setSelectedVariant] = useState<any>(null);
+    const firstVariant = initialProduct.variants?.[0] || null;
+    const [selectedImage, setSelectedImage] = useState<string>(firstVariant?.image || initialProduct.image || "");
+    const [selectedVariant, setSelectedVariant] = useState<any>(firstVariant);
 
     const userCity = user?.city || user?.county;
 
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
-            const p = await getProductById(id);
-            setProduct(p);
-            if (p) {
-                setSelectedImage(p.image);
-                if (p.variants && p.variants.length > 0) {
-                    setSelectedVariant(p.variants[0]);
-                    if (p.variants[0].image) {
-                        setSelectedImage(p.variants[0].image);
-                    }
-                }
-                import('@/lib/analytics').then(({ AnalyticsService }) => {
-                    AnalyticsService.logView(String(p.id));
-                });
-                const related = await getRelatedProducts(p.category, String(p.id));
-                setRelatedProducts(related);
-            }
-
-            setLoading(false);
-        };
-        fetchData();
+        import('@/lib/analytics').then(({ AnalyticsService }) => {
+            AnalyticsService.logView(id);
+        });
     }, [id]);
 
     useEffect(() => {
@@ -93,36 +82,6 @@ export default function ProductDetails({ id }: { id: string }) {
 
         return points;
     };
-
-    if (loading) {
-        return (
-            <div className="min-h-screen flex flex-col bg-white">
-                <Header />
-                <main className="flex-grow flex items-center justify-center">
-                    <div className="animate-pulse flex flex-col items-center">
-                        <div className="h-12 w-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                        <p className="text-gray-500 font-medium">Loading...</p>
-                    </div>
-                </main>
-                <Footer />
-            </div>
-        );
-    }
-
-    if (!product) {
-        return (
-            <div className="min-h-screen flex flex-col">
-                <Header />
-                <main className="flex-grow flex items-center justify-center bg-gray-50">
-                    <div className="text-center">
-                        <h1 className="text-2xl font-bold text-gray-900 mb-2">Product Not Found</h1>
-                        <Link href="/products" className="text-green-600 hover:underline">Back to Products</Link>
-                    </div>
-                </main>
-                <Footer />
-            </div>
-        );
-    }
 
     const images = product.images && product.images.length > 0 ? product.images : [product.image];
     const displayImage = selectedImage || product.image;

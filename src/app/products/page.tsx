@@ -83,11 +83,41 @@ export default async function ProductsPage() {
         },
     };
 
+    const productListJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'ItemList',
+        name: 'Agricultural products available from Mel-Agri Kenya',
+        numberOfItems: initialProducts.length,
+        itemListElement: initialProducts.map((product, index) => ({
+            '@type': 'ListItem',
+            position: index + 1,
+            url: absoluteUrl(`/products/${product.id}`),
+            item: {
+                '@type': 'Product',
+                name: product.name,
+                image: product.image?.startsWith('http') ? product.image : absoluteUrl(product.image),
+                category: product.category,
+                ...(product.brand ? { brand: { '@type': 'Brand', name: product.brand } } : {}),
+                offers: {
+                    '@type': 'Offer',
+                    price: product.price,
+                    priceCurrency: 'KES',
+                    availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+                    url: absoluteUrl(`/products/${product.id}`),
+                },
+            },
+        })),
+    };
+
     return (
         <>
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(productListJsonLd) }}
             />
             <Suspense fallback={<div className="min-h-screen bg-gray-50 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagri-primary"></div>
