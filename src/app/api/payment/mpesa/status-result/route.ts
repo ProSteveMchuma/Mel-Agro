@@ -91,6 +91,7 @@ export async function POST(request: Request) {
             update.mpesaReceiptNumber = receiptNo;
             update.amountPaid = transactionAmount;
             update.status = order.status === 'Pending Payment' || !order.status ? 'Processing' : order.status;
+            update.stockReservationStatus = 'committed';
             update.paidAt = new Date().toISOString();
             update.paymentResolvedVia = 'AUTO_VERIFY_TRANSACTION_STATUS';
 

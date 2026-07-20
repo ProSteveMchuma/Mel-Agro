@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -30,13 +30,17 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
     const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'usage'>('description');
     const { user } = useAuth();
     const router = useRouter();
-    const searchParams = useSearchParams();
 
-    const firstVariant = initialProduct.variants?.[0] || null;
+    const firstVariant = initialProduct.variants?.length === 1 ? initialProduct.variants[0] : null;
     const [selectedImage, setSelectedImage] = useState<string>(firstVariant?.image || initialProduct.image || "");
     const [selectedVariant, setSelectedVariant] = useState<any>(firstVariant);
 
     const userCity = user?.city || user?.county;
+    const hasVariants = Boolean(product.variants?.length);
+    const requiresVariantSelection = hasVariants && !selectedVariant;
+    const availableStock = Number(selectedVariant?.stockQuantity ?? (hasVariants ? 0 : product.stockQuantity ?? product.stock ?? 0));
+    const canPurchase = !requiresVariantSelection && product.inStock !== false && availableStock > 0;
+    const selectedPrice = Number(selectedVariant?.price ?? product.price);
 
     useEffect(() => {
         import('@/lib/analytics').then(({ AnalyticsService }) => {
@@ -66,21 +70,31 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
             e.stopPropagation();
         }
 
-        if (product) {
-            addToCart(product, quantity, selectedVariant || undefined);
+        if (requiresVariantSelection) {
+            toast.error('Please select a size or weight first');
+            return;
         }
+        if (!canPurchase) {
+            toast.error(`${product.name} is currently out of stock`);
+            return;
+        }
+        addToCart(product, quantity, selectedVariant || undefined);
     };
 
-    const formatDescription = (description: string) => {
-        if (!description) return [];
-        // Only split by explicit bullet points or double newlines (paragraphs)
-        // If it's a long block of text without markers, keep it as one paragraph
-        const points = description
-            .split(/\n\n+|•|(?<=\w)\s*-\s*(?=\w)|(?<=\w)\s*\*\s*(?=\w)/)
-            .map(line => line.trim())
-            .filter(line => line.length > 0);
-
-        return points;
+    const handleBuyNow = (e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (requiresVariantSelection) {
+            toast.error('Please select a size or weight first');
+            return;
+        }
+        if (!canPurchase) {
+            toast.error(`${product.name} is currently out of stock`);
+            return;
+        }
+        if (addToCart(product, quantity, selectedVariant || undefined)) {
+            router.push('/checkout');
+        }
     };
 
     const images = product.images && product.images.length > 0 ? product.images : [product.image];
@@ -181,11 +195,15 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                             key={v.id}
                                             onClick={() => {
                                                 setSelectedVariant(v);
+                                                setQuantity(1);
                                                 if (v.image) setSelectedImage(v.image);
                                             }}
+                                            disabled={Number(v.stockQuantity) <= 0}
                                             className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border ${selectedVariant?.id === v.id
                                                 ? 'bg-melagri-primary text-white border-melagri-primary shadow-lg shadow-green-100'
-                                                : 'bg-white text-gray-600 border-gray-200 hover:border-melagri-primary'
+                                                : Number(v.stockQuantity) <= 0
+                                                    ? 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed line-through'
+                                                    : 'bg-white text-gray-600 border-gray-200 hover:border-melagri-primary'
                                                 }`}
                                         >
                                             {v.name}
@@ -209,17 +227,19 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                     </svg>
                                 ))}
                             </div>
-                            <span className="text-xs text-gray-500 font-medium">120 Reviews</span>
+                            <span className="text-xs text-gray-500 font-medium">
+                                {product.reviews > 0 ? `${product.reviews} Reviews` : 'New product'}
+                            </span>
                         </div>
 
                         {/* Price & Stock Urgency */}
                         <div className="flex flex-col gap-2 mb-6">
                             <div className="flex items-center gap-3">
-                                <span className="text-4xl font-black text-[#22c55e]">KES {(selectedVariant?.price || product.price).toLocaleString()}</span>
+                                <span className="text-4xl font-black text-[#22c55e]">KES {selectedPrice.toLocaleString()}</span>
                                 <span className="bg-green-50 text-green-700 text-[10px] font-black px-2 py-1 rounded uppercase tracking-tighter">Guaranteed Quality</span>
                             </div>
 
-                            {((selectedVariant?.stockQuantity ?? product.stockQuantity) > 0 && (selectedVariant?.stockQuantity ?? product.stockQuantity) <= 50) && (
+                            {(availableStock > 0 && availableStock <= 50) && (
                                 <motion.div
                                     initial={{ opacity: 0, x: -10 }}
                                     animate={{ opacity: 1, x: 0 }}
@@ -229,7 +249,7 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                                         <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                                     </span>
-                                    Only {selectedVariant?.stockQuantity ?? product.stockQuantity} items left in stock!
+                                    Only {availableStock} items left in stock!
                                 </motion.div>
                             )}
                         </div>
@@ -260,23 +280,28 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                             <div className="flex items-center border border-gray-300 rounded-lg px-2 w-32 justify-between h-12">
                                 <button onClick={() => setQuantity(Math.max(1, quantity - 1))} className="w-8 flex justify-center text-gray-500 hover:text-green-600 text-lg font-bold">-</button>
                                 <span className="text-gray-900 font-bold">{quantity}</span>
-                                <button onClick={() => setQuantity(quantity + 1)} className="w-8 flex justify-center text-gray-500 hover:text-green-600 text-lg font-bold">+</button>
+                                <button
+                                    onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
+                                    disabled={!canPurchase || quantity >= availableStock}
+                                    className="w-8 flex justify-center text-gray-500 hover:text-green-600 text-lg font-bold disabled:text-gray-300 disabled:cursor-not-allowed"
+                                >+</button>
                             </div>
 
                             <button
                                 onClick={handleAddToCart}
-                                disabled={!(selectedVariant ? selectedVariant.stockQuantity > 0 : product.inStock)}
-                                className={`h-12 flex-1 font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg ${(selectedVariant ? selectedVariant.stockQuantity > 0 : product.inStock) ? 'bg-[#22c55e] hover:bg-green-600 text-white shadow-green-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'}`}
+                                disabled={!canPurchase}
+                                className={`h-12 flex-1 font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg ${canPurchase ? 'bg-[#22c55e] hover:bg-green-600 text-white shadow-green-200' : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'}`}
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                                {(selectedVariant ? selectedVariant.stockQuantity > 0 : product.inStock) ? 'Add to Cart' : 'Out of Stock'}
+                                {requiresVariantSelection ? 'Select an Option' : canPurchase ? 'Add to Cart' : 'Out of Stock'}
                             </button>
                         </div>
 
                         <div className="flex flex-col gap-3 mb-8">
                             <button
-                                onClick={(e) => { handleAddToCart(e); router.push('/checkout'); }}
-                                className="w-full h-12 border-2 border-gray-900 text-gray-900 font-bold rounded-lg hover:bg-gray-50 transition-colors"
+                                onClick={handleBuyNow}
+                                disabled={!canPurchase}
+                                className="w-full h-12 border-2 border-gray-900 text-gray-900 font-bold rounded-lg hover:bg-gray-50 transition-colors disabled:border-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
                             >
                                 Buy Now
                             </button>
@@ -332,7 +357,7 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                     <span className="text-xl">🔒</span>
                                     <div>
                                         <p className="text-[10px] font-black text-gray-900 uppercase">Secure Payment</p>
-                                        <p className="text-[9px] text-gray-500">M-Pesa & Card Encrypted</p>
+                                        <p className="text-[9px] text-gray-500">M-Pesa secure checkout</p>
                                     </div>
                                 </div>
                             </div>
@@ -461,6 +486,14 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                 images={p.images}
                                 category={p.category}
                                 variants={p.variants}
+                                description={p.description}
+                                brand={p.brand}
+                                productCode={p.productCode}
+                                inStock={p.inStock}
+                                stockQuantity={p.stockQuantity}
+                                lowStockThreshold={p.lowStockThreshold}
+                                rating={p.rating}
+                                reviews={p.reviews}
                             />
                         )) : (
                             [...Array(4)].map((_, i) => (
@@ -479,15 +512,15 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
             <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 z-40 flex items-center justify-between gap-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
                 <div>
                     <p className="text-[10px] font-black text-gray-400 uppercase">Total Price</p>
-                    <p className="text-xl font-black text-[#22c55e]">KES {(product.price * quantity).toLocaleString()}</p>
+                    <p className="text-xl font-black text-[#22c55e]">KES {(selectedPrice * quantity).toLocaleString()}</p>
                 </div>
                 <button
                     onClick={handleAddToCart}
-                    disabled={!product.inStock}
-                    className="flex-grow h-12 bg-[#22c55e] text-white font-black rounded-xl shadow-lg shadow-green-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    disabled={!canPurchase}
+                    className="flex-grow h-12 bg-[#22c55e] text-white font-black rounded-xl shadow-lg shadow-green-200 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                    Add
+                    {requiresVariantSelection ? 'Select Option' : canPurchase ? 'Add' : 'Out of Stock'}
                 </button>
             </div>
         </div >

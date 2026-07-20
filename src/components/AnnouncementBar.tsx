@@ -1,5 +1,6 @@
 "use client";
 import { useState } from 'react';
+import { FREE_SHIPPING_THRESHOLD } from '@/lib/delivery';
 
 export default function AnnouncementBar() {
     const [isVisible, setIsVisible] = useState(true);
@@ -10,7 +11,7 @@ export default function AnnouncementBar() {
         <div className="bg-Mel-Agri-dark text-white text-sm py-2 px-4 relative z-50">
             <div className="container-custom flex justify-between items-center">
                 <p className="w-full text-center font-medium">
-                    🌱 Free Shipping on orders over KES 5,000 | Use code <span className="font-bold text-Mel-Agri-light">GROW2025</span>
+                    🌱 Free delivery on eligible orders over KES {FREE_SHIPPING_THRESHOLD.toLocaleString()}
                 </p>
                 <button
                     onClick={() => setIsVisible(false)}

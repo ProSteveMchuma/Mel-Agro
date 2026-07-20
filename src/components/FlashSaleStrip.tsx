@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import ProductCard from "./ProductCard";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { getProducts, Product } from "@/lib/products";
 
 export default function FlashSaleStrip() {
@@ -144,7 +144,17 @@ export default function FlashSaleStrip() {
                                         name={product.name}
                                         price={product.price}
                                         image={product.image}
+                                        images={product.images}
                                         category={product.category}
+                                        variants={product.variants}
+                                        description={product.description}
+                                        brand={product.brand}
+                                        productCode={product.productCode}
+                                        inStock={product.inStock}
+                                        stockQuantity={product.stockQuantity}
+                                        lowStockThreshold={product.lowStockThreshold}
+                                        rating={product.rating}
+                                        reviews={product.reviews}
                                     />
                                 </div>
                             ))}

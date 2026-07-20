@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
-import toast from 'react-hot-toast';
 
 export default function FeaturedSlider({ products: initialProducts }: { products?: Product[] }) {
     const [products, setProducts] = useState<Product[]>(initialProducts || []);
@@ -48,6 +47,10 @@ export default function FeaturedSlider({ products: initialProducts }: { products
     if (products.length === 0) return null;
 
     const currentProduct = products[activeIndex];
+    const featuredVariant = currentProduct.variants?.length === 1 ? currentProduct.variants[0] : undefined;
+    const requiresOptions = (currentProduct.variants?.length || 0) > 1;
+    const featuredStock = Number(featuredVariant?.stockQuantity ?? currentProduct.stockQuantity ?? currentProduct.stock ?? 0);
+    const isAvailable = currentProduct.inStock !== false && featuredStock > 0;
 
     return (
         <div className="relative w-full h-[500px] overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-gray-900 shadow-2xl group border border-gray-800/50">
@@ -95,15 +98,22 @@ export default function FeaturedSlider({ products: initialProducts }: { products
                                 >
                                     View Details
                                 </Link>
-                                <button
-                                    onClick={() => {
-                                        addToCart(currentProduct);
-                                        toast.success(`Added ${currentProduct.name} to cart!`);
-                                    }}
-                                    className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-6 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-500 transition-all shadow-xl shadow-green-900/20 hover:-translate-y-1 active:scale-95 flex justify-center"
-                                >
-                                    Add To Cart
-                                </button>
+                                {requiresOptions ? (
+                                    <Link
+                                        href={`/products/${currentProduct.id}`}
+                                        className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-6 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-500 transition-all shadow-xl shadow-green-900/20 hover:-translate-y-1 active:scale-95 flex justify-center"
+                                    >
+                                        Choose Options
+                                    </Link>
+                                ) : (
+                                    <button
+                                        onClick={() => addToCart(currentProduct, 1, featuredVariant)}
+                                        disabled={!isAvailable}
+                                        className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-6 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-500 transition-all shadow-xl shadow-green-900/20 hover:-translate-y-1 active:scale-95 flex justify-center disabled:bg-gray-500 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                                    >
+                                        {isAvailable ? 'Add To Cart' : 'Out of Stock'}
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     </div>

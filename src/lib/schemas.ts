@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { isValidPhoneNumber } from 'libphonenumber-js';
 
 // --- Auth Schemas ---
 
@@ -26,10 +25,9 @@ export const addressSchema = z.object({
     fullName: z.string().min(2, { message: "Full name is required" }).max(80, { message: "Name is too long" }),
     email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal('')),
     phone: z.string().refine((val) => {
-        // Basic Kenya phone validation or use libphonenumber-js strictly if preferred
-        // Here we use a basic regex + length check for flexibility before strictening
+        const normalized = val.replace(/[\s()-]/g, '');
         const phoneRegex = /^(?:\+254|0)[17]\d{8}$/;
-        return phoneRegex.test(val.replace(/\s/g, '')) || (val.length >= 10 && val.length <= 15);
+        return phoneRegex.test(normalized);
     }, { message: "Invalid phone number try format: +254 7XX XXX XXX or 07XX XXX XXX" }),
     county: z.string().min(1, { message: "Please select a county" }),
     town: z.string().min(2, { message: "Town is required" }),

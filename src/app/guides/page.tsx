@@ -7,7 +7,7 @@ import { getGuides } from '@/lib/guides';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: "Farmer's Knowledge Base | Mel-Agri Kenya",
+    title: "Farmer's Knowledge Base for Kenya",
     description: 'Expert agricultural guides, pest control protocols, and yield-boosting techniques tailored for Kenyan farmers.',
     alternates: { canonical: '/guides' },
     openGraph: {

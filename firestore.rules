@@ -17,37 +17,30 @@ service cloud.firestore {
       );
     }
 
-    // Products: Public read, Admin write, User can decrement stock during checkout
+    // Products: public catalog, server/admin inventory mutations only.
     match /products/{productId} {
       allow read: if true;
       allow write: if isAdmin();
-      allow update: if request.auth != null && (
-        isAdmin() || 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stockQuantity', 'inStock'])
-      );
     }
 
-    // Inventory History: Admin write, User create (for orders)
+    // Inventory history is written by trusted server routes or admins.
     match /inventory_history/{historyId} {
       allow read: if isAdmin();
       allow write: if isAdmin();
-      allow create: if request.auth != null;
     }
 
-    // Orders: Users can read/create their own, Admin can read/write all
+    // Customer orders are created/cancelled by server-authoritative API routes.
     match /orders/{orderId} {
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow create: if isAdmin();
       allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
-      // Admin can update everything. Users can ONLY update returnStatus/returnReason OR cancel the order OR set checkoutRequestId for M-Pesa
+      // Customers may only request a return. Payment and status changes are server/admin only.
       allow update: if request.auth != null && (
         isAdmin() || (
           resource.data.userId == request.auth.uid && (
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['returnStatus', 'returnReason', 'checkoutRequestId', 'status']) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['returnStatus', 'returnReason']) &&
             request.resource.data.get('paymentStatus', resource.data.get('paymentStatus', 'Unpaid')) == resource.data.get('paymentStatus', 'Unpaid') &&
             request.resource.data.get('total', resource.data.get('total', 0)) == resource.data.get('total', 0) &&
             request.resource.data.get('userId', resource.data.get('userId', '')) == resource.data.get('userId', '') &&
-            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['status']) ||
-              (request.resource.data.status == 'Cancelled' && resource.data.status in ['Pending Payment', 'Processing'])) &&
             (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['returnStatus']) ||
               request.resource.data.returnStatus == 'Requested')
           )
@@ -68,10 +61,10 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // Transactions: Admin only for read, System/Auth for create
+    // Transactions are written by payment APIs (Admin SDK) or admins.
     match /transactions/{id} {
         allow read: if isAdmin();
-        allow create: if request.auth != null;
+        allow create: if isAdmin();
     }
 
     // Settings: Public read (for shipping rates), Admin write
@@ -104,9 +97,9 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == wishlistId;
     }
 
-    // Notifications: Users can read/write their own, Admin can read/write all
+    // Notifications: customers can only create/read their own; server handles order notices.
     match /notifications/{notificationId} {
-      allow create: if request.auth != null;
+      allow create: if request.auth != null && (request.resource.data.userId == request.auth.uid || isAdmin());
       allow read, update: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
     }
 

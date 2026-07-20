@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 import { DELIVERY_ZONES, FREE_SHIPPING_THRESHOLD } from "@/lib/delivery";
 
 export const metadata: Metadata = {
-    title: "Shipping & Delivery Rates Kenya | Mel-Agri Online Agrovet",
+    title: "Shipping & Delivery Rates Across Kenya",
     description: "Learn about our nationwide shipping and delivery rates in Kenya. We deliver agricultural inputs, certified seeds, and fertilizers to Nairobi, Nakuru, Eldoret, Kisumu, and other counties.",
     alternates: { canonical: '/shipping' },
 };

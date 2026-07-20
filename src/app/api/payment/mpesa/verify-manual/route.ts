@@ -126,6 +126,7 @@ export async function POST(request: Request) {
             transactionId: transactionCode,
             mpesaReceiptNumber: transactionCode,
             status: order.status === 'Pending Payment' || !order.status ? 'Processing' : order.status,
+            stockReservationStatus: 'committed',
             paidAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
             manualVerifiedBy: auth.uid,

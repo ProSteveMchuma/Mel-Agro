@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: "Contact Mel-Agri | Agrovet Customer Support & Location Nairobi",
+    title: "Agrovet Customer Support & Location in Nairobi",
     description: "Get in touch with Mel-Agri for inquiries about crop fertilizers, hybrid seeds, and bulk farm orders. Reach our agronomy support team in Nairobi via Phone, Email or WhatsApp.",
     alternates: { canonical: '/contact' },
     openGraph: {

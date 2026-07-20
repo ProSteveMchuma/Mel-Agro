@@ -7,7 +7,6 @@ import FeaturedSlider from "@/components/FeaturedSlider";
 import ProductRow from "@/components/ProductRow";
 import Partners from "@/components/Partners";
 import Hero from "@/components/Hero";
-import Newsletter from "@/components/Newsletter";
 import { Product } from "@/lib/products";
 
 const FadeInWhenVisible = ({ children, delay = 0 }: { children: React.ReactNode, delay?: number }) => {
@@ -119,10 +118,6 @@ export default function HomeClient({ categories, featuredProducts, recommendedPr
                 </FadeInWhenVisible>
             </section>
 
-            {/* Newsletter Section */}
-            <FadeInWhenVisible>
-                <Newsletter />
-            </FadeInWhenVisible>
         </>
     );
 }

@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 import { NotificationService } from '@/lib/notifications';
 import { SmsService } from '@/lib/sms';
 import { CommunicationTemplates } from '@/lib/communication-templates';
+import { getAuth } from 'firebase/auth';
 
 import { Order, OrderItem } from '@/types';
 export type { Order, OrderItem };
@@ -319,13 +320,30 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     };
 
     const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+        if (status === 'Cancelled') {
+            const token = await getAuth().currentUser?.getIdToken();
+            if (!token) throw new Error('Your session expired. Please sign in again.');
+            const response = await fetch('/api/orders/cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ orderId }),
+            });
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || 'Failed to cancel order');
+            }
+            return;
+        }
+
         const orderRef = doc(db, "orders", orderId);
 
         // Check previous status to handle stock restoration
         const orderSnap = await getDoc(orderRef);
         if (!orderSnap.exists()) return;
 
-        const previousStatus = orderSnap.data().status;
         const orderData = orderSnap.data();
 
         await updateDoc(orderRef, { status });
@@ -353,40 +371,6 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         }
 
         // Restore stock if cancelling — idempotent via stockRestored flag
-        if (status === 'Cancelled' && previousStatus !== 'Cancelled' && !orderData.stockRestored) {
-            const orderItems = orderData.items as OrderItem[];
-            try {
-                for (const item of orderItems) {
-                    const productRef = doc(db, "products", String(item.id));
-                    const productSnap = await getDoc(productRef);
-
-                    if (productSnap.exists()) {
-                        const currentStock = productSnap.data().stockQuantity || 0;
-                        const newStock = currentStock + item.quantity;
-
-                        await updateDoc(productRef, {
-                            stockQuantity: newStock,
-                            inStock: newStock > 0
-                        });
-
-                        // Log Inventory History
-                        await addDoc(collection(db, "inventory_history"), {
-                            productId: String(item.id),
-                            productName: item.name,
-                            previousStock: currentStock,
-                            newStock: newStock,
-                            change: item.quantity,
-                            updatedBy: 'System (Cancellation)',
-                            updatedAt: new Date().toISOString()
-                        });
-                    }
-                }
-                await updateDoc(orderRef, { stockRestored: true, stockRestoredAt: new Date().toISOString() });
-            } catch (error) {
-                console.error("Error restoring stock:", error);
-            }
-        }
-
         const order = orders.find(o => o.id === orderId);
         if (order) {
             // Create Notification in Firestore
@@ -419,7 +403,10 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
     const updateOrderPaymentStatus = async (orderId: string, paymentStatus: 'Paid' | 'Unpaid', transactionDetails?: { amount: number, reference: string, date: string, method: string }) => {
         const orderRef = doc(db, "orders", orderId);
-        const updateData: any = { paymentStatus };
+        const updateData: any = {
+            paymentStatus,
+            ...(paymentStatus === 'Paid' ? { stockReservationStatus: 'committed' } : {}),
+        };
 
         if (transactionDetails) {
             updateData.transactionId = transactionDetails.reference;

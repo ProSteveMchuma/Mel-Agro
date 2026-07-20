@@ -9,7 +9,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 interface CartContextType {
     cartItems: CartItem[];
-    addToCart: (product: Product, quantity?: number, variant?: ProductVariant) => void;
+    addToCart: (product: Product, quantity?: number, variant?: ProductVariant) => boolean;
     removeFromCart: (cartItemId: string) => void;
     updateQuantity: (cartItemId: string, quantity: number) => void;
     clearCart: () => void;
@@ -20,6 +20,12 @@ interface CartContextType {
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+
+function getAvailableStock(product: Product, variant?: ProductVariant): number {
+    const rawStock = variant?.stockQuantity ?? product.stockQuantity ?? product.stock ?? 0;
+    const stock = Number(rawStock);
+    return Number.isFinite(stock) ? Math.max(0, stock) : 0;
+}
 
 export function CartProvider({ children }: { children: ReactNode }) {
     const { user } = useAuth();
@@ -93,6 +99,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }, [cartItems, user, isInitialLoad]);
 
     const addToCart = (product: Product, quantity = 1, variant?: ProductVariant) => {
+        const availableStock = getAvailableStock(product, variant);
+        if (product.inStock === false || availableStock < 1) {
+            toast.error(`${product.name} is currently out of stock`);
+            return false;
+        }
+
+        const requestedQuantity = Math.max(1, Math.floor(quantity));
         // Log analytics
         import('@/lib/analytics').then(({ AnalyticsService }) => {
             AnalyticsService.logAddToCart(String(product.id));
@@ -101,23 +114,30 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const cartItemId = variant ? `${product.id}-${variant.id}` : String(product.id);
         const itemPrice = variant?.price || product.price;
         const itemName = variant ? `${product.name} (${variant.name})` : product.name;
+        const existing = cartItems.find(item => item.cartItemId === cartItemId);
+        const nextQuantity = (existing?.quantity || 0) + requestedQuantity;
 
-        setCartItems(prev => {
-            const existing = prev.find(item => item.cartItemId === cartItemId);
+        if (nextQuantity > availableStock) {
+            toast.error(`Only ${availableStock} ${itemName} available`);
+            return false;
+        }
 
-            if (existing) {
-                toast.success(`Updated quantity for ${itemName}`);
-                return prev.map(item =>
+        if (existing) {
+            setCartItems(prev => prev.map(item =>
                     item.cartItemId === cartItemId
-                        ? { ...item, quantity: item.quantity + quantity }
+                        ? { ...item, quantity: nextQuantity }
                         : item
-                );
-            }
-
+                ));
+            toast.success(`Updated quantity for ${itemName}`);
+        } else {
+            setCartItems(prev => [
+                ...prev,
+                { ...product, cartItemId, quantity: requestedQuantity, selectedVariant: variant, price: itemPrice },
+            ]);
             toast.success(`Added ${itemName} to cart`);
-            return [...prev, { ...product, cartItemId, quantity, selectedVariant: variant, price: itemPrice }];
-        });
+        }
         setIsCartOpen(true); // Open drawer on add
+        return true;
     };
 
     const removeFromCart = (cartItemId: string) => {
@@ -127,9 +147,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const updateQuantity = (cartItemId: string, quantity: number) => {
         if (quantity < 1) return;
-        setCartItems(prev => prev.map(item =>
-            item.cartItemId === cartItemId ? { ...item, quantity } : item
-        ));
+        setCartItems(prev => prev.map(item => {
+            if (item.cartItemId !== cartItemId) return item;
+            const availableStock = getAvailableStock(item, item.selectedVariant);
+            if (quantity > availableStock) {
+                toast.error(`Only ${availableStock} ${item.name} available`);
+                return item;
+            }
+            return { ...item, quantity };
+        }));
     };
 
     const clearCart = () => {

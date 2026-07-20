@@ -10,7 +10,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
-import { doc, updateDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getAuth, updateProfile as updateAuthProfile, signInAnonymously } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
 import { generateWhatsAppMessage, getWhatsAppUrl } from '@/lib/whatsapp';
@@ -20,12 +20,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
 import { useShippingZones } from '@/hooks/useShippingZones';
-import { useForm, FormProvider } from 'react-hook-form';
+import { get, useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { checkoutSchema, CheckoutFormData } from '@/lib/schemas';
 import { Input } from '@/components/ui/form/Input';
 import { Select } from '@/components/ui/form/Select';
 import { Textarea } from '@/components/ui/form/Textarea';
+import type { Order } from '@/types';
 
 const LocationPicker = dynamic(() => import('../../components/checkout/LocationPicker'), {
     ssr: false,
@@ -34,12 +35,21 @@ const LocationPicker = dynamic(() => import('../../components/checkout/LocationP
 
 const KENYA_COUNTIES = KENYAN_COUNTIES.map(c => ({ value: c, label: c }));
 
+const SHIPPING_FIELDS = [
+    { name: 'shipping.phone', label: 'Phone number' },
+    { name: 'shipping.email', label: 'Email address' },
+    { name: 'shipping.fullName', label: 'Full name' },
+    { name: 'shipping.county', label: 'County' },
+    { name: 'shipping.town', label: 'Town, estate, or area' },
+    { name: 'shipping.address', label: 'Street address or landmark' },
+] as const;
+
 export default function CheckoutPage() {
     const router = useRouter();
     const { cartItems, cartTotal, clearCart, removeFromCart, updateQuantity } = useCart();
     const { user } = useAuth();
     const isGuest = !user || user.isAnonymous;
-    const { addOrder, orders: userOrders } = useOrders();
+    const { orders: userOrders } = useOrders();
     const { trackAction } = useBehavior();
     const { products: catalog } = useProducts();
 
@@ -52,6 +62,7 @@ export default function CheckoutPage() {
     const [showMap, setShowMap] = useState(false);
     const [quickCheckoutDismissed, setQuickCheckoutDismissed] = useState(false);
     const [paymentFailure, setPaymentFailure] = useState<{ orderId: string; message: string } | null>(null);
+    const [showValidationErrors, setShowValidationErrors] = useState(false);
 
     // Name-capture gate — phone-OTP signups land here without a real name
     const needsName = !!user && !user.isAnonymous && (!user.name || user.name === 'User');
@@ -121,13 +132,38 @@ export default function CheckoutPage() {
             shippingMethod: 'standard',
             paymentMethod: 'mpesa'
         },
-        mode: 'onChange'
+        mode: 'onChange',
+        shouldFocusError: true,
     });
 
     const { watch, setValue, trigger, handleSubmit, reset } = methods;
     const shippingData = watch('shipping');
     const shippingMethod = watch('shippingMethod');
     const paymentMethod = watch('paymentMethod');
+    const validationErrors = showValidationErrors
+        ? SHIPPING_FIELDS.flatMap(field => {
+            const error = get(methods.formState.errors, field.name);
+            return error ? [{ ...field, message: error.message || `${field.label} is required` }] : [];
+        })
+        : [];
+
+    const revealShippingErrors = () => {
+        const invalidFields = SHIPPING_FIELDS.flatMap(field => {
+            const error = methods.getFieldState(field.name).error;
+            return error ? [{ ...field, message: error.message || `${field.label} is required` }] : [];
+        });
+
+        setShowValidationErrors(true);
+        setCurrentStep(1);
+
+        const firstInvalid = invalidFields[0];
+        if (firstInvalid) {
+            window.setTimeout(() => {
+                methods.setFocus(firstInvalid.name);
+                document.getElementById(firstInvalid.name)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 50);
+        }
+    };
 
     // Redirect away if cart is empty (defense in depth for the submit guard)
     useEffect(() => {
@@ -174,11 +210,13 @@ export default function CheckoutPage() {
         stockIssues.length === 0;
 
     const handleQuickCheckout = async () => {
-        const ok = await trigger('shipping');
+        const ok = await trigger('shipping', { shouldFocus: false });
         if (!ok) {
-            toast.error("Some delivery details are missing — please fill them in.");
+            revealShippingErrors();
+            toast.error("Please correct the highlighted delivery details.");
             return;
         }
+        setShowValidationErrors(false);
         trackAction('quick_checkout_used', { lastOrderId: lastPaidOrder?.id });
         setCurrentStep(3);
     };
@@ -309,12 +347,14 @@ export default function CheckoutPage() {
 
     const handleNextStep = async () => {
         if (currentStep === 1) {
-            const isValid = await trigger('shipping');
+            const isValid = await trigger('shipping', { shouldFocus: false });
             if (!isValid) {
-                toast.error("Please fill in all required shipping details.");
+                revealShippingErrors();
+                toast.error("Please correct the highlighted delivery details.");
                 trackAction('checkout_validation_frustration', { errors: ['missing_fields'] });
                 return;
             }
+            setShowValidationErrors(false);
         }
 
         trackAction('checkout_step', { step: currentStep === 1 ? 'payment' : 'review' });
@@ -324,6 +364,11 @@ export default function CheckoutPage() {
 
     const handlePrevStep = () => {
         if (currentStep > 1) setCurrentStep(currentStep - 1);
+    };
+
+    const handleInvalidSubmit = () => {
+        revealShippingErrors();
+        toast.error('Please correct the highlighted fields before placing your order.');
     };
 
     const onSubmit = async (data: CheckoutFormData) => {
@@ -383,56 +428,38 @@ export default function CheckoutPage() {
         }
 
         try {
-            // Helper to remove undefined values recursively
-            const cleanObject = (obj: any): any => {
-                if (Array.isArray(obj)) return obj.map(cleanObject);
-                if (obj !== null && typeof obj === 'object') {
-                    return Object.entries(obj)
-                        .filter(([_, v]) => v !== undefined)
-                        .reduce((acc, [k, v]) => ({ ...acc, [k]: cleanObject(v) }), {});
-                }
-                return obj;
-            };
+            const idToken = await getAuth().currentUser?.getIdToken();
+            if (!idToken) throw new Error('Your checkout session expired. Please try again.');
 
-            const orderData = cleanObject({
-                userId: activeUser.uid,
-                userName: (activeUser?.name && activeUser.name !== 'User') ? activeUser.name : data.shipping.fullName.trim(),
-                userEmail: data.shipping.email,
-                items: cartItems.map(item => ({
-                    id: item.id,
-                    name: item.name,
-                    price: item.price,
-                    quantity: item.quantity,
-                    image: item.image || null,
-                    selectedVariant: item.selectedVariant || null
-                })),
-                subtotal: cartTotal,
-                discountAmount: discountFromPoints + couponDiscount,
-                pointsRedeemed: discountFromPoints,
-                couponDiscount: couponDiscount,
-                couponCode: appliedCoupon?.code || null,
-                couponId: appliedCoupon?.id || null,
-                total: total,
-                shippingAddress: {
-                    county: data.shipping.county,
-                    details: `${data.shipping.address}, ${data.shipping.town}`,
-                    method: data.shippingMethod,
-                    lat: data.shipping.lat,
-                    lng: data.shipping.lng
+            // Prices, delivery fees, discounts, loyalty points and stock are all
+            // calculated and committed by the server. The browser only submits intent.
+            const createResponse = await fetch('/api/orders/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${idToken}`,
                 },
-                phone: data.shipping.phone,
-                paymentMethod: data.paymentMethod === 'whatsapp' ? 'WhatsApp Order' :
-                    (data.paymentMethod === 'cod' ? 'Cash on Delivery' :
-                        (data.paymentMethod === 'manual_mpesa' ? `M-Pesa Till (${data.transactionCode})` :
-                            (data.paymentMethod === 'card' ? 'Card (Paystack)' : 'M-Pesa'))),
-                paymentStatus: data.paymentMethod === 'whatsapp' ? 'Pending WhatsApp' :
-                    (data.paymentMethod === 'manual_mpesa' ? 'Pending Verification' : 'Unpaid'),
-                shippingMethod: data.shippingMethod,
-                shippingCost: shippingCost,
-                notificationPreferences: ['sms', 'email']
+                body: JSON.stringify({
+                    items: cartItems.map(item => ({
+                        id: String(item.id),
+                        quantity: item.quantity,
+                        ...(item.selectedVariant?.id ? { variantId: String(item.selectedVariant.id) } : {}),
+                    })),
+                    shipping: data.shipping,
+                    shippingMethod: data.shippingMethod,
+                    paymentMethod: data.paymentMethod,
+                    transactionCode: data.transactionCode,
+                    couponCode: appliedCoupon?.code,
+                    redeemPoints: usePoints,
+                }),
             });
+            const createResult = await createResponse.json();
+            if (!createResponse.ok || !createResult.success || !createResult.order) {
+                throw new Error(createResult.message || 'We could not place your order. Please review your cart and try again.');
+            }
 
-            const newOrder = await addOrder(orderData, discountFromPoints);
+            const newOrder = createResult.order as Order;
+            const authoritativeTotal = Number(newOrder.total);
 
             // Mark cart as converted for analytics
             await setDoc(doc(db, 'carts', activeUser.uid), {
@@ -444,12 +471,12 @@ export default function CheckoutPage() {
             if (data.paymentMethod === 'whatsapp') {
                 const message = generateWhatsAppMessage({
                     orderId: newOrder.id,
-                    items: cartItems.map(item => ({
+                    items: newOrder.items.map(item => ({
                         name: item.selectedVariant ? `${item.name} (${item.selectedVariant.name})` : item.name,
                         quantity: item.quantity,
                         price: item.price
                     })),
-                    total: total,
+                    total: authoritativeTotal,
                     userName: (activeUser?.name && activeUser.name !== 'User') ? activeUser.name : data.shipping.fullName,
                     phone: data.shipping.phone,
                     address: `${data.shipping.address}, ${data.shipping.town}, ${data.shipping.county}`
@@ -479,7 +506,7 @@ export default function CheckoutPage() {
                     body: JSON.stringify({
                         orderId: newOrder.id,
                         phoneNumber: data.shipping.phone,
-                        amount: total // Display-only; the API always uses the stored order total.
+                        amount: authoritativeTotal // Display-only; the API always uses the stored order total.
                     })
                 });
 
@@ -606,7 +633,7 @@ export default function CheckoutPage() {
                         items: cartItems,
                         orderId: newOrder.id,
                         email: data.shipping.email,
-                        amount: total
+                        amount: authoritativeTotal
                     })
                 });
 
@@ -793,6 +820,34 @@ export default function CheckoutPage() {
                                         >
                                             <h2 className="text-2xl font-bold mb-8 text-gray-900">Contact Information</h2>
 
+                                            {validationErrors.length > 0 && (
+                                                <div role="alert" aria-live="assertive" className="mb-8 rounded-2xl border-2 border-red-300 bg-red-50 p-5 text-red-900 shadow-sm">
+                                                    <div className="flex items-start gap-3">
+                                                        <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-red-600 text-sm font-black text-white">!</span>
+                                                        <div>
+                                                            <h3 className="font-black">Please complete the highlighted details</h3>
+                                                            <p className="mt-1 text-sm text-red-700">Select an item below to go directly to that field.</p>
+                                                            <ul className="mt-3 space-y-2">
+                                                                {validationErrors.map(error => (
+                                                                    <li key={error.name}>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => {
+                                                                                methods.setFocus(error.name);
+                                                                                document.getElementById(error.name)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                                            }}
+                                                                            className="text-left text-sm font-bold underline decoration-red-300 underline-offset-2 hover:text-red-700"
+                                                                        >
+                                                                            {error.label}: {error.message}
+                                                                        </button>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
                                             {isGuest && (
                                                 <div className="mb-8 p-6 bg-gradient-to-r from-emerald-50/50 to-green-50/20 rounded-2xl border border-green-100 flex items-center justify-between gap-4 flex-wrap">
                                                     <div className="flex items-start gap-3 flex-1 min-w-[240px]">
@@ -820,9 +875,9 @@ export default function CheckoutPage() {
                                                                 type="button"
                                                                 key={addr.id}
                                                                 onClick={() => {
-                                                                    setValue('shipping.county', addr.county);
-                                                                    setValue('shipping.town', addr.city);
-                                                                    setValue('shipping.address', addr.details);
+                                                                    setValue('shipping.county', addr.county, { shouldValidate: true });
+                                                                    setValue('shipping.town', addr.city, { shouldValidate: true });
+                                                                    setValue('shipping.address', addr.details, { shouldValidate: true });
                                                                     toast.success(`Loaded "${addr.label}"`);
                                                                 }}
                                                                 className="text-left p-3 bg-white rounded-xl border border-gray-100 hover:border-melagri-primary hover:shadow-md transition-all group"
@@ -848,6 +903,7 @@ export default function CheckoutPage() {
                                                     label="Phone Number (+254)"
                                                     placeholder="0712 345 678"
                                                     format="phone"
+                                                    required
                                                 />
 
                                                 <hr />
@@ -858,18 +914,21 @@ export default function CheckoutPage() {
                                                     name="shipping.fullName"
                                                     label="Full Name"
                                                     placeholder="e.g. Wanjiku Mwangi"
+                                                    required
                                                 />
 
                                                 <Select
                                                     name="shipping.county"
                                                     label="County"
                                                     options={KENYA_COUNTIES}
+                                                    required
                                                 />
 
                                                 <Input
                                                     name="shipping.town"
                                                     label="Town / Estate / Area"
                                                     placeholder="e.g. Westlands, Kilimani"
+                                                    required
                                                 />
 
                                                 <Textarea
@@ -877,6 +936,7 @@ export default function CheckoutPage() {
                                                     label="Street Address / Nearest Landmark"
                                                     placeholder="e.g. Apartment, Building, Floor"
                                                     rows={3}
+                                                    required
                                                 />
 
                                                 {/* Map Location Picker — collapsed by default to keep checkout fast */}
@@ -906,8 +966,8 @@ export default function CheckoutPage() {
                                                                 onLocationSelect={(lat, lng, address) => {
                                                                     setValue('shipping.lat', lat);
                                                                     setValue('shipping.lng', lng);
-                                                                    if (address?.county) setValue('shipping.county', address.county);
-                                                                    if (address?.town) setValue('shipping.town', address.town);
+                                                                    if (address?.county) setValue('shipping.county', address.county, { shouldValidate: true });
+                                                                    if (address?.town) setValue('shipping.town', address.town, { shouldValidate: true });
 
                                                                     if (address?.county) {
                                                                         toast.success(`Location detected: ${address.county}`, { id: 'map-toast' });
@@ -1395,7 +1455,7 @@ export default function CheckoutPage() {
                                                     ← Back
                                                 </button>
                                                 <button
-                                                    onClick={handleSubmit(onSubmit)}
+                                                    onClick={handleSubmit(onSubmit, handleInvalidSubmit)}
                                                     disabled={isProcessing}
                                                     type="button"
                                                     className="flex-1 bg-melagri-primary hover:bg-melagri-secondary text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"

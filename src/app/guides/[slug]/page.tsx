@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const guide = await getGuideBySlug(slug);
 
     if (!guide) {
-        return { title: 'Guide Not Found | Mel-Agri' };
+        return { title: 'Guide Not Found' };
     }
 
     const canonical = `/guides/${guide.slug}`;

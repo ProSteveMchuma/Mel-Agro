@@ -187,9 +187,9 @@ export default function UserDashboard() {
             try {
                 await updateOrderStatus(orderId, 'Cancelled');
                 toast.success("Order cancelled successfully");
-            } catch (error) {
+            } catch (error: any) {
                 console.error("Error cancelling order:", error);
-                toast.error("Failed to cancel order");
+                toast.error(error?.message || "Failed to cancel order");
             }
         }
     };

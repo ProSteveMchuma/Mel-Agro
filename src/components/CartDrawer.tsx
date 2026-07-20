@@ -4,6 +4,7 @@ import { useCart } from "@/context/CartContext";
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
+import { FREE_SHIPPING_THRESHOLD } from '@/lib/delivery';
 
 export default function CartDrawer() {
     const { isCartOpen, toggleCart, cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
@@ -57,19 +58,19 @@ export default function CartDrawer() {
 
                 {/* Free Shipping Progress */}
                 <div className="bg-melagri-primary/5 p-4 border-b border-gray-100">
-                    {cartTotal >= 5000 ? (
+                    {cartTotal >= FREE_SHIPPING_THRESHOLD ? (
                         <div className="text-sm text-green-700 font-bold flex items-center justify-center gap-2 bg-green-50 p-2 rounded-lg border border-green-100">
-                            <span>🎉</span> You've got <span className="uppercase">Free Shipping</span>!
+                            <span>🎉</span> Your order qualifies for <span className="uppercase">eligible free delivery</span>!
                         </div>
                     ) : (
                         <div>
                             <p className="text-xs text-gray-600 mb-1.5 text-center">
-                                Add <span className="font-bold text-melagri-primary">KES {(5000 - cartTotal).toLocaleString()}</span> more for <span className="font-bold">Free Shipping</span>
+                                Add <span className="font-bold text-melagri-primary">KES {(FREE_SHIPPING_THRESHOLD - cartTotal).toLocaleString()}</span> more for <span className="font-bold">eligible free delivery</span>
                             </p>
                             <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-melagri-primary transition-all duration-500 ease-out"
-                                    style={{ width: `${Math.min((cartTotal / 5000) * 100, 100)}%` }}
+                                    style={{ width: `${Math.min((cartTotal / FREE_SHIPPING_THRESHOLD) * 100, 100)}%` }}
                                 />
                             </div>
                         </div>

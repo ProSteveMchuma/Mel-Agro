@@ -1,7 +1,7 @@
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
+import { FREE_SHIPPING_THRESHOLD } from '@/lib/delivery';
 
 export const metadata: Metadata = {
     title: 'Delivery Information — Nationwide Farm Input Delivery in Kenya',
@@ -27,7 +27,7 @@ export default function DeliveryInfo() {
                         <div className="grid md:grid-cols-2 gap-6 my-8">
                             <div className="bg-green-50 p-6 rounded-2xl border border-green-100">
                                 <h3 className="font-bold text-lg text-melagri-primary mb-2">Nairobi Region</h3>
-                                <p className="text-sm">Delivery within 24 hours. Free for orders over KES 5,000.</p>
+                                <p className="text-sm">Delivery within 24 hours. Eligible orders over KES {FREE_SHIPPING_THRESHOLD.toLocaleString()} qualify for free delivery.</p>
                             </div>
                             <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
                                 <h3 className="font-bold text-lg text-blue-600 mb-2">Upcountry</h3>

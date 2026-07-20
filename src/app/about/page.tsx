@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: "About Mel-Agri | Premium Agritech & Agrovet Supplier Kenya",
+    title: "About Our Premium Agritech & Agrovet Business in Kenya",
     description: "Learn about Mel-Agri, a proud subsidiary of Makamithi. For over 20 years, we have supplied premium certified hybrid seeds, high-yield fertilizers, and agrochemicals to Kenyan farmers.",
     alternates: { canonical: '/about' },
     openGraph: {

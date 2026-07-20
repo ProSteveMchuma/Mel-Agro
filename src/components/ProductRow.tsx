@@ -74,6 +74,14 @@ export default function ProductRow({ title = "", filter, products: initialProduc
                         images={product.images}
                         category={product.category}
                         variants={product.variants}
+                        description={product.description}
+                        brand={product.brand}
+                        productCode={product.productCode}
+                        inStock={product.inStock}
+                        stockQuantity={product.stockQuantity}
+                        lowStockThreshold={product.lowStockThreshold}
+                        rating={product.rating}
+                        reviews={product.reviews}
                     />
                 ))}
             </div>

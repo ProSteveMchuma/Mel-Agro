@@ -139,6 +139,7 @@ export async function POST(request: Request) {
                     mpesaTransactionDate: TransTime || null,
                     amountPaid: amount,
                     status: orderData?.status === 'Pending Payment' || !orderData?.status ? 'Processing' : orderData.status,
+                    stockReservationStatus: 'committed',
                     paidAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     paymentResolvedVia: `C2B_AUTO_${matchReason}`,

@@ -91,6 +91,7 @@ export async function POST(request: Request) {
                 mpesaTransactionDate: transactionDate,
                 amountPaid,
                 status: 'Processing',
+                stockReservationStatus: 'committed',
                 lastCallbackEventId: callbackEventId,
                 paidAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),

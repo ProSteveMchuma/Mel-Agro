@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 
@@ -15,7 +14,6 @@ export default function BillingPolicy() {
                         <h2 className="text-xl font-bold text-gray-800 mt-6 mb-3">Accepted Payment Methods</h2>
                         <ul className="list-disc pl-5 space-y-2 mb-4">
                             <li>M-Pesa (Safaricom)</li>
-                            <li>Credit/Debit Cards (Visa, MasterCard)</li>
                             <li>Bank Transfer (for bulk orders only)</li>
                         </ul>
 

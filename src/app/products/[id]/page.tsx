@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     
     if (!product) {
         return {
-            title: 'Product Not Found | Mel-Agri',
+            title: 'Product Not Found',
             description: 'The product you are looking for is not available.',
             robots: { index: false, follow: false },
         };

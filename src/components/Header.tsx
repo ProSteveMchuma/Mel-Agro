@@ -7,14 +7,12 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import SmartSearch from "./SmartSearch";
 
-import { useLanguage } from "@/context/LanguageContext";
 import Logo from "./Logo";
+import { FREE_SHIPPING_THRESHOLD } from '@/lib/delivery';
 
 export default function Header() {
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const { cartCount, toggleCart } = useCart();
   const { user, isAdmin, logout } = useAuth();
-  const { language, setLanguage, t } = useLanguage();
   const router = useRouter();
 
   // Dropdown states
@@ -60,7 +58,7 @@ export default function Header() {
       <div className="bg-[#f0f9f1] py-1.5 md:py-2 border-b border-gray-100 hidden sm:block">
         <div className="container-custom flex justify-center items-center">
           <p className="text-[10px] md:text-xs font-medium text-gray-700 uppercase tracking-widest">
-            FREE Delivery in Nairobi on orders over <span className="font-black text-green-700 underline decoration-green-300 decoration-2">KES 5,000!</span>
+            FREE delivery on eligible orders over <span className="font-black text-green-700 underline decoration-green-300 decoration-2">KES {FREE_SHIPPING_THRESHOLD.toLocaleString()}!</span>
           </p>
         </div>
       </div>

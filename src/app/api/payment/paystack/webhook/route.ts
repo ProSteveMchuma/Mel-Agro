@@ -90,6 +90,8 @@ export async function POST(request: Request) {
                     paystackId: String(id),
                     transactionId: reference,
                     amountPaid,
+                    status: 'Processing',
+                    stockReservationStatus: 'committed',
                     paidAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     history: admin.firestore.FieldValue.arrayUnion({

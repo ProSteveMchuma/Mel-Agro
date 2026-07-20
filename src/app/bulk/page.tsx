@@ -1,11 +1,10 @@
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import BulkInquiryForm from '@/components/BulkInquiryForm';
 
 export const metadata: Metadata = {
-    title: 'Bulk Farm Inputs & Wholesale Agrochemicals Kenya | Mel-Agri',
+    title: 'Bulk Farm Inputs & Wholesale Agrochemicals Kenya',
     description: 'Special wholesale pricing and direct shipping logistics for bulk agricultural inputs in Kenya. Cooperatives, large farms, and institutions — get a bulk quote online today.',
     alternates: { canonical: '/bulk' },
     openGraph: {

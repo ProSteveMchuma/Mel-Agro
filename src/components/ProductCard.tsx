@@ -6,7 +6,7 @@ import { useCart } from "@/context/CartContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { ProductVariant } from "@/types";
+import { Product, ProductVariant } from "@/types";
 import { useBehavior } from "@/context/BehaviorContext";
 
 interface ProductCardProps {
@@ -17,9 +17,33 @@ interface ProductCardProps {
     images?: string[]; // Fallback gallery images
     category: string;
     variants?: ProductVariant[];
+    description?: string;
+    brand?: string;
+    productCode?: string;
+    inStock?: boolean;
+    stockQuantity?: number;
+    lowStockThreshold?: number;
+    rating?: number;
+    reviews?: number;
 }
 
-export default function ProductCard({ id, name, price, image, images = [], category, variants = [] }: ProductCardProps) {
+export default function ProductCard({
+    id,
+    name,
+    price,
+    image,
+    images = [],
+    category,
+    variants = [],
+    description = "",
+    brand,
+    productCode,
+    inStock = false,
+    stockQuantity = 0,
+    lowStockThreshold = 10,
+    rating = 0,
+    reviews = 0,
+}: ProductCardProps) {
     const { addToCart } = useCart();
     const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
     const [isAdding, setIsAdding] = useState(false);
@@ -31,6 +55,11 @@ export default function ProductCard({ id, name, price, image, images = [], categ
     const imageSrc = (typeof rawImage === 'string' && rawImage.startsWith('http')) ? rawImage : "https://placehold.co/400x400?text=No+Image";
 
     const inWishlist = isInWishlist(id);
+    const availableVariants = variants.filter(variant => Number(variant.stockQuantity) > 0);
+    const requiresVariantSelection = variants.length > 1;
+    const quickAddVariant = variants.length === 1 ? variants[0] : undefined;
+    const availableStock = quickAddVariant ? Number(quickAddVariant.stockQuantity) : Number(stockQuantity);
+    const isAvailable = inStock && (variants.length > 0 ? availableVariants.length > 0 : availableStock > 0);
     const router = useRouter();
     const { trackAction } = useBehavior();
 
@@ -44,24 +73,38 @@ export default function ProductCard({ id, name, price, image, images = [], categ
     const handleAddToCart = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
+
+        if (!isAvailable) {
+            router.push(`/products/${id}`);
+            return;
+        }
+        if (requiresVariantSelection) {
+            router.push(`/products/${id}`);
+            return;
+        }
+
         setIsAdding(true);
         trackAction('cart_add', { id, name, category, price: safePrice });
 
-        const productForCart = {
+        const productForCart: Product = {
             id: String(id),
             name,
             price: safePrice,
             image: imageSrc,
+            images,
             category,
-            description: "",
-            inStock: true,
-            rating: 5,
-            reviews: 0,
-            stockQuantity: 100,
-            lowStockThreshold: 10
+            description,
+            brand,
+            productCode,
+            variants,
+            inStock,
+            rating,
+            reviews,
+            stockQuantity,
+            lowStockThreshold,
         };
 
-        addToCart(productForCart, 1);
+        addToCart(productForCart, 1, quickAddVariant);
         setTimeout(() => setIsAdding(false), 1000);
     };
 
@@ -76,18 +119,20 @@ export default function ProductCard({ id, name, price, image, images = [], categ
                 name,
                 price: safePrice,
                 image: imageSrc,
+                images,
                 category,
-                inStock: true,
-                rating: 5,
-                reviews: 0,
-                stockQuantity: 0,
-                lowStockThreshold: 0
+                description,
+                brand,
+                productCode,
+                variants,
+                inStock,
+                rating,
+                reviews,
+                stockQuantity,
+                lowStockThreshold,
             });
         }
     };
-
-    const originalPrice = safePrice;
-    const discountPercent = 0;
 
     return (
         <Link href={`/products/${id}`}>
@@ -164,16 +209,16 @@ export default function ProductCard({ id, name, price, image, images = [], categ
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5 md:gap-2 mt-auto">
                         <button
                             onClick={handleAddToCart}
-                            disabled={isAdding}
+                            disabled={isAdding || !isAvailable}
                             className={`
                                 w-full py-3 md:py-2.5 rounded-xl font-bold text-[11px] uppercase tracking-widest transition-all duration-200 active:scale-95
-                                ${isAdding
+                                ${isAdding || !isAvailable
                                     ? "bg-gray-100 text-gray-400 cursor-not-allowed"
                                     : "bg-gray-900 text-white hover:bg-[#22c55e] shadow-md hover:shadow-green-200"
                                 }
                             `}
                         >
-                            {isAdding ? "Added!" : "Add to Cart"}
+                            {isAdding ? "Added!" : !isAvailable ? "Out of Stock" : requiresVariantSelection ? "Choose Options" : "Add to Cart"}
                         </button>
 
                         <button

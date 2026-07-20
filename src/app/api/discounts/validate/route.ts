@@ -1,14 +1,20 @@
 import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
-import { requireUser } from '@/lib/auth-server';
+import { adminAuth, adminDb } from '@/lib/firebase-admin';
+
+async function getOptionalUserId(request: Request): Promise<string | null> {
+    const authHeader = request.headers.get('authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+    if (!token) return null;
+    try {
+        return (await adminAuth.verifyIdToken(token)).uid;
+    } catch {
+        return null;
+    }
+}
 
 export async function POST(request: Request) {
-    const auth = await requireUser(request);
-    if (!auth.ok) {
-        return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
-    }
-
     try {
+        const userId = await getOptionalUserId(request);
         const { code, cartTotal } = await request.json();
 
         if (!code) {
@@ -57,17 +63,22 @@ export async function POST(request: Request) {
             }
         }
 
-        const userUsageSnap = await adminDb
-            .collection('discountUsage')
-            .where('userId', '==', auth.uid)
-            .where('code', '==', normalized)
-            .limit(1)
-            .get();
-        if (!userUsageSnap.empty) {
-            return NextResponse.json({
-                success: false,
-                message: 'You have already used this promo code',
-            }, { status: 409 });
+        // Guests may preview a code before Firebase anonymous auth is created.
+        // Authenticated customers still receive the useful already-used warning;
+        // final eligibility is always rechecked atomically when the order is made.
+        if (userId) {
+            const userUsageSnap = await adminDb
+                .collection('discountUsage')
+                .where('userId', '==', userId)
+                .where('code', '==', normalized)
+                .limit(1)
+                .get();
+            if (!userUsageSnap.empty) {
+                return NextResponse.json({
+                    success: false,
+                    message: 'You have already used this promo code',
+                }, { status: 409 });
+            }
         }
 
         let discountAmount = 0;

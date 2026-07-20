@@ -3,18 +3,13 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from 'next/link';
-import { useAuth } from '@/context/AuthContext';
 import { useCart } from "@/context/CartContext";
 import { useRouter } from 'next/navigation';
 import Image from "next/image";
 
 export default function CartPage() {
     const { cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
-    const { isAuthenticated } = useAuth();
     const router = useRouter();
-
-    const shipping = 500; // Flat rate
-    const total = cartTotal + shipping;
 
     const handleCheckout = () => {
         router.push('/checkout');
@@ -114,12 +109,12 @@ export default function CartPage() {
                                             <span className="font-bold text-gray-900">KES {cartTotal.toLocaleString()}</span>
                                         </div>
                                         <div className="flex justify-between">
-                                            <span>Shipping Estimate</span>
-                                            <span className="font-bold text-gray-900">KES {shipping.toLocaleString()}</span>
+                                            <span>Delivery</span>
+                                            <span className="font-bold text-gray-900 text-right">Calculated by county at checkout</span>
                                         </div>
                                         <div className="border-t border-gray-100 pt-4 flex justify-between text-lg font-extrabold text-melagri-primary">
-                                            <span>Total</span>
-                                            <span>KES {total.toLocaleString()}</span>
+                                            <span>Subtotal</span>
+                                            <span>KES {cartTotal.toLocaleString()}</span>
                                         </div>
                                     </div>
 
