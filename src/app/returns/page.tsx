@@ -31,7 +31,7 @@ export default function ReturnsPolicy() {
                         <p className="mb-4">Go to your <Link href="/dashboard/user?tab=orders" className="text-melagri-primary font-bold hover:underline">Orders Dashboard</Link>, select the order, and click "Request Return".</p>
 
                         <h2 className="text-xl font-bold text-gray-800 mt-6 mb-3">Refunds</h2>
-                        <p className="mb-4">Once we receive and inspect your return, we will notify you of the approval or rejection of your refund. Approved refunds are processed to your original payment method (M-Pesa or Card) within 5-7 business days.</p>
+                        <p className="mb-4">Once we receive and inspect your return, we will notify you of the approval or rejection of your refund. Approved refunds are processed through the payment method agreed with our support team, normally M-Pesa, within 5-7 business days.</p>
                     </div>
                 </div>
             </main>

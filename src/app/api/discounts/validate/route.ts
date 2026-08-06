@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
+import { enforceRateLimit } from '@/lib/request-guard';
 
 async function getOptionalUserId(request: Request): Promise<string | null> {
     const authHeader = request.headers.get('authorization') || '';
@@ -13,6 +14,9 @@ async function getOptionalUserId(request: Request): Promise<string | null> {
 }
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'discount-validation', 30, 60_000);
+    if (limited) return limited;
+
     try {
         const userId = await getOptionalUserId(request);
         const { code, cartTotal } = await request.json();

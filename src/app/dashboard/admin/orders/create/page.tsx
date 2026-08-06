@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useOrders } from '@/context/OrderContext';
 import { useProducts } from '@/context/ProductContext';
 import { useUsers } from '@/context/UserContext';

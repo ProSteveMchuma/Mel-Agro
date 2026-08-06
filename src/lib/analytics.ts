@@ -1,5 +1,5 @@
 import { db } from './firebase';
-import { collection, addDoc, doc, updateDoc, increment, serverTimestamp, getDoc, setDoc, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, addDoc, doc, increment, serverTimestamp, setDoc, query, orderBy, limit, getDocs } from 'firebase/firestore';
 
 export const AnalyticsService = {
     /**

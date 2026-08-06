@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import L from 'leaflet';
 
 // Leaflet CSS is handled via CDN link in the page or global import
@@ -19,7 +19,7 @@ export default function LocationPicker({ onLocationSelect, initialLat = -1.2921,
     const [loading, setLoading] = useState(false);
     const [isGeocoding, setIsGeocoding] = useState(false);
 
-    const fetchReverseGeocode = async (lat: number, lng: number) => {
+    const fetchReverseGeocode = useCallback(async (lat: number, lng: number) => {
         setIsGeocoding(true);
         try {
             // Nominatim requires a User-Agent or Referer.
@@ -45,12 +45,12 @@ export default function LocationPicker({ onLocationSelect, initialLat = -1.2921,
             setIsGeocoding(false);
         }
         return null;
-    };
+    }, []);
 
-    const handleLocationUpdate = async (lat: number, lng: number) => {
+    const handleLocationUpdate = useCallback(async (lat: number, lng: number) => {
         const address = await fetchReverseGeocode(lat, lng);
         onLocationSelect(lat, lng, address || undefined);
-    };
+    }, [fetchReverseGeocode, onLocationSelect]);
 
     useEffect(() => {
         if (!mapContainerRef.current) return;
@@ -120,7 +120,7 @@ export default function LocationPicker({ onLocationSelect, initialLat = -1.2921,
                 mapRef.current = null;
             }
         };
-    }, [initialLat, initialLng]); // Removed onLocationSelect from deps as handleLocationUpdate uses it
+    }, [handleLocationUpdate, initialLat, initialLng]);
 
     return (
         <div className="h-[300px] w-full rounded-xl overflow-hidden border border-gray-200 relative z-0">

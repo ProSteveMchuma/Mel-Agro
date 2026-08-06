@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSettings } from "@/context/SettingsContext";
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -25,8 +24,6 @@ const mockOrder: any = {
 };
 
 export default function DocumentSettingsPage() {
-    const { general } = useSettings();
-    const [activeTemplate, setActiveTemplate] = useState("invoice");
     const [saving, setSaving] = useState(false);
 
     // Template Settings State
@@ -44,7 +41,7 @@ export default function DocumentSettingsPage() {
             const docRef = doc(db, "settings", "documents");
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
-                setTemplateSettings({ ...templateSettings, ...docSnap.data() });
+                setTemplateSettings((current) => ({ ...current, ...docSnap.data() }));
             }
         };
         loadSettings();

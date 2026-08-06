@@ -79,7 +79,7 @@ export default function UserManagement() {
                                                 try {
                                                     await updateUserRole(String(user.id), newRole);
                                                     toast.success("Role updated successfully!", { id: toastId });
-                                                } catch (err) {
+                                                } catch {
                                                     toast.error("Failed to update role. Please try again.", { id: toastId });
                                                 }
                                             }}

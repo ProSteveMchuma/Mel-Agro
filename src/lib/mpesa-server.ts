@@ -138,7 +138,7 @@ export async function generateSecurityCredential(): Promise<string> {
     let cert: string;
     try {
         cert = await fs.readFile(certPath, 'utf8');
-    } catch (e) {
+    } catch {
         throw new Error(
             `M-Pesa public certificate not found at ${certPath}. Download from https://developer.safaricom.co.ke and place at this path, or set MPESA_PUBLIC_CERT_PATH.`
         );

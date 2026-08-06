@@ -4,6 +4,7 @@ import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { verifySafaricomCallback } from '@/lib/safaricom-ips';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { sendServerSms, sendServerEmail } from '@/lib/server-notifications';
+import { reportIncident } from '@/lib/incident-reporting';
 
 export async function POST(request: Request) {
     const ipCheck = verifySafaricomCallback(request);
@@ -19,8 +20,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
 
-    console.log("M-Pesa Callback:", JSON.stringify(payload));
-
     try {
         const stkCallback = payload?.Body?.stkCallback;
         if (!stkCallback) {
@@ -28,6 +27,10 @@ export async function POST(request: Request) {
         }
 
         const { CheckoutRequestID, ResultCode, ResultDesc, CallbackMetadata } = stkCallback;
+        console.info('M-Pesa callback received', {
+            checkoutRequestId: CheckoutRequestID || 'missing',
+            resultCode: String(ResultCode ?? 'missing'),
+        });
 
         const ordersSnap = await adminDb
             .collection('orders')
@@ -130,6 +133,13 @@ export async function POST(request: Request) {
                 console.warn('Payment-received notification failed (non-fatal):', e);
             }
         } else {
+            void reportIncident({
+                type: 'payment_failure',
+                severity: 'warning',
+                source: 'mpesa-callback',
+                message: 'M-Pesa payment failed',
+                metadata: { resultCode: String(ResultCode), orderId: orderDoc.id },
+            });
             await orderRef.update({
                 paymentStatus: 'Failed',
                 status: 'Pending Payment',
@@ -144,6 +154,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     } catch (error) {
         console.error("Callback Processing Error:", error);
+        void reportIncident({
+            type: 'callback_error',
+            severity: 'critical',
+            source: 'mpesa-callback',
+            message: error instanceof Error ? error.message : 'Callback processing failed',
+        });
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
 }

@@ -80,7 +80,7 @@ export default function BulkUploadButton() {
             } else {
                 toast.error(`Upload failed: ${result.success ? "Summary missing" : result.error}`, { id: loadingToast });
             }
-        } catch (error) {
+        } catch {
             toast.error('An unexpected error occurred', { id: loadingToast });
         } finally {
             setIsUploading(false);

@@ -16,7 +16,10 @@ export async function POST(request: Request) {
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
 
-    console.log('C2B Confirmation:', JSON.stringify(payload));
+    console.info('C2B confirmation received', {
+        transactionIdSuffix: String(payload?.TransID || '').slice(-4),
+        hasReference: Boolean(payload?.BillRefNumber),
+    });
 
     try {
         const {

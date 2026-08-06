@@ -6,11 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useContent } from "@/context/ContentContext";
 import Image from "next/image";
 
-interface HeroProps {
-    categories?: string[];
-}
-
-export default function Hero({ categories: dynamicCategories = [] }: HeroProps) {
+export default function Hero() {
     const { banners } = useContent();
     const [currentSlide, setCurrentSlide] = useState(0);
 

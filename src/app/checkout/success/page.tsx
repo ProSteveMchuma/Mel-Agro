@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useOrders, Order } from "@/context/OrderContext";
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
@@ -15,7 +15,6 @@ import { format } from "date-fns";
 
 function OrderSuccessContent() {
     const searchParams = useSearchParams();
-    const router = useRouter();
     const orderId = searchParams.get("orderId");
     const { orders } = useOrders();
     const [order, setOrder] = useState<Order | null>(null);

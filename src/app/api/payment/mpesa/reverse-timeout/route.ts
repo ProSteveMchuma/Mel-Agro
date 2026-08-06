@@ -8,8 +8,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
     try {
-        const payload = await request.json().catch(() => ({}));
-        console.warn('M-Pesa Reversal Timeout:', JSON.stringify(payload));
+        await request.json().catch(() => ({}));
+        console.warn('M-Pesa reversal request timed out');
     } catch {
         // ignore
     }

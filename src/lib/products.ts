@@ -3,6 +3,25 @@ import { Product } from '@/types';
 export type { Product };
 import { collection, getDocs, doc, getDoc, query, where, limit, orderBy, startAfter, QueryConstraint } from 'firebase/firestore';
 
+function toPlainValue(value: unknown): unknown {
+    if (value === null || value === undefined) return value;
+    if (typeof value !== 'object') return value;
+
+    if ('toDate' in value && typeof (value as { toDate?: unknown }).toDate === 'function') {
+        return (value as { toDate: () => Date }).toDate().toISOString();
+    }
+
+    if (Array.isArray(value)) return value.map(toPlainValue);
+
+    return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, toPlainValue(entry)])
+    );
+}
+
+function productFromSnapshot(snapshot: { id: string; data: () => Record<string, unknown> }): Product {
+    return toPlainValue({ id: snapshot.id, ...snapshot.data() }) as Product;
+}
+
 export async function getProducts(options: {
     category?: string,
     limitCount?: number,
@@ -24,10 +43,7 @@ export async function getProducts(options: {
         const q = query(collection(db, "products"), ...constraints);
         const querySnapshot = await getDocs(q);
 
-        return querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Product));
+        return querySnapshot.docs.map(productFromSnapshot);
     } catch (error) {
         console.error("Error fetching products:", error);
         return [];
@@ -76,10 +92,7 @@ export async function getProductsPage(
         const querySnapshot = await getDocs(q);
         const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
 
-        const products = querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Product));
+        const products = querySnapshot.docs.map(productFromSnapshot);
 
         return { products, lastVisible: lastDoc };
     } catch (error) {
@@ -134,10 +147,7 @@ export async function getProductById(id: string): Promise<Product | undefined> {
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
-            return {
-                id: docSnap.id,
-                ...docSnap.data()
-            } as Product;
+            return productFromSnapshot(docSnap);
         } else {
             return undefined;
         }
@@ -166,7 +176,7 @@ export async function getRelatedProducts(category: string, currentId: string): P
         );
         const directSnapshot = await getDocs(qDirect);
         const directProducts = directSnapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() } as Product))
+            .map(productFromSnapshot)
             .filter(p => p.id !== currentId)
             .slice(0, targetComplement ? 2 : 4);
 
@@ -178,8 +188,7 @@ export async function getRelatedProducts(category: string, currentId: string): P
                 limit(2)
             );
             const crossSnapshot = await getDocs(qCross);
-            crossSellProducts = crossSnapshot.docs
-                .map(doc => ({ id: doc.id, ...doc.data() } as Product));
+            crossSellProducts = crossSnapshot.docs.map(productFromSnapshot);
         }
 
         return [...directProducts, ...crossSellProducts];
@@ -197,10 +206,7 @@ export async function getFeaturedProducts(limitCount: number = 6): Promise<Produ
             limit(limitCount)
         );
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        } as Product));
+        return querySnapshot.docs.map(productFromSnapshot);
     } catch (error) {
         console.error("Error fetching featured products:", error);
         return [];

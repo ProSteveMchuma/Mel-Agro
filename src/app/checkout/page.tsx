@@ -9,6 +9,7 @@ import { useProducts } from '@/context/ProductContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
+import Image from 'next/image';
 import { toast } from 'react-hot-toast';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getAuth, updateProfile as updateAuthProfile, signInAnonymously } from 'firebase/auth';
@@ -1509,9 +1510,12 @@ export default function CheckoutPage() {
 
                                         {cartItems.map(item => (
                                             <div key={item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id)} className="flex gap-3">
-                                                <img
+                                                <Image
                                                     src={item.image}
                                                     alt={item.name}
+                                                    width={64}
+                                                    height={64}
+                                                    unoptimized
                                                     className="w-16 h-16 rounded object-cover bg-gray-100"
                                                 />
                                                 <div className="flex-1">

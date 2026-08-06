@@ -7,6 +7,7 @@ import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
 import { getZonesServer } from '@/lib/delivery-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { sendServerEmail, sendServerSms } from '@/lib/server-notifications';
+import { enforceRateLimit } from '@/lib/request-guard';
 
 const lineItemSchema = z.object({
     id: z.union([z.string(), z.number()]).transform(String),
@@ -76,6 +77,9 @@ function paymentDetails(method: z.infer<typeof createOrderSchema>['paymentMethod
 }
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'order-create', 10, 10 * 60_000);
+    if (limited) return limited;
+
     const authenticated = await requireUser(request);
     if (!authenticated.ok || !authenticated.uid) {
         return NextResponse.json({ success: false, message: authenticated.message || 'Unauthorized' }, { status: 401 });

@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, doc, query, orderBy, onSnapshot, where, getDocs, setDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, addDoc, doc, query, orderBy, onSnapshot, setDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 
 export interface ChatMessage {

@@ -1,6 +1,6 @@
 "use server";
 
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import { ProductVariant } from '@/types';
@@ -31,27 +31,6 @@ function normalizeProductField(val: any): string {
         .trim();
 }
 
-/**
- * Converts a Google Drive sharing link to a direct view/download link
- */
-function convertToDirectDriveLink(url: string): string {
-    if (!url || !url.includes('drive.google.com')) return url;
-
-    // Pattern for file links: /file/d/ID/view...
-    const fileMatch = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-    if (fileMatch && fileMatch[1]) {
-        return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
-    }
-
-    // Pattern for id=ID query param
-    const idMatch = url.match(/[?&]id=([a-zA-Z0-9_-]+)/);
-    if (idMatch && idMatch[1]) {
-        return `https://drive.google.com/uc?export=view&id=${idMatch[1]}`;
-    }
-
-    return url;
-}
-
 export async function uploadProductsFromExcel(formData: FormData) {
     const file = formData.get('file') as File;
     if (!file) {
@@ -62,43 +41,36 @@ export async function uploadProductsFromExcel(formData: FormData) {
         console.log("Bulk upload action started");
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        const workbook = XLSX.read(buffer, { type: 'buffer' });
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(buffer as any);
 
         let allSheetData: any[] = [];
-        workbook.SheetNames.forEach(sheetName => {
-            const worksheet = workbook.Sheets[sheetName];
-
-            // sheet_to_json is fast, but doesn't include hyperlinks
-            const jsonData = XLSX.utils.sheet_to_json(worksheet) as any[];
-
-            // Enhance data with hyperlinks
-            if (worksheet['!ref']) {
-                const range = XLSX.utils.decode_range(worksheet['!ref']);
-                // Map columns to keys
-                const headers: string[] = [];
-                for (let C = range.s.c; C <= range.e.c; ++C) {
-                    const cell = worksheet[XLSX.utils.encode_cell({ r: range.s.r, c: C })];
-                    headers.push(cell ? String(cell.v).trim() : `COL_${C}`);
-                }
-
-                jsonData.forEach((row, idx) => {
-                    const rowIdx = range.s.r + 1 + idx; // Adjust for header and 0-indexing
-                    headers.forEach((header, colIdx) => {
-                        const cellAddress = XLSX.utils.encode_cell({ r: rowIdx, c: colIdx });
-                        const cell = worksheet[cellAddress];
-                        // If cell has a hyperlink, override the value in row
-                        if (cell && cell.l && cell.l.Target) {
-                            row[header] = cell.l.Target;
-                        }
-                    });
-                });
+        workbook.eachSheet((worksheet) => {
+            const headers: string[] = [];
+            for (let column = 1; column <= worksheet.columnCount; column += 1) {
+                headers.push(String(worksheet.getRow(1).getCell(column).text || `COL_${column - 1}`).trim());
             }
 
-            console.log(`Read ${jsonData.length} rows from sheet: ${sheetName}`);
+            const jsonData: Record<string, unknown>[] = [];
+            for (let rowNumber = 2; rowNumber <= worksheet.actualRowCount; rowNumber += 1) {
+                const excelRow = worksheet.getRow(rowNumber);
+                if (!excelRow.hasValues) continue;
+                const row: Record<string, unknown> = {};
+                headers.forEach((header, index) => {
+                    const cell = excelRow.getCell(index + 1);
+                    const value = cell.value;
+                    if (value && typeof value === 'object' && 'hyperlink' in value) row[header] = value.hyperlink;
+                    else if (value && typeof value === 'object' && 'result' in value) row[header] = value.result;
+                    else row[header] = value instanceof Date ? value.toISOString() : cell.text;
+                });
+                jsonData.push(row);
+            }
+
+            console.log(`Read ${jsonData.length} rows from sheet: ${worksheet.name}`);
             allSheetData = [...allSheetData, ...jsonData];
         });
 
-        console.log(`Processing ${allSheetData.length} total rows from ${workbook.SheetNames.length} sheets`);
+        console.log(`Processing ${allSheetData.length} total rows from ${workbook.worksheets.length} sheets`);
 
         // 1. Fetch existing products for intelligent deduplication
         const existingSnapshot = await adminDb.collection('products').get();
@@ -129,16 +101,12 @@ export async function uploadProductsFromExcel(formData: FormData) {
             if (!name) continue;
 
             const trimmedName = String(name).trim();
-            const lowerName = trimmedName.toLowerCase().trim();
-
             // 2. Parsing Price & Variants
             const rawPrice = getRowValue(row, 'PRODUCT PRICE', 'PRICE', 'Base Price (KES)') || "";
             const priceStr = String(rawPrice);
             const variants: ProductVariant[] = [];
             let basePrice = 0;
 
-            const variantRegex = /(?:Kes|KES)?\s*([\d,]{2,10})\s*(?:\((.*?)\))?/gi;
-            let match;
             let variantIndex = 0;
             const priceTokens = priceStr.split(',').map(s => s.trim());
 

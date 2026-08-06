@@ -16,7 +16,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
 
-    console.log('M-Pesa Reversal Result:', JSON.stringify(payload));
+    console.info('M-Pesa reversal result received', {
+        resultCode: String(payload?.Result?.ResultCode ?? 'missing'),
+    });
 
     try {
         const result = payload?.Result;
@@ -50,7 +52,6 @@ export async function POST(request: Request) {
         }
 
         const orderRef = snap.docs[0].ref;
-        const orderId = snap.docs[0].id;
 
         const status = resultCode === 0 ? 'Reversed' : 'Failed';
 

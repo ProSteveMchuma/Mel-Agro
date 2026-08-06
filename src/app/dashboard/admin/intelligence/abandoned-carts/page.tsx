@@ -61,7 +61,7 @@ export default function AbandonedCartsPage() {
             toast.error("No phone number on file for this customer.");
             return;
         }
-        const message = generateAbandonedCartNudge(cart.userName, cart.items, cart.total);
+        const message = generateAbandonedCartNudge(cart.userName, cart.items);
         const url = getWhatsAppDirectUrl(cart.userPhone, message);
         window.open(url, '_blank');
     };

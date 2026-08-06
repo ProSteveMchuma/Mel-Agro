@@ -5,7 +5,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
 import ProductCard from "@/components/ProductCard";
-import { Product, getProductsPage, getUniqueBrands, getUniqueCategories } from "@/lib/products";
+import { Product, getProductsPage } from "@/lib/products";
 import { fuzzySearch } from "@/components/SmartSearch";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -46,8 +46,8 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
     const currentCategory = searchParams.get("category") || "";
 
     // Initialize with server-fetched data
-    const [availableBrands, setAvailableBrands] = useState<string[]>(initialBrands);
-    const [availableCategories, setAvailableCategories] = useState<string[]>(initialCategories);
+    const availableBrands = initialBrands;
+    const availableCategories = initialCategories;
 
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -359,34 +359,34 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
     };
 
     useEffect(() => {
-        // If it's the first load and we have initialProducts, we skip the fetch
-        // BUT we don't have the pagination cursor. 
-        // So we MUST fetch to enable pagination? 
-        // OR we disable pagination until the user interacts?
-        // Let's do this: 
-        // If initialProducts are present and it's isFirstLoad, we set them.
-        // But we immediately fetch in background to get the cursor? 
-        // Or simply: valid optimization is purely visual. The fetches happen.
-        // Wait, if I fetch immediately, I double charge.
-        // Alternative: getProductsPage in lib/products returns serialized LastVisible (id)? 
-        // Firestore startAfter can take a Snapshot OR a field value (if sorted by that field).
-        // If sorted by createdAt (desc), we can pass the createdAt string of the last item!
-        // We need to update getProductsPage to support ID/Field cursor for this to work purely server-side.
-        // For now, to be safe and simple: 
-        // Use InitialProducts for display. Fetch Client Side immediately to get fresh state + cursor.
-        // This gives "Perceived Performance" (instant paint) but not DB read savings (double read).
-        // TO FIX DB READS: We need caching. We did specific caching on UniqueBrands.
-        // For Products, we can't easily cache the search query.
-        // But the "Filter Data" was the big cost (reading ALL docs). We fixed that.
-        // So fetching 12 docs twice (server + client) is acceptable compared to reading 500 docs for filters.
+        let cancelled = false;
 
-        if (isFirstLoad.current && initialProducts.length > 0) {
-            isFirstLoad.current = false;
-            // Optionally fetch silently to get cursor
-            loadProducts(true);
-        } else {
-            loadProducts(true);
-        }
+        const refreshProducts = async () => {
+            setIsLoading(true);
+            try {
+                const categoryFilter = category === "All Products" || category === "" ? undefined : category;
+                const { products: freshProducts, lastVisible: freshCursor } = await getProductsPage(
+                    12,
+                    null,
+                    categoryFilter,
+                    "newest",
+                    selectedBrands,
+                );
+                if (!cancelled) {
+                    setProducts(freshProducts);
+                    setLastVisible(freshCursor);
+                    setHasMore(freshProducts.length === 12);
+                    isFirstLoad.current = false;
+                }
+            } catch (error) {
+                if (!cancelled) console.error("Failed to refresh products:", error);
+            } finally {
+                if (!cancelled) setIsLoading(false);
+            }
+        };
+
+        void refreshProducts();
+        return () => { cancelled = true; };
     }, [category, selectedBrands]);
 
     const searchQuery = searchParams.get("search");

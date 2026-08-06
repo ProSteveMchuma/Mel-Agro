@@ -2,8 +2,12 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { initiateSTKPush } from '@/lib/mpesa-server';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
+import { enforceRateLimit } from '@/lib/request-guard';
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'mpesa-initiate', 10, 10 * 60_000);
+    if (limited) return limited;
+
     try {
         const { orderId, phoneNumber } = await request.json();
 
@@ -42,7 +46,14 @@ export async function POST(request: Request) {
         }
 
         if (!process.env.MPESA_CONSUMER_KEY) {
-            console.warn("M-Pesa: Running in mock mode due to missing keys.");
+            if (process.env.NODE_ENV === 'production') {
+                console.error('M-Pesa is not configured in production.');
+                return NextResponse.json(
+                    { success: false, message: 'M-Pesa is temporarily unavailable' },
+                    { status: 503 },
+                );
+            }
+            console.warn("M-Pesa: Running in development mock mode due to missing keys.");
             const mockId = `ws_CO_${Date.now()}_Mock`;
             await adminDb.collection('orders').doc(orderId).update({
                 checkoutRequestId: mockId,

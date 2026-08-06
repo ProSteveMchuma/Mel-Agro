@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import {
     LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    PieChart, Pie, Cell, BarChart, Bar, Legend
+    PieChart, Pie, Cell, Legend
 } from 'recharts';
 
 interface AnalyticsChartsProps {

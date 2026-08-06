@@ -59,17 +59,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
         };
 
-        const adminEmails = ['admin@melagri.com', 'admin@melagri.co.ke', 'james.wambua@makamithi.com'];
-
         const authUnsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
             stopDocListener();
 
             if (!firebaseUser) {
+                void fetch('/api/auth/session', { method: 'DELETE' });
                 setUser(null);
                 setIsAuthenticated(false);
                 setIsLoading(false);
                 sessionStorage.removeItem('melagri_guest_id_token');
                 return;
+            }
+
+            try {
+                const idToken = await firebaseUser.getIdToken();
+                const sessionResponse = await fetch('/api/auth/session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ idToken }),
+                });
+                if (!sessionResponse.ok) throw new Error('Session creation failed');
+            } catch (error) {
+                console.error('AuthContext: failed to establish secure session', error);
             }
 
             if (firebaseUser.isAnonymous) {
@@ -86,8 +97,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
             }
 
-            const userEmail = (firebaseUser.email || '').toLowerCase();
-            const isAdminEmail = adminEmails.some(email => email.toLowerCase() === userEmail);
             const userDocRef = doc(db, 'users', firebaseUser.uid);
 
             // Make sure a doc exists before we attach the live listener so we don't briefly
@@ -98,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     await setDoc(userDocRef, {
                         name: firebaseUser.displayName || 'User',
                         email: firebaseUser.email || '',
-                        role: firebaseUser.email === 'proinnovationtech@gmail.com' ? 'super-admin' : (isAdminEmail ? 'admin' : 'user'),
+                        role: 'user',
                         createdAt: new Date().toISOString(),
                     });
                 } else if (initial.data()?.name === 'User' && firebaseUser.displayName) {
@@ -116,9 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 userDocRef,
                 (snap) => {
                     const data = snap.exists() ? (snap.data() as any) : {};
-                    const role = firebaseUser.email === 'proinnovationtech@gmail.com'
-                        ? 'super-admin'
-                        : (isAdminEmail ? 'admin' : (data.role || 'user'));
+                    const role = data.role || 'user';
 
                     setUser({
                         uid: firebaseUser.uid,
@@ -153,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const logout = async () => {
         try {
+            await fetch('/api/auth/session', { method: 'DELETE' });
             await auth.signOut();
             router.push('/');
         } catch (error) {

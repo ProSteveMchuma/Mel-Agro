@@ -15,6 +15,9 @@ export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders
     const totalSales = paidOrders.reduce((acc, order) => acc + order.total, 0);
     const totalOrders = orders.length;
     const averageOrderValue = paidOrders.length > 0 ? totalSales / paidOrders.length : 0;
+    const reportPeriod = startDate || endDate
+        ? `${startDate?.toLocaleDateString() || 'Beginning'} – ${endDate?.toLocaleDateString() || 'Present'}`
+        : 'All time';
 
     // Group by status
     const statusCounts = orders.reduce((acc, order) => {
@@ -35,6 +38,7 @@ export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders
                     <Logo className="mb-4 scale-125 origin-right" />
                     <div className="text-xl font-black text-gray-900 mb-1">{general.companyName || "Mel-Agri Kenya"}</div>
                     <p className="text-gray-500 text-xs">{general.supportEmail || "admin@Mel-Agri.com"}</p>
+                    <p className="text-gray-400 text-[10px] mt-1">Report period: {reportPeriod}</p>
                 </div>
             </div>
 

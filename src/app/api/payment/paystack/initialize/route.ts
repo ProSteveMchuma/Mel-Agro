@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
+import { enforceRateLimit } from '@/lib/request-guard';
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'paystack-initiate', 10, 10 * 60_000);
+    if (limited) return limited;
+
     try {
         const { amount, email, orderId, items } = await request.json();
         const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_BASE_URL;
@@ -39,6 +43,12 @@ export async function POST(request: Request) {
 
         // Mock Mode if no API Key
         if (!paystackSecretKey) {
+            if (process.env.NODE_ENV === 'production') {
+                return NextResponse.json(
+                    { success: false, message: 'Card payments are temporarily unavailable' },
+                    { status: 503 },
+                );
+            }
             console.warn("Paystack: Running in mock mode due to missing PAYSTACK_SECRET_KEY.");
             return NextResponse.json({
                 success: true,

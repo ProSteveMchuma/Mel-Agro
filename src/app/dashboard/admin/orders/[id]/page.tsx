@@ -19,7 +19,7 @@ async function authedFetch(url: string, body: any) {
 }
 
 export default function AdminOrderDetailsPage() {
-    const { orders, updateOrderStatus, updateOrderPaymentStatus, updateReturnStatus } = useOrders();
+    const { orders, updateOrderStatus, updateOrderPaymentStatus } = useOrders();
     const params = useParams();
     const router = useRouter();
     const [order, setOrder] = useState<any>(null);
@@ -59,7 +59,7 @@ export default function AdminOrderDetailsPage() {
             await updateOrderPaymentStatus(order.id, 'Paid', paymentRecord);
             toast.success("Payment recorded successfully");
             setIsPaymentModalOpen(false);
-        } catch (error) {
+        } catch {
             toast.error("Failed to record payment");
         }
     };

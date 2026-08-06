@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { processMessage, BotResponse } from '@/lib/agrobot';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function AgroBot() {
     const [isOpen, setIsOpen] = useState(false);
@@ -44,7 +45,7 @@ export default function AgroBot() {
                 options: response.options
             }]);
 
-        } catch (error) {
+        } catch {
             setMessages(prev => [...prev, { text: "Sorry, I'm having trouble connecting to the farm server right now.", sender: 'bot' }]);
         } finally {
             setIsTyping(false);
@@ -116,7 +117,7 @@ export default function AgroBot() {
                                     {msg.data.map((p: any) => (
                                         <Link href={`/products/${p.id}`} key={p.id} className="flex gap-2 p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors border border-gray-100 items-center">
                                             {p.images && p.images[0] && (
-                                                <img src={p.images[0]} alt="" className="w-10 h-10 object-cover rounded" />
+                                                <Image src={p.images[0]} alt="" width={40} height={40} unoptimized className="w-10 h-10 object-cover rounded" />
                                             )}
                                             <div className="text-left">
                                                 <div className="font-bold text-xs line-clamp-1">{p.name}</div>

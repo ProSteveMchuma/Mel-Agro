@@ -8,8 +8,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ ResultCode: 'C2B00016', ResultDesc: 'Rejected' });
     }
     try {
-        const payload = await request.json().catch(() => ({}));
-        console.log('C2B Validation:', JSON.stringify(payload));
+        await request.json().catch(() => ({}));
+        console.info('C2B validation callback received');
     } catch {
         // ignore
     }

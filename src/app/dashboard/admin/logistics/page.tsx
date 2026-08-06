@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, setDoc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 import { KENYAN_COUNTIES, DeliveryZone, getDeliveryCost, FREE_SHIPPING_THRESHOLD } from "@/lib/delivery";
 import { useOrders } from "@/context/OrderContext";

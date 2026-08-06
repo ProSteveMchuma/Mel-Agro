@@ -3,8 +3,12 @@ import { adminDb } from '@/lib/firebase-admin';
 import { querySTKStatus } from '@/lib/mpesa-server';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
+import { enforceRateLimit } from '@/lib/request-guard';
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'mpesa-query', 30, 10 * 60_000);
+    if (limited) return limited;
+
     try {
         const { orderId, checkoutRequestID } = await request.json();
 
@@ -52,6 +56,12 @@ export async function POST(request: Request) {
         }
 
         if (!process.env.MPESA_CONSUMER_KEY) {
+            if (process.env.NODE_ENV === 'production') {
+                return NextResponse.json(
+                    { success: false, paid: false, message: 'M-Pesa is temporarily unavailable' },
+                    { status: 503 },
+                );
+            }
             return NextResponse.json({
                 success: true,
                 paid: false,

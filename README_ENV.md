@@ -119,3 +119,22 @@ AFRICASTALKING_API_KEY=your_api_key
 AFRICASTALKING_USERNAME=sandbox
 AFRICASTALKING_SENDER_ID=MELAGRO
 ```
+
+## WhatsApp via Twilio (Required for WhatsApp notifications)
+```env
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=your_auth_token
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+```
+
+## Production preflight
+
+The former `/admin-setup` bootstrap route and `ADMIN_SECRET_CODE` have been removed for security. Assign the first administrator through a trusted Firebase Admin SDK process; do not configure that obsolete variable.
+
+Copy `.env.example` values into your deployment provider and populate them there. Never commit `.env.local` or real credentials. Before deploying, run:
+
+```bash
+npm run check:env:production
+```
+
+The command reports missing variable names only and never prints secret values. After deployment, `GET /api/health` returns HTTP 200 only when launch configuration is ready; otherwise it returns HTTP 503 without identifying individual missing credentials.

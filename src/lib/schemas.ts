@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { KENYAN_COUNTIES } from './delivery.ts';
 
 // --- Auth Schemas ---
 
@@ -29,11 +30,11 @@ export const addressSchema = z.object({
         const phoneRegex = /^(?:\+254|0)[17]\d{8}$/;
         return phoneRegex.test(normalized);
     }, { message: "Invalid phone number try format: +254 7XX XXX XXX or 07XX XXX XXX" }),
-    county: z.string().min(1, { message: "Please select a county" }),
+    county: z.string().refine((county) => KENYAN_COUNTIES.includes(county), { message: "Please select a valid Kenyan county" }),
     town: z.string().min(2, { message: "Town is required" }),
     address: z.string().min(5, { message: "Please provide a valid address/landmark" }),
-    lat: z.number().optional(),
-    lng: z.number().optional(),
+    lat: z.number().min(-5).max(6).optional(),
+    lng: z.number().min(33).max(43).optional(),
 });
 
 export const checkoutSchema = z.object({

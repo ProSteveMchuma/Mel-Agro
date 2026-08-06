@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import twilio from 'twilio';
 import { requireUser } from '@/lib/auth-server';
+import { enforceRateLimit } from '@/lib/request-guard';
+import { reportIncident } from '@/lib/incident-reporting';
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'notification-whatsapp', 30, 60_000);
+    if (limited) return limited;
+
     const auth = await requireUser(request);
     if (!auth.ok) {
         return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
@@ -20,12 +25,11 @@ export async function POST(request: Request) {
         const from = process.env.TWILIO_WHATSAPP_NUMBER;
 
         if (!accountSid || !authToken || !from) {
-            console.warn("[WHATSAPP API] Missing Twilio environment variables.");
-            console.log(`[MOCK WHATSAPP] To: ${to}, Message: ${message}`);
+            console.warn('WhatsApp provider is not configured; message was not sent.');
             return NextResponse.json({
-                success: true,
-                message: "WhatsApp logged to console (Mock Mode - Missing Config)"
-            });
+                success: false,
+                message: "WhatsApp provider is not configured"
+            }, { status: 503 });
         }
 
         const client = twilio(accountSid, authToken);
@@ -45,6 +49,7 @@ export async function POST(request: Request) {
 
     } catch (error: any) {
         console.error('[WHATSAPP API] Error:', error);
+        void reportIncident({ type: 'notification_failure', severity: 'warning', source: 'twilio-whatsapp', message: error?.message || 'WhatsApp delivery failed' });
         return NextResponse.json({ success: false, message: 'Failed to send WhatsApp', error: error.message }, { status: 500 });
     }
 }

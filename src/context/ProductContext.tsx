@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy, getDocs, limit } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, limit } from 'firebase/firestore';
 import { Product } from '@/types';
 export type { Product };
 
@@ -18,7 +18,6 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export function ProductProvider({ children }: { children: React.ReactNode }) {
     const [products, setProducts] = useState<Product[]>([]);
-    const [loading, setLoading] = useState(true);
     const { user: authUser } = useAuth();
 
 
@@ -40,19 +39,9 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
             // Client-side sort by name, safely
             productList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
-            if (productList.length === 0 && !loading) {
-                // Only seed if we're sure it's empty and not just initial load
-                // Actually, onSnapshot fires immediately with empty if empty.
-                // We should be careful not to infinite loop seeding.
-                // For now, let's assume if it's empty we might need to seed, but let's do it only once or check a flag.
-                // To be safe, just log in debug mode. Seeding should be manual or handled better.
-            } else {
-                setProducts(productList);
-            }
-            setLoading(false);
+            setProducts(productList);
         }, (error: any) => {
             console.error("Error listening to products:", error);
-            setLoading(false);
         });
 
         return () => unsubscribe();

@@ -16,7 +16,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
 
-    console.log('TransactionStatus Result:', JSON.stringify(payload));
+    console.info('M-Pesa transaction-status result received', {
+        resultCode: String(payload?.Result?.ResultCode ?? 'missing'),
+    });
 
     try {
         const result = payload?.Result;

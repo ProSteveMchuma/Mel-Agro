@@ -2,8 +2,12 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { initiateSTKPush } from '@/lib/mpesa-server';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
+import { enforceRateLimit } from '@/lib/request-guard';
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'mpesa-retry', 10, 10 * 60_000);
+    if (limited) return limited;
+
     try {
         const { orderId, phoneNumber: overridePhone } = await request.json();
 
@@ -44,6 +48,12 @@ export async function POST(request: Request) {
         }
 
         if (!process.env.MPESA_CONSUMER_KEY) {
+            if (process.env.NODE_ENV === 'production') {
+                return NextResponse.json(
+                    { success: false, message: 'M-Pesa is temporarily unavailable' },
+                    { status: 503 },
+                );
+            }
             const mockId = `ws_CO_${Date.now()}_Mock`;
             await orderSnap.ref.update({
                 checkoutRequestId: mockId,

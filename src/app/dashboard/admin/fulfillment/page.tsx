@@ -5,6 +5,7 @@ import { useProducts } from '@/context/ProductContext';
 import { Order } from '@/types';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
+import Image from 'next/image';
 
 export default function FulfillmentPage() {
     const { orders, updateOrderStatus } = useOrders();
@@ -89,7 +90,7 @@ export default function FulfillmentPage() {
                                     <div className="flex -space-x-2">
                                         {order.items.slice(0, 3).map((item, i) => (
                                             <div key={i} className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[10px] font-bold overflow-hidden shadow-sm">
-                                                {item.image ? <img src={item.image} alt="" className="w-full h-full object-cover" /> : item.name[0]}
+                                                {item.image ? <Image src={item.image} alt="" width={32} height={32} unoptimized className="w-full h-full object-cover" /> : item.name[0]}
                                             </div>
                                         ))}
                                         {order.items.length > 3 && (
@@ -186,7 +187,7 @@ function InternalNotes({ orderId, initialNote, history }: { orderId: string, ini
         try {
             await addInternalNote(orderId, note);
             toast.success("Internal note saved");
-        } catch (error) {
+        } catch {
             toast.error("Failed to save note");
         } finally {
             setIsSaving(false);

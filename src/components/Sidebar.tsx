@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 
 interface SidebarProps {
     categories?: string[];
@@ -31,7 +31,6 @@ export default function Sidebar({
     onBrandChange
 }: SidebarProps) {
     const categoriesToDisplay = categories.length > 0 ? categories : defaultCategories;
-    const pathname = usePathname();
     const searchParams = useSearchParams();
     const activeCategory = searchParams.get("category");
 

@@ -6,7 +6,12 @@
     "dev": "next dev",
     "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:env": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-env.ts",
+    "check:env:production": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-env.ts --production",
+    "audit:production": "npm audit --omit=dev --audit-level=high",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/*.test.ts",
+    "test:rules": "firebase emulators:exec --only firestore \"node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/firestore-rules.emulator.ts\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
@@ -17,10 +22,10 @@
     "@types/nodemailer": "^7.0.4",
     "@vercel/analytics": "^2.0.1",
     "@vercel/speed-insights": "^2.0.0",
-    "africastalking": "^0.7.9",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "exceljs": "^4.4.0",
     "firebase": "^12.6.0",
     "firebase-admin": "^13.6.0",
     "framer-motion": "^12.27.5",
@@ -30,8 +35,7 @@
     "leaflet": "^1.9.4",
     "libphonenumber-js": "^1.12.36",
     "next": "^16.0.7",
-    "next-pwa": "^5.6.0",
-    "nodemailer": "^7.0.11",
+    "nodemailer": "^9.0.4",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "react-hook-form": "^7.71.1",
@@ -41,17 +45,17 @@
     "stripe": "^20.0.0",
     "tailwind-merge": "^3.4.0",
     "twilio": "^5.10.6",
-    "xlsx": "^0.18.5",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.0.4",
-    "firebase-tools": "^14.26.0",
+    "firebase-tools": "^15.26.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

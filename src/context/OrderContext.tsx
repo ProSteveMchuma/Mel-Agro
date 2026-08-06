@@ -4,7 +4,6 @@ import { db } from '@/lib/firebase';
 import { collection, addDoc, updateDoc, setDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction, limit } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { NotificationService } from '@/lib/notifications';
-import { SmsService } from '@/lib/sms';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { getAuth } from 'firebase/auth';
 
@@ -40,13 +39,11 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
     const [orders, setOrders] = useState<Order[]>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
-    const [loading, setLoading] = useState(true);
 
     // Fetch Orders
     useEffect(() => {
         if (!user) {
             setOrders([]);
-            setLoading(false);
             return;
         }
 
@@ -68,10 +65,8 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             // Client-side sort for everyone
             orderList.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setOrders(orderList);
-            setLoading(false);
         }, (error: Error) => {
             console.error("Error listening to orders:", error);
-            setLoading(false);
         });
 
         return () => unsubscribe();

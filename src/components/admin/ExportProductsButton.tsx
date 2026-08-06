@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { getAllProducts } from '@/app/actions/bulkActions';
 import { toast } from 'react-hot-toast';
-import * as XLSX from 'xlsx';
 import { Product } from '@/types';
 
 export default function ExportProductsButton() {
@@ -55,10 +54,25 @@ export default function ExportProductsButton() {
                         };
                     });
 
-                    const worksheet = XLSX.utils.json_to_sheet(exportData);
-                    const workbook = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(workbook, worksheet, "Products");
-                    XLSX.writeFile(workbook, `Mel-Agri_Catalog_${dateStr}.xlsx`);
+                    const ExcelJS = (await import('exceljs')).default;
+                    const workbook = new ExcelJS.Workbook();
+                    const worksheet = workbook.addWorksheet('Products');
+                    const headers = Object.keys(exportData[0] || {});
+                    worksheet.columns = headers.map((header) => ({ header, key: header, width: Math.max(14, Math.min(45, header.length + 4)) }));
+                    worksheet.addRows(exportData);
+                    worksheet.getRow(1).font = { bold: true };
+                    worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+                    const output = await workbook.xlsx.writeBuffer();
+                    const blob = new Blob([output as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = `Mel-Agri_Catalog_${dateStr}.xlsx`;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
 
                 } else {
                     // JSON Backup Logic

@@ -3,7 +3,7 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
-import { useOrders, Order, OrderItem, Notification } from "@/context/OrderContext";
+import { useOrders, Order, Notification } from "@/context/OrderContext";
 import { useCart } from "@/context/CartContext";
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -27,7 +27,7 @@ type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 's
 
 export default function UserDashboard() {
     const { user, isLoading, logout, updateProfile } = useAuth();
-    const { orders, updateOrderStatus, requestReturn, handleConfirmReceipt } = useOrders();
+    const { orders } = useOrders();
     const { addToCart } = useCart();
     const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
     const { wishlist, removeFromWishlist } = useWishlist();
@@ -44,7 +44,6 @@ export default function UserDashboard() {
     });
     const [printMode, setPrintMode] = useState<'invoice' | 'receipt' | 'delivery' | null>(null);
     const [printOrder, setPrintOrder] = useState<Order | null>(null);
-    const [trackOrderId, setTrackOrderId] = useState('');
     const [showProfileModal, setShowProfileModal] = useState(false);
 
     useEffect(() => {
@@ -182,32 +181,6 @@ export default function UserDashboard() {
         }
     };
 
-    const handleCancelOrder = async (orderId: string) => {
-        if (confirm("Are you sure you want to cancel this order? This action cannot be undone.")) {
-            try {
-                await updateOrderStatus(orderId, 'Cancelled');
-                toast.success("Order cancelled successfully");
-            } catch (error: any) {
-                console.error("Error cancelling order:", error);
-                toast.error(error?.message || "Failed to cancel order");
-            }
-        }
-    };
-
-    const handleRequestReturn = async (orderId: string) => {
-        const reason = prompt("Please enter the reason for your return:");
-        if (reason) {
-            try {
-                await requestReturn(orderId, reason);
-                toast.success("Return requested successfully");
-                setSelectedOrder(null);
-            } catch (error) {
-                console.error("Error requesting return:", error);
-                toast.error("Failed to request return");
-            }
-        }
-    };
-
     if (isLoading || !user) return <div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagri-primary"></div></div>;
 
     const statsData = [
@@ -215,17 +188,6 @@ export default function UserDashboard() {
         { label: "Loyalty Points", value: (user?.loyaltyPoints || 0).toString(), icon: "⭐", color: "bg-purple-50 text-purple-600" },
         { label: "Total Spent", value: `KES ${orders.reduce((acc: number, curr: Order) => acc + curr.total, 0).toLocaleString()}`, icon: "💰", color: "bg-green-50 text-green-600" }
     ];
-
-    const handleTrackOrder = (e: React.FormEvent) => {
-        e.preventDefault();
-        const order = orders.find(o => o.id.toLowerCase() === trackOrderId.toLowerCase() || o.id.toLowerCase().includes(trackOrderId.toLowerCase()));
-        if (order) {
-            setSelectedOrder(order);
-            setTrackOrderId('');
-        } else {
-            toast.error('Order not found. Please check the Order ID.');
-        }
-    };
 
     const retryableOrders = orders.filter((o: Order) => {
         const m = ((o as any).paymentMethod || '').toLowerCase();

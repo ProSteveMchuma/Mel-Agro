@@ -8,8 +8,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
     try {
-        const payload = await request.json().catch(() => ({}));
-        console.warn('TransactionStatus Timeout:', JSON.stringify(payload));
+        await request.json().catch(() => ({}));
+        console.warn('M-Pesa transaction-status request timed out');
     } catch {
         // ignore
     }

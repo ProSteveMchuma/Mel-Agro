@@ -111,7 +111,7 @@ export default function ContactPage() {
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold text-gray-500 uppercase">Email</p>
-                                            <p className="text-lg font-bold text-gray-900">proinnovationtech@gmail.com</p>
+                                            <p className="text-lg font-bold text-gray-900">support@melagri.com</p>
                                         </div>
                                     </div>
 
@@ -176,7 +176,7 @@ export default function ContactPage() {
                                 },
                                 {
                                     question: "What payment methods do you accept?",
-                                    answer: "We accept M-Pesa, Card payments, and Bank transfers. All transactions are secure."
+                                    answer: "We currently accept M-Pesa Express, manual M-Pesa Buy Goods, and Cash on Delivery where available."
                                 },
                                 {
                                     question: "Can I return items?",
@@ -194,7 +194,7 @@ export default function ContactPage() {
                     {/* Support Section */}
                     <div className="mt-16 bg-gradient-to-r from-melagri-primary to-melagri-secondary rounded-2xl p-12 text-white text-center">
                         <h2 className="text-3xl font-bold mb-4">Still need help?</h2>
-                        <p className="text-lg mb-8 opacity-90">Our support team is available Monday - Sunday, 8am - 8pm</p>
+                        <p className="text-lg mb-8 opacity-90">Our support team is available Monday–Friday, 8am–5pm, and Saturday, 8am–1pm.</p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                             <Link href="https://wa.me/254748970757" target="_blank" className="bg-white text-melagri-primary px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors">
                                 💬 WhatsApp

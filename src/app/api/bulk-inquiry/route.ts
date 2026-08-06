@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { enforceRateLimit } from '@/lib/request-guard';
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'bulk-inquiry', 5, 60 * 60_000);
+    if (limited) return limited;
+
     try {
         const body = await request.json();
         const {

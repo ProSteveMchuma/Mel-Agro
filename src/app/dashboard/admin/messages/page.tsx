@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
-import { useMessages, ChatMessage } from '@/context/MessageContext';
+import { useMessages } from '@/context/MessageContext';
 import { useProducts } from '@/context/ProductContext';
 import Image from 'next/image';
 
 export default function AdminChatPage() {
-    const { conversations, activeConversationId, setActiveConversationId, messages, sendMessage, loading } = useMessages();
+    const { conversations, activeConversationId, setActiveConversationId, messages, sendMessage } = useMessages();
     const { products } = useProducts();
     const [input, setInput] = useState('');
     const [showProductPicker, setShowProductPicker] = useState(false);
@@ -102,10 +102,6 @@ export default function AdminChatPage() {
 
                         <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-4">
                             {messages.map(msg => {
-                                const isMe = msg.senderId !== activeConversationId; // Admin is "Me" here? No, wait.
-                                // In Admin view: 
-                                // senderId == admin.uid (which we don't track easily here, but we know user.uid === admin)
-                                // Actually, better check: senderId === activeConversationId ? 'Them' : 'Me'
                                 const isCustomer = msg.senderId === activeConversationId;
 
                                 return (

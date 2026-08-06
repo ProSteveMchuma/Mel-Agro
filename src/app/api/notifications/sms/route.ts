@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireUser } from '@/lib/auth-server';
+import { enforceRateLimit } from '@/lib/request-guard';
+import { reportIncident } from '@/lib/incident-reporting';
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'notification-sms', 30, 60_000);
+    if (limited) return limited;
+
     const auth = await requireUser(request);
     if (!auth.ok) {
         return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
@@ -28,12 +33,11 @@ export async function POST(request: Request) {
         }
 
         if (!apiKey) {
-            console.warn("Missing Africa's Talking API Key. Logging SMS instead.");
-            console.log(`[MOCK SMS] To: ${to}, Message: ${message}`);
+            console.warn("Missing Africa's Talking API key; SMS was not sent.");
             return NextResponse.json({
-                success: true,
-                message: "SMS logged to console (Mock Mode - Missing API Key)"
-            });
+                success: false,
+                message: "SMS provider is not configured"
+            }, { status: 503 });
         }
 
         const url = 'https://api.africastalking.com/version1/messaging';
@@ -47,8 +51,6 @@ export async function POST(request: Request) {
         formData.append('message', message);
         if (from) formData.append('from', from);
 
-        console.log(`[SMS DEBUG 1] Raw Input Phone: ${to}`);
-        console.log(`[SMS DEBUG 2] Sending to: ${formattedPhone} using Africa's Talking`);
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {
@@ -60,21 +62,22 @@ export async function POST(request: Request) {
         });
 
         const data = await response.json();
-        console.log(`[SMS DEBUG 3] Africa's Talking Response:`, JSON.stringify(data, null, 2));
+        console.info("Africa's Talking request completed", { ok: response.ok });
 
         if (data.SMSMessageData && data.SMSMessageData.Recipients && data.SMSMessageData.Recipients.length > 0) {
             return NextResponse.json({
                 success: true,
                 message: 'SMS sent successfully',
-                details: data.SMSMessageData
             });
         } else {
             console.error("Africa's Talking Error:", data);
+            void reportIncident({ type: 'notification_failure', severity: 'warning', source: 'africastalking', message: 'SMS provider rejected message' });
             return NextResponse.json({ success: false, message: 'Failed to send SMS via provider', details: data }, { status: 500 });
         }
 
     } catch (error) {
         console.error('SMS API Error:', error);
+        void reportIncident({ type: 'notification_failure', severity: 'warning', source: 'africastalking', message: error instanceof Error ? error.message : 'SMS delivery failed' });
         return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
     }
 }

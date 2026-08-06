@@ -6,7 +6,7 @@ import { CATEGORY_ICONS } from "@/components/SidebarCategories";
 import Link from "next/link";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { buildCustomerProfiles, summariseSegments, computeIntelKPIs, segmentColor, segmentDescription, Segment, CustomerProfile } from "@/lib/customer-intelligence";
+import { buildCustomerProfiles, summariseSegments, computeIntelKPIs, segmentColor, segmentDescription, Segment } from "@/lib/customer-intelligence";
 
 const fmtKES = (n: number) => `KES ${Math.round(n).toLocaleString()}`;
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;

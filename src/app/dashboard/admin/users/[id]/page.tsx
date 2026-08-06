@@ -7,7 +7,7 @@ import Link from "next/link";
 import { toast } from "react-hot-toast";
 
 export default function UserProfilePage() {
-    const { users, updateUserRole, updateUserStatus, deleteUser } = useUsers();
+    const { users, updateUserRole, updateUserStatus } = useUsers();
     const { orders } = useOrders();
     const params = useParams();
     const router = useRouter();

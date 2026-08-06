@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "scripts/**",
     "*.js",
+    "public/sw.js",
+    "public/workbox-*.js",
     "excel/**",
     "makamithi-web/**"
   ]),

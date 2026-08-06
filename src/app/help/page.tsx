@@ -200,11 +200,11 @@ export default function HelpCenterPage() {
                                         <span className="text-melagri-primary group-hover:translate-x-1 transition-transform">→</span>
                                     </Link>
 
-                                    <Link href="mailto:proinnovationtech@gmail.com" className="w-full flex items-center gap-4 p-4 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors group text-left">
+                                    <Link href="mailto:support@melagri.com" className="w-full flex items-center gap-4 p-4 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors group text-left">
                                         <span className="text-3xl">📧</span>
                                         <div className="text-left flex-1">
                                             <p className="font-bold text-gray-900">Email</p>
-                                            <p className="text-sm text-gray-600">proinnovationtech@gmail.com</p>
+                                            <p className="text-sm text-gray-600">support@melagri.com</p>
                                         </div>
                                         <span className="text-melagri-primary group-hover:translate-x-1 transition-transform">→</span>
                                     </Link>

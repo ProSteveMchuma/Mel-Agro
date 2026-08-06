@@ -82,7 +82,7 @@ function LoginForm() {
 
                     verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
                         'size': 'invisible',
-                        'callback': (response: any) => {
+                        'callback': () => {
                             // reCAPTCHA solved, allow signInWithPhoneNumber.
                             console.log("Recaptcha verified");
                         },
@@ -90,7 +90,7 @@ function LoginForm() {
                             // Response expired. Ask user to solve reCAPTCHA again.
                             setError('Security check expired. Please try again.');
                             if (window.recaptchaVerifier) {
-                                try { window.recaptchaVerifier.clear(); } catch (e) { }
+                                try { window.recaptchaVerifier.clear(); } catch { }
                             }
                         }
                     });
@@ -163,7 +163,7 @@ function LoginForm() {
             if (window.recaptchaVerifier) {
                 try {
                     window.recaptchaVerifier.render().then((widgetId: any) => {
-                        // eslint-disable-next-line no-undef
+                         
                         // @ts-ignore
                         if (typeof grecaptcha !== 'undefined') grecaptcha.reset(widgetId);
                     });

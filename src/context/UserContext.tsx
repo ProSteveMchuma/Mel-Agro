@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, doc, updateDoc, deleteDoc, query, orderBy, getDocs, onSnapshot, QuerySnapshot, QueryDocumentSnapshot, limit } from 'firebase/firestore';
+import { collection, doc, updateDoc, deleteDoc, query, onSnapshot, QuerySnapshot, QueryDocumentSnapshot, limit } from 'firebase/firestore';
 
 import { User } from '@/types';
 
@@ -19,7 +19,6 @@ import { useAuth } from './AuthContext';
 export function UserProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         let unsubscribe: () => void;
@@ -27,7 +26,6 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const setupRealtimeListener = async () => {
             if (!user || (user.role !== 'admin' && user.role !== 'super-admin')) {
                 setUsers([]);
-                setLoading(false);
                 return;
             }
 
@@ -50,15 +48,12 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                     });
 
                     setUsers(userList);
-                    setLoading(false);
                 }, (error: Error) => {
                     console.error("Error listening to users:", error);
-                    setLoading(false);
                 });
 
             } catch (error) {
                 console.error("Error setting up user listener:", error);
-                setLoading(false);
             }
         };
 

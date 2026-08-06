@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useEffectEvent, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
@@ -21,8 +21,6 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [lastAction, setLastAction] = useState<string | null>(null);
     const [affinityIndex, setAffinityIndex] = useState<Record<string, number>>({});
     const inactivityTimer = useRef<NodeJS.Timeout | null>(null);
-    const sessionStartTime = useRef(Date.now());
-
     // Internal state to track patterns
     const [searchFailures, setSearchFailures] = useState(0);
     const [hasShownCheckoutHelp, setHasShownCheckoutHelp] = useState(false);
@@ -219,13 +217,17 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return top;
     };
 
-    useEffect(() => {
+    const handlePathnameChange = useEffectEvent(() => {
         trackAction('page_view', { path: pathname });
         if (pathname === '/checkout') {
             resetInactivityTimer(120000);
         } else {
             if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
         }
+    });
+
+    useEffect(() => {
+        handlePathnameChange();
     }, [pathname]);
 
     return (

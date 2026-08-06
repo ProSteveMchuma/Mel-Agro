@@ -9,7 +9,6 @@ export interface BotResponse {
 }
 
 const GREETINGS = ['hi', 'hello', 'habari', 'hey', 'start'];
-const HELP_KEYWORDS = ['help', 'support', 'assist'];
 const PRODUCT_KEYWORDS = ['buy', 'price', 'cost', 'sell', 'need', 'looking for', 'check'];
 const DELIVERY_KEYWORDS = ['delivery', 'shipping', 'transport', 'location'];
 

@@ -25,7 +25,7 @@ const INTENT_MAP: Record<string, string[]> = {
 function detectIntents(searchTerm: string): string[] {
     const lowTerm = searchTerm.toLowerCase();
     return Object.entries(INTENT_MAP)
-        .filter(([_, kws]) => kws.some(kw => lowTerm.includes(kw)))
+        .filter(([, keywords]) => keywords.some(keyword => lowTerm.includes(keyword)))
         .map(([cat]) => cat);
 }
 
@@ -210,6 +210,9 @@ export default function SmartSearch() {
             <form onSubmit={handleSubmit} className="relative">
                 <input
                     type="text"
+                    role="combobox"
+                    aria-label="Search products"
+                    aria-controls="product-search-results"
                     placeholder={t('search.placeholder')}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
@@ -236,7 +239,7 @@ export default function SmartSearch() {
             </form>
 
             {isOpen && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-y-auto max-h-[60vh] md:max-h-[75vh] animate-in fade-in slide-in-from-top-2 duration-200 min-w-0 w-full md:min-w-[320px]" role="listbox">
+                <div id="product-search-results" aria-label="Product search suggestions" className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl border border-gray-100 overflow-y-auto max-h-[60vh] md:max-h-[75vh] animate-in fade-in slide-in-from-top-2 duration-200 min-w-0 w-full md:min-w-[320px]" role="listbox">
                     {/* Empty state — recent + popular */}
                     {showEmptyDropdown && (
                         <div className="py-2">

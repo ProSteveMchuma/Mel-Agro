@@ -48,7 +48,7 @@ export default function IntelligentDescription({ text, className = "" }: Intelli
 
         // Highlight Keywords (Case insensitive but preserve prefix)
         let finalParts: (string | React.ReactNode)[] = [];
-        formattedParts.forEach((part, idx) => {
+        formattedParts.forEach((part) => {
             if (typeof part !== 'string') {
                 finalParts.push(part);
                 return;

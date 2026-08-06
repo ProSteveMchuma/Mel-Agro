@@ -89,7 +89,6 @@ export default function InventoryManagement() {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {filteredProducts.map(product => {
-                                const isLowStock = product.stockQuantity <= (product.lowStockThreshold || 10);
                                 const isOutOfStock = product.stockQuantity === 0;
                                 const { velocity, totalSold } = calculateVelocity(product.id);
 

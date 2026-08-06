@@ -1,0 +1,53 @@
+name: Firestore scheduled backup
+
+on:
+  schedule:
+    - cron: '15 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: firestore-production-backup
+  cancel-in-progress: false
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_BACKUP_SERVICE_ACCOUNT }}
+
+      - name: Install Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Export Firestore
+        env:
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIRESTORE_BACKUP_BUCKET: ${{ secrets.FIRESTORE_BACKUP_BUCKET }}
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_PROJECT_ID"
+          test -n "$FIRESTORE_BACKUP_BUCKET"
+          stamp="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          gcloud firestore export "gs://${FIRESTORE_BACKUP_BUCKET}/scheduled/${stamp}" \
+            --project="$FIREBASE_PROJECT_ID" \
+            --async
+
+      - name: Alert on failure
+        if: failure()
+        env:
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+        run: |
+          if [ -n "$ALERT_WEBHOOK_URL" ]; then
+            curl --fail --silent --show-error --max-time 10 \
+              -H 'Content-Type: application/json' \
+              -d '{"type":"backup_failure","severity":"critical","source":"github-actions","message":"Scheduled Firestore export failed"}' \
+              "$ALERT_WEBHOOK_URL"
+          fi

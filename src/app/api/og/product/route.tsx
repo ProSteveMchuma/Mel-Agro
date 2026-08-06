@@ -1,7 +1,6 @@
+/* eslint-disable @next/next/no-img-element -- ImageResponse renders standard image elements server-side. */
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
-
-export const runtime = 'edge';
 
 const ALLOWED_IMAGE_HOSTS = [
     'firebasestorage.googleapis.com',
@@ -97,6 +96,7 @@ export async function GET(req: NextRequest) {
                         >
                             {image ? (
                                 <img
+                                    alt=""
                                     src={image}
                                     style={{
                                         width: '100%',

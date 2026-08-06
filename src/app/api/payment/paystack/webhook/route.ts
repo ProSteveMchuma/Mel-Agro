@@ -4,6 +4,7 @@ import * as admin from 'firebase-admin';
 import crypto from 'crypto';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { sendServerSms, sendServerEmail } from '@/lib/server-notifications';
+import { reportIncident } from '@/lib/incident-reporting';
 
 export async function POST(request: Request) {
     const body = await request.text();
@@ -141,6 +142,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ status: 'success' });
     } catch (error: any) {
         console.error('Paystack Webhook Critical Error:', error);
+        void reportIncident({
+            type: 'callback_error',
+            severity: 'critical',
+            source: 'paystack-webhook',
+            message: error?.message || 'Webhook processing failed',
+        });
         return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
     }
 }

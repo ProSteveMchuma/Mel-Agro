@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo } from 'react';
 import { Order } from '@/context/OrderContext';
-import { aggregateOrderData, ReportingStats } from '@/lib/reports-service';
+import { aggregateOrderData } from '@/lib/reports-service';
 import { SalesReportTemplate } from '@/components/documents/SalesReportTemplate';
 
 interface ReportsCenterProps {

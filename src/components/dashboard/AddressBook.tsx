@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { SavedAddress } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'react-hot-toast';
@@ -76,7 +76,7 @@ export default function AddressBook() {
             const newAddresses = addresses.filter(a => a.id !== id);
             await updateProfile({ savedAddresses: newAddresses });
             toast.success("Address removed");
-        } catch (error) {
+        } catch {
             toast.error("Failed to remove address");
         }
     };
@@ -89,7 +89,7 @@ export default function AddressBook() {
             }));
             await updateProfile({ savedAddresses: newAddresses });
             toast.success("Primary address updated");
-        } catch (error) {
+        } catch {
             toast.error("Failed to update primary address");
         }
     };

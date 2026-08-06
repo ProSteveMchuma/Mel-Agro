@@ -1,11 +1,8 @@
 "use client";
 import { useState, useEffect } from "react";
-import { SalesReportTemplate } from "@/components/documents/SalesReportTemplate";
 import { useOrders } from "@/context/OrderContext";
 import { useProducts } from "@/context/ProductContext";
-import { useAuth } from "@/context/AuthContext";
 import { useUsers } from "@/context/UserContext";
-import { toast } from "react-hot-toast";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AnalyticsCharts from "@/components/admin/AnalyticsCharts";
@@ -29,7 +26,6 @@ interface ViewedProduct {
 export default function AdminDashboard() {
     const { orders } = useOrders();
     const { products } = useProducts();
-    const { user } = useAuth();
     const { users } = useUsers();
     const router = useRouter();
 
@@ -40,7 +36,7 @@ export default function AdminDashboard() {
     const [topSearches, setTopSearches] = useState<SearchTerm[]>([]);
     const [topViewed, setTopViewed] = useState<ViewedProduct[]>([]);
     const [traffic, setTraffic] = useState({ totalVisits: 0, uniqueVisitors: 0 });
-    const [loadingAnalytics, setLoadingAnalytics] = useState(true);
+    const [, setLoadingAnalytics] = useState(true);
 
     // Calculate Stats
     const totalSales = orders

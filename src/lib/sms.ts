@@ -1,10 +1,5 @@
-// This service handles sending SMS notifications to farmers
-// We use Africa's Talking as it is the standard for SMS in Kenya
-
-// TODO: To enable real SMS, install 'africastalking' and uncomment the code below
-// npm install africastalking
-
-const MOCK_MODE = false; // Real SMS is now enabled
+// Browser-safe SMS facade. The authenticated API route owns Africa's Talking
+// credentials and switches between sandbox and production by username.
 
 export const SmsService = {
     sendOrderUpdate: async (phoneNumber: string, orderId: string, status: string, name?: string) => {
@@ -39,9 +34,6 @@ export const SmsService = {
             }
         } catch (error) {
             console.error("SMS Service Error:", error);
-            if (MOCK_MODE) {
-                console.log(`[SMS FAIL-SAFE MOCK] To: ${formattedPhone}, Msg: ${message}`);
-            }
             return { success: false, error };
         }
     }

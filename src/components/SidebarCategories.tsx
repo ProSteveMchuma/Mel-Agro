@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 
 interface SidebarCategoriesProps {
     categories: string[];
@@ -23,8 +22,6 @@ export const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export default function SidebarCategories({ categories }: SidebarCategoriesProps) {
-    const pathname = usePathname();
-
     return (
         <aside className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden sticky top-[120px]">
             <div className="p-6 border-b border-gray-50 bg-gray-50/50">

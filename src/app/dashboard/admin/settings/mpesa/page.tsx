@@ -39,7 +39,7 @@ export default function MpesaSettingsPage() {
                     if (m) setBaseUrl(m[1]);
                 }
             }
-        } catch (e) { /* ignore */ }
+        } catch { /* ignore */ }
         finally { setLoading(false); }
     }
 
