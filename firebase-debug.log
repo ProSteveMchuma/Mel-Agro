@@ -1,0 +1,110 @@
+[debug] [2026-08-06T13:18:13.360Z] ----------------------------------------------------------------------
+[debug] [2026-08-06T13:18:13.364Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\sk\Documents\MELAGRI final\Mel-Agro\node_modules\firebase-tools\lib\bin\firebase.js login:list
+[debug] [2026-08-06T13:18:13.364Z] CLI Version:   15.26.0
+[debug] [2026-08-06T13:18:13.364Z] Platform:      win32
+[debug] [2026-08-06T13:18:13.365Z] Node Version:  v25.2.1
+[debug] [2026-08-06T13:18:13.365Z] Detected Agent: codex_cli
+[debug] [2026-08-06T13:18:13.365Z] Time:          Thu Aug 06 2026 16:18:13 GMT+0300 (East Africa Time)
+[debug] [2026-08-06T13:18:13.365Z] ----------------------------------------------------------------------
+[debug] 
+[info] Logged in as proinnovationtech@gmail.com
+[debug] [2026-08-06T13:18:18.283Z] ----------------------------------------------------------------------
+[debug] [2026-08-06T13:18:18.286Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\sk\Documents\MELAGRI final\Mel-Agro\node_modules\firebase-tools\lib\bin\firebase.js use
+[debug] [2026-08-06T13:18:18.287Z] CLI Version:   15.26.0
+[debug] [2026-08-06T13:18:18.287Z] Platform:      win32
+[debug] [2026-08-06T13:18:18.287Z] Node Version:  v25.2.1
+[debug] [2026-08-06T13:18:18.287Z] Detected Agent: codex_cli
+[debug] [2026-08-06T13:18:18.288Z] Time:          Thu Aug 06 2026 16:18:18 GMT+0300 (East Africa Time)
+[debug] [2026-08-06T13:18:18.289Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-06T13:18:18.569Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-06T13:18:18.570Z] > authorizing via signed-in user (proinnovationtech@gmail.com)
+[info] melagri
+[debug] [2026-08-06T13:19:05.572Z] ----------------------------------------------------------------------
+[debug] [2026-08-06T13:19:05.577Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\sk\Documents\MELAGRI final\Mel-Agro\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules --project melagri
+[debug] [2026-08-06T13:19:05.578Z] CLI Version:   15.26.0
+[debug] [2026-08-06T13:19:05.578Z] Platform:      win32
+[debug] [2026-08-06T13:19:05.578Z] Node Version:  v25.2.1
+[debug] [2026-08-06T13:19:05.579Z] Detected Agent: codex_cli
+[debug] [2026-08-06T13:19:05.579Z] Time:          Thu Aug 06 2026 16:19:05 GMT+0300 (East Africa Time)
+[debug] [2026-08-06T13:19:05.579Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-06T13:19:09.836Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-06T13:19:09.837Z] > authorizing via signed-in user (proinnovationtech@gmail.com)
+[debug] [2026-08-06T13:19:09.837Z] [iam] checking project melagri for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]
+[debug] [2026-08-06T13:19:09.855Z] Checked if tokens are valid: false, expires at: 1784548090071
+[debug] [2026-08-06T13:19:09.855Z] Checked if tokens are valid: false, expires at: 1784548090071
+[debug] [2026-08-06T13:19:09.855Z] > refreshing access token with scopes: []
+[debug] [2026-08-06T13:19:09.860Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-08-06T13:19:09.860Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-06T13:19:10.345Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-08-06T13:19:10.345Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-08-06T13:19:10.373Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/melagri:testIamPermissions [none]
+[debug] [2026-08-06T13:19:10.373Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/melagri:testIamPermissions  x-goog-user-project=melagri
+[debug] [2026-08-06T13:19:10.373Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/melagri:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[debug] [2026-08-06T13:19:12.021Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/melagri:testIamPermissions 200
+[debug] [2026-08-06T13:19:12.021Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/melagri:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get"]}
+[info] 
+[info] === Deploying to 'melagri'...
+[info] 
+[info] i  deploying firestore 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[info] i  firestore: ensuring required API firestore.googleapis.com is enabled... 
+[debug] [2026-08-06T13:19:12.030Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:12.030Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:12.030Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/melagri/databases/(default) [none]
+[debug] [2026-08-06T13:19:13.821Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/melagri/databases/(default) 200
+[debug] [2026-08-06T13:19:13.821Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/melagri/databases/(default) {"name":"projects/melagri/databases/(default)","uid":"0a390e20-7e43-4f1f-ade6-20c15d4fed56","createTime":"2025-11-26T04:28:45.301932Z","updateTime":"2025-11-26T04:28:45.301932Z","locationId":"nam5","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2026-08-06T12:19:13.419348Z","appEngineIntegrationMode":"DISABLED","keyPrefix":"s","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"realtimeUpdatesMode":"REALTIME_UPDATES_MODE_ENABLED","etag":"IIv0vt+LjJYDMPmX7/qelpMD"}
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2026-08-06T13:19:13.822Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:13.823Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:13.824Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/melagri:test [none]
+[debug] [2026-08-06T13:19:13.824Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/melagri:test [omitted]
+[debug] [2026-08-06T13:19:15.314Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/melagri:test 200
+[debug] [2026-08-06T13:19:15.314Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/melagri:test {}
+[info] +  cloud.firestore: rules file firestore.rules compiled successfully 
+[debug] [2026-08-06T13:19:15.315Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:15.316Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:15.316Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/melagri/releases pageSize=10&pageToken=
+[debug] [2026-08-06T13:19:15.835Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/melagri/releases 200
+[debug] [2026-08-06T13:19:15.835Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/melagri/releases {"releases":[{"name":"projects/melagri/releases/cloud.firestore","rulesetName":"projects/melagri/rulesets/9b79a029-0f2e-478c-b778-1867a300890c","createTime":"2025-11-26T04:28:52.829524Z","updateTime":"2026-07-20T10:48:18.849822Z"},{"name":"projects/melagri/releases/cloud.firestore/mel-agri","rulesetName":"projects/melagri/rulesets/a6ff4011-5ba6-4237-9adc-edafb529220b","createTime":"2026-01-19T00:29:03.148370Z","updateTime":"2026-01-19T00:29:03.148370Z"},{"name":"projects/melagri/releases/firebase.storage/melagri.firebasestorage.app","rulesetName":"projects/melagri/rulesets/9e45ec3a-68da-4e4b-ace6-f36e28bb7d57","createTime":"2025-11-26T04:30:26.047377Z","updateTime":"2026-03-12T07:07:06.011667Z"}]}
+[debug] [2026-08-06T13:19:15.852Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:15.852Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:15.852Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/melagri/rulesets/a6ff4011-5ba6-4237-9adc-edafb529220b [none]
+[debug] [2026-08-06T13:19:16.355Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/melagri/rulesets/a6ff4011-5ba6-4237-9adc-edafb529220b 200
+[debug] [2026-08-06T13:19:16.356Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/melagri/rulesets/a6ff4011-5ba6-4237-9adc-edafb529220b [omitted]
+[info] i  firestore: uploading rules firestore.rules... 
+[debug] [2026-08-06T13:19:16.358Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:16.358Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:16.359Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/melagri/rulesets [none]
+[debug] [2026-08-06T13:19:16.359Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/melagri/rulesets [omitted]
+[debug] [2026-08-06T13:19:17.419Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/melagri/rulesets 200
+[debug] [2026-08-06T13:19:17.419Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/melagri/rulesets {"name":"projects/melagri/rulesets/dbe6a646-3685-4d41-b2bf-aca2d61e5747","source":{"files":[{"content":"rules_version = '2';\r\nservice cloud.firestore {\r\n  match /databases/{database}/documents {\r\n    // Robust helper function to check if user is admin or super-admin\n    function isAdmin() {\n      return request.auth != null &&\n        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&\n        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') in ['admin', 'super-admin'];\n    }\n\r\n    // Products: public catalog, server/admin inventory mutations only.\n    match /products/{productId} {\n      allow read: if true;\n      allow write: if isAdmin();\n    }\n\n    // Inventory history is written by trusted server routes or admins.\n    match /inventory_history/{historyId} {\n      allow read: if isAdmin();\n      allow write: if isAdmin();\n    }\n\n    // Customer orders are created/cancelled by server-authoritative API routes.\n    match /orders/{orderId} {\n      allow create: if isAdmin();\n      allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());\n      // Customers may only request a return. Payment and status changes are server/admin only.\n      allow update: if request.auth != null && (\n        isAdmin() || (\n          resource.data.userId == request.auth.uid && (\n            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['returnStatus', 'returnReason']) &&\n            request.resource.data.get('paymentStatus', resource.data.get('paymentStatus', 'Unpaid')) == resource.data.get('paymentStatus', 'Unpaid') &&\n            request.resource.data.get('total', resource.data.get('total', 0)) == resource.data.get('total', 0) &&\n            request.resource.data.get('userId', resource.data.get('userId', '')) == resource.data.get('userId', '') &&\n            (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['returnStatus']) ||\n              request.resource.data.returnStatus == 'Requested')\n          )\r\n        )\r\n      );\r\n    }\r\n\r\n    // Users: Users can read/update their own profile (excluding sensitive fields),\r\n    // admins can manage all. Role / status / loyaltyPoints can ONLY be changed by an admin\r\n    match /users/{userId} {\r\n      allow read: if isAdmin() || (request.auth != null && request.auth.uid == userId);\r\n      allow create: if request.auth != null && request.auth.uid == userId && request.resource.data.get('role', 'user') == 'user';\r\n      allow update: if (\r\n        isAdmin() ||\r\n        (request.auth != null && request.auth.uid == userId &&\r\n         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'loyaltyPoints']))\r\n      );\r\n      allow delete: if isAdmin();\r\n    }\r\n\r\n    // Transactions are written by payment APIs (Admin SDK) or admins.\n    match /transactions/{id} {\n        allow read: if isAdmin();\n        allow create: if isAdmin();\n    }\r\n\r\n    // Settings: Public read (for shipping rates), Admin write\r\n    match /settings/{settingId} {\r\n      allow read: if true;\r\n      allow write: if isAdmin();\r\n    }\r\n\r\n    // Shipping zones: Public read (checkout reads to compute delivery cost), Admin write\r\n    match /shipping_zones/{zoneId} {\r\n      allow read: if true;\r\n      allow write: if isAdmin();\r\n    }\r\n    \r\n    // Content: Public read, Admin write (for banners etc)\r\n    match /content/{docId} {\r\n      allow read: if true;\r\n      allow write: if isAdmin();\r\n    }\r\n    \r\n    // Reviews: Public read, Authenticated create\r\n    match /reviews/{reviewId} {\r\n      allow read: if true;\r\n      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;\r\n      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;\r\n    }\r\n\r\n    // Wishlist: Private to user\r\n    match /wishlist/{wishlistId} {\r\n      allow read, write: if request.auth != null && request.auth.uid == wishlistId;\r\n    }\r\n\r\n    // Notifications: customers can only create/read their own; server handles order notices.\n    match /notifications/{notificationId} {\n      allow create: if request.auth != null && (request.resource.data.userId == request.auth.uid || isAdmin());\n      allow read, update: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());\n    }\r\n\r\n    // Messages: Users can create and read own. Admin can read/write all.\r\n    match /messages/{messageId} {\r\n      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;\r\n      allow read, update: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());\r\n    }\r\n\r\n    // Analytics aggregates are server-authoritative. Clients use /api/analytics.\n    match /analytics_search_terms/{id} {\r\n      allow read, delete: if isAdmin();\r\n      allow write: if false;\n    }\r\n    match /analytics_products/{id} {\r\n      allow read, delete: if isAdmin();\r\n      allow write: if false;\n    }\r\n    match /analytics_traffic/{id} {\r\n      allow read, delete: if isAdmin();\r\n      allow write: if false;\n    }\r\n    match /analytics_funnels/{id} {\r\n      allow read, delete: if isAdmin();\r\n      allow create, update: if request.auth != null && request.auth.uid == id;\r\n    }\r\n    match /analytics_purchases/{id} {\r\n      allow read, delete: if isAdmin();\r\n      allow write: if false;\n    }\r\n\r\n    // Carts: Private to user\r\n    match /carts/{userId} {\r\n      allow read, write: if request.auth != null && request.auth.uid == userId;\r\n    }\r\n    \r\n    // Discounts/Coupons: Public read, Admin write\r\n    match /discounts/{id} {\r\n      allow read: if true;\r\n      allow write: if isAdmin();\r\n    }\r\n\r\n    // M-Pesa C2B payment audit log: written only by server (admin SDK bypasses), admin reads\r\n    match /c2bPayments/{id} {\r\n      allow read: if isAdmin();\r\n      allow write: if false;\r\n    }\r\n\r\n    // M-Pesa refunds audit log: written only by server (admin SDK bypasses), admin reads\r\n    match /refunds/{id} {\r\n      allow read: if isAdmin();\r\n      allow write: if false;\r\n    }\r\n\r\n    // M-Pesa configuration (C2B URL registration state): admin only\r\n    match /mpesaConfig/{id} {\r\n      allow read: if isAdmin();\r\n      allow write: if false;\r\n    }\r\n\r\n    // Paystack webhook idempotency log: server only\r\n    match /paystackWebhookEvents/{id} {\r\n      allow read: if isAdmin();\r\n      allow write: if false;\r\n    }\r\n\r\n    // AI Insights cache: server-only writes (admin SDK bypasses), admin read\r\n    match /aiInsights/{id} {\r\n      allow read: if isAdmin();\r\n      allow write: if false;\r\n    }\r\n\r\n    // Bulk inquiry submissions from /bulk page: server-only writes (via API), admin read\r\n    match /bulkInquiries/{id} {\r\n      allow read, update: if isAdmin();\r\n      allow create, delete: if false;\r\n    }\r\n\r\n    // Discount usage tracking: server only\r\n    match /discountUsage/{id} {\r\n      allow read: if isAdmin();\r\n      allow write: if false;\r\n    }\r\n  }\r\n}\r\n\r\n\r\n\r\n","name":"firestore.rules"}]},"createTime":"2026-08-06T13:19:16.941855Z","metadata":{"services":["cloud.firestore"]}}
+[debug] [2026-08-06T13:19:17.419Z] [rules] created ruleset projects/melagri/rulesets/dbe6a646-3685-4d41-b2bf-aca2d61e5747
+[debug] [2026-08-06T13:19:17.420Z] [rules] releasing cloud.firestore with ruleset projects/melagri/rulesets/dbe6a646-3685-4d41-b2bf-aca2d61e5747
+[debug] [2026-08-06T13:19:17.420Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:17.420Z] Checked if tokens are valid: true, expires at: 1786025949346
+[debug] [2026-08-06T13:19:17.421Z] >>> [apiv2][query] PATCH https://firebaserules.googleapis.com/v1/projects/melagri/releases/cloud.firestore [none]
+[debug] [2026-08-06T13:19:17.421Z] >>> [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/melagri/releases/cloud.firestore {"release":{"name":"projects/melagri/releases/cloud.firestore","rulesetName":"projects/melagri/rulesets/dbe6a646-3685-4d41-b2bf-aca2d61e5747"}}
+[debug] [2026-08-06T13:19:18.529Z] <<< [apiv2][status] PATCH https://firebaserules.googleapis.com/v1/projects/melagri/releases/cloud.firestore 200
+[debug] [2026-08-06T13:19:18.530Z] <<< [apiv2][body] PATCH https://firebaserules.googleapis.com/v1/projects/melagri/releases/cloud.firestore {"name":"projects/melagri/releases/cloud.firestore","rulesetName":"projects/melagri/rulesets/dbe6a646-3685-4d41-b2bf-aca2d61e5747","createTime":"2025-11-26T04:28:52.829524Z","updateTime":"2026-08-06T13:19:18.058572Z"}
+[debug] [2026-08-06T13:19:18.530Z] [rules] updated release projects/melagri/releases/cloud.firestore
+[info] +  firestore: released rules firestore.rules to cloud.firestore 
+[info] 
+[info] +  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/melagri/overview
+[debug] [2026-08-06T13:20:41.525Z] ----------------------------------------------------------------------
+[debug] [2026-08-06T13:20:41.528Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\sk\Documents\MELAGRI final\Mel-Agro\node_modules\firebase-tools\lib\bin\firebase.js help auth
+[debug] [2026-08-06T13:20:41.529Z] CLI Version:   15.26.0
+[debug] [2026-08-06T13:20:41.530Z] Platform:      win32
+[debug] [2026-08-06T13:20:41.530Z] Node Version:  v25.2.1
+[debug] [2026-08-06T13:20:41.530Z] Detected Agent: codex_cli
+[debug] [2026-08-06T13:20:41.531Z] Time:          Thu Aug 06 2026 16:20:41 GMT+0300 (East Africa Time)
+[debug] [2026-08-06T13:20:41.531Z] ----------------------------------------------------------------------
+[debug] 
+[info] 
+[info] To see more about a specific command, run:
+[info]   firebase auth:<command> --help
+[info]  Privacy Policy: https://firebase.google.com/support/privacy
+[info] 

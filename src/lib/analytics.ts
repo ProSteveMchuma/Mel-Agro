@@ -1,5 +1,18 @@
-import { db } from './firebase';
-import { collection, addDoc, doc, increment, serverTimestamp, setDoc, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { auth } from './firebase';
+
+async function sendEvent(payload: Record<string, unknown>) {
+    const token = await auth.currentUser?.getIdToken().catch(() => null);
+    const response = await fetch('/api/analytics', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload),
+        keepalive: true,
+    });
+    if (!response.ok && response.status !== 400) throw new Error(`Analytics request failed (${response.status})`);
+}
 
 export const AnalyticsService = {
     /**
@@ -11,20 +24,7 @@ export const AnalyticsService = {
         const cleanTerm = term.trim().toLowerCase();
 
         try {
-            // 1. Update Aggregate Count
-            const termRef = doc(db, 'analytics_search_terms', cleanTerm);
-            await setDoc(termRef, {
-                term: cleanTerm,
-                count: increment(1),
-                lastSearched: serverTimestamp()
-            }, { merge: true });
-
-            // 2. Log Raw Event (Optional, good for timeline)
-            // await addDoc(collection(db, 'analytics_events'), {
-            //     type: 'search',
-            //     term: cleanTerm,
-            //     timestamp: serverTimestamp()
-            // });
+            await sendEvent({ event: 'search', term: cleanTerm });
         } catch (error) {
             console.error("Failed to log search:", error);
         }
@@ -38,12 +38,7 @@ export const AnalyticsService = {
         if (!productId) return;
 
         try {
-            const statsRef = doc(db, 'analytics_products', productId);
-            await setDoc(statsRef, {
-                productId,
-                views: increment(1),
-                lastViewed: serverTimestamp()
-            }, { merge: true });
+            await sendEvent({ event: 'view', productId });
         } catch (error) {
             console.error("Failed to log view:", error);
         }
@@ -56,18 +51,7 @@ export const AnalyticsService = {
     trackVisit: async (isUnique: boolean = false) => {
         const today = new Date().toISOString().split('T')[0];
         try {
-            const trafficRef = doc(db, 'analytics_traffic', today);
-            const updateData: any = {
-                date: today,
-                totalVisits: increment(1),
-                lastActive: serverTimestamp()
-            };
-
-            if (isUnique) {
-                updateData.uniqueVisitors = increment(1);
-            }
-
-            await setDoc(trafficRef, updateData, { merge: true });
+            await sendEvent({ event: 'visit', clientUniqueHint: isUnique, date: today });
         } catch (error) {
             console.error("Failed to track visit:", error);
         }
@@ -79,12 +63,7 @@ export const AnalyticsService = {
     logAddToCart: async (productId: string) => {
         if (!productId) return;
         try {
-            const statsRef = doc(db, 'analytics_products', productId);
-            await setDoc(statsRef, {
-                productId,
-                addToCartCount: increment(1),
-                lastAdded: serverTimestamp()
-            }, { merge: true });
+            await sendEvent({ event: 'add_to_cart', productId });
         } catch (error) {
             console.error("Failed to log add to cart:", error);
         }
@@ -96,11 +75,7 @@ export const AnalyticsService = {
     logPurchase: async (orderId: string, amount: number) => {
         if (!orderId) return;
         try {
-            await addDoc(collection(db, 'analytics_purchases'), {
-                orderId,
-                amount,
-                timestamp: serverTimestamp()
-            });
+            await sendEvent({ event: 'purchase', orderId, amount });
         } catch (error) {
             console.error("Failed to log purchase:", error);
         }
@@ -112,16 +87,10 @@ export const AnalyticsService = {
      */
     getPopularSearches: async (max = 5): Promise<Array<{ term: string; count: number }>> => {
         try {
-            const q = query(
-                collection(db, 'analytics_search_terms'),
-                orderBy('count', 'desc'),
-                limit(max)
-            );
-            const snap = await getDocs(q);
-            return snap.docs.map(doc => ({
-                term: String(doc.data().term || doc.id),
-                count: Number(doc.data().count) || 0,
-            }));
+            const response = await fetch(`/api/analytics?limit=${Math.min(10, Math.max(1, max))}`);
+            if (!response.ok) throw new Error(`Popular searches request failed (${response.status})`);
+            const data = await response.json();
+            return Array.isArray(data.searches) ? data.searches : [];
         } catch (error) {
             console.error("Failed to fetch popular searches:", error);
             return [];

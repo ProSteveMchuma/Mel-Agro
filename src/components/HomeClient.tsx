@@ -82,7 +82,7 @@ export default function HomeClient({ categories, featuredProducts, recommendedPr
                                     {/* Header Text - Hidden on Mobile */}
                                     <div className="hidden md:block space-y-1">
                                         <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em]">Commercial Selection</p>
-                                        <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">Recommended for you</h2>
+                                        <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">Top-rated products</h2>
                                         <p className="text-sm text-gray-500 font-medium max-w-md">Top-rated products trusted by successful farmers across the country.</p>
                                     </div>
 

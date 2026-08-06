@@ -13,6 +13,7 @@ import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { format } from "date-fns";
 import AccountUpgradePrompt from '@/components/checkout/AccountUpgradePrompt';
+import { AnalyticsService } from '@/lib/analytics';
 
 function OrderSuccessContent() {
     const searchParams = useSearchParams();
@@ -31,6 +32,7 @@ function OrderSuccessContent() {
                 origin: { y: 0.6 },
                 colors: ['#22c55e', '#16a34a', '#ffffff']
             });
+            void AnalyticsService.logPurchase(order.id, order.total);
         }
     }, [order]);
 
@@ -42,10 +44,6 @@ function OrderSuccessContent() {
             const foundOrder = orders.find((o) => o.id === orderId);
             if (foundOrder) {
                 setOrder(foundOrder);
-                // Log purchase analytics
-                import('@/lib/analytics').then(({ AnalyticsService }) => {
-                    AnalyticsService.logPurchase(foundOrder.id, foundOrder.total);
-                });
                 return;
             }
 

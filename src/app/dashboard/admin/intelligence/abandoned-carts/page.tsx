@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getAuth } from "firebase/auth";
 import Link from "next/link";
 import { generateAbandonedCartNudge, getWhatsAppDirectUrl } from "@/lib/whatsapp";
 import { toast } from "react-hot-toast";
@@ -26,28 +25,15 @@ export default function AbandonedCartsPage() {
     useEffect(() => {
         const fetchCarts = async () => {
             try {
-                // Fetch carts that are 'active' and have items
-                // We'll filter by 'updatedAt' client-side to find those older than 30 mins
-                const q = query(
-                    collection(db, "carts"),
-                    where("status", "==", "active"),
-                    orderBy("updatedAt", "desc"),
-                    limit(50)
-                );
-
-                const snapshot = await getDocs(q);
-                const now = new Date();
-                const cartList = snapshot.docs
-                    .map(doc => ({ id: doc.id, ...doc.data() } as AbandonedCart))
-                    .filter(cart => {
-                        const updated = new Date(cart.updatedAt);
-                        const diffMins = (now.getTime() - updated.getTime()) / (1000 * 60);
-                        return diffMins > 30 && cart.items.length > 0;
-                    });
-
-                setCarts(cartList);
+                const token = await getAuth().currentUser?.getIdToken();
+                if (!token) throw new Error('Admin session is unavailable');
+                const response = await fetch('/api/admin/intelligence/abandoned-carts', { headers: { Authorization: `Bearer ${token}` } });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Unable to load abandoned carts');
+                setCarts(Array.isArray(data.carts) ? data.carts : []);
             } catch (error) {
                 console.error("Error fetching abandoned carts:", error);
+                toast.error(error instanceof Error ? error.message : 'Unable to load abandoned carts');
             } finally {
                 setLoading(false);
             }

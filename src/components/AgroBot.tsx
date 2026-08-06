@@ -3,8 +3,10 @@ import { useState, useRef, useEffect } from 'react';
 import { processMessage, BotResponse } from '@/lib/agrobot';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useSettings } from '@/context/SettingsContext';
 
 export default function AgroBot() {
+    const { shipping } = useSettings();
     const [isOpen, setIsOpen] = useState(false);
     const [messages, setMessages] = useState<Array<{ text: string, sender: 'user' | 'bot', type?: string, data?: any, options?: string[] }>>([
         { text: "Habari! 👋 I'm AgroBot. Ask me about seeds, fertilizers, or delivery!", sender: 'bot', type: 'text' }
@@ -35,7 +37,7 @@ export default function AgroBot() {
             // Simulate reading delay
             await new Promise(r => setTimeout(r, 600 + Math.random() * 500));
 
-            const response: BotResponse = await processMessage(text);
+            const response: BotResponse = await processMessage(text, shipping.zones);
 
             setMessages(prev => [...prev, {
                 text: response.text,
@@ -54,7 +56,7 @@ export default function AgroBot() {
 
     const handleOptionClick = (option: string) => {
         if (option === "WhatsApp Expert") {
-            window.open("https://wa.me/254700000000", "_blank");
+            window.open("https://wa.me/254748970757", "_blank", "noopener,noreferrer");
             return;
         }
         if (option === "Browse Shop") {

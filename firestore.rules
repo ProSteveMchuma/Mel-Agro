@@ -100,28 +100,18 @@ service cloud.firestore {
       allow read, update: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
-    // Analytics: Authenticated-only writes, admin read/delete.
-    // We only accept tracking events from signed-in users (anonymous Firebase auth
-    // will be set up separately if guest tracking is needed). Bounds doc size to
-    // prevent fill-the-bucket abuse.
-    function validAnalyticsEvent() {
-      return request.resource.data.size() < 50 &&
-             request.resource.data.keys().hasAny(['timestamp', 'event', 'term', 'productId', 'page']);
-    }
+    // Analytics aggregates are server-authoritative. Clients use /api/analytics.
     match /analytics_search_terms/{id} {
       allow read, delete: if isAdmin();
-      allow create: if request.auth != null && validAnalyticsEvent();
-      allow update: if isAdmin();
+      allow write: if false;
     }
     match /analytics_products/{id} {
       allow read, delete: if isAdmin();
-      allow create: if request.auth != null && validAnalyticsEvent();
-      allow update: if isAdmin();
+      allow write: if false;
     }
     match /analytics_traffic/{id} {
       allow read, delete: if isAdmin();
-      allow create: if request.auth != null && validAnalyticsEvent();
-      allow update: if isAdmin();
+      allow write: if false;
     }
     match /analytics_funnels/{id} {
       allow read, delete: if isAdmin();
@@ -129,7 +119,7 @@ service cloud.firestore {
     }
     match /analytics_purchases/{id} {
       allow read, delete: if isAdmin();
-      allow create: if request.auth != null;
+      allow write: if false;
     }
 
     // Carts: Private to user
