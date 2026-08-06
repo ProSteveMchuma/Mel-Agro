@@ -26,7 +26,10 @@ export async function POST(request: Request) {
 
         const auth = await requireOrderOwnerOrAdmin(request, orderId);
         if (!auth.ok) {
-            return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
+            return NextResponse.json(
+                { success: false, message: auth.message },
+                { status: auth.message === 'Forbidden — you do not own this order' ? 403 : 401 },
+            );
         }
 
         const snap = await adminDb.collection('orders').doc(orderId).get();

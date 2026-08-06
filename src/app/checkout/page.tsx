@@ -17,6 +17,7 @@ import { db, auth } from '@/lib/firebase';
 import { generateWhatsAppMessage, getWhatsAppUrl } from '@/lib/whatsapp';
 import { useBehavior } from '@/context/BehaviorContext';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
+import { authenticatedJsonHeaders } from '@/lib/auth-headers';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
@@ -429,17 +430,18 @@ export default function CheckoutPage() {
         }
 
         try {
-            const idToken = await getAuth().currentUser?.getIdToken();
-            if (!idToken) throw new Error('Your checkout session expired. Please try again.');
+            // Pin one verified identity token for the complete checkout. Anonymous
+            // auth state can update while AuthContext establishes its session; a
+            // second optional token lookup used to drop the Authorization header
+            // between guest order creation and M-Pesa initiation.
+            const checkoutIdToken = await getAuth().currentUser?.getIdToken(true);
+            if (!checkoutIdToken) throw new Error('Your checkout session expired. Please try again.');
 
             // Prices, delivery fees, discounts, loyalty points and stock are all
             // calculated and committed by the server. The browser only submits intent.
             const createResponse = await fetch('/api/orders/create', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${idToken}`,
-                },
+                headers: authenticatedJsonHeaders(checkoutIdToken),
                 body: JSON.stringify({
                     items: cartItems.map(item => ({
                         id: String(item.id),
@@ -497,13 +499,9 @@ export default function CheckoutPage() {
 
                 const loadingToast = toast.loading("Initiating M-Pesa prompt...");
 
-                const idToken = await getAuth().currentUser?.getIdToken();
                 const response = await fetch('/api/payment/mpesa', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
-                    },
+                    headers: authenticatedJsonHeaders(checkoutIdToken),
                     body: JSON.stringify({
                         orderId: newOrder.id,
                         phoneNumber: data.shipping.phone,
@@ -581,13 +579,10 @@ export default function CheckoutPage() {
                     pollTimer = setInterval(async () => {
                         if (resolved) return;
                         try {
-                            const tok = await getAuth().currentUser?.getIdToken();
+                            const tok = await getAuth().currentUser?.getIdToken().catch(() => checkoutIdToken) || checkoutIdToken;
                             const r = await fetch('/api/payment/mpesa/query', {
                                 method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                    ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
-                                },
+                                headers: authenticatedJsonHeaders(tok),
                                 body: JSON.stringify({ orderId: newOrder.id }),
                             });
                             const j = await r.json();
@@ -623,13 +618,9 @@ export default function CheckoutPage() {
 
             if (data.paymentMethod === 'card') {
                 const loadingToast = toast.loading("Preparing secure checkout...");
-                const cardToken = await getAuth().currentUser?.getIdToken();
                 const response = await fetch('/api/payment/paystack/initialize', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...(cardToken ? { Authorization: `Bearer ${cardToken}` } : {}),
-                    },
+                    headers: authenticatedJsonHeaders(checkoutIdToken),
                     body: JSON.stringify({
                         items: cartItems,
                         orderId: newOrder.id,

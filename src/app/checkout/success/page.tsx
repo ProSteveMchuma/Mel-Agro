@@ -12,6 +12,7 @@ import { motion } from 'framer-motion';
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { format } from "date-fns";
+import AccountUpgradePrompt from '@/components/checkout/AccountUpgradePrompt';
 
 function OrderSuccessContent() {
     const searchParams = useSearchParams();
@@ -202,6 +203,14 @@ function OrderSuccessContent() {
                         </div>
                     </div>
                 </motion.div>
+
+                {isPaid && (
+                    <AccountUpgradePrompt
+                        orderId={order.id}
+                        phone={String((order as any).phone || '')}
+                        name={String((order as any).userName || 'Farmer')}
+                    />
+                )}
 
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
