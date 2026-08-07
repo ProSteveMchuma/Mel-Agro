@@ -19,6 +19,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const router = useRouter();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const profileMenuRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+        if (!showProfileMenu) return;
+        const closeMenu = (event: MouseEvent | KeyboardEvent) => {
+            if (event instanceof KeyboardEvent && event.key === 'Escape') return setShowProfileMenu(false);
+            if (event instanceof MouseEvent && !profileMenuRef.current?.contains(event.target as Node)) setShowProfileMenu(false);
+        };
+        document.addEventListener('mousedown', closeMenu);
+        document.addEventListener('keydown', closeMenu);
+        return () => { document.removeEventListener('mousedown', closeMenu); document.removeEventListener('keydown', closeMenu); };
+    }, [showProfileMenu]);
 
     // On desktop (md+), start the sidebar open by default
     React.useEffect(() => {
@@ -267,6 +280,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </nav>
 
                 <div className={`shrink-0 border-t border-gray-800 ${isSidebarOpen ? 'p-4' : 'p-2'}`}>
+                    <Link
+                        href="/"
+                        onClick={closeSidebarOnMobile}
+                        aria-label="View storefront"
+                        title={!isSidebarOpen ? 'View storefront' : undefined}
+                        className={`mb-1 flex min-h-11 w-full items-center rounded-xl text-gray-300 transition-colors hover:bg-gray-800 hover:text-white ${isSidebarOpen ? 'gap-4 px-4' : 'justify-center px-2'}`}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5M9 21v-7h6v7" /></svg>
+                        {isSidebarOpen && <span>View storefront</span>}
+                    </Link>
                     <button
                         onClick={() => { logout(); router.push('/auth/login'); }}
                         aria-label="Log out"
@@ -337,7 +360,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             />
                         </div>
 
-                        <div className="flex items-center gap-2 md:gap-4 md:pl-6 md:border-l border-gray-100">
+                        <div ref={profileMenuRef} className="relative md:pl-6 md:border-l border-gray-100">
+                            <button type="button" onClick={() => setShowProfileMenu((value) => !value)} aria-expanded={showProfileMenu} aria-haspopup="menu" className="flex min-h-11 items-center gap-2 rounded-xl px-1 text-left transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 md:gap-4">
                             <div className="text-right hidden sm:block">
                                 <div className="text-sm font-black text-gray-900 leading-none mb-1">{user?.name?.split(' ')[0] || 'Admin'}</div>
                                 <div className="text-[10px] font-bold text-melagri-primary uppercase tracking-tighter">Admin</div>
@@ -345,6 +369,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <div className="w-9 h-9 md:w-11 md:h-11 bg-gradient-to-tr from-gray-100 to-gray-200 rounded-xl flex items-center justify-center text-gray-600 font-black shadow-inner border border-white text-sm md:text-base">
                                 {user?.name?.charAt(0) || 'A'}
                             </div>
+                            </button>
+                            {showProfileMenu && <div role="menu" className="absolute right-0 top-[calc(100%+8px)] z-50 w-56 overflow-hidden rounded-2xl border border-gray-200 bg-white p-2 shadow-xl"><div className="border-b border-gray-100 px-3 py-2 sm:hidden"><p className="truncate text-sm font-black text-gray-900">{user?.name || 'Admin'}</p><p className="truncate text-xs text-gray-500">{user?.email}</p></div><Link role="menuitem" href="/" onClick={() => setShowProfileMenu(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-bold text-gray-700 hover:bg-green-50 hover:text-green-800"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10.5 12 3l9 7.5M5 9.5V21h14V9.5" /></svg>View storefront</Link><Link role="menuitem" href="/dashboard/user" onClick={() => setShowProfileMenu(false)} className="flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-bold text-gray-700 hover:bg-gray-50"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5.121 17.804A9 9 0 1 1 18.88 17.8M15 11a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>My account</Link><button role="menuitem" type="button" onClick={() => { setShowProfileMenu(false); logout(); }} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-sm font-bold text-red-600 hover:bg-red-50"><svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m17 16 4-4m0 0-4-4m4 4H7" /></svg>Log out</button></div>}
                         </div>
                     </div>
                 </header>
