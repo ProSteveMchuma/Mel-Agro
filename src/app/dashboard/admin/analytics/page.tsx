@@ -15,36 +15,16 @@ import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import Link from 'next/link';
 
-function renderInsightsMarkdown(md: string) {
-    const html = md
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/^### (.*)$/gm, '<h3 class="text-base font-black text-gray-900 mt-5 mb-2 tracking-tight">$1</h3>')
-        .replace(/^## (.*)$/gm, '<h3 class="text-lg font-black text-gray-900 mt-6 mb-3 tracking-tight">$1</h3>')
-        .replace(/^# (.*)$/gm, '<h2 class="text-xl font-black text-gray-900 mt-6 mb-3 tracking-tight">$1</h2>')
-        .replace(/\*\*(.+?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1.5 py-0.5 rounded text-[12px] font-mono text-gray-800">$1</code>');
-
-    const lines = html.split('\n');
-    const out: string[] = [];
-    let inList = false;
-    for (const raw of lines) {
+function InsightsContent({ markdown }: { markdown: string }) {
+    return <div className="space-y-3">{markdown.split('\n').map((raw, index) => {
         const line = raw.trim();
-        const isBullet = /^[-*]\s+/.test(line);
-        if (isBullet) {
-            if (!inList) { out.push('<ul class="list-disc pl-6 space-y-1.5 mb-3 text-gray-700">'); inList = true; }
-            out.push(`<li>${line.replace(/^[-*]\s+/, '')}</li>`);
-            continue;
-        }
-        if (inList) { out.push('</ul>'); inList = false; }
-        if (!line) { out.push(''); continue; }
-        if (line.startsWith('<h')) { out.push(line); continue; }
-        out.push(`<p class="mb-3 text-gray-700 leading-relaxed">${line}</p>`);
-    }
-    if (inList) out.push('</ul>');
-    return out.join('\n');
+        if (!line) return null;
+        if (line.startsWith('### ')) return <h4 key={index} className="pt-3 text-base font-black text-gray-900">{line.slice(4)}</h4>;
+        if (line.startsWith('## ')) return <h3 key={index} className="pt-4 text-lg font-black text-gray-900">{line.slice(3)}</h3>;
+        if (line.startsWith('# ')) return <h2 key={index} className="pt-4 text-xl font-black text-gray-900">{line.slice(2)}</h2>;
+        if (/^[-*]\s+/.test(line)) return <div key={index} className="flex gap-2 pl-2 text-gray-700"><span aria-hidden="true">•</span><p>{line.replace(/^[-*]\s+/, '')}</p></div>;
+        return <p key={index} className="leading-relaxed text-gray-700">{line.replace(/\*\*|`|\*/g, '')}</p>;
+    })}</div>;
 }
 
 interface InsightsState {
@@ -255,7 +235,7 @@ export default function AnalyticsPage() {
 
                     {aiState.insights && (
                         <div className="space-y-3">
-                            <div className="bg-white border border-purple-100 rounded-2xl p-6 md:p-8 prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderInsightsMarkdown(aiState.insights) }} />
+                            <div className="bg-white border border-purple-100 rounded-2xl p-6 md:p-8 prose-sm max-w-none"><InsightsContent markdown={aiState.insights} /></div>
                             <div className="rounded-2xl border border-purple-100 bg-white p-5">
                                 <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-purple-100 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-purple-700">AI-generated · review required</span>{aiState.evidenceLinks.map(link => <Link key={link.href} href={link.href} className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:border-purple-300 hover:text-purple-700">{link.label} ↗</Link>)}</div>
                                 {aiState.limitations.map(item => <p key={item} className="mt-2 text-[10px] text-gray-500">• {item}</p>)}

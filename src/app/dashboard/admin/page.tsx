@@ -10,6 +10,7 @@ import ReportsCenter from "@/components/admin/ReportsCenter";
 import { collection, query, orderBy, limit, getDocs, getDoc, doc, QueryDocumentSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Product } from "@/types";
+import { getAuth } from "firebase/auth";
 
 interface SearchTerm {
     term: string;
@@ -37,12 +38,25 @@ export default function AdminDashboard() {
     const [topViewed, setTopViewed] = useState<ViewedProduct[]>([]);
     const [traffic, setTraffic] = useState({ totalVisits: 0, uniqueVisitors: 0 });
     const [, setLoadingAnalytics] = useState(true);
+    const [authoritativeSummary, setAuthoritativeSummary] = useState<{ orders: number; products: number; users: number; revenue: number } | null>(null);
 
     // Calculate Stats
-    const totalSales = orders
+    const recentTotalSales = orders
         .filter((order: any) => order.paymentStatus === 'Paid')
         .reduce((acc: number, order: any) => acc + order.total, 0);
-    const totalUsers = users.length;
+    const totalSales = authoritativeSummary?.revenue ?? recentTotalSales;
+    const totalUsers = authoritativeSummary?.users ?? users.length;
+
+    useEffect(() => {
+        const loadSummary = async () => {
+            const token = await getAuth().currentUser?.getIdToken();
+            if (!token) return;
+            const response = await fetch('/api/admin/reports/summary', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+            const result = await response.json();
+            if (response.ok) setAuthoritativeSummary(result.summary);
+        };
+        void loadSummary();
+    }, []);
 
 
     // Fetch Analytics Data (Searches & Top Products)
@@ -270,7 +284,7 @@ export default function AdminDashboard() {
                             <span className="text-[10px] font-black tracking-widest text-blue-600 uppercase bg-blue-50 px-2 py-1 rounded-lg">Orders</span>
                         </div>
                         <div className="mt-auto">
-                            <div className="text-2xl font-black text-gray-900 mb-1 tracking-tighter">{orders.length.toLocaleString()}</div>
+                            <div className="text-2xl font-black text-gray-900 mb-1 tracking-tighter">{(authoritativeSummary?.orders ?? orders.length).toLocaleString()}</div>
                             <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Successful Shipments</div>
                         </div>
                     </div>
@@ -288,7 +302,7 @@ export default function AdminDashboard() {
                             <span className="text-[10px] font-black tracking-widest text-orange-600 uppercase bg-orange-50 px-2 py-1 rounded-lg">Products</span>
                         </div>
                         <div className="mt-auto">
-                            <div className="text-2xl font-black text-gray-900 mb-1 tracking-tighter">{products.length.toLocaleString()}</div>
+                            <div className="text-2xl font-black text-gray-900 mb-1 tracking-tighter">{(authoritativeSummary?.products ?? products.length).toLocaleString()}</div>
                             <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Items in Catalog</div>
                         </div>
                     </div>

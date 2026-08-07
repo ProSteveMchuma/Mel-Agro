@@ -15,7 +15,7 @@ function plainProduct(snapshot: FirebaseFirestore.DocumentSnapshot): Product {
 export const getAllProductsServerCached = unstable_cache(
     async (limitCount = 500): Promise<Product[]> => {
         const snapshot = await adminDb.collection('products').limit(Math.min(1000, Math.max(1, limitCount))).get();
-        return snapshot.docs.map(plainProduct);
+        return snapshot.docs.filter(doc => doc.data().archived !== true).map(plainProduct);
     },
     ['all-products-server'],
     { revalidate: 3600, tags: ['products'] },
@@ -24,7 +24,7 @@ export const getAllProductsServerCached = unstable_cache(
 export const getProductsByTaxonomyCached = unstable_cache(
     async (field: 'category' | 'brand', value: string, limitCount = 48): Promise<Product[]> => {
         const snapshot = await adminDb.collection('products').where(field, '==', value).limit(Math.min(100, Math.max(1, limitCount))).get();
-        return snapshot.docs.map(plainProduct);
+        return snapshot.docs.filter(doc => doc.data().archived !== true).map(plainProduct);
     },
     ['products-by-taxonomy'],
     { revalidate: 3600, tags: ['products'] },
@@ -33,7 +33,7 @@ export const getProductsByTaxonomyCached = unstable_cache(
 export const getProductByIdServerCached = unstable_cache(
     async (id: string): Promise<Product | undefined> => {
         const snapshot = await adminDb.collection('products').doc(id).get();
-        return snapshot.exists ? plainProduct(snapshot) : undefined;
+        return snapshot.exists && snapshot.data()?.archived !== true ? plainProduct(snapshot) : undefined;
     },
     ['product-by-id-server'],
     { revalidate: 900, tags: ['products'] },
@@ -43,7 +43,7 @@ export const getUniqueBrandsCached = unstable_cache(
     async () => {
         const snapshot = await adminDb.collection('products').select('brand').limit(1000).get();
         const counts = new Map<string, number>();
-        snapshot.docs.forEach(doc => {
+        snapshot.docs.filter(doc => doc.data().archived !== true).forEach(doc => {
             const brand = String(doc.data().brand || '').trim();
             if (brand) counts.set(brand, (counts.get(brand) || 0) + 1);
         });
@@ -56,7 +56,7 @@ export const getUniqueBrandsCached = unstable_cache(
 export const getUniqueCategoriesCached = unstable_cache(
     async () => {
         const snapshot = await adminDb.collection('products').select('category').limit(1000).get();
-        return [...new Set(snapshot.docs.map(doc => String(doc.data().category || '').trim()).filter(Boolean))].sort();
+        return [...new Set(snapshot.docs.filter(doc => doc.data().archived !== true).map(doc => String(doc.data().category || '').trim()).filter(Boolean))].sort();
     },
     ['unique-categories'],
     { revalidate: 3600, tags: ['products'] }
@@ -66,7 +66,7 @@ export const getUniqueCategoriesCached = unstable_cache(
 export const getRelatedProductsCached = unstable_cache(
     async (category: string, currentId: string) => {
         const snapshot = await adminDb.collection('products').where('category', '==', category).limit(8).get();
-        return snapshot.docs.filter(doc => doc.id !== currentId).map(plainProduct).slice(0, 4);
+        return snapshot.docs.filter(doc => doc.id !== currentId && doc.data().archived !== true).map(plainProduct).slice(0, 4);
     },
     ['related-products'],
     { revalidate: 3600, tags: ['products'] }
@@ -76,7 +76,7 @@ export const getRelatedProductsCached = unstable_cache(
 export const getFeaturedProductsCached = unstable_cache(
     async (limitCount: number) => {
         const snapshot = await adminDb.collection('products').where('featured', '==', true).limit(Math.min(12, Math.max(1, limitCount))).get();
-        return snapshot.docs.map(plainProduct);
+        return snapshot.docs.filter(doc => doc.data().archived !== true).map(plainProduct);
     },
     ['featured-products'],
     { revalidate: 3600, tags: ['products'] }

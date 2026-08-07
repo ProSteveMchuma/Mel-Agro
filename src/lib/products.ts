@@ -22,6 +22,10 @@ function productFromSnapshot(snapshot: { id: string; data: () => Record<string, 
     return toPlainValue({ id: snapshot.id, ...snapshot.data() }) as Product;
 }
 
+function isActiveProduct(snapshot: { data: () => Record<string, unknown> }) {
+    return snapshot.data().archived !== true;
+}
+
 export async function getProducts(options: {
     category?: string,
     limitCount?: number,
@@ -43,7 +47,7 @@ export async function getProducts(options: {
         const q = query(collection(db, "products"), ...constraints);
         const querySnapshot = await getDocs(q);
 
-        return querySnapshot.docs.map(productFromSnapshot);
+        return querySnapshot.docs.filter(isActiveProduct).map(productFromSnapshot);
     } catch (error) {
         console.error("Error fetching products:", error);
         return [];
@@ -92,7 +96,7 @@ export async function getProductsPage(
         const querySnapshot = await getDocs(q);
         const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
 
-        const products = querySnapshot.docs.map(productFromSnapshot);
+        const products = querySnapshot.docs.filter(isActiveProduct).map(productFromSnapshot);
 
         return { products, lastVisible: lastDoc };
     } catch (error) {
@@ -108,7 +112,7 @@ export async function getUniqueBrands(): Promise<string[]> {
         
         snapshot.forEach(doc => {
             const data = doc.data();
-            if (data.brand && typeof data.brand === 'string') {
+            if (data.archived !== true && data.brand && typeof data.brand === 'string') {
                 brandCounts[data.brand] = (brandCounts[data.brand] || 0) + 1;
             }
         });
@@ -130,7 +134,7 @@ export async function getUniqueCategories(): Promise<string[]> {
         const categories = new Set<string>();
         snapshot.forEach(doc => {
             const data = doc.data();
-            if (data.category && typeof data.category === 'string') {
+            if (data.archived !== true && data.category && typeof data.category === 'string') {
                 categories.add(data.category);
             }
         });
@@ -146,7 +150,7 @@ export async function getProductById(id: string): Promise<Product | undefined> {
         const docRef = doc(db, "products", id);
         const docSnap = await getDoc(docRef);
 
-        if (docSnap.exists()) {
+        if (docSnap.exists() && docSnap.data().archived !== true) {
             return productFromSnapshot(docSnap);
         } else {
             return undefined;
@@ -176,6 +180,7 @@ export async function getRelatedProducts(category: string, currentId: string): P
         );
         const directSnapshot = await getDocs(qDirect);
         const directProducts = directSnapshot.docs
+            .filter(isActiveProduct)
             .map(productFromSnapshot)
             .filter(p => p.id !== currentId)
             .slice(0, targetComplement ? 2 : 4);
@@ -188,7 +193,7 @@ export async function getRelatedProducts(category: string, currentId: string): P
                 limit(2)
             );
             const crossSnapshot = await getDocs(qCross);
-            crossSellProducts = crossSnapshot.docs.map(productFromSnapshot);
+            crossSellProducts = crossSnapshot.docs.filter(isActiveProduct).map(productFromSnapshot);
         }
 
         return [...directProducts, ...crossSellProducts];
@@ -206,7 +211,7 @@ export async function getFeaturedProducts(limitCount: number = 6): Promise<Produ
             limit(limitCount)
         );
         const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(productFromSnapshot);
+        return querySnapshot.docs.filter(isActiveProduct).map(productFromSnapshot);
     } catch (error) {
         console.error("Error fetching featured products:", error);
         return [];

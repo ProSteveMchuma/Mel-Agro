@@ -2,15 +2,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, limit } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, onSnapshot, query, limit } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { usePathname } from 'next/navigation';
 import { Product } from '@/types';
 export type { Product };
 
 interface ProductContextType {
     products: Product[];
+    archivedProducts: Product[];
     addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
     updateProduct: (id: number | string, updates: Partial<Product>) => Promise<void>;
     deleteProduct: (id: number | string) => Promise<void>;
+    restoreProduct: (id: number | string) => Promise<void>;
     getProduct: (id: number | string) => Product | undefined;
 }
 
@@ -18,10 +22,16 @@ const ProductContext = createContext<ProductContextType | undefined>(undefined);
 
 export function ProductProvider({ children }: { children: React.ReactNode }) {
     const [products, setProducts] = useState<Product[]>([]);
+    const [archivedProducts, setArchivedProducts] = useState<Product[]>([]);
     const { user: authUser } = useAuth();
+    const pathname = usePathname();
 
 
     useEffect(() => {
+        const adminProductRoutes = ['/dashboard/admin', '/dashboard/admin/products', '/dashboard/admin/inventory', '/dashboard/admin/fulfillment', '/dashboard/admin/operations', '/dashboard/admin/messages', '/dashboard/admin/orders/create'];
+        if (pathname.startsWith('/dashboard/admin') && !adminProductRoutes.some((route) => pathname === route || (route !== '/dashboard/admin' && pathname.startsWith(`${route}/`)))) {
+            setProducts([]); setArchivedProducts([]); return;
+        }
         // Cap the live stream to keep first-paint payload bounded. Stores beyond this size
         // should rely on the paginated /products page (which uses getProductsPage) rather
         // than the global context. The catalog page itself already paginates server-side.
@@ -39,13 +49,14 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
             // Client-side sort by name, safely
             productList.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
 
-            setProducts(productList);
+            setProducts(productList.filter((product) => (product as Product & { archived?: boolean }).archived !== true));
+            setArchivedProducts(productList.filter((product) => (product as Product & { archived?: boolean }).archived === true));
         }, (error: any) => {
             console.error("Error listening to products:", error);
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [pathname]);
 
     const addProduct = async (productData: Omit<Product, 'id'>) => {
         try {
@@ -115,17 +126,22 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const deleteProduct = async (id: number | string) => {
-        const productRef = doc(db, "products", String(id));
-        await deleteDoc(productRef);
+    const changeLifecycle = async (id: number | string, action: 'archive' | 'restore') => {
+        const token = await getAuth().currentUser?.getIdToken();
+        if (!token) throw new Error('Admin session is unavailable.');
+        const response = await fetch('/api/admin/products/lifecycle', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ productId: String(id), action }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || `Could not ${action} product.`);
     };
+    const deleteProduct = (id: number | string) => changeLifecycle(id, 'archive');
+    const restoreProduct = (id: number | string) => changeLifecycle(id, 'restore');
 
     const getProduct = (id: number | string) => {
         return products.find((p: Product) => String(p.id) === String(id));
     };
 
     return (
-        <ProductContext.Provider value={{ products, addProduct, updateProduct, deleteProduct, getProduct }}>
+        <ProductContext.Provider value={{ products, archivedProducts, addProduct, updateProduct, deleteProduct, restoreProduct, getProduct }}>
             {children}
         </ProductContext.Provider>
     );

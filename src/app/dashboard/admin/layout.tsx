@@ -106,6 +106,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )
         },
         {
+            name: 'Audit Log', href: '/dashboard/admin/audit-log', icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6M9 8h6m2 13H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" /></svg>
+            )
+        },
+        {
             name: 'Action Centre', href: '/dashboard/admin/action-centre', icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
             )
@@ -126,6 +131,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             name: 'Customer Intel', href: '/dashboard/admin/intelligence', icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+            )
+        },
+        {
+            name: 'Newsletter', href: '/dashboard/admin/newsletter', icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-18 8V6a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
                 </svg>
             )
         },
@@ -159,6 +171,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )
         },
     ];
+
+    const navGroup = (href: string) => {
+        if (href === '/dashboard/admin' || href.includes('action-centre')) return 'Overview';
+        if (/orders|payments|fulfillment/.test(href)) return 'Commerce';
+        if (/products|inventory|discounts|reviews/.test(href)) return 'Catalogue';
+        if (/newsletter|messages/.test(href)) return 'Customers';
+        if (/analytics|reports|intelligence/.test(href) && !href.includes('intelligence-health')) return 'Intelligence';
+        if (/logistics|operations/.test(href)) return 'Operations';
+        return 'System';
+    };
+    const isActive = (href: string) => href === '/dashboard/admin' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+    const groupOrder = ['Overview', 'Commerce', 'Catalogue', 'Customers', 'Intelligence', 'Operations', 'System'];
+    const groupedMenuItems = [...menuItems].sort((a, b) => groupOrder.indexOf(navGroup(a.href)) - groupOrder.indexOf(navGroup(b.href)));
 
     return (
         <div className="min-h-screen bg-gray-100 flex font-sans">
@@ -195,12 +220,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                 <nav className="flex-grow mt-6 overflow-y-auto">
                     <ul className="space-y-2 px-4">
-                        {menuItems.map((item) => (
-                            <li key={item.name}>
+                        {groupedMenuItems.map((item, index) => (
+                            <React.Fragment key={item.name}>
+                            {(index === 0 || navGroup(groupedMenuItems[index - 1].href) !== navGroup(item.href)) && isSidebarOpen && <li className="px-4 pb-1 pt-4 text-[9px] font-black uppercase tracking-[.2em] text-gray-600">{navGroup(item.href)}</li>}
+                            <li>
                                 <Link
                                     href={item.href}
                                     onClick={() => setIsSidebarOpen(false)}
-                                    className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${pathname === item.href
+                                    aria-current={isActive(item.href) ? 'page' : undefined}
+                                    title={!isSidebarOpen ? item.name : undefined}
+                                    className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${isActive(item.href)
                                         ? 'bg-melagri-primary text-white shadow-lg shadow-melagri-primary/20'
                                         : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                                         }`}
@@ -209,6 +238,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     <span className="font-medium">{item.name}</span>
                                 </Link>
                             </li>
+                            </React.Fragment>
                         ))}
                     </ul>
                 </nav>

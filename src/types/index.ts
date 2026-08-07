@@ -55,6 +55,8 @@ export interface Product {
     weightUnit?: 'kg' | 'g' | 'lb' | 'l' | 'ml';
     stock?: number; // Legacy/Compat
     featured?: boolean;
+    archived?: boolean;
+    archivedAt?: string | null;
     supplierLeadTimeDays?: number;
     incomingStock?: number;
     safetyStock?: number;

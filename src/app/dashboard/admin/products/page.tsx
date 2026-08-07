@@ -10,7 +10,7 @@ import ExportProductsButton from "@/components/admin/ExportProductsButton";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
 export default function ProductManagement() {
-    const { products, deleteProduct } = useProducts();
+    const { products, archivedProducts, deleteProduct, restoreProduct } = useProducts();
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
@@ -18,11 +18,13 @@ export default function ProductManagement() {
     const [filterStock, setFilterStock] = useState("All"); // All, In Stock, Low Stock, Out of Stock
     const [deleteId, setDeleteId] = useState<string | number | null>(null);
     const [deleting, setDeleting] = useState(false);
+    const [showArchived, setShowArchived] = useState(false);
 
     // Get unique categories
-    const categories = ["All", ...Array.from(new Set(products.map(p => p.category)))];
+    const sourceProducts = showArchived ? archivedProducts : products;
+    const categories = ["All", ...Array.from(new Set(sourceProducts.map(p => p.category)))];
 
-    const filteredProducts = products.filter(product => {
+    const filteredProducts = sourceProducts.filter(product => {
         const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             product.category.toLowerCase().includes(searchTerm.toLowerCase());
 
@@ -58,7 +60,7 @@ export default function ProductManagement() {
     };
 
     const handleBulkDelete = async () => {
-        if (confirm(`Are you sure you want to delete ${selectedProducts.length} products?`)) {
+        if (confirm(`Archive ${selectedProducts.length} products? They can be restored later.`)) {
             for (const id of selectedProducts) {
                 await deleteProduct(id);
             }
@@ -74,7 +76,7 @@ export default function ProductManagement() {
                     <p className="text-gray-500 text-sm">Manage your inventory and catalog.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {selectedProducts.length > 0 && (
+                    {selectedProducts.length > 0 && !showArchived && (
                         <button
                             onClick={handleBulkDelete}
                             className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors font-medium flex items-center gap-2"
@@ -82,7 +84,7 @@ export default function ProductManagement() {
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            Delete ({selectedProducts.length})
+                            Archive ({selectedProducts.length})
                         </button>
                     )}
                     <ExportProductsButton />
@@ -98,6 +100,10 @@ export default function ProductManagement() {
 
             {/* Filters */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
+                <div className="flex shrink-0 rounded-lg border border-gray-200 p-1">
+                    <button type="button" onClick={() => { setShowArchived(false); setSelectedProducts([]); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${!showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Active ({products.length})</button>
+                    <button type="button" onClick={() => { setShowArchived(true); setSelectedProducts([]); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Archived ({archivedProducts.length})</button>
+                </div>
                 <div className="relative flex-grow max-w-md">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -215,9 +221,12 @@ export default function ProductManagement() {
                                         <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <button
-                                                    onClick={() => setDeleteId(product.id)}
-                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Delete"
+                                                    onClick={async () => {
+                                                        if (!showArchived) return setDeleteId(product.id);
+                                                        try { await restoreProduct(product.id); toast.success('Product restored'); } catch (err: any) { toast.error(err?.message || 'Could not restore product'); }
+                                                    }}
+                                                    className={`p-2 rounded-lg transition-colors ${showArchived ? 'text-green-700 hover:bg-green-50' : 'text-red-600 hover:bg-red-50'}`}
+                                                    title={showArchived ? "Restore" : "Archive"}
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -240,14 +249,14 @@ export default function ProductManagement() {
 
             <ConfirmDialog
                 open={deleteId !== null}
-                title="Delete this product?"
-                message="The product will be removed from the catalog and search index. This can't be undone."
+                title="Archive this product?"
+                message="The product will be hidden from the catalogue and search. You can restore it later from the Archived tab."
                 onConfirm={async () => {
                     if (deleteId === null) return;
                     setDeleting(true);
                     try {
                         await deleteProduct(deleteId);
-                        toast.success('Product deleted');
+                        toast.success('Product archived');
                         setDeleteId(null);
                     } catch (err: any) {
                         toast.error(err?.message || 'Could not delete product');
@@ -257,7 +266,7 @@ export default function ProductManagement() {
                 }}
                 onCancel={() => setDeleteId(null)}
                 busy={deleting}
-                confirmLabel="Delete"
+                confirmLabel="Archive"
             />
         </div>
     );

@@ -60,7 +60,7 @@ export default function UserProfilePage() {
                             <select
                                 value={user.role}
                                 onChange={async (e) => {
-                                    const newRole = e.target.value as 'admin' | 'customer';
+                                    const newRole = e.target.value as 'admin' | 'user';
                                     const t = toast.loading('Updating role…');
                                     try {
                                         await updateUserRole(user.id, newRole);
@@ -72,7 +72,7 @@ export default function UserProfilePage() {
                                 }}
                                 className={`text-xs font-bold px-3 py-1.5 rounded-xl border border-gray-100 shadow-sm focus:ring-2 focus:ring-melagri-primary/20 cursor-pointer outline-none ${(user.role === 'admin' || user.role === 'super-admin') ? 'bg-purple-50 text-purple-700' : 'bg-blue-50 text-blue-700'}`}
                             >
-                                <option value="customer">Customer</option>
+                                <option value="user">Customer</option>
                                 <option value="admin">Admin</option>
                             </select>
                             <span className={`px-2 py-1.5 rounded-xl text-xs font-black uppercase tracking-widest ${user.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>

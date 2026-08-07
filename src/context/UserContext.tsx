@@ -1,13 +1,15 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, doc, updateDoc, deleteDoc, query, onSnapshot, QuerySnapshot, QueryDocumentSnapshot, limit } from 'firebase/firestore';
+import { collection, query, onSnapshot, QuerySnapshot, QueryDocumentSnapshot, limit } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { usePathname } from 'next/navigation';
 
 import { User } from '@/types';
 
 interface UserContextType {
     users: User[];
-    updateUserRole: (userId: string, role: 'admin' | 'customer') => Promise<void>;
+    updateUserRole: (userId: string, role: 'admin' | 'user') => Promise<void>;
     updateUserStatus: (userId: string, status: 'active' | 'suspended') => Promise<void>;
     deleteUser: (userId: string) => Promise<void>;
 }
@@ -19,12 +21,15 @@ import { useAuth } from './AuthContext';
 export function UserProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
     const [users, setUsers] = useState<User[]>([]);
+    const pathname = usePathname();
 
     useEffect(() => {
         let unsubscribe: () => void;
 
         const setupRealtimeListener = async () => {
-            if (!user || (user.role !== 'admin' && user.role !== 'super-admin')) {
+            const adminUserRoutes = ['/dashboard/admin', '/dashboard/admin/users', '/dashboard/admin/intelligence', '/dashboard/admin/orders/create'];
+            const needsAdminUsers = adminUserRoutes.some((route) => pathname === route || (route !== '/dashboard/admin' && pathname.startsWith(`${route}/`)));
+            if (!user || (user.role !== 'admin' && user.role !== 'super-admin') || !needsAdminUsers) {
                 setUsers([]);
                 return;
             }
@@ -64,15 +69,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 unsubscribe();
             }
         };
-    }, [user]);
+    }, [pathname, user]);
 
-    const updateUserRole = async (userId: string, role: 'admin' | 'customer') => {
+    const mutateUser = async (body: Record<string, string>) => {
+        const token = await getAuth().currentUser?.getIdToken();
+        if (!token) throw new Error('Admin session is unavailable.');
+        const response = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'User update failed.');
+    };
+
+    const updateUserRole = async (userId: string, role: 'admin' | 'user') => {
         try {
-            const userRef = doc(db, "users", userId);
-            await updateDoc(userRef, {
-                role,
-                updatedAt: new Date().toISOString()
-            });
+            await mutateUser({ action: 'role', userId, role });
             setUsers((prev: User[]) => prev.map((u: User) => u.id === userId ? { ...u, role: role as any } : u));
         } catch (error) {
             console.error("Error updating user role:", error);
@@ -82,11 +91,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
 
     const updateUserStatus = async (userId: string, status: 'active' | 'suspended') => {
         try {
-            const userRef = doc(db, "users", userId);
-            await updateDoc(userRef, {
-                status,
-                updatedAt: new Date().toISOString()
-            });
+            await mutateUser({ action: 'status', userId, status });
             setUsers((prev: User[]) => prev.map((u: User) => u.id === userId ? { ...u, status } : u));
         } catch (error) {
             console.error("Error updating user status:", error);
@@ -95,8 +100,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
 
     const deleteUser = async (userId: string) => {
-        const userRef = doc(db, "users", userId);
-        await deleteDoc(userRef);
+        await mutateUser({ action: 'delete', userId });
     };
 
     return (

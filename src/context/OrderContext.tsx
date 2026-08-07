@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 import { NotificationService } from '@/lib/notifications';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { getAuth } from 'firebase/auth';
+import { usePathname } from 'next/navigation';
 
 import { Order, OrderItem } from '@/types';
 export type { Order, OrderItem };
@@ -39,6 +40,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
     const [orders, setOrders] = useState<Order[]>([]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const pathname = usePathname();
 
     // Fetch Orders
     useEffect(() => {
@@ -49,6 +51,9 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         let q;
         if (user.role === 'admin' || user.role === 'super-admin') {
+            const adminOrderRoutes = ['/dashboard/admin', '/dashboard/admin/orders', '/dashboard/admin/analytics', '/dashboard/admin/reports', '/dashboard/admin/intelligence', '/dashboard/admin/logistics', '/dashboard/admin/inventory', '/dashboard/admin/fulfillment', '/dashboard/admin/operations', '/dashboard/admin/payments'];
+            const needsAdminOrders = adminOrderRoutes.some((route) => pathname === route || (route !== '/dashboard/admin' && pathname.startsWith(`${route}/`)));
+            if (!needsAdminOrders) { setOrders([]); return; }
             // Cap admin live stream — analytics / dashboards already work fine with the most
             // recent N orders, and pulling thousands wastes memory on every admin session.
             // Older orders remain accessible via direct order detail pages and reports.
@@ -70,7 +75,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         });
 
         return () => unsubscribe();
-    }, [user]);
+    }, [pathname, user]);
 
     // Fetch Notifications
     useEffect(() => {

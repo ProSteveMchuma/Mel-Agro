@@ -35,3 +35,10 @@ test('keeps newsletter subscriptions server-authoritative', () => {
     assert.match(block[1], /allow create: if false;/);
     assert.match(block[1], /allow read, update, delete: if isAdmin\(\);/);
 });
+
+test('keeps the admin audit log server-authoritative', () => {
+    const block = rules.match(/match \/adminAuditLog\/\{id\} \{([\s\S]*?)\n    \}/);
+    assert.ok(block, 'Missing adminAuditLog rules block');
+    assert.match(block[1], /allow write: if false;/);
+    assert.match(block[1], /allow read: if isAdmin\(\);/);
+});
