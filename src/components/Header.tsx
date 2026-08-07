@@ -37,9 +37,18 @@ export default function Header() {
       }
     }
 
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsAccountOpen(false);
+        setIsHelpOpen(false);
+      }
+    }
+
     document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, []);
 
@@ -82,9 +91,12 @@ export default function Header() {
           <div className="flex items-center gap-6">
             {/* Account Dropdown */}
             <div className="relative" ref={accountRef}>
-              <div
-                className="hidden lg:flex items-center gap-2 group cursor-pointer"
+              <button
+                type="button"
+                className="hidden lg:flex items-center gap-2 group rounded-xl text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20"
                 onClick={() => setIsAccountOpen(!isAccountOpen)}
+                aria-expanded={isAccountOpen}
+                aria-controls="account-menu"
               >
                 <div className="p-2 bg-gray-50 rounded-full group-hover:bg-gray-100 transition-colors">
                   <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -96,11 +108,11 @@ export default function Header() {
                     <svg className={`w-3 h-3 transition-transform ${isAccountOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                   </p>
                 </div>
-              </div>
+              </button>
 
               {/* Account Dropdown Menu */}
               {isAccountOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 animate-in fade-in slide-in-from-top-2 z-50">
+                <div id="account-menu" className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 animate-in fade-in slide-in-from-top-2 z-50">
                   {user ? (
                     <>
                       <Link
@@ -163,7 +175,7 @@ export default function Header() {
             </div>
 
             {/* Mobile Account Icon (Visible only on mobile) */}
-            <Link href={userLink} className="lg:hidden p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
+            <Link href={userLink} aria-label={user ? "Open your account" : "Sign in or create an account"} className="lg:hidden p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20">
               <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
             </Link>
 
@@ -177,20 +189,23 @@ export default function Header() {
 
             {/* Help Dropdown */}
             <div className="relative" ref={helpRef}>
-              <div
-                className="hidden lg:flex items-center gap-2 group cursor-pointer hover:text-[#22c55e] transition-colors"
+              <button
+                type="button"
+                className="hidden lg:flex items-center gap-2 group rounded-xl text-left hover:text-[#22c55e] transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20"
                 onClick={() => setIsHelpOpen(!isHelpOpen)}
+                aria-expanded={isHelpOpen}
+                aria-controls="help-menu"
               >
                 <svg className="w-6 h-6 text-gray-600 group-hover:text-[#22c55e]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 <p className="text-sm font-black text-gray-900 flex items-center gap-1 group-hover:text-[#22c55e]">
                   Help
                   <svg className={`w-3 h-3 transition-transform ${isHelpOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
                 </p>
-              </div>
+              </button>
 
               {/* Help Dropdown Menu */}
               {isHelpOpen && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 animate-in fade-in slide-in-from-top-2 z-50">
+                <div id="help-menu" className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 animate-in fade-in slide-in-from-top-2 z-50">
                   <Link
                     href="/help"
                     className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium"
@@ -224,7 +239,7 @@ export default function Header() {
             </div>
 
             {/* Cart */}
-            <button onClick={toggleCart} className="flex items-center gap-2 group">
+            <button type="button" onClick={toggleCart} aria-label={`Open cart${cartCount ? `, ${cartCount} item${cartCount === 1 ? "" : "s"}` : ""}`} className="flex items-center gap-2 group rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20">
               <div className="relative p-2 bg-gray-50 rounded-full group-hover:bg-gray-100 transition-colors">
                 <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                 {cartCount > 0 && (

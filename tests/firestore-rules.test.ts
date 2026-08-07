@@ -28,3 +28,10 @@ test('keeps carts and wishlists owner-scoped', () => {
     assert.match(rules, /match \/carts\/\{userId\}[\s\S]*?request\.auth\.uid == userId/);
     assert.match(rules, /match \/wishlist\/\{wishlistId\}[\s\S]*?request\.auth\.uid == wishlistId/);
 });
+
+test('keeps newsletter subscriptions server-authoritative', () => {
+    const block = rules.match(/match \/newsletterSubscriptions\/\{id\} \{([\s\S]*?)\n    \}/);
+    assert.ok(block, 'Missing newsletterSubscriptions rules block');
+    assert.match(block[1], /allow create: if false;/);
+    assert.match(block[1], /allow read, update, delete: if isAdmin\(\);/);
+});

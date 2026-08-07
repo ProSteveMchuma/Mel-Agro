@@ -181,6 +181,12 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
+    // Newsletter addresses are collected by the validated server endpoint only.
+    match /newsletterSubscriptions/{id} {
+      allow read, update, delete: if isAdmin();
+      allow create: if false;
+    }
+
     // Discount usage tracking: server only
     match /discountUsage/{id} {
       allow read: if isAdmin();
