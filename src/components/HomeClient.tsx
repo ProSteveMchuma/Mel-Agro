@@ -14,6 +14,7 @@ import { rankProductsForUser, RECOMMENDATION_MODEL_VERSION } from "@/lib/persona
 import { AnalyticsService } from "@/lib/analytics";
 import { useAuth } from '@/context/AuthContext';
 import { assignExperiment, ExperimentVariant, PERSONALIZED_HOME_EXPERIMENT } from '@/lib/experimentation';
+import { slugifySeoValue } from '@/lib/seo';
 
 const FadeInWhenVisible = ({ children, delay = 0 }: { children: React.ReactNode, delay?: number }) => {
     return (
@@ -85,7 +86,7 @@ export default function HomeClient({ categories, featuredProducts, catalogProduc
                         {categories.map((cat: string) => (
                             <Link
                                 key={cat}
-                                href={`/products?category=${encodeURIComponent(cat)}`}
+                                href={`/categories/${slugifySeoValue(cat)}`}
                                 className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-2xl border border-gray-100 hover:border-green-200 transition-colors"
                             >
                                 <span className="text-lg">

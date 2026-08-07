@@ -14,6 +14,7 @@ import { toast } from "react-hot-toast";
 import Logo from '@/components/Logo';
 import IntelligentDescription from '@/components/IntelligentDescription';
 import ProductFaqs from '@/components/ProductFaqs';
+import { slugifySeoValue } from '@/lib/seo';
 
 interface ProductDetailsProps {
     id: string;
@@ -115,7 +116,7 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                 <nav className="flex items-center gap-2 text-xs text-gray-500 mb-8 font-medium">
                     <Link href="/" className="hover:text-green-600">Home</Link>
                     <span>/</span>
-                    <Link href="/products" className="hover:text-green-600">{product.category}</Link>
+                    <Link href={`/categories/${slugifySeoValue(product.category)}`} className="hover:text-green-600">{product.category}</Link>
                     <span>/</span>
                     <span className="text-gray-900 truncate max-w-[200px]">{product.name}</span>
                 </nav>
@@ -146,9 +147,9 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                         src={safeImage}
                                         alt={`${product.name} - ${product.brand || 'Premium'} ${product.category} in Kenya | Mel-Agri`}
                                         fill
+                                        sizes="(max-width: 1024px) 100vw, 50vw"
                                         className="object-contain p-8 hover:scale-105 transition-transform duration-500"
                                         priority
-                                        unoptimized={safeImage.includes('firebasestorage')}
                                     />
                                 </motion.div>
                             </AnimatePresence>
@@ -164,7 +165,7 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                         className={`w-16 h-16 flex-shrink-0 rounded-lg border-2 overflow-hidden transition-all ${selectedImage === img ? 'border-green-500 scale-110' : 'border-transparent hover:border-gray-200'}`}
                                     >
                                         <div className="relative w-full h-full bg-gray-50">
-                                            <Image src={img} alt={`${product.name} Image ${idx + 1}`} fill className="object-cover" unoptimized={img.includes('firebasestorage')} />
+                                            <Image src={img} alt={`${product.name} Image ${idx + 1}`} fill sizes="80px" className="object-cover" />
                                         </div>
                                     </button>
                                 ))}

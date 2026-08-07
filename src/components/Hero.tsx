@@ -28,7 +28,7 @@ export default function Hero() {
             title: "Prepare Your Shamba For The Long Rains",
             description: "Get certified hybrid maize seeds and planting fertilizers today.",
             primaryBtn: "Shop Now",
-            primaryLink: "/products?category=seeds"
+            primaryLink: "/categories/seeds"
         }
     ];
 
@@ -59,6 +59,7 @@ export default function Hero() {
                                     alt={slides[currentSlide].title}
                                     fill
                                     priority
+                                    sizes="100vw"
                                     className="object-cover"
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent" />

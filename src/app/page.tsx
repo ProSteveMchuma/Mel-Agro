@@ -1,17 +1,16 @@
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
-import WhatsAppButton from "@/components/WhatsAppButton";
 import HomeClient from "@/components/HomeClient";
-import { getUniqueCategories, getFeaturedProducts, getProducts } from "@/lib/products";
+import { getAllProductsServerCached, getFeaturedProductsCached, getUniqueCategoriesCached } from '@/lib/products-server';
 
 // Server Component
 export default async function Home() {
   // Parallel data fetching for performance
   const [categories, featuredProducts, allProducts] = await Promise.all([
-    getUniqueCategories(),
-    getFeaturedProducts(5),
-    getProducts()
+    getUniqueCategoriesCached(),
+    getFeaturedProductsCached(5),
+    getAllProductsServerCached(24)
   ]);
 
   return (
@@ -27,7 +26,6 @@ export default async function Home() {
         />
       </main>
       <Footer />
-      <WhatsAppButton />
     </div>
   );
 }

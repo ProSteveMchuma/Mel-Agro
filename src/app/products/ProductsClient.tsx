@@ -11,6 +11,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useProducts } from "@/context/ProductContext";
 import { SITE_URL } from '@/lib/site';
+import { productSeoPath } from '@/lib/seo';
 
 
 interface ProductsClientProps {
@@ -444,7 +445,7 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
         itemListElement: filteredProducts.map((product, idx) => ({
             '@type': 'ListItem',
             position: idx + 1,
-            url: `${SITE_URL}/products/${product.id}`,
+            url: `${SITE_URL}${productSeoPath(product)}`,
             item: {
                 '@type': 'Product',
                 name: product.name,
@@ -454,7 +455,7 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
                     price: product.price,
                     priceCurrency: 'KES',
                     availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-                    url: `${SITE_URL}/products/${product.id}`,
+                    url: `${SITE_URL}${productSeoPath(product)}`,
                 },
             }
         }))

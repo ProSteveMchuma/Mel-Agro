@@ -4,6 +4,8 @@ import ProductsClient from "./ProductsClient";
 import { getProductsPage } from "@/lib/products";
 import { getUniqueBrandsCached, getUniqueCategoriesCached } from "@/lib/products-server";
 import { absoluteUrl } from '@/lib/site';
+import { permanentRedirect } from 'next/navigation';
+import { productSeoPath, slugifySeoValue } from '@/lib/seo';
 
 type Props = {
     searchParams: Promise<{ category?: string; brand?: string; search?: string }>;
@@ -21,12 +23,12 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         title = `Buy Premium ${category} Online Kenya - Fast Farm Delivery`;
         description = `Buy certified ${category} online at Mel-Agri. Select from premium brands with fast shipping to Nakuru, Eldoret, Nairobi, Kisumu, and all 47 counties in Kenya.`;
         keywords = [category, `buy ${category} online`, `${category} price Kenya`, `certified ${category} supplier`, "agrovet Kenya", "farm inputs"];
-        canonical = `/products?category=${encodeURIComponent(category)}`;
+        canonical = `/categories/${slugifySeoValue(category)}`;
     } else if (brand) {
         title = `Buy Original ${brand} Products Online Kenya - Best Prices`;
         description = `Shop certified crop protection and seed products from ${brand} online at Mel-Agri. Authorized dealer with fast farm delivery to Nakuru, Eldoret, Kisumu, and countrywide in Kenya.`;
         keywords = [brand, `original ${brand} products`, `${brand} distributor Kenya`, `buy ${brand} online`, "authorized agrovet"];
-        canonical = `/products?brand=${encodeURIComponent(brand)}`;
+        canonical = `/brands/${slugifySeoValue(brand)}`;
     } else if (search) {
         title = `Search Results for "${search}"`;
         description = `Find premium certified agricultural inputs matching "${search}" at Mel-Agri Kenya. Shop seeds, fertilizers, and farm equipment online with secure payment and fast delivery.`;
@@ -50,7 +52,10 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     };
 }
 
-export default async function ProductsPage() {
+export default async function ProductsPage({ searchParams }: Props) {
+    const params = await searchParams;
+    if (params?.category && !params.search && !params.brand) permanentRedirect(`/categories/${slugifySeoValue(params.category)}`);
+    if (params?.brand && !params.search && !params.category) permanentRedirect(`/brands/${slugifySeoValue(params.brand)}`);
     // Fetch initial data on the server
     const [{ products: initialProducts }, brands, categories] = await Promise.all([
         getProductsPage(12), // Initial page size 12
@@ -91,7 +96,7 @@ export default async function ProductsPage() {
         itemListElement: initialProducts.map((product, index) => ({
             '@type': 'ListItem',
             position: index + 1,
-            url: absoluteUrl(`/products/${product.id}`),
+            url: absoluteUrl(productSeoPath(product)),
             item: {
                 '@type': 'Product',
                 name: product.name,
@@ -103,7 +108,7 @@ export default async function ProductsPage() {
                     price: product.price,
                     priceCurrency: 'KES',
                     availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-                    url: absoluteUrl(`/products/${product.id}`),
+                    url: absoluteUrl(productSeoPath(product)),
                 },
             },
         })),

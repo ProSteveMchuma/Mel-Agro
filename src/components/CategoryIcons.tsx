@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { slugifySeoValue } from '@/lib/seo';
 
 const FALLBACK_CATEGORY_IMAGE = "https://images.unsplash.com/photo-1595113316349-9fa4ee24f884?q=80&w=400&auto=format&fit=crop";
 
@@ -29,7 +30,7 @@ export default function CategoryIcons({ categories: dynamicCategories = [] }: Ca
     const categories = dynamicCategories.length > 0
         ? dynamicCategories.slice(0, 5).map(name => ({
             name,
-            link: `/products?category=${encodeURIComponent(name)}`,
+            link: `/categories/${slugifySeoValue(name)}`,
             image: CATEGORY_MAP[name]?.image || FALLBACK_CATEGORY_IMAGE,
             icon: CATEGORY_MAP[name]?.icon || "🌾"
         }))

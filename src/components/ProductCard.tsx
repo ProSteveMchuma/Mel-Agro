@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Product, ProductVariant } from "@/types";
 import { useBehavior } from "@/context/BehaviorContext";
 import { AnalyticsService } from "@/lib/analytics";
+import { productSeoPath } from '@/lib/seo';
 
 interface ProductCardProps {
     id: string | number;
@@ -67,13 +68,14 @@ export default function ProductCard({
     const isAvailable = inStock && (variants.length > 0 ? availableVariants.length > 0 : availableStock > 0);
     const router = useRouter();
     const { trackAction } = useBehavior();
+    const productHref = productSeoPath({ id, name });
 
     const handleView = (e: React.MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         trackAction('product_view', { id, name, category });
         if (recommendationSource) void AnalyticsService.logRecommendationClick(String(id), recommendationSource);
-        router.push(`/products/${id}`);
+        router.push(productHref);
     };
 
     const handleAddToCart = (e: React.MouseEvent) => {
@@ -81,11 +83,11 @@ export default function ProductCard({
         e.stopPropagation();
 
         if (!isAvailable) {
-            router.push(`/products/${id}`);
+            router.push(productHref);
             return;
         }
         if (requiresVariantSelection) {
-            router.push(`/products/${id}`);
+            router.push(productHref);
             return;
         }
 
@@ -142,7 +144,7 @@ export default function ProductCard({
     };
 
     return (
-        <Link href={`/products/${id}`} onClick={() => {
+        <Link href={productHref} onClick={() => {
             trackAction('product_view', { id, name, category });
             if (recommendationSource) void AnalyticsService.logRecommendationClick(String(id), recommendationSource);
         }}>
@@ -155,7 +157,6 @@ export default function ProductCard({
                         fill
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                         className="object-contain p-2 md:p-3 group-hover:scale-110 transition-transform duration-700 ease-out"
-                        unoptimized={imageSrc.includes('firebasestorage')}
                     />
 
                     {/* Quick Action Overlay - Hidden on mobile, shown on md+ hover */}

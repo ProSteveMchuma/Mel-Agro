@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
+import { productSeoPath } from '@/lib/seo';
 
 export default function FeaturedSlider({ products: initialProducts }: { products?: Product[] }) {
     const [products, setProducts] = useState<Product[]>(initialProducts || []);
@@ -93,14 +94,14 @@ export default function FeaturedSlider({ products: initialProducts }: { products
 
                             <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-4 w-full md:w-auto">
                                 <Link
-                                    href={`/products/${currentProduct.id}`}
+                                    href={productSeoPath(currentProduct)}
                                     className="bg-white text-gray-900 px-6 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-50 transition-all text-center shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-95"
                                 >
                                     View Details
                                 </Link>
                                 {requiresOptions ? (
                                     <Link
-                                        href={`/products/${currentProduct.id}`}
+                                        href={productSeoPath(currentProduct)}
                                         className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-6 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-500 transition-all shadow-xl shadow-green-900/20 hover:-translate-y-1 active:scale-95 flex justify-center"
                                     >
                                         Choose Options

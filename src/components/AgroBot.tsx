@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useSettings } from '@/context/SettingsContext';
 import { useOrders } from '@/context/OrderContext';
+import { productSeoPath } from '@/lib/seo';
 
 type ChatMessage = {
     text: string;
@@ -135,7 +136,7 @@ export default function AgroBot() {
                             {msg.type === 'product' && msg.data && (
                                 <div className="mt-3 space-y-2">
                                     {msg.data.map((p: any) => (
-                                        <Link href={`/products/${p.id}`} key={p.id} className="flex gap-2 p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors border border-gray-100 items-center">
+                                        <Link href={productSeoPath(p)} key={p.id} className="flex gap-2 p-2 bg-gray-50 rounded hover:bg-gray-100 transition-colors border border-gray-100 items-center">
                                             {p.images && p.images[0] && (
                                                 <Image src={p.images[0]} alt="" width={40} height={40} unoptimized className="w-10 h-10 object-cover rounded" />
                                             )}

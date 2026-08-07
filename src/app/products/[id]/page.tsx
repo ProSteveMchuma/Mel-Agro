@@ -1,9 +1,9 @@
 import { Metadata } from 'next';
 import ProductDetails from '@/components/ProductDetails';
-import { getProductById } from '@/lib/products';
-import { getRelatedProductsCached, getSafeCoPurchaseProductsCached } from '@/lib/products-server';
+import { getProductByIdServerCached, getRelatedProductsCached, getSafeCoPurchaseProductsCached } from '@/lib/products-server';
 import { absoluteUrl, SITE_URL } from '@/lib/site';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
+import { productIdFromRouteParam, productSeoPath, productSeoSlug } from '@/lib/seo';
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -11,7 +11,7 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id } = await params;
-    const product = await getProductById(id);
+    const product = await getProductByIdServerCached(productIdFromRouteParam(id));
     
     if (!product) {
         return {
@@ -27,6 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const seoDescription = `Buy ${product.name} online in Kenya for KES ${product.price.toLocaleString()}. ${productSummary}`.slice(0, 158).trim();
 
     const ogImage = `${SITE_URL}/api/og/product?name=${encodeURIComponent(product.name)}&price=${product.price}&category=${encodeURIComponent(product.category)}&image=${encodeURIComponent(product.image)}`;
+    const canonicalPath = productSeoPath(product);
 
     const keywords = [
         product.name,
@@ -62,7 +63,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             type: 'website',
             siteName: 'Mel-Agri',
             locale: 'en_KE',
-            url: absoluteUrl(`/products/${id}`),
+            url: absoluteUrl(canonicalPath),
         },
         twitter: {
             card: 'summary_large_image',
@@ -78,7 +79,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
             'product:category': product.category,
         },
         alternates: {
-            canonical: absoluteUrl(`/products/${id}`),
+            canonical: absoluteUrl(canonicalPath),
         },
         robots: {
             index: true,
@@ -96,11 +97,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function Page({ params }: Props) {
     const { id } = await params;
-    const product = await getProductById(id);
+    const product = await getProductByIdServerCached(productIdFromRouteParam(id));
     if (!product) notFound();
+    const canonicalSlug = productSeoSlug(product);
+    if (id !== canonicalSlug) permanentRedirect(productSeoPath(product));
+    const productId = String(product.id);
+    const canonicalPath = productSeoPath(product);
     const [relatedProducts, complementProducts] = await Promise.all([
-        getRelatedProductsCached(product.category, String(product.id)),
-        getSafeCoPurchaseProductsCached(String(product.id), product.category),
+        getRelatedProductsCached(product.category, productId),
+        getSafeCoPurchaseProductsCached(productId, product.category),
     ]);
 
     // Firestore timestamps and class instances cannot cross the Server/Client boundary.
@@ -113,11 +118,35 @@ export default async function Page({ params }: Props) {
         .filter(Boolean)
         .map(image => image.startsWith('http') ? image : absoluteUrl(image));
 
+    const offerFor = (price: number, availability: boolean, sku?: string, variantId?: string) => ({
+        '@type': 'Offer',
+        price,
+        priceCurrency: 'KES',
+        availability: availability ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        url: `${absoluteUrl(canonicalPath)}${variantId ? `?variant=${encodeURIComponent(variantId)}` : ''}`,
+        itemCondition: 'https://schema.org/NewCondition',
+        ...(sku ? { sku } : {}),
+        seller: { '@id': `${SITE_URL}/#store` },
+        hasMerchantReturnPolicy: { '@id': `${SITE_URL}/#return-policy` },
+        shippingDetails: {
+            '@type': 'OfferShippingDetails',
+            shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'KE' },
+            deliveryTime: {
+                '@type': 'ShippingDeliveryTime',
+                handlingTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 1, unitCode: 'DAY' },
+                transitTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 5, unitCode: 'DAY' },
+            },
+        },
+    });
+    const productOffers = product.variants?.length
+        ? product.variants.map(variant => offerFor(Number(variant.price ?? product.price), Number(variant.stockQuantity) > 0, variant.sku, variant.id))
+        : offerFor(Number(product.price), Boolean(product.inStock && Number(product.stockQuantity ?? product.stock ?? 0) > 0), product.productCode);
+
     const productJsonLd = {
         '@context': 'https://schema.org',
         '@type': 'Product',
-        '@id': `${absoluteUrl(`/products/${id}`)}#product`,
-        url: absoluteUrl(`/products/${id}`),
+        '@id': `${absoluteUrl(canonicalPath)}#product`,
+        url: absoluteUrl(canonicalPath),
         name: product.name,
         image: productImages,
         description: product.description || '',
@@ -128,15 +157,7 @@ export default async function Page({ params }: Props) {
             '@type': 'Brand',
             name: product.brand || 'Mel-Agri'
         },
-        offers: {
-            '@type': 'Offer',
-            price: product.price,
-            priceCurrency: 'KES',
-            availability: product.inStock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-            url: absoluteUrl(`/products/${id}`),
-            itemCondition: 'https://schema.org/NewCondition',
-            seller: { '@id': `${SITE_URL}/#store` },
-        },
+        offers: productOffers,
         ...(product.rating && Number(product.reviews) > 0 ? {
             aggregateRating: {
                 '@type': 'AggregateRating',
@@ -166,7 +187,7 @@ export default async function Page({ params }: Props) {
                 '@type': 'ListItem',
                 position: 3,
                 name: product?.name || 'Product',
-                item: absoluteUrl(`/products/${id}`),
+                item: absoluteUrl(canonicalPath),
             },
         ],
     };
@@ -183,7 +204,7 @@ export default async function Page({ params }: Props) {
             />
             <ProductDetails
                 initialComplementProducts={initialComplementProducts}
-                id={id}
+                id={productId}
                 initialProduct={initialProduct}
                 initialRelatedProducts={initialRelatedProducts}
             />

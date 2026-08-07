@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { slugifySeoValue } from '@/lib/seo';
 
 interface SidebarCategoriesProps {
     categories: string[];
@@ -36,7 +37,7 @@ export default function SidebarCategories({ categories }: SidebarCategoriesProps
                     {categories.map((cat) => (
                         <li key={cat}>
                             <Link
-                                href={`/products?category=${encodeURIComponent(cat)}`}
+                                href={`/categories/${slugifySeoValue(cat)}`}
                                 className="flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold text-gray-600 hover:bg-green-50 hover:text-green-600 transition-all group"
                             >
                                 <span className="text-xl group-hover:scale-125 transition-transform">

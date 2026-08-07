@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/auth-server';
 import { adminDb } from '@/lib/firebase-admin';
 import { buildInventoryRecommendations, findSearchDemandGaps } from '@/lib/product-intelligence';
 import type { Order, Product } from '@/types';
+import { catalogueSeoSummary } from '@/lib/seo-quality';
 
 export async function GET(request: Request) {
     const auth = await requireAdmin(request);
@@ -29,5 +30,6 @@ export async function GET(request: Request) {
         demandGaps: findSearchDemandGaps(searches, products).slice(0, 30),
         inventory: buildInventoryRecommendations(orders, products).slice(0, 100).map(item => ({ ...item, daysOfCover: Number.isFinite(item.daysOfCover) ? item.daysOfCover : null })),
         performance: performance.slice(0, 50),
+        seo: catalogueSeoSummary(products),
     });
 }

@@ -1,8 +1,8 @@
 import { MetadataRoute } from 'next';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { getGuides } from '@/lib/guides';
 import { SITE_URL } from '@/lib/site';
+import { getAllProductsServerCached } from '@/lib/products-server';
+import { productSeoPath, slugifySeoValue } from '@/lib/seo';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const toDate = (value: unknown): Date | undefined => {
@@ -33,12 +33,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     let productRoutes: MetadataRoute.Sitemap = [];
     let categoryRoutes: MetadataRoute.Sitemap = [];
     try {
-        const querySnapshot = await getDocs(collection(db, 'products'));
-        productRoutes = querySnapshot.docs.map((doc) => {
-            const data = doc.data();
-            const updated = toDate(data.updatedAt) || toDate(data.createdAt);
+        const products = await getAllProductsServerCached(1000);
+        productRoutes = products.map((product) => {
+            const updated = toDate((product as any).updatedAt) || toDate((product as any).createdAt);
             return {
-                url: `${SITE_URL}/products/${doc.id}`,
+                url: `${SITE_URL}${productSeoPath(product)}`,
                 ...(updated ? { lastModified: updated } : {}),
                 changeFrequency: 'weekly' as const,
                 priority: 0.7,
@@ -46,15 +45,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         });
 
         const categories = new Set<string>();
-        querySnapshot.docs.forEach(doc => {
-            const data = doc.data();
-            if (data.category) categories.add(data.category);
+        const brands = new Set<string>();
+        products.forEach(product => {
+            if (product.category) categories.add(product.category);
+            if (product.brand) brands.add(product.brand);
         });
         categoryRoutes = Array.from(categories).map(category => ({
-            url: `${SITE_URL}/products?category=${encodeURIComponent(category)}`,
+            url: `${SITE_URL}/categories/${slugifySeoValue(category)}`,
             changeFrequency: 'weekly' as const,
             priority: 0.8,
-        }));
+        })).concat(Array.from(brands).map(brand => ({
+            url: `${SITE_URL}/brands/${slugifySeoValue(brand)}`,
+            changeFrequency: 'weekly' as const,
+            priority: 0.7,
+        })));
     } catch (error) {
         console.error("Error generating product sitemap entries:", error);
     }

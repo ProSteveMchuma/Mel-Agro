@@ -9,6 +9,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useBehavior } from "@/context/BehaviorContext";
 import { searchProducts, didYouMean, getRecentSearches, saveRecentSearch, RecentSearch } from "@/lib/search";
 import { AnalyticsService } from "@/lib/analytics";
+import { productSeoPath, slugifySeoValue } from '@/lib/seo';
 
 // Re-export for legacy imports (e.g. ProductsClient still uses fuzzySearch)
 export { searchProducts as fuzzySearch } from "@/lib/search";
@@ -143,13 +144,13 @@ export default function SmartSearch() {
             e.preventDefault();
             const item = flatNavItems[activeIndex];
             if (item.kind === 'product' && (item as any).id) {
-                router.push(`/products/${(item as any).id}`);
+                router.push(productSeoPath(item as any));
                 setIsOpen(false);
             } else if (item.kind === 'intent') {
-                router.push(`/products?category=${encodeURIComponent(item.term)}`);
+                router.push(`/categories/${slugifySeoValue(item.term)}`);
                 setIsOpen(false);
             } else if (item.kind === 'brand') {
-                router.push(`/products?brand=${encodeURIComponent(item.term)}`);
+                router.push(`/brands/${slugifySeoValue(item.term)}`);
                 setIsOpen(false);
             } else {
                 setQuery(item.term);
@@ -306,7 +307,7 @@ export default function SmartSearch() {
                                             return (
                                                 <button
                                                     key={intent}
-                                                    onClick={() => { setIsOpen(false); router.push(`/products?category=${encodeURIComponent(intent)}`); }}
+                                                    onClick={() => { setIsOpen(false); router.push(`/categories/${slugifySeoValue(intent)}`); }}
                                                     className={`w-full text-left px-4 py-3 group flex items-center justify-between transition-all ${active ? 'bg-melagri-primary text-white' : 'hover:bg-melagri-primary hover:text-white'}`}
                                                     role="option"
                                                     aria-selected={active}
@@ -336,7 +337,7 @@ export default function SmartSearch() {
                                             return (
                                                 <button
                                                     key={brand}
-                                                    onClick={() => { setIsOpen(false); router.push(`/products?brand=${encodeURIComponent(brand)}`); }}
+                                                    onClick={() => { setIsOpen(false); router.push(`/brands/${slugifySeoValue(brand)}`); }}
                                                     className={`w-full text-left px-4 py-2.5 flex items-center gap-3 transition-colors group ${active ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
                                                     role="option"
                                                     aria-selected={active}
@@ -359,7 +360,7 @@ export default function SmartSearch() {
                                     return (
                                         <Link
                                             key={product.id}
-                                            href={`/products/${product.id}`}
+                                            href={productSeoPath(product)}
                                             onClick={() => setIsOpen(false)}
                                             className={`flex items-center gap-3 px-4 py-3 transition-colors group ${active ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
                                             role="option"

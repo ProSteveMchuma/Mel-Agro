@@ -52,11 +52,18 @@ export default function JsonLd() {
                 },
                 hasMerchantReturnPolicy: {
                     '@type': 'MerchantReturnPolicy',
+                    '@id': `${SITE_URL}/#return-policy`,
                     applicableCountry: 'KE',
                     returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnPeriod',
                     merchantReturnDays: 7,
                     returnMethod: 'https://schema.org/ReturnByMail',
                     merchantReturnLink: `${SITE_URL}/returns`,
+                },
+                hasShippingService: {
+                    '@type': 'ShippingService',
+                    '@id': `${SITE_URL}/#kenya-delivery`,
+                    name: 'Mel-Agri Kenya delivery',
+                    areaServed: { '@type': 'Country', name: 'Kenya' },
                 },
             },
             {
