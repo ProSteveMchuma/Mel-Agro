@@ -18,6 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         { url: `${SITE_URL}/`, changeFrequency: 'daily', priority: 1.0 },
         { url: `${SITE_URL}/products`, changeFrequency: 'daily', priority: 0.9 },
         { url: `${SITE_URL}/guides`, changeFrequency: 'weekly', priority: 0.85 },
+        { url: `${SITE_URL}/compare/online-agrovets-kenya`, changeFrequency: 'monthly', priority: 0.75 },
         { url: `${SITE_URL}/services`, changeFrequency: 'monthly', priority: 0.8 },
         { url: `${SITE_URL}/bulk`, changeFrequency: 'monthly', priority: 0.8 },
         { url: `${SITE_URL}/about`, changeFrequency: 'monthly', priority: 0.7 },

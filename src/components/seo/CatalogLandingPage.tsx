@@ -32,7 +32,7 @@ export default function CatalogLandingPage({ eyebrow, title, summary, products, 
                         <p className="mt-6 max-w-3xl text-base leading-8 text-gray-650 md:text-lg">{summary}</p>
                     </div>
                     <aside aria-label="Catalogue evidence" className="grid grid-cols-3 divide-x divide-emerald-950/10 rounded-3xl border border-emerald-950/10 bg-white/75 p-5 shadow-sm">
-                        <div className="px-3"><strong className="block text-2xl font-black text-emerald-800">{products.length}</strong><span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Listed</span></div>
+                        <div className="px-3"><strong className="block text-2xl font-black text-emerald-800">{products.length}</strong><span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Shown</span></div>
                         <div className="px-3"><strong className="block text-2xl font-black text-emerald-800">{availableCount}</strong><span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Available</span></div>
                         <div className="px-3"><strong className="block text-2xl font-black text-emerald-800">{brands}</strong><span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Brands</span></div>
                     </aside>

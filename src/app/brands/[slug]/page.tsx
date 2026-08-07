@@ -28,7 +28,7 @@ export default async function BrandPage({ params }: Props) {
     const brands = await getUniqueBrandsCached();
     const brand = resolveSeoValue(slug, brands);
     if (!brand) notFound();
-    const products = await getProductsByTaxonomyCached('brand', brand, 24);
+    const products = await getProductsByTaxonomyCached('brand', brand, 12);
     const canonical = `/brands/${slugifySeoValue(brand)}`;
     const summary = `Explore ${brand} products in the live Mel-Agri catalogue. Compare product purpose, pack options, current price, availability, and delivery information before ordering.`;
     const guidance = ['Confirm the brand, product name, and intended use.', 'Compare pack options, specifications, stock, and delivered cost.', 'For regulated or safety-sensitive products, follow the registered label and qualified professional advice.'];
