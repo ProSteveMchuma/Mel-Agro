@@ -88,7 +88,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
                         total: cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0),
                         itemCount: cartItems.reduce((acc, item) => acc + item.quantity, 0),
                         updatedAt: new Date().toISOString(),
-                        status: cartItems.length > 0 ? 'active' : 'cleared'
+                        status: cartItems.length > 0 ? 'active' : 'cleared',
+                        recoveryConsent: user.cartRecoveryConsent === true,
                     }, { merge: true });
                 } catch (e) {
                     console.error("Cloud cart sync failed", e);

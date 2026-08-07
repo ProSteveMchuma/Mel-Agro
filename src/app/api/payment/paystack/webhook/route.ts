@@ -86,6 +86,7 @@ export async function POST(request: Request) {
 
                 await orderRef.update({
                     paymentStatus: 'Paid',
+                    processingAt: new Date().toISOString(),
                     paymentMethod: 'Card',
                     paystackReference: reference,
                     paystackId: String(id),

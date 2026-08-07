@@ -4,11 +4,22 @@ import { processMessage, BotResponse } from '@/lib/agrobot';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSettings } from '@/context/SettingsContext';
+import { useOrders } from '@/context/OrderContext';
+
+type ChatMessage = {
+    text: string;
+    sender: 'user' | 'bot';
+    type?: string;
+    data?: any;
+    options?: string[];
+    source?: string;
+};
 
 export default function AgroBot() {
     const { shipping } = useSettings();
+    const { orders } = useOrders();
     const [isOpen, setIsOpen] = useState(false);
-    const [messages, setMessages] = useState<Array<{ text: string, sender: 'user' | 'bot', type?: string, data?: any, options?: string[] }>>([
+    const [messages, setMessages] = useState<ChatMessage[]>([
         { text: "Habari! 👋 I'm AgroBot. Ask me about seeds, fertilizers, or delivery!", sender: 'bot', type: 'text' }
     ]);
     const [inputValue, setInputValue] = useState("");
@@ -34,17 +45,15 @@ export default function AgroBot() {
 
         // Bot Response
         try {
-            // Simulate reading delay
-            await new Promise(r => setTimeout(r, 600 + Math.random() * 500));
-
-            const response: BotResponse = await processMessage(text, shipping.zones);
+            const response: BotResponse = await processMessage(text, shipping.zones, orders);
 
             setMessages(prev => [...prev, {
                 text: response.text,
                 sender: 'bot',
                 type: response.type,
                 data: response.data,
-                options: response.options
+                options: response.options,
+                source: response.source
             }]);
 
         } catch {
@@ -61,6 +70,10 @@ export default function AgroBot() {
         }
         if (option === "Browse Shop") {
             window.location.href = "/products";
+            return;
+        }
+        if (option === "View My Orders") {
+            window.location.href = "/dashboard/user";
             return;
         }
         handleSend(option);
@@ -92,7 +105,7 @@ export default function AgroBot() {
                         <h3 className="font-bold">AgroBot</h3>
                         <div className="flex items-center gap-1 text-xs opacity-90">
                             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                            Online
+                            Automated guided assistant
                         </div>
                     </div>
                 </div>
@@ -112,6 +125,11 @@ export default function AgroBot() {
                             : 'bg-white border border-gray-200 text-gray-800 rounded-tl-none shadow-sm'
                             }`}>
                             <p>{msg.text}</p>
+                            {msg.sender === 'bot' && msg.source && (
+                                <p className="mt-2 border-t border-gray-100 pt-2 text-[10px] text-gray-500">
+                                    Source: {msg.source}
+                                </p>
+                            )}
 
                             {/* Product Results */}
                             {msg.type === 'product' && msg.data && (

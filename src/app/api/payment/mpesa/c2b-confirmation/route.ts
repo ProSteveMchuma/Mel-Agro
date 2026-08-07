@@ -135,6 +135,7 @@ export async function POST(request: Request) {
             if (orderData?.paymentStatus !== 'Paid') {
                 await orderRef.update({
                     paymentStatus: 'Paid',
+                    processingAt: new Date().toISOString(),
                     paymentMethod: 'M-Pesa Till (C2B)',
                     transactionId: TransID,
                     mpesaReceiptNumber: TransID,

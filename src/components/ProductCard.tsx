@@ -8,6 +8,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Product, ProductVariant } from "@/types";
 import { useBehavior } from "@/context/BehaviorContext";
+import { AnalyticsService } from "@/lib/analytics";
 
 interface ProductCardProps {
     id: string | number;
@@ -25,6 +26,8 @@ interface ProductCardProps {
     lowStockThreshold?: number;
     rating?: number;
     reviews?: number;
+    recommendationSource?: string;
+    recommendationReason?: string;
 }
 
 export default function ProductCard({
@@ -43,6 +46,8 @@ export default function ProductCard({
     lowStockThreshold = 10,
     rating = 0,
     reviews = 0,
+    recommendationSource,
+    recommendationReason,
 }: ProductCardProps) {
     const { addToCart } = useCart();
     const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
@@ -67,6 +72,7 @@ export default function ProductCard({
         e.preventDefault();
         e.stopPropagation();
         trackAction('product_view', { id, name, category });
+        if (recommendationSource) void AnalyticsService.logRecommendationClick(String(id), recommendationSource);
         router.push(`/products/${id}`);
     };
 
@@ -85,6 +91,7 @@ export default function ProductCard({
 
         setIsAdding(true);
         trackAction('cart_add', { id, name, category, price: safePrice });
+        if (recommendationSource) void AnalyticsService.logRecommendationAddToCart(String(id), recommendationSource);
 
         const productForCart: Product = {
             id: String(id),
@@ -135,7 +142,10 @@ export default function ProductCard({
     };
 
     return (
-        <Link href={`/products/${id}`}>
+        <Link href={`/products/${id}`} onClick={() => {
+            trackAction('product_view', { id, name, category });
+            if (recommendationSource) void AnalyticsService.logRecommendationClick(String(id), recommendationSource);
+        }}>
             <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-green-200 flex flex-col h-full cursor-pointer relative">
                 {/* Image Section */}
                 <div className="relative aspect-square overflow-hidden bg-[#f8fcf9] flex items-center justify-center p-3 md:p-6 text-center">
@@ -187,6 +197,11 @@ export default function ProductCard({
                     <p className="text-[8px] md:text-[10px] font-black text-green-600 uppercase tracking-[0.1em] mb-1 opacity-70">
                         {category}
                     </p>
+                    {recommendationReason && (
+                        <p className="mb-2 text-[10px] font-semibold text-emerald-700" title="Why this product was suggested">
+                            {recommendationReason}
+                        </p>
+                    )}
 
                     {/* Product Name */}
                     <h3 className="font-bold text-gray-900 mb-2 md:mb-3 line-clamp-2 leading-tight group-hover:text-green-600 transition-colors min-h-[2.2rem] md:min-h-[2.5rem] tracking-tight text-xs md:text-sm">

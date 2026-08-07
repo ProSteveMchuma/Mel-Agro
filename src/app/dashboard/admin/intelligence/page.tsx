@@ -4,9 +4,9 @@ import { useUsers } from "@/context/UserContext";
 import { useOrders } from "@/context/OrderContext";
 import { CATEGORY_ICONS } from "@/components/SidebarCategories";
 import Link from "next/link";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { auth } from "@/lib/firebase";
 import { buildCustomerProfiles, summariseSegments, computeIntelKPIs, segmentColor, segmentDescription, Segment } from "@/lib/customer-intelligence";
+import { actionableReorders, buildReorderPredictions } from '@/lib/reorder-intelligence';
 
 const fmtKES = (n: number) => `KES ${Math.round(n).toLocaleString()}`;
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
@@ -21,6 +21,13 @@ export default function IntelligencePage() {
     const profiles = useMemo(() => buildCustomerProfiles(orders), [orders]);
     const segments = useMemo(() => summariseSegments(profiles), [profiles]);
     const kpis = useMemo(() => computeIntelKPIs(profiles), [profiles]);
+    const reorderQueue = useMemo(() => actionableReorders(buildReorderPredictions(orders)).slice(0, 25), [orders]);
+    const reorderUsers = useMemo(() => new Set(reorderQueue.map(item => item.userId)), [reorderQueue]);
+    const consentFor = (profile: { userId: string; phone?: string; email?: string }) => {
+        const phone = String(profile.phone || '').replace(/\D/g, '').slice(-9);
+        const email = String(profile.email || '').toLowerCase();
+        return users.find(candidate => candidate.uid === profile.userId || candidate.id === profile.userId || (phone && String(candidate.phone || '').replace(/\D/g, '').slice(-9) === phone) || (email && String(candidate.email || '').toLowerCase() === email));
+    };
 
     const filtered = useMemo(() => {
         const list = activeSegment === 'all' ? profiles : profiles.filter(p => p.segment === activeSegment);
@@ -32,8 +39,10 @@ export default function IntelligencePage() {
     const visible = filtered.slice(0, 50);
 
     useEffect(() => {
-        getDocs(collection(db, 'carts'))
-            .then(snap => setCartCount(snap.size))
+        auth.currentUser?.getIdToken()
+            .then(token => fetch('/api/admin/intelligence/abandoned-carts', { headers: { Authorization: `Bearer ${token}` } }))
+            .then(response => response?.ok ? response.json() : null)
+            .then(data => setCartCount(Array.isArray(data?.carts) ? data.carts.length : null))
             .catch(() => setCartCount(null));
     }, []);
 
@@ -64,8 +73,8 @@ export default function IntelligencePage() {
         <div className="space-y-12">
             <div className="flex justify-between items-end">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Prophet: Behavioral Intelligence</h1>
-                    <p className="text-gray-500 mt-1">Real-time demand forecasting and bottleneck analysis.</p>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Customer Intelligence</h1>
+                    <p className="text-gray-500 mt-1">Explainable customer value, repeat demand, and consent-aware opportunities.</p>
                 </div>
                 <div className="flex gap-2">
                     <span className="px-4 py-2 bg-melagri-primary/10 text-melagri-primary text-xs font-black rounded-xl uppercase tracking-widest border border-melagri-primary/20">
@@ -73,6 +82,35 @@ export default function IntelligencePage() {
                     </span>
                 </div>
             </div>
+
+            <section className="rounded-[2.5rem] border border-emerald-100 bg-white p-8 shadow-sm" aria-labelledby="reorder-opportunities">
+                <div className="flex flex-wrap items-end justify-between gap-4">
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Revenue opportunity</p>
+                        <h2 id="reorder-opportunities" className="mt-1 text-2xl font-black text-gray-900">Reorder review queue</h2>
+                        <p className="mt-1 text-sm text-gray-500">Customers approaching their observed replenishment interval. No messages are sent automatically.</p>
+                    </div>
+                    <span className="rounded-xl bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-widest text-emerald-700">{reorderQueue.length} due soon</span>
+                </div>
+                {reorderQueue.length > 0 ? (
+                    <div className="mt-6 overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                            <thead className="border-b border-gray-100 text-[10px] uppercase tracking-widest text-gray-400"><tr><th className="py-3">Customer</th><th>Product</th><th>Timing</th><th>Confidence</th><th>Suggested value</th></tr></thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {reorderQueue.map(item => (
+                                    <tr key={`${item.userId}:${item.productId}`}>
+                                        <td className="py-4 font-mono text-xs text-gray-500">{item.userId.slice(0, 10)}…</td>
+                                        <td className="font-bold text-gray-900">{item.productName}<span className="block text-xs font-normal text-gray-400">Qty {item.recommendedQuantity}</span></td>
+                                        <td className="text-gray-600">{item.daysUntilExpected <= 0 ? `${Math.abs(item.daysUntilExpected)}d overdue` : `In ${item.daysUntilExpected}d`}</td>
+                                        <td><span className="rounded-full bg-gray-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-gray-600">{item.confidence}</span></td>
+                                        <td className="font-black text-emerald-700">{fmtKES(item.lastPrice * item.recommendedQuantity)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                ) : <p className="mt-6 rounded-2xl bg-gray-50 p-6 text-sm font-semibold text-gray-500">No customers are currently inside the reorder window.</p>}
+            </section>
 
             {/* CONVERSION FUNNEL VISUALIZATION */}
             <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-gray-100">
@@ -218,12 +256,15 @@ export default function IntelligencePage() {
                                             <th className="text-right px-6 py-3">Orders</th>
                                             <th className="text-right px-6 py-3">AOV</th>
                                             <th className="text-right px-6 py-3">Last Order</th>
+                                            <th className="text-left px-6 py-3">Contact</th>
+                                            <th className="text-left px-6 py-3">Opportunity</th>
                                             <th className="text-right px-6 py-3">RFM</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
-                                        {visible.map(p => (
-                                            <tr key={p.userId} className="hover:bg-gray-50/50 transition-colors">
+                                        {visible.map(p => {
+                                            const contactUser = consentFor(p);
+                                            return <tr key={p.identityKey} className="hover:bg-gray-50/50 transition-colors">
                                                 <td className="px-6 py-3">
                                                     <div className="font-bold text-gray-900 truncate max-w-[200px]">{p.name || 'Anonymous'}</div>
                                                     <div className="text-[10px] text-gray-500 truncate max-w-[200px]">{p.email || p.phone || p.userId.slice(0, 12)}</div>
@@ -240,13 +281,15 @@ export default function IntelligencePage() {
                                                 <td className="px-6 py-3 text-right text-gray-600">
                                                     {p.daysSinceLastOrder === 0 ? 'today' : `${p.daysSinceLastOrder}d ago`}
                                                 </td>
+                                                <td className="px-6 py-3"><span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase ${contactUser?.cartRecoveryConsent ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{contactUser?.cartRecoveryConsent ? 'Recovery allowed' : 'No recovery consent'}</span></td>
+                                                <td className="px-6 py-3"><span className="text-xs font-bold text-gray-700">{reorderUsers.has(p.userId) ? 'Reorder due' : p.segment === 'At Risk' || p.segment === 'Big Spenders' ? 'Retention review' : p.segment === 'New' ? 'Onboarding' : 'Monitor'}</span><span className="block max-w-48 text-[10px] text-gray-400" title={p.segmentReason}>{p.segmentReason}</span></td>
                                                 <td className="px-6 py-3 text-right">
                                                     <span className="font-mono text-[10px] font-black text-gray-400">{p.recency}-{p.frequency}-{p.monetary}</span>
                                                 </td>
-                                            </tr>
-                                        ))}
+                                            </tr>;
+                                        })}
                                         {visible.length === 0 && (
-                                            <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400 text-sm">No customers in this segment.</td></tr>
+                                            <tr><td colSpan={9} className="px-6 py-8 text-center text-gray-400 text-sm">No customers in this segment.</td></tr>
                                         )}
                                     </tbody>
                                 </table>

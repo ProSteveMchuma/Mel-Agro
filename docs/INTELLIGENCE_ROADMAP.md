@@ -64,6 +64,8 @@ Draft answers using the customer's own order state and approved policy content. 
 - Forecast error and prevented stock-out days
 - Customer-support resolution time and staff edit rate
 
-## Recommended next build
+## Implementation status (August 2026)
 
-Start with explainable reorder timing and operational anomaly alerts. Both use existing data, have measurable value, and avoid the safety risk of premature agronomic recommendations.
+Implemented: explainable personalized ranking, county popularity, reorder prediction, consent-aware cart recovery, unified customer identity, action-centre workflows, inventory/search intelligence, safe co-purchase suggestions, payment-health classification, ETA accuracy, grounded customer and admin assistants, stable experimentation, outcome measurement, reconciliation, retention cleanup, and intelligence-health checks.
+
+The next evidence-led iteration should be selected from measured gaps rather than feature volume. Candidate work includes structured guided product selection using authoritative suitability metadata, carrier-specific ETA learning once enough delivery history exists, and demand forecasting with a simple baseline and tracked forecast error. Do not launch automated agronomic plans until product-label sources, review ownership, and safety validation are in place.

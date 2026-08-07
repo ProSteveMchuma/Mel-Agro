@@ -15,6 +15,31 @@ async function sendEvent(payload: Record<string, unknown>) {
 }
 
 export const AnalyticsService = {
+    logRecommendationImpression: async (productIds: string[], source: string) => {
+        if (!productIds.length) return;
+        try {
+            await sendEvent({ event: 'recommendation_impression', productIds: productIds.slice(0, 12), source });
+        } catch (error) {
+            console.error('Failed to log recommendation impression:', error);
+        }
+    },
+
+    logRecommendationClick: async (productId: string, source: string) => {
+        try {
+            await sendEvent({ event: 'recommendation_click', productId, source });
+        } catch (error) {
+            console.error('Failed to log recommendation click:', error);
+        }
+    },
+
+    logRecommendationAddToCart: async (productId: string, source: string) => {
+        try {
+            await sendEvent({ event: 'recommendation_add_to_cart', productId, source });
+        } catch (error) {
+            console.error('Failed to log recommendation add to cart:', error);
+        }
+    },
+
     /**
      * Log a search query to track demand.
      * Updates a counter for the term and adds a raw event.

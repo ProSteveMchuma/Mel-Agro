@@ -14,9 +14,6 @@ export default async function Home() {
     getProducts()
   ]);
 
-  // Filter recommended products server-side
-  const recommendedProducts = allProducts.filter(p => p.rating >= 4);
-
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-green-100 selection:text-green-900">
       <JsonLd />
@@ -26,7 +23,7 @@ export default async function Home() {
         <HomeClient
           categories={categories}
           featuredProducts={featuredProducts}
-          recommendedProducts={recommendedProducts}
+          catalogProducts={allProducts}
         />
       </main>
       <Footer />

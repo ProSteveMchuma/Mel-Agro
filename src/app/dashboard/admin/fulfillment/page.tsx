@@ -6,6 +6,7 @@ import { Order } from '@/types';
 import Link from 'next/link';
 import { toast } from 'react-hot-toast';
 import Image from 'next/image';
+import { deliveryEtaAccuracy } from '@/lib/fulfillment-intelligence';
 
 export default function FulfillmentPage() {
     const { orders, updateOrderStatus } = useOrders();
@@ -23,11 +24,12 @@ export default function FulfillmentPage() {
         shipped: orders.filter(o => o.status === 'Shipped').length,
         outOfStock: products.filter(p => p.stockQuantity === 0).length,
     };
+    const eta = deliveryEtaAccuracy(orders);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
             {/* Header / Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
                     <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4a2 2 0 012-2m16 0h-2m-2 0H8m-2 0H4" /></svg>
@@ -37,6 +39,7 @@ export default function FulfillmentPage() {
                         <p className="text-2xl font-black text-gray-900">{stats.pending}</p>
                     </div>
                 </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"><p className="text-sm font-medium text-gray-500">ETA Accuracy</p><p className={`mt-1 text-2xl font-black ${eta.deliveredOrders && eta.onTimeRate < 80 ? 'text-amber-600' : 'text-emerald-700'}`}>{eta.deliveredOrders ? `${eta.onTimeRate.toFixed(0)}%` : 'Learning'}</p><p className="mt-1 text-[10px] text-gray-400">{eta.deliveredOrders} timestamped deliveries</p></div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
                     <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
@@ -77,6 +80,7 @@ export default function FulfillmentPage() {
                                     <div>
                                         <p className="font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
                                         <p className="text-xs text-gray-500">{new Date(order.date).toLocaleString()}</p>
+                                        <p className={`mt-1 text-[10px] font-black uppercase tracking-widest ${(Date.now() - new Date(order.status === 'Shipped' ? order.shippedAt || order.date : order.processingAt || order.paidAt || order.date).getTime()) / 3_600_000 > 48 ? 'text-red-600' : 'text-gray-400'}`}>{Math.floor((Date.now() - new Date(order.status === 'Shipped' ? order.shippedAt || order.date : order.processingAt || order.paidAt || order.date).getTime()) / 3_600_000)}h in {order.status}</p>
                                     </div>
                                     <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${order.status === 'Processing' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
                                         {order.status}

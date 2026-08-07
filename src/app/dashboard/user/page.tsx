@@ -22,6 +22,9 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { profileSchema, ProfileFormData } from '@/lib/schemas';
 import { Input } from '@/components/ui/form/Input';
+import { useProducts } from '@/context/ProductContext';
+import { actionableReorders, buildReorderPredictions, ReorderPrediction } from '@/lib/reorder-intelligence';
+import { AnalyticsService } from '@/lib/analytics';
 
 type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses' | 'payments';
 
@@ -29,6 +32,7 @@ export default function UserDashboard() {
     const { user, isLoading, logout, updateProfile } = useAuth();
     const { orders } = useOrders();
     const { addToCart } = useCart();
+    const { products } = useProducts();
     const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
     const { wishlist, removeFromWishlist } = useWishlist();
     const router = useRouter();
@@ -115,6 +119,17 @@ export default function UserDashboard() {
         }
     };
 
+    const handlePredictedReorder = (prediction: ReorderPrediction) => {
+        const product = products.find(item => String(item.id) === prediction.productId);
+        if (!product || !product.inStock || Number(product.stockQuantity ?? product.stock ?? 0) < prediction.recommendedQuantity) {
+            toast.error('This product does not currently have enough stock.');
+            return;
+        }
+        addToCart(product, prediction.recommendedQuantity);
+        void AnalyticsService.logRecommendationClick(prediction.productId, 'reorder-v1');
+        toast.success(`${product.name} added to your cart`);
+    };
+
     const handleRetryMpesa = async (orderId: string, phoneOverride?: string) => {
         const order = orders.find(o => o.id === orderId);
         if (!order) {
@@ -195,6 +210,7 @@ export default function UserDashboard() {
         const isRetryable = ['Unpaid', 'Failed'].includes((o as any).paymentStatus || '') && o.status !== 'Cancelled';
         return isStkMpesa && isRetryable;
     });
+    const reorderPredictions = actionableReorders(buildReorderPredictions(orders)).filter(prediction => prediction.userId === user.uid).slice(0, 4);
 
     const renderDashboard = () => (
         <div className="space-y-8">
@@ -218,6 +234,40 @@ export default function UserDashboard() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            <section className="rounded-2xl border border-gray-200 bg-white p-5" aria-labelledby="contact-preferences-heading">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="max-w-2xl"><h2 id="contact-preferences-heading" className="font-black text-gray-900">Helpful cart reminders</h2><p className="mt-1 text-xs leading-5 text-gray-500">Allow Mel-Agri staff to send a limited WhatsApp reminder when you leave products in checkout. Maximum three attempts, at least 72 hours apart. This does not enable general marketing.</p></div>
+                    <label className="inline-flex min-h-11 items-center gap-3 rounded-xl bg-gray-50 px-4 py-2 text-sm font-bold text-gray-700"><input type="checkbox" checked={user.cartRecoveryConsent === true} onChange={event => void updateProfile({ cartRecoveryConsent: event.target.checked })} className="h-5 w-5 accent-emerald-600" /> Allow reminders</label>
+                </div>
+            </section>
+
+            {reorderPredictions.length > 0 && (
+                <section className="rounded-3xl border border-emerald-200 bg-emerald-50/70 p-6 md:p-8" aria-labelledby="reorder-heading">
+                    <div className="flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Replenishment assistant</p>
+                            <h2 id="reorder-heading" className="mt-1 text-2xl font-black text-gray-900">You may need these again soon</h2>
+                            <p className="mt-1 text-sm text-gray-600">Predictions use only your completed purchases. You choose whether to add anything.</p>
+                        </div>
+                    </div>
+                    <div className="mt-6 grid gap-3 md:grid-cols-2">
+                        {reorderPredictions.map(prediction => (
+                            <article key={prediction.productId} className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <h3 className="font-black text-gray-900">{prediction.productName}</h3>
+                                        <p className="mt-1 text-xs leading-5 text-gray-500">{prediction.reason}</p>
+                                    </div>
+                                    <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${prediction.confidence === 'high' ? 'bg-emerald-100 text-emerald-800' : prediction.confidence === 'medium' ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-600'}`}>{prediction.confidence} confidence</span>
+                                </div>
+                                <p className="mt-4 text-xs font-bold text-gray-700">{prediction.daysUntilExpected <= 0 ? `Estimated due ${Math.abs(prediction.daysUntilExpected)} day${Math.abs(prediction.daysUntilExpected) === 1 ? '' : 's'} ago` : `Estimated due in ${prediction.daysUntilExpected} days`} · Suggested quantity {prediction.recommendedQuantity}</p>
+                                <button onClick={() => handlePredictedReorder(prediction)} className="mt-4 w-full rounded-xl bg-gray-900 px-4 py-3 text-xs font-black uppercase tracking-widest text-white transition hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-200">Add suggested quantity</button>
+                            </article>
+                        ))}
+                    </div>
+                </section>
             )}
 
             {retryableOrders.length > 0 && (

@@ -8,9 +8,11 @@ import Link from "next/link";
 interface ProductRowProps {
     title?: string;
     filter?: (p: Product) => boolean;
+    recommendationSource?: string;
+    recommendationReasons?: Record<string, string>;
 }
 
-export default function ProductRow({ title = "", filter, products: initialProducts }: ProductRowProps & { products?: Product[] }) {
+export default function ProductRow({ title = "", filter, products: initialProducts, recommendationSource, recommendationReasons }: ProductRowProps & { products?: Product[] }) {
     const [products, setProducts] = useState<Product[]>(initialProducts || []);
     const [isLoading, setIsLoading] = useState(!initialProducts);
 
@@ -82,6 +84,8 @@ export default function ProductRow({ title = "", filter, products: initialProduc
                         lowStockThreshold={product.lowStockThreshold}
                         rating={product.rating}
                         reviews={product.reviews}
+                        recommendationSource={recommendationSource}
+                        recommendationReason={recommendationReasons?.[String(product.id)]}
                     />
                 ))}
             </div>

@@ -121,6 +121,14 @@ service cloud.firestore {
       allow read, delete: if isAdmin();
       allow write: if false;
     }
+    match /analytics_recommendations/{id} {
+      allow read, delete: if isAdmin();
+      allow write: if false;
+    }
+    match /analytics_visit_dedup/{id} {
+      allow read: if false;
+      allow write: if false;
+    }
 
     // Carts: Private to user
     match /carts/{userId} {
@@ -159,6 +167,10 @@ service cloud.firestore {
 
     // AI Insights cache: server-only writes (admin SDK bypasses), admin read
     match /aiInsights/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /intelligence_alerts/{id} {
       allow read: if isAdmin();
       allow write: if false;
     }

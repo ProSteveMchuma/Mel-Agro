@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import SidebarCategories, { CATEGORY_ICONS } from "@/components/SidebarCategories";
 import FeaturedSlider from "@/components/FeaturedSlider";
@@ -8,6 +9,11 @@ import ProductRow from "@/components/ProductRow";
 import Partners from "@/components/Partners";
 import Hero from "@/components/Hero";
 import { Product } from "@/lib/products";
+import { useBehavior } from "@/context/BehaviorContext";
+import { rankProductsForUser, RECOMMENDATION_MODEL_VERSION } from "@/lib/personalization";
+import { AnalyticsService } from "@/lib/analytics";
+import { useAuth } from '@/context/AuthContext';
+import { assignExperiment, ExperimentVariant, PERSONALIZED_HOME_EXPERIMENT } from '@/lib/experimentation';
 
 const FadeInWhenVisible = ({ children, delay = 0 }: { children: React.ReactNode, delay?: number }) => {
     return (
@@ -25,10 +31,47 @@ const FadeInWhenVisible = ({ children, delay = 0 }: { children: React.ReactNode,
 interface HomeClientProps {
     categories: string[];
     featuredProducts: Product[];
-    recommendedProducts: Product[];
+    catalogProducts: Product[];
 }
 
-export default function HomeClient({ categories, featuredProducts, recommendedProducts }: HomeClientProps) {
+export default function HomeClient({ categories, featuredProducts, catalogProducts }: HomeClientProps) {
+    const { affinityIndex, personalizationEnabled, setPersonalizationEnabled } = useBehavior();
+    const { user } = useAuth();
+    const [regionalPopularity, setRegionalPopularity] = useState<Record<string, number>>({});
+    const [experimentVariant, setExperimentVariant] = useState<ExperimentVariant>('control');
+    useEffect(() => {
+        const storageKey = 'melagri_experiment_subject';
+        let subject = user?.uid || window.localStorage.getItem(storageKey);
+        if (!subject) {
+            subject = window.crypto.randomUUID();
+            window.localStorage.setItem(storageKey, subject);
+        }
+        setExperimentVariant(assignExperiment(PERSONALIZED_HOME_EXPERIMENT, subject));
+    }, [user?.uid]);
+    useEffect(() => {
+        if (!user?.county || !personalizationEnabled) { setRegionalPopularity({}); return; }
+        const controller = new AbortController();
+        fetch(`/api/recommendations?county=${encodeURIComponent(user.county)}`, { signal: controller.signal })
+            .then(response => response.ok ? response.json() : null)
+            .then(data => setRegionalPopularity(data?.scores || {}))
+            .catch(() => {});
+        return () => controller.abort();
+    }, [personalizationEnabled, user?.county]);
+    const experimentPersonalizationEnabled = personalizationEnabled && experimentVariant === 'treatment';
+    const recommendationSource = `${RECOMMENDATION_MODEL_VERSION}:${experimentVariant}`;
+    const ranked = useMemo(
+        () => rankProductsForUser(catalogProducts, affinityIndex, experimentPersonalizationEnabled, 12, regionalPopularity, user?.county),
+        [catalogProducts, affinityIndex, experimentPersonalizationEnabled, regionalPopularity, user?.county],
+    );
+    const recommendedProducts = useMemo(() => ranked.map(item => item.product), [ranked]);
+    const recommendationReasons = useMemo(() => Object.fromEntries(ranked.map(item => [String(item.product.id), item.reason])), [ranked]);
+    const personalized = experimentPersonalizationEnabled && Object.keys(affinityIndex).length > 0;
+
+    useEffect(() => {
+        if (recommendedProducts.length) {
+            void AnalyticsService.logRecommendationImpression(recommendedProducts.map(product => String(product.id)), recommendationSource);
+        }
+    }, [recommendedProducts, recommendationSource]);
     return (
         <>
             {/* Mobile-only Category Scroll (since sidebar is hidden on small screens) */}
@@ -81,9 +124,13 @@ export default function HomeClient({ categories, featuredProducts, recommendedPr
                                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
                                     {/* Header Text - Hidden on Mobile */}
                                     <div className="hidden md:block space-y-1">
-                                        <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em]">Commercial Selection</p>
-                                        <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">Top-rated products</h2>
-                                        <p className="text-sm text-gray-500 font-medium max-w-md">Top-rated products trusted by successful farmers across the country.</p>
+                                        <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em]">{personalized ? 'Selected for your farm' : 'Commercial selection'}</p>
+                                        <h2 className="text-3xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">{personalized ? 'Picked for you' : 'Top products'}</h2>
+                                        <p className="text-sm text-gray-500 font-medium max-w-md">{personalized ? 'Ranked from the categories you explore. Every suggestion includes its reason.' : 'Available products ranked by quality and customer trust.'}</p>
+                                        <label className="mt-3 inline-flex items-center gap-2 text-xs font-bold text-gray-600">
+                                            <input type="checkbox" checked={personalizationEnabled} onChange={event => void setPersonalizationEnabled(event.target.checked)} className="h-4 w-4 accent-green-600" />
+                                            Personalize my product suggestions
+                                        </label>
                                     </div>
 
                                     {/* Button - Hidden on Mobile to prioritize product grid immediately */}
@@ -94,7 +141,7 @@ export default function HomeClient({ categories, featuredProducts, recommendedPr
 
                                 <div className="bg-white p-4 md:p-12 rounded-[2rem] md:rounded-[3.5rem] border border-gray-100 shadow-sm relative overflow-hidden">
                                     <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/5 rounded-full blur-3xl" />
-                                    <ProductRow products={recommendedProducts} title="" filter={(p) => p.rating >= 4} />
+                                    <ProductRow products={recommendedProducts} title="" recommendationSource={recommendationSource} recommendationReasons={recommendationReasons} />
                                 </div>
                             </div>
                         </FadeInWhenVisible>

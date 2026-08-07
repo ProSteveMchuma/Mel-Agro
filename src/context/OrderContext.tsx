@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, setDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction, limit } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, setDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction, limit, arrayUnion } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { NotificationService } from '@/lib/notifications';
 import { CommunicationTemplates } from '@/lib/communication-templates';
@@ -341,7 +341,14 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         const orderData = orderSnap.data();
 
-        await updateDoc(orderRef, { status });
+        const changedAt = new Date().toISOString();
+        await updateDoc(orderRef, {
+            status,
+            ...(status === 'Processing' ? { processingAt: changedAt } : {}),
+            ...(status === 'Shipped' ? { shippedAt: changedAt } : {}),
+            ...(status === 'Delivered' ? { deliveredAt: changedAt } : {}),
+            statusHistory: arrayUnion({ status, at: changedAt, by: user?.email || user?.uid || 'admin' }),
+        });
 
         // Award Loyalty Points if delivered — idempotent via loyaltyAwarded flag
         if (status === 'Delivered' && !orderData.loyaltyAwarded) {
@@ -400,7 +407,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         const orderRef = doc(db, "orders", orderId);
         const updateData: any = {
             paymentStatus,
-            ...(paymentStatus === 'Paid' ? { stockReservationStatus: 'committed' } : {}),
+            ...(paymentStatus === 'Paid' ? { stockReservationStatus: 'committed', paidAt: new Date().toISOString() } : {}),
         };
 
         if (transactionDetails) {

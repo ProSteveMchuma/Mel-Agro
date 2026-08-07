@@ -122,6 +122,7 @@ export async function POST(request: Request) {
 
         await orderSnap.ref.update({
             paymentStatus: 'Paid',
+            processingAt: new Date().toISOString(),
             paymentMethod: order.paymentMethod || 'M-Pesa Till (manual)',
             transactionId: transactionCode,
             mpesaReceiptNumber: transactionCode,

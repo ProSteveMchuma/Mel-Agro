@@ -138,6 +138,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         county: data.county,
                         loyaltyPoints: data.loyaltyPoints || 0,
                         savedAddresses: data.savedAddresses || [],
+                        affinityIndex: data.affinityIndex || {},
+                        personalizationEnabled: data.personalizationEnabled !== false,
+                        cartRecoveryConsent: data.cartRecoveryConsent === true,
                         isAnonymous: firebaseUser.isAnonymous,
                     });
                     setIsAuthenticated(true);
@@ -185,7 +188,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     city: updatedUser.city || null,
                     county: updatedUser.county || null,
                     loyaltyPoints: updatedUser.loyaltyPoints || 0,
-                    savedAddresses: updatedUser.savedAddresses || []
+                    savedAddresses: updatedUser.savedAddresses || [],
+                    cartRecoveryConsent: updatedUser.cartRecoveryConsent === true,
                 }, { merge: true });
             } catch (error) {
                 console.error("Error updating user profile:", error);

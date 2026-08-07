@@ -14,10 +14,20 @@ interface CachedInsight {
     generatedAt: string;
     insights: string;
     snapshot: any;
+    evidenceLinks?: Array<{ label: string; href: string }>;
+    limitations?: string[];
 }
 
 const CACHE_DOC = 'aiInsights/latest';
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+const EVIDENCE_LINKS = [
+    { label: 'Orders', href: '/dashboard/admin/orders' },
+    { label: 'Payments', href: '/dashboard/admin/payments' },
+    { label: 'Product intelligence', href: '/dashboard/admin/product-intelligence' },
+    { label: 'Customer intelligence', href: '/dashboard/admin/intelligence' },
+    { label: 'Action centre', href: '/dashboard/admin/action-centre' },
+];
+const LIMITATIONS = ['AI summarizes aggregated records and cannot verify events outside the analyzed source window.', 'Suggested actions require administrator review and are never applied automatically.'];
 
 function summariseForPrompt(orders: Order[], range: DateRange) {
     const ranged = filterByRange(orders, range);
@@ -103,6 +113,8 @@ export async function POST(request: Request) {
                     range: cached.range,
                     insights: cached.insights,
                     snapshot: cached.snapshot,
+                    evidenceLinks: cached.evidenceLinks || EVIDENCE_LINKS,
+                    limitations: cached.limitations || LIMITATIONS,
                 });
             }
         }
@@ -125,6 +137,8 @@ Style rules:
 - Never invent numbers. Quote KES amounts or counts only if they appear in the data.
 - Currency is KES. Use Kenyan context where relevant (county names, common crops, the agricultural calendar).
 - Be specific and operational, not vague. "Restock NPK" not "improve inventory".
+- Cite the snapshot field behind every numbered claim in square brackets, for example [kpis.revenue] or [topProducts].
+- State uncertainty when the source window is small or a conclusion is inferential.
 - ≤ 350 words.`;
 
         const userPrompt = `Here is Mel-Agri's live performance snapshot for the **${range}** window. Read it carefully and write your briefing.
@@ -165,7 +179,7 @@ Now produce the briefing.`;
         }
 
         const generatedAt = new Date().toISOString();
-        const cached: CachedInsight = { range, generatedAt, insights, snapshot };
+        const cached: CachedInsight = { range, generatedAt, insights, snapshot, evidenceLinks: EVIDENCE_LINKS, limitations: LIMITATIONS };
         await writeCache(cached);
 
         return NextResponse.json({
@@ -175,6 +189,8 @@ Now produce the briefing.`;
             range,
             insights,
             snapshot,
+            evidenceLinks: EVIDENCE_LINKS,
+            limitations: LIMITATIONS,
             usage: response.usage,
         });
     } catch (error: any) {
@@ -209,6 +225,8 @@ export async function GET(request: Request) {
             range: cached?.range || range,
             insights: cached?.insights || null,
             snapshot: cached?.snapshot || null,
+            evidenceLinks: cached?.evidenceLinks || EVIDENCE_LINKS,
+            limitations: cached?.limitations || LIMITATIONS,
         });
     } catch (error: any) {
         return NextResponse.json({ success: false, message: error?.message || 'Internal Server Error' }, { status: 500 });

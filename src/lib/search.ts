@@ -1,5 +1,5 @@
 import Fuse from 'fuse.js';
-import { Product } from '@/types';
+import type { Product } from '../types/index.ts';
 
 const FUSE_KEYS = [
     { name: 'name', weight: 0.4 },

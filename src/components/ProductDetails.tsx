@@ -19,13 +19,15 @@ interface ProductDetailsProps {
     id: string;
     initialProduct: Product;
     initialRelatedProducts?: Product[];
+    initialComplementProducts?: Product[];
 }
 
-export default function ProductDetails({ id, initialProduct, initialRelatedProducts = [] }: ProductDetailsProps) {
+export default function ProductDetails({ id, initialProduct, initialRelatedProducts = [], initialComplementProducts = [] }: ProductDetailsProps) {
     // Seed the interactive view with server-fetched data so the complete product
     // content is present in the first HTML response for customers and crawlers.
     const [product] = useState<Product>(initialProduct);
     const [relatedProducts] = useState<Product[]>(initialRelatedProducts);
+    const [complementProducts] = useState<Product[]>(initialComplementProducts);
     const [quantity, setQuantity] = useState(1);
     const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'usage'>('description');
     const { user } = useAuth();
@@ -465,7 +467,18 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                     </div>
                 </div>
 
-                {/* Farmers Also Bought */}
+                {complementProducts.length > 0 && (
+                    <section className="mb-16 rounded-3xl border border-emerald-100 bg-emerald-50/50 p-6 md:p-8" aria-labelledby="bought-together-heading">
+                        <p className="text-[10px] font-black uppercase tracking-[0.25em] text-emerald-700">Observed order pattern</p>
+                        <h2 id="bought-together-heading" className="mt-1 text-2xl font-black text-gray-900">Often purchased in the same order</h2>
+                        <p className="mt-1 text-xs text-gray-600">Based on completed orders, not an agronomic compatibility claim. Always follow product labels and expert guidance.</p>
+                        <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+                            {complementProducts.map(p => <ProductCard key={p.id} {...p} recommendationSource="co-purchase-v1" recommendationReason="Frequently purchased in the same paid order" />)}
+                        </div>
+                    </section>
+                )}
+
+                {/* More products in category */}
                 <div className="mb-20">
                     <div className="flex justify-between items-end mb-8">
                         <div>

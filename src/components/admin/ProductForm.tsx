@@ -41,6 +41,10 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
         images: initialData?.images || [] as string[],
         stockQuantity: initialData?.stockQuantity ? initialData.stockQuantity.toString() : '0',
         lowStockThreshold: initialData?.lowStockThreshold ? initialData.lowStockThreshold.toString() : '10',
+        supplierLeadTimeDays: String(initialData?.supplierLeadTimeDays ?? 14),
+        incomingStock: String(initialData?.incomingStock ?? 0),
+        safetyStock: String(initialData?.safetyStock ?? initialData?.lowStockThreshold ?? 10),
+        minimumOrderQuantity: String(initialData?.minimumOrderQuantity ?? 1),
         specification: initialData?.specification || '',
         howToUse: initialData?.howToUse || '',
         tags: initialData?.tags ? initialData.tags.join(', ') : '',
@@ -156,6 +160,10 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
             images: formData.images,
             stockQuantity: stockQty,
             lowStockThreshold: threshold,
+            supplierLeadTimeDays: Math.max(1, Number(formData.supplierLeadTimeDays) || 14),
+            incomingStock: Math.max(0, Number(formData.incomingStock) || 0),
+            safetyStock: Math.max(0, Number(formData.safetyStock) || 0),
+            minimumOrderQuantity: Math.max(1, Number(formData.minimumOrderQuantity) || 1),
             inStock: stockQty > 0 || processedVariants.some(v => v.stockQuantity > 0),
             rating: initialData?.rating || 0,
             reviews: initialData?.reviews || 0,
@@ -334,6 +342,10 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                 placeholder="10"
                             />
                         </div>
+                        <div><label className="block text-sm font-medium text-gray-700 mb-1">Supplier Lead Time (days)</label><input required type="number" min="1" name="supplierLeadTimeDays" value={formData.supplierLeadTimeDays} onChange={handleChange} className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 mb-1">Incoming Stock</label><input required type="number" min="0" name="incomingStock" value={formData.incomingStock} onChange={handleChange} className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 mb-1">Safety Stock</label><input required type="number" min="0" name="safetyStock" value={formData.safetyStock} onChange={handleChange} className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary" /></div>
+                        <div><label className="block text-sm font-medium text-gray-700 mb-1">Minimum Order Quantity</label><input required type="number" min="1" name="minimumOrderQuantity" value={formData.minimumOrderQuantity} onChange={handleChange} className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary" /></div>
                     </div>
 
                     {/* Variants Management */}

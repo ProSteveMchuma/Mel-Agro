@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import ProductDetails from '@/components/ProductDetails';
 import { getProductById } from '@/lib/products';
-import { getRelatedProductsCached } from '@/lib/products-server';
+import { getRelatedProductsCached, getSafeCoPurchaseProductsCached } from '@/lib/products-server';
 import { absoluteUrl, SITE_URL } from '@/lib/site';
 import { notFound } from 'next/navigation';
 
@@ -98,12 +98,16 @@ export default async function Page({ params }: Props) {
     const { id } = await params;
     const product = await getProductById(id);
     if (!product) notFound();
-    const relatedProducts = await getRelatedProductsCached(product.category, String(product.id));
+    const [relatedProducts, complementProducts] = await Promise.all([
+        getRelatedProductsCached(product.category, String(product.id)),
+        getSafeCoPurchaseProductsCached(String(product.id), product.category),
+    ]);
 
     // Firestore timestamps and class instances cannot cross the Server/Client boundary.
     // Product fields used by the storefront are plain JSON values after normalization.
     const initialProduct = JSON.parse(JSON.stringify(product));
     const initialRelatedProducts = JSON.parse(JSON.stringify(relatedProducts));
+    const initialComplementProducts = JSON.parse(JSON.stringify(complementProducts));
 
     const productImages = (product.images?.length ? product.images : [product.image])
         .filter(Boolean)
@@ -178,6 +182,7 @@ export default async function Page({ params }: Props) {
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
             />
             <ProductDetails
+                initialComplementProducts={initialComplementProducts}
                 id={id}
                 initialProduct={initialProduct}
                 initialRelatedProducts={initialRelatedProducts}

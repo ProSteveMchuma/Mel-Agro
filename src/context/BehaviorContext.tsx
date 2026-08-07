@@ -12,6 +12,8 @@ interface BehaviorContextType {
     lastAction: string | null;
     affinityIndex: Record<string, number>;
     getTopAffinity: () => string;
+    personalizationEnabled: boolean;
+    setPersonalizationEnabled: (enabled: boolean) => Promise<void>;
 }
 
 const BehaviorContext = createContext<BehaviorContextType | undefined>(undefined);
@@ -20,6 +22,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const pathname = usePathname();
     const [lastAction, setLastAction] = useState<string | null>(null);
     const [affinityIndex, setAffinityIndex] = useState<Record<string, number>>({});
+    const [personalizationEnabled, setPersonalizationState] = useState(true);
     const inactivityTimer = useRef<NodeJS.Timeout | null>(null);
     // Internal state to track patterns
     const [searchFailures, setSearchFailures] = useState(0);
@@ -31,6 +34,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Initial Load from Persistent Storage
     useEffect(() => {
         const savedAffinity = localStorage.getItem('Mel-Agri_behavior_affinity');
+        setPersonalizationState(localStorage.getItem('melagri_personalization_enabled') !== 'false');
         if (savedAffinity) {
             try {
                 setAffinityIndex(JSON.parse(savedAffinity));
@@ -40,9 +44,16 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         }
     }, []);
 
+    useEffect(() => {
+        if (user?.affinityIndex && Object.keys(user.affinityIndex).length > 0) {
+            setAffinityIndex(current => Object.keys(current).length ? current : user.affinityIndex || {});
+        }
+        if (user?.personalizationEnabled === false) setPersonalizationState(false);
+    }, [user?.affinityIndex, user?.personalizationEnabled]);
+
     // Save to Persistent Storage & Firestore on change
     useEffect(() => {
-        if (Object.keys(affinityIndex).length > 0) {
+        if (personalizationEnabled && Object.keys(affinityIndex).length > 0) {
             localStorage.setItem('Mel-Agri_behavior_affinity', JSON.stringify(affinityIndex));
 
             if (user?.uid) {
@@ -60,7 +71,15 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 syncData();
             }
         }
-    }, [affinityIndex, user?.uid]);
+    }, [affinityIndex, personalizationEnabled, user?.uid]);
+
+    const setPersonalizationEnabled = async (enabled: boolean) => {
+        setPersonalizationState(enabled);
+        localStorage.setItem('melagri_personalization_enabled', String(enabled));
+        if (user?.uid) {
+            await setDoc(doc(db, 'users', user.uid), { personalizationEnabled: enabled }, { merge: true });
+        }
+    };
 
     const showProactiveHelp = (message: string, action?: { label: string, onClick: () => void }) => {
         toast((t) => (
@@ -146,12 +165,10 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 
 
-        // ... (lines 32-145 remain unchanged, so I will target the specific block for trackAction)
-
         if (action === 'empty_search') {
             setSearchFailures(prev => prev + 1);
             // Only show if we haven't shown it yet and failures > 0 (or immediately on first fail if desired, keeping logic similar)
-            if (searchFailures >= 0 && !hasShownSearchHelp) {
+            if (searchFailures >= 1 && !hasShownSearchHelp) {
                 showProactiveHelp(
                     "Can't find what you're looking for? Our team can help you source it via WhatsApp!",
                     {
@@ -231,7 +248,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, [pathname]);
 
     return (
-        <BehaviorContext.Provider value={{ trackAction, lastAction, affinityIndex, getTopAffinity }}>
+        <BehaviorContext.Provider value={{ trackAction, lastAction, affinityIndex, getTopAffinity, personalizationEnabled, setPersonalizationEnabled }}>
             {children}
         </BehaviorContext.Provider>
     );

@@ -24,6 +24,7 @@ export const PRODUCTION_ENV_GROUPS = {
     email: ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM'],
     sms: ['AFRICASTALKING_API_KEY', 'AFRICASTALKING_USERNAME'],
     whatsapp: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_WHATSAPP_NUMBER'],
+    intelligence: ['CRON_SECRET'],
 } as const;
 
 type Environment = Record<string, string | undefined>;

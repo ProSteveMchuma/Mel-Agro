@@ -5,6 +5,7 @@ import type { Order } from '@/types';
 
 export interface CustomerProfile {
     userId: string;
+    identityKey: string;
     name?: string;
     email?: string;
     phone?: string;
@@ -22,6 +23,11 @@ export interface CustomerProfile {
     lifetimeDays: number;           // days between first and last order
     cancelledOrders: number;
     refundedRevenue: number;
+    preferredCategory?: string;
+    preferredPaymentMethod?: string;
+    county?: string;
+    segmentReason: string;
+    recommendedAction: string;
 }
 
 export type Segment =
@@ -93,19 +99,34 @@ function classify(p: { paidOrderCount: number; recency: number; frequency: numbe
     return 'Hibernating';
 }
 
+export function customerIdentityKey(order: Order): string {
+    const rawPhone = String((order as any).phone || '').replace(/\D/g, '');
+    const phone = rawPhone.length >= 9 ? rawPhone.slice(-9) : '';
+    const email = String((order as any).userEmail || '').trim().toLowerCase();
+    if (phone) return `phone:${phone}`;
+    if (email) return `email:${email}`;
+    return `uid:${String((order as any).userId || `anon-${order.id}`)}`;
+}
+
+function mostFrequent(values: string[]): string | undefined {
+    const counts = new Map<string, number>();
+    for (const value of values.filter(Boolean)) counts.set(value, (counts.get(value) || 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+}
+
 export function buildCustomerProfiles(orders: Order[]): CustomerProfile[] {
     // Group paid orders by user.
     const paid = orders.filter(o => (o as any).paymentStatus === 'Paid');
     const groups = new Map<string, Order[]>();
     for (const o of paid) {
-        const k = String((o as any).userId || (o as any).userEmail || `anon-${o.id}`);
+        const k = customerIdentityKey(o);
         const list = groups.get(k);
         if (list) list.push(o);
         else groups.set(k, [o]);
     }
 
     const now = Date.now();
-    const baseProfiles: Array<Omit<CustomerProfile, 'recency' | 'frequency' | 'monetary' | 'rfmScore' | 'segment'>> = [];
+    const baseProfiles: Array<Omit<CustomerProfile, 'recency' | 'frequency' | 'monetary' | 'rfmScore' | 'segment' | 'segmentReason' | 'recommendedAction'>> = [];
     const recencyVals: number[] = [];
     const frequencyVals: number[] = [];
     const monetaryVals: number[] = [];
@@ -123,18 +144,17 @@ export function buildCustomerProfiles(orders: Order[]): CustomerProfile[] {
         const lastAny = last as any;
 
         const cancelled = orders.filter(o => {
-            const ouid = String((o as any).userId || (o as any).userEmail || '');
-            return ouid === uid && o.status === 'Cancelled';
+            return customerIdentityKey(o) === uid && o.status === 'Cancelled';
         }).length;
         const refundedRevenue = orders
             .filter(o => {
-                const ouid = String((o as any).userId || (o as any).userEmail || '');
-                return ouid === uid && ((o as any).refundStatus === 'Reversed' || (o as any).paymentStatus === 'Refunded');
+                return customerIdentityKey(o) === uid && ((o as any).refundStatus === 'Reversed' || (o as any).paymentStatus === 'Refunded');
             })
             .reduce((s, o) => s + (Number((o as any).refundAmount || o.total) || 0), 0);
 
         baseProfiles.push({
-            userId: uid,
+            userId: String(lastAny.userId || uid),
+            identityKey: uid,
             name: lastAny.userName,
             email: lastAny.userEmail,
             phone: lastAny.phone,
@@ -147,6 +167,9 @@ export function buildCustomerProfiles(orders: Order[]): CustomerProfile[] {
             lifetimeDays,
             cancelledOrders: cancelled,
             refundedRevenue,
+            preferredCategory: mostFrequent(sorted.flatMap(order => (order.items || []).map(item => String((item as any).category || item.name || '')))),
+            preferredPaymentMethod: mostFrequent(sorted.map(order => String(order.paymentMethod || ''))),
+            county: lastAny.shippingAddress?.county,
         });
 
         recencyVals.push(daysSinceLast);
@@ -177,6 +200,8 @@ export function buildCustomerProfiles(orders: Order[]): CustomerProfile[] {
             monetary: m,
             rfmScore: r * 100 + f * 10 + m,
             segment,
+            segmentReason: `Recency ${r}/5, frequency ${f}/5, monetary value ${m}/5; last paid order ${p.daysSinceLastOrder} days ago`,
+            recommendedAction: SEGMENT_DESCRIPTIONS[segment],
         };
     });
 

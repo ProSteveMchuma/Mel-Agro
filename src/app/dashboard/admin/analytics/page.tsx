@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
+import Link from 'next/link';
 
 function renderInsightsMarkdown(md: string) {
     const html = md
@@ -53,6 +54,8 @@ interface InsightsState {
     cached: boolean;
     configurationRequired: boolean;
     error: string | null;
+    evidenceLinks: Array<{ label: string; href: string }>;
+    limitations: string[];
 }
 
 const RANGES: Array<{ value: DateRange; label: string }> = [
@@ -95,7 +98,7 @@ export default function AnalyticsPage() {
     const [range, setRange] = useState<DateRange>('30d');
     const [granularity, setGranularity] = useState<Granularity>('day');
     const [aiState, setAiState] = useState<InsightsState>({
-        loading: false, insights: null, generatedAt: null, cached: false, configurationRequired: false, error: null,
+        loading: false, insights: null, generatedAt: null, cached: false, configurationRequired: false, error: null, evidenceLinks: [], limitations: [],
     });
 
     const loadInsights = async (force: boolean) => {
@@ -112,7 +115,7 @@ export default function AnalyticsPage() {
             const data = await res.json();
             if (!res.ok || !data.success) {
                 if (data.configurationRequired) {
-                    setAiState({ loading: false, insights: null, generatedAt: null, cached: false, configurationRequired: true, error: data.message || 'Not configured' });
+                    setAiState({ loading: false, insights: null, generatedAt: null, cached: false, configurationRequired: true, error: data.message || 'Not configured', evidenceLinks: [], limitations: [] });
                 } else {
                     setAiState(s => ({ ...s, loading: false, error: data.message || 'Failed to load insights' }));
                     if (force) toast.error(data.message || 'Failed to generate insights');
@@ -126,6 +129,8 @@ export default function AnalyticsPage() {
                 cached: !!data.cached,
                 configurationRequired: false,
                 error: null,
+                evidenceLinks: data.evidenceLinks || [],
+                limitations: data.limitations || [],
             });
             if (force) toast.success('Fresh insights generated');
         } catch (e: any) {
@@ -249,10 +254,13 @@ export default function AnalyticsPage() {
                     )}
 
                     {aiState.insights && (
-                        <div
-                            className="bg-white border border-purple-100 rounded-2xl p-6 md:p-8 prose-sm max-w-none"
-                            dangerouslySetInnerHTML={{ __html: renderInsightsMarkdown(aiState.insights) }}
-                        />
+                        <div className="space-y-3">
+                            <div className="bg-white border border-purple-100 rounded-2xl p-6 md:p-8 prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: renderInsightsMarkdown(aiState.insights) }} />
+                            <div className="rounded-2xl border border-purple-100 bg-white p-5">
+                                <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-purple-100 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-purple-700">AI-generated · review required</span>{aiState.evidenceLinks.map(link => <Link key={link.href} href={link.href} className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:border-purple-300 hover:text-purple-700">{link.label} ↗</Link>)}</div>
+                                {aiState.limitations.map(item => <p key={item} className="mt-2 text-[10px] text-gray-500">• {item}</p>)}
+                            </div>
+                        </div>
                     )}
 
                     {aiState.error && !aiState.configurationRequired && !aiState.insights && (

@@ -81,20 +81,31 @@ export async function POST(request: Request) {
         if (guestUserSnap.exists) {
             const guestUserData = guestUserSnap.data();
             const guestPoints = guestUserData?.loyaltyPoints || 0;
-            if (guestPoints > 0) {
-                const targetUserSnap = await db.collection('users').doc(targetUid).get();
-                const targetUserData = targetUserSnap.data();
-                const targetPoints = targetUserData?.loyaltyPoints || 0;
+            const targetUserSnap = await db.collection('users').doc(targetUid).get();
+            const targetUserData = targetUserSnap.data() || {};
+            const guestAffinity = guestUserData?.affinityIndex || {};
+            const targetAffinity = targetUserData.affinityIndex || {};
+            const mergedAffinity = Object.fromEntries(
+                new Set([...Object.keys(guestAffinity), ...Object.keys(targetAffinity)]).values().map(category => [
+                    category,
+                    Number(guestAffinity[category] || 0) + Number(targetAffinity[category] || 0),
+                ])
+            );
 
-                batch.update(db.collection('users').doc(targetUid), {
-                    loyaltyPoints: targetPoints + guestPoints
-                });
+            batch.set(db.collection('users').doc(targetUid), {
+                loyaltyPoints: Number(targetUserData.loyaltyPoints || 0) + Number(guestPoints),
+                affinityIndex: mergedAffinity,
+                identityMergedAt: new Date().toISOString(),
+                personalizationEnabled: targetUserData.personalizationEnabled !== false,
+            }, { merge: true });
 
-                // Reset guest loyalty points so they can't be claimed repeatedly
-                batch.update(db.collection('users').doc(guestUid), {
-                    loyaltyPoints: 0
-                });
-            }
+            // Clear transferable intelligence so a guest identity cannot be claimed twice.
+            batch.set(db.collection('users').doc(guestUid), {
+                loyaltyPoints: 0,
+                affinityIndex: {},
+                mergedInto: targetUid,
+                mergedAt: new Date().toISOString(),
+            }, { merge: true });
         }
 
         if (updateCount > 0 || guestUserSnap.exists) {

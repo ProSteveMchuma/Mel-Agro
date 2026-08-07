@@ -14,6 +14,8 @@ export interface User {
     status?: 'active' | 'suspended';
     savedAddresses?: SavedAddress[];
     affinityIndex?: Record<string, number>;
+    personalizationEnabled?: boolean;
+    cartRecoveryConsent?: boolean;
     intentScore?: number;
     lastBehavioralSync?: string;
     isAnonymous?: boolean;
@@ -53,6 +55,10 @@ export interface Product {
     weightUnit?: 'kg' | 'g' | 'lb' | 'l' | 'ml';
     stock?: number; // Legacy/Compat
     featured?: boolean;
+    supplierLeadTimeDays?: number;
+    incomingStock?: number;
+    safetyStock?: number;
+    minimumOrderQuantity?: number;
 }
 
 export interface ProductVariant {
@@ -88,6 +94,11 @@ export interface Order {
     status: 'Pending Payment' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
     items: OrderItem[];
     createdAt?: string; // Compat
+    paidAt?: string;
+    processingAt?: string;
+    shippedAt?: string;
+    deliveredAt?: string;
+    statusHistory?: Array<{ status: string; at: string; by?: string }>;
     notificationPreferences?: string[];
     returnStatus?: 'Requested' | 'Approved' | 'Rejected';
     returnReason?: string;
