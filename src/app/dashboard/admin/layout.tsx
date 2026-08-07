@@ -8,6 +8,9 @@ import { toast } from 'react-hot-toast';
 
 import Logo from '@/components/Logo';
 import AdminNotificationsPopover from '@/components/admin/AdminNotificationsPopover';
+import AdminCommandCentre from '@/components/admin/AdminCommandCentre';
+import { AdminPermission, hasAdminPermission } from '@/lib/admin-permissions';
+import AdminHelpDrawer from '@/components/admin/AdminHelpDrawer';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -116,6 +119,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )
         },
         {
+            name: 'Automations', href: '/dashboard/admin/automations', icon: (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 4H6a2 2 0 00-2 2v4m16 0V6a2 2 0 00-2-2h-4m0 16h4a2 2 0 002-2v-4M4 14v4a2 2 0 002 2h4m-1-8h6m-3-3v6" /></svg>
+            )
+        },
+        {
             name: 'Products', href: '/dashboard/admin/products', icon: (
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
@@ -183,7 +191,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
     const isActive = (href: string) => href === '/dashboard/admin' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
     const groupOrder = ['Overview', 'Commerce', 'Catalogue', 'Customers', 'Intelligence', 'Operations', 'System'];
-    const groupedMenuItems = [...menuItems].sort((a, b) => groupOrder.indexOf(navGroup(a.href)) - groupOrder.indexOf(navGroup(b.href)));
+    const permissionForHref = (href: string): AdminPermission | null => {
+        if (/orders|fulfillment|operations|logistics|action-centre/.test(href)) return 'orders.manage';
+        if (/payments|mpesa/.test(href)) return 'payments.manage';
+        if (/products|inventory|discounts|reviews/.test(href)) return 'catalogue.manage';
+        if (/newsletter|cms|messages/.test(href)) return 'marketing.manage';
+        if (/analytics|reports|intelligence|audit-log/.test(href)) return 'analytics.view';
+        if (/settings|automations/.test(href)) return 'settings.manage';
+        return null;
+    };
+    const groupedMenuItems = menuItems.filter((item) => {
+        const permission = permissionForHref(item.href);
+        return !permission || hasAdminPermission(user?.role, user?.adminPermissions, permission);
+    }).sort((a, b) => groupOrder.indexOf(navGroup(a.href)) - groupOrder.indexOf(navGroup(b.href)));
+    const closeSidebarOnMobile = () => {
+        if (window.innerWidth < 768) setIsSidebarOpen(false);
+    };
 
     return (
         <div className="min-h-screen bg-gray-100 flex font-sans">
@@ -196,8 +219,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             )}
 
             {/* Sidebar */}
-            <aside className={`bg-gradient-to-b from-slate-900 to-slate-950 text-white transition-all duration-300 ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-24 -translate-x-full md:translate-x-0'} flex flex-col fixed h-full z-30 shadow-2xl overflow-hidden`}>
-                <div className="p-6 flex items-center justify-between">
+            <aside aria-label="Admin navigation" className={`bg-gradient-to-b from-slate-900 to-slate-950 text-white transition-[width,transform] duration-300 ${isSidebarOpen ? 'w-72 translate-x-0' : 'w-20 -translate-x-full md:translate-x-0'} flex flex-col fixed h-dvh z-30 shadow-2xl overflow-hidden`}>
+                <div className={`relative flex h-20 shrink-0 items-center border-b border-white/5 ${isSidebarOpen ? 'justify-between px-5' : 'justify-center px-2'}`}>
                     {isSidebarOpen ? (
                         <Logo light />
                     ) : (
@@ -205,37 +228,37 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <Logo iconOnly light />
                         </div>
                     )}
-                    <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg transition-colors md:flex hidden">
+                    <button type="button" onClick={() => setIsSidebarOpen(!isSidebarOpen)} aria-label={isSidebarOpen ? 'Collapse admin navigation' : 'Expand admin navigation'} aria-expanded={isSidebarOpen} className={`text-gray-400 hover:text-white bg-white/5 rounded-lg transition-colors md:flex hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 ${isSidebarOpen ? 'p-2' : 'absolute bottom-1 right-1 p-1'}`}>
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
                     {/* Mobile Close Button */}
-                    <button onClick={() => setIsSidebarOpen(false)} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg transition-colors md:hidden">
+                    <button type="button" aria-label="Close admin navigation" onClick={() => setIsSidebarOpen(false)} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg transition-colors md:hidden">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
 
-                <nav className="flex-grow mt-6 overflow-y-auto">
-                    <ul className="space-y-2 px-4">
+                <nav className="min-h-0 flex-grow overflow-y-auto py-3 [scrollbar-color:#334155_transparent] [scrollbar-width:thin]">
+                    <ul className={`space-y-1 ${isSidebarOpen ? 'px-3' : 'px-2'}`}>
                         {groupedMenuItems.map((item, index) => (
                             <React.Fragment key={item.name}>
                             {(index === 0 || navGroup(groupedMenuItems[index - 1].href) !== navGroup(item.href)) && isSidebarOpen && <li className="px-4 pb-1 pt-4 text-[9px] font-black uppercase tracking-[.2em] text-gray-600">{navGroup(item.href)}</li>}
                             <li>
                                 <Link
                                     href={item.href}
-                                    onClick={() => setIsSidebarOpen(false)}
+                                    onClick={closeSidebarOnMobile}
                                     aria-current={isActive(item.href) ? 'page' : undefined}
                                     title={!isSidebarOpen ? item.name : undefined}
-                                    className={`flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${isActive(item.href)
+                                    className={`flex min-h-11 items-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-400 ${isSidebarOpen ? 'gap-3 px-4' : 'justify-center px-2'} ${isActive(item.href)
                                         ? 'bg-melagri-primary text-white shadow-lg shadow-melagri-primary/20'
                                         : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                                         }`}
                                 >
-                                    {item.icon}
-                                    <span className="font-medium">{item.name}</span>
+                                    <span className="shrink-0" aria-hidden="true">{item.icon}</span>
+                                    {isSidebarOpen && <span className="min-w-0 truncate font-medium">{item.name}</span>}
                                 </Link>
                             </li>
                             </React.Fragment>
@@ -243,10 +266,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </ul>
                 </nav>
 
-                <div className="p-4 border-t border-gray-800">
+                <div className={`shrink-0 border-t border-gray-800 ${isSidebarOpen ? 'p-4' : 'p-2'}`}>
                     <button
                         onClick={() => { logout(); router.push('/auth/login'); }}
-                        className="flex items-center gap-4 px-4 py-3 text-red-400 hover:bg-gray-800 hover:text-red-300 rounded-xl w-full transition-colors"
+                        aria-label="Log out"
+                        title={!isSidebarOpen ? 'Log out' : undefined}
+                        className={`flex min-h-11 items-center text-red-400 hover:bg-gray-800 hover:text-red-300 rounded-xl w-full transition-colors ${isSidebarOpen ? 'gap-4 px-4' : 'justify-center px-2'}`}
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -257,12 +282,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </aside>
 
             {/* Main Content */}
-            <div className={`flex-1 flex flex-col transition-all duration-300 ${isSidebarOpen ? 'md:ml-64' : 'md:ml-24'} ml-0 w-full`}>
+            <div className={`flex-1 flex flex-col transition-[margin] duration-300 ${isSidebarOpen ? 'md:ml-72' : 'md:ml-20'} ml-0 min-w-0`}>
                 {/* Topbar */}
                 <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 h-20 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">
                     <div className="flex items-center gap-4">
                         {/* Mobile Toggle */}
-                        <button 
+                        <button type="button" aria-label="Open admin navigation"
                             onClick={() => setIsSidebarOpen(true)}
                             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg md:hidden"
                         >
@@ -271,7 +296,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             </svg>
                         </button>
                         
-                        <div className="flex flex-col">
+                        <div className="hidden flex-col min-[420px]:flex">
                             <div className="flex items-center gap-2 mb-0.5">
                                 <span className="relative flex h-2 w-2">
                                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -285,7 +310,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 md:gap-6">
+                    <div className="mx-2 flex min-w-0 flex-1 justify-center md:mx-8">
+                        <AdminCommandCentre />
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2 md:gap-6">
+                        <AdminHelpDrawer />
                         <div className="relative">
                             <button
                                 onClick={() => setShowNotifications(!showNotifications)}

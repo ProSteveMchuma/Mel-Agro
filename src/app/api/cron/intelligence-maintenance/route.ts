@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { INTELLIGENCE_RETENTION_DAYS } from '@/lib/experimentation';
+import { runAutomations } from '@/lib/automation-engine';
 
 const MAX_DELETIONS_PER_COLLECTION = 400;
 
@@ -28,5 +29,6 @@ export async function GET(request: Request) {
         purchaseReconciliation: await deleteExpired('analytics_purchases', 'timestamp', INTELLIGENCE_RETENTION_DAYS.purchaseReconciliation),
         actionOutcomes: await deleteExpired('intelligence_alerts', 'updatedAt', INTELLIGENCE_RETENTION_DAYS.actionOutcomes),
     };
-    return NextResponse.json({ success: true, deleted, maxPerCollection: MAX_DELETIONS_PER_COLLECTION, completedAt: new Date().toISOString() });
+    const automations = await runAutomations('scheduled:intelligence-maintenance');
+    return NextResponse.json({ success: true, deleted, automations, maxPerCollection: MAX_DELETIONS_PER_COLLECTION, completedAt: new Date().toISOString() });
 }

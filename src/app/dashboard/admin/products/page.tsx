@@ -9,6 +9,8 @@ import BulkUploadButton from "@/components/admin/BulkUploadButton";
 import ExportProductsButton from "@/components/admin/ExportProductsButton";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
+const PAGE_SIZE = 20;
+
 export default function ProductManagement() {
     const { products, archivedProducts, deleteProduct, restoreProduct } = useProducts();
     const router = useRouter();
@@ -19,6 +21,7 @@ export default function ProductManagement() {
     const [deleteId, setDeleteId] = useState<string | number | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
+    const [page, setPage] = useState(1);
 
     // Get unique categories
     const sourceProducts = showArchived ? archivedProducts : products;
@@ -40,15 +43,16 @@ export default function ProductManagement() {
 
         return matchesSearch && matchesCategory && matchesStock;
     });
+    const pageCount = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
+    const currentPage = Math.min(page, pageCount);
+    const visibleProducts = filteredProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+    const visibleIds = visibleProducts.map(product => String(product.id));
+    const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedProducts.includes(id));
 
     const toggleSelectAll = () => {
-        if (selectedProducts.length === filteredProducts.length) {
-            setSelectedProducts([]);
-        } else {
-            // Ensure all IDs are converted to strings for type safety
-            const productIds = filteredProducts.map(p => typeof p.id === 'string' ? p.id : String(p.id));
-            setSelectedProducts(productIds);
-        }
+        setSelectedProducts(current => allVisibleSelected
+            ? current.filter(id => !visibleIds.includes(id))
+            : Array.from(new Set([...current, ...visibleIds])));
     };
 
     const toggleSelectProduct = (id: string) => {
@@ -59,13 +63,15 @@ export default function ProductManagement() {
         }
     };
 
-    const handleBulkDelete = async () => {
-        if (confirm(`Archive ${selectedProducts.length} products? They can be restored later.`)) {
-            for (const id of selectedProducts) {
-                await deleteProduct(id);
-            }
-            setSelectedProducts([]);
-        }
+    const handleBulkLifecycle = async () => {
+        const action = showArchived ? 'restore' : 'archive';
+        if (!confirm(`${showArchived ? 'Restore' : 'Archive'} ${selectedProducts.length} products?${showArchived ? '' : ' They can be restored later.'}`)) return;
+        const notice = toast.loading(`${showArchived ? 'Restoring' : 'Archiving'} products...`);
+        const results = await Promise.allSettled(selectedProducts.map(id => showArchived ? restoreProduct(id) : deleteProduct(id)));
+        const failures = results.filter(result => result.status === 'rejected').length;
+        if (failures) toast.error(`${selectedProducts.length - failures} updated; ${failures} failed.`, { id: notice });
+        else toast.success(`${selectedProducts.length} products ${action}d.`, { id: notice });
+        setSelectedProducts([]);
     };
 
     return (
@@ -76,15 +82,15 @@ export default function ProductManagement() {
                     <p className="text-gray-500 text-sm">Manage your inventory and catalog.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {selectedProducts.length > 0 && !showArchived && (
+                    {selectedProducts.length > 0 && (
                         <button
-                            onClick={handleBulkDelete}
-                            className="bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 transition-colors font-medium flex items-center gap-2"
+                            onClick={handleBulkLifecycle}
+                            className={`${showArchived ? 'bg-green-50 text-green-700 hover:bg-green-100' : 'bg-red-50 text-red-600 hover:bg-red-100'} px-4 py-2 rounded-lg transition-colors font-medium flex items-center gap-2`}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            Archive ({selectedProducts.length})
+                            {showArchived ? 'Restore' : 'Archive'} ({selectedProducts.length})
                         </button>
                     )}
                     <ExportProductsButton />
@@ -101,8 +107,8 @@ export default function ProductManagement() {
             {/* Filters */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
                 <div className="flex shrink-0 rounded-lg border border-gray-200 p-1">
-                    <button type="button" onClick={() => { setShowArchived(false); setSelectedProducts([]); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${!showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Active ({products.length})</button>
-                    <button type="button" onClick={() => { setShowArchived(true); setSelectedProducts([]); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Archived ({archivedProducts.length})</button>
+                    <button type="button" onClick={() => { setShowArchived(false); setSelectedProducts([]); setPage(1); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${!showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Active ({products.length})</button>
+                    <button type="button" onClick={() => { setShowArchived(true); setSelectedProducts([]); setPage(1); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Archived ({archivedProducts.length})</button>
                 </div>
                 <div className="relative flex-grow max-w-md">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -113,19 +119,19 @@ export default function ProductManagement() {
                         placeholder="Search products..."
                         className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary focus:ring-1 focus:ring-melagri-primary outline-none transition-all"
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
                     />
                 </div>
                 <select
                     value={filterCategory}
-                    onChange={(e) => setFilterCategory(e.target.value)}
+                    onChange={(e) => { setFilterCategory(e.target.value); setPage(1); }}
                     className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary outline-none bg-white"
                 >
                     {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
                 <select
                     value={filterStock}
-                    onChange={(e) => setFilterStock(e.target.value)}
+                    onChange={(e) => { setFilterStock(e.target.value); setPage(1); }}
                     className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary outline-none bg-white"
                 >
                     <option value="All">All Stock Status</option>
@@ -144,7 +150,7 @@ export default function ProductManagement() {
                                 <th className="px-6 py-4 w-4">
                                     <input
                                         type="checkbox"
-                                        checked={selectedProducts.length === filteredProducts.length && filteredProducts.length > 0}
+                                        checked={allVisibleSelected}
                                         onChange={toggleSelectAll}
                                         className="rounded border-gray-300 text-melagri-primary focus:ring-melagri-primary"
                                     />
@@ -157,7 +163,7 @@ export default function ProductManagement() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {filteredProducts.map(product => {
+                            {visibleProducts.map(product => {
                                 const totalStock = product.stockQuantity + (product.variants?.reduce((acc, v) => acc + (v.stockQuantity || 0), 0) || 0);
                                 const isLowStock = totalStock <= (product.lowStockThreshold || 10);
                                 const isOutOfStock = totalStock === 0;
@@ -243,6 +249,16 @@ export default function ProductManagement() {
                 {filteredProducts.length === 0 && (
                     <div className="p-12 text-center text-gray-500">
                         No products found matching "{searchTerm}".
+                    </div>
+                )}
+                {filteredProducts.length > 0 && (
+                    <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
+                        <span>Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredProducts.length)} of {filteredProducts.length}</span>
+                        <div className="flex items-center gap-2">
+                            <button type="button" disabled={currentPage === 1} onClick={() => { setPage(value => Math.max(1, value - 1)); setSelectedProducts([]); }} className="min-h-10 rounded-lg border border-gray-200 px-3 font-bold text-gray-700 disabled:opacity-40">Previous</button>
+                            <span className="px-2 text-xs font-bold">Page {currentPage} of {pageCount}</span>
+                            <button type="button" disabled={currentPage === pageCount} onClick={() => { setPage(value => Math.min(pageCount, value + 1)); setSelectedProducts([]); }} className="min-h-10 rounded-lg border border-gray-200 px-3 font-bold text-gray-700 disabled:opacity-40">Next</button>
+                        </div>
                     </div>
                 )}
             </div>

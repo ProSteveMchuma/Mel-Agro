@@ -231,7 +231,7 @@ export default function AdminOrderDetailsPage() {
     const isCancelled = order.status === 'Cancelled';
 
     return (
-        <div className="space-y-6 relative pb-20">
+        <div className="relative space-y-6 pb-28 md:pb-20">
             <button onClick={() => router.back()} className="text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-melagri-primary flex items-center gap-2 mb-8 transition-colors">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M15 19l-7-7 7-7"></path></svg>
                 Back to Pulse
@@ -267,6 +267,16 @@ export default function AdminOrderDetailsPage() {
                     >
                         <span>🚚</span> Delivery Note
                     </Link>
+                </div>
+            </div>
+
+            <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,.12)] backdrop-blur md:hidden">
+                <div className="mx-auto flex max-w-lg items-center gap-2">
+                    <Link href={`tel:${order.phone || ''}`} aria-disabled={!order.phone} className={`flex min-h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-lg ${order.phone ? 'text-gray-700' : 'pointer-events-none opacity-40'}`} aria-label="Call customer">☎</Link>
+                    {order.status === 'Processing' && <button type="button" onClick={() => setIsDispatchModalOpen(true)} className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white">Dispatch order</button>}
+                    {order.status === 'Shipped' && <button type="button" onClick={async () => { if (!window.confirm('Confirm this order was delivered?')) return; try { await updateOrderStatus(order.id, 'Delivered'); toast.success('Order delivered'); } catch { toast.error('Could not update order'); } }} className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white">Confirm delivered</button>}
+                    {(order.status === 'Pending Payment' || order.paymentStatus !== 'Paid') && <button type="button" onClick={() => setIsReminderModalOpen(true)} className="min-h-12 flex-1 rounded-xl bg-amber-600 px-4 text-sm font-black text-white">Payment reminder</button>}
+                    {order.status === 'Delivered' && order.paymentStatus === 'Paid' && <Link href={`/orders/${order.id}/receipt`} className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-gray-950 px-4 text-sm font-black text-white">Open receipt</Link>}
                 </div>
             </div>
 
@@ -605,7 +615,7 @@ export default function AdminOrderDetailsPage() {
             {/* Record Payment Modal */}
             {isPaymentModalOpen && (
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 transform animate-in slide-in-from-bottom-8 duration-300">
+                    <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-10">
                         <div className="flex items-center gap-4 mb-8">
                             <div className="w-12 h-12 bg-green-100 rounded-2xl flex items-center justify-center text-green-600">
                                 <span className="text-2xl">💰</span>
@@ -683,7 +693,7 @@ export default function AdminOrderDetailsPage() {
             {/* Verify Manual M-Pesa Modal */}
             {isVerifyModalOpen && (
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 transform animate-in slide-in-from-bottom-8 duration-300">
+                    <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-10">
                         <div className="flex items-center gap-4 mb-8">
                             <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600">
                                 <span className="text-2xl">📲</span>
@@ -763,7 +773,7 @@ export default function AdminOrderDetailsPage() {
             {/* Reverse / Refund Modal */}
             {isReverseModalOpen && (
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 transform animate-in slide-in-from-bottom-8 duration-300">
+                    <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-10">
                         <div className="flex items-center gap-4 mb-8">
                             <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600">
                                 <span className="text-2xl">⟲</span>
@@ -826,7 +836,7 @@ export default function AdminOrderDetailsPage() {
             {/* Payment Reminder Modal */}
             {isReminderModalOpen && (
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 transform animate-in slide-in-from-bottom-8 duration-300">
+                    <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-10">
                         <div className="flex items-center gap-4 mb-8">
                             <div className="w-12 h-12 bg-amber-100 rounded-2xl flex items-center justify-center text-amber-600">
                                 <span className="text-2xl">📨</span>
@@ -911,7 +921,7 @@ export default function AdminOrderDetailsPage() {
             {/* Dispatch Modal (already styled similarly) */}
             {isDispatchModalOpen && (
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl max-w-md w-full p-10 transform animate-in slide-in-from-bottom-8 duration-300">
+                    <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-10">
                         <div className="flex items-center gap-4 mb-8">
                             <div className="w-12 h-12 bg-melagri-primary/10 rounded-2xl flex items-center justify-center text-melagri-primary">
                                 <span className="text-2xl">🚚</span>

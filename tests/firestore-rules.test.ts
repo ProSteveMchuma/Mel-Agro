@@ -4,8 +4,16 @@ import test from 'node:test';
 
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
 
-test('keeps product writes restricted to administrators', () => {
-    assert.match(rules, /match \/products\/\{productId\}[\s\S]*?allow read: if true;[\s\S]*?allow write: if isAdmin\(\);/);
+test('keeps product writes restricted to catalogue-capable administrators', () => {
+    assert.match(rules, /match \/products\/\{productId\}[\s\S]*?allow read: if true;[\s\S]*?allow write: if hasPermission\('catalogue\.manage'\);/);
+});
+
+test('enforces granular capabilities while preserving legacy administrators', () => {
+    assert.match(rules, /function hasPermission\(permission\)/);
+    assert.match(rules, /!account\.keys\(\)\.hasAny\(\['adminPermissions'\]\)/);
+    assert.match(rules, /permission in account\.adminPermissions/);
+    assert.match(rules, /match \/orders\/\{orderId\}[\s\S]*?allow create: if hasPermission\('orders\.manage'\)/);
+    assert.match(rules, /match \/users\/\{userId\}[\s\S]*?hasPermission\('customers\.manage'\)/);
 });
 
 test('prevents clients from writing payment-system collections', () => {
@@ -41,4 +49,18 @@ test('keeps the admin audit log server-authoritative', () => {
     assert.ok(block, 'Missing adminAuditLog rules block');
     assert.match(block[1], /allow write: if false;/);
     assert.match(block[1], /allow read: if isAdmin\(\);/);
+});
+
+test('keeps automation configuration and run history server-authoritative', () => {
+    for (const collection of ['automationRules', 'automationRuns']) {
+        const block = rules.match(new RegExp(`match /${collection}/\\{id\\} \\{([\\s\\S]*?)\\n    \\}`));
+        assert.ok(block, `Missing rules block for ${collection}`);
+        assert.match(block[1], /allow read, write: if false;/);
+    }
+});
+
+test('keeps per-admin analytics preferences server-authoritative', () => {
+    const block = rules.match(/match \/adminAnalyticsPreferences\/\{id\} \{([\s\S]*?)\n    \}/);
+    assert.ok(block, 'Missing adminAnalyticsPreferences rules block');
+    assert.match(block[1], /allow read, write: if false;/);
 });

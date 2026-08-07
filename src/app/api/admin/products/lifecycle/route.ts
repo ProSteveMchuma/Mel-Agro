@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/auth-server";
+import { requirePermission } from "@/lib/auth-server";
 import { adminDb } from "@/lib/firebase-admin";
 
 const schema = z.object({ productId: z.string().min(1).max(180), action: z.enum(["archive", "restore"]) });
 
 export async function POST(request: Request) {
-  const actor = await requireAdmin(request);
+  const actor = await requirePermission(request, "catalogue.manage");
   if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 401 });
   const parsed = schema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid product lifecycle request." }, { status: 400 });

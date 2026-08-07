@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import * as admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAdmin } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { sendServerSms, sendServerEmail } from '@/lib/server-notifications';
 
 type Channel = 'sms' | 'email';
 
 export async function POST(request: Request) {
-    const auth = await requireAdmin(request);
+    const auth = await requirePermission(request, 'orders.manage');
     if (!auth.ok) {
         return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
     }

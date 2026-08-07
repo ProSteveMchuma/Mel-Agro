@@ -1,10 +1,13 @@
 import { adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
+import { AdminPermission, hasAdminPermission } from '@/lib/admin-permissions';
 
 export interface AdminAuthResult {
     ok: boolean;
     uid?: string;
     email?: string;
+    role?: string;
+    permissions?: string[];
     message?: string;
 }
 
@@ -21,10 +24,19 @@ export async function requireAdmin(request: Request): Promise<AdminAuthResult> {
         if (role !== 'admin' && role !== 'super-admin') {
             return { ok: false, message: 'Admin access required' };
         }
-        return { ok: true, uid: decoded.uid, email: decoded.email };
+        return { ok: true, uid: decoded.uid, email: decoded.email, role, permissions: userData?.adminPermissions };
     } catch (e: any) {
         return { ok: false, message: e?.message || 'Invalid token' };
     }
+}
+
+export async function requirePermission(request: Request, permission: AdminPermission): Promise<AdminAuthResult> {
+    const result = await requireAdmin(request);
+    if (!result.ok) return result;
+    if (!hasAdminPermission(result.role, result.permissions, permission)) {
+        return { ...result, ok: false, message: `Missing required permission: ${permission}` };
+    }
+    return result;
 }
 
 export async function requireUser(request: Request): Promise<AdminAuthResult> {

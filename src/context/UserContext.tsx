@@ -11,6 +11,7 @@ interface UserContextType {
     users: User[];
     updateUserRole: (userId: string, role: 'admin' | 'user') => Promise<void>;
     updateUserStatus: (userId: string, status: 'active' | 'suspended') => Promise<void>;
+    updateStaffPermissions: (userId: string, staffProfile: string, permissions: string[]) => Promise<void>;
     deleteUser: (userId: string) => Promise<void>;
 }
 
@@ -71,7 +72,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         };
     }, [pathname, user]);
 
-    const mutateUser = async (body: Record<string, string>) => {
+    const mutateUser = async (body: Record<string, unknown>) => {
         const token = await getAuth().currentUser?.getIdToken();
         if (!token) throw new Error('Admin session is unavailable.');
         const response = await fetch('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
@@ -103,8 +104,13 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         await mutateUser({ action: 'delete', userId });
     };
 
+    const updateStaffPermissions = async (userId: string, staffProfile: string, permissions: string[]) => {
+        await mutateUser({ action: 'permissions', userId, staffProfile, permissions });
+        setUsers((prev) => prev.map((entry) => entry.id === userId ? { ...entry, role: 'admin', staffProfile, adminPermissions: permissions } : entry));
+    };
+
     return (
-        <UserContext.Provider value={{ users, updateUserRole, updateUserStatus, deleteUser }}>
+        <UserContext.Provider value={{ users, updateUserRole, updateUserStatus, updateStaffPermissions, deleteUser }}>
             {children}
         </UserContext.Provider>
     );

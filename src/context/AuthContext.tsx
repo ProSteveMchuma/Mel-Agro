@@ -142,6 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         personalizationEnabled: data.personalizationEnabled !== false,
                         cartRecoveryConsent: data.cartRecoveryConsent === true,
                         isAnonymous: firebaseUser.isAnonymous,
+                        adminPermissions: data.adminPermissions,
+                        staffProfile: data.staffProfile,
                     });
                     setIsAuthenticated(true);
                     setIsLoading(false);

@@ -27,7 +27,7 @@ export default function FulfillmentPage() {
     const eta = deliveryEtaAccuracy(orders);
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-6 pb-24 md:space-y-8 md:pb-0">
             {/* Header / Stats */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
@@ -59,6 +59,8 @@ export default function FulfillmentPage() {
                     </div>
                 </div>
             </div>
+
+            {selectedOrder && <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,.12)] backdrop-blur lg:hidden"><div className="mx-auto flex max-w-lg gap-2"><Link href={`/dashboard/admin/orders/${selectedOrder.id}`} className="flex min-h-12 items-center justify-center rounded-xl border border-gray-200 px-4 text-sm font-black text-gray-700">Details</Link>{selectedOrder.status === 'Processing' ? <button type="button" onClick={async () => { try { await updateOrderStatus(selectedOrder.id, 'Shipped'); toast.success('Order marked as shipped'); } catch { toast.error('Could not update order'); } }} className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white">Mark shipped</button> : <button type="button" onClick={async () => { if (!window.confirm('Confirm delivery for this order?')) return; try { await updateOrderStatus(selectedOrder.id, 'Delivered'); toast.success('Delivery confirmed'); } catch { toast.error('Could not update order'); } }} className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white">Confirm delivered</button>}</div></div>}
 
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -135,7 +137,7 @@ export default function FulfillmentPage() {
                                             </button>
                                         )}
                                         <button
-                                            onClick={() => updateOrderStatus(selectedOrder.id, 'Cancelled')}
+                                            onClick={async () => { if (!window.confirm('Cancel this order and restore its reserved stock? Any completed payment must be reversed separately.')) return; try { await updateOrderStatus(selectedOrder.id, 'Cancelled'); toast.success('Order cancelled and stock restored'); } catch { toast.error('Could not cancel order'); } }}
                                             className="w-full py-3 text-red-600 font-bold hover:bg-red-50 rounded-xl transition-all"
                                         >
                                             Cancel & Restock

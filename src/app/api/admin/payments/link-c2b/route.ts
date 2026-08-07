@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAdmin } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 
 // Manually link an unmatched M-Pesa C2B payment to an order. Used by the
 // admin payments hub when the auto-match (BillRefNumber / phone+amount)
@@ -11,7 +11,7 @@ import { requireAdmin } from '@/lib/auth-server';
 // one we're about to attach (prevents double-credit). If the existing
 // receipt matches, we treat it as a no-op success.
 export async function POST(request: Request) {
-    const auth = await requireAdmin(request);
+    const auth = await requirePermission(request, 'payments.manage');
     if (!auth.ok) {
         return NextResponse.json({ success: false, message: auth.message }, { status: 403 });
     }

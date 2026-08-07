@@ -7,26 +7,34 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user') in ['admin', 'super-admin'];
     }
+    function hasPermission(permission) {
+      let account = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return isAdmin() && (
+        account.get('role', 'user') == 'super-admin' ||
+        !account.keys().hasAny(['adminPermissions']) ||
+        permission in account.adminPermissions
+      );
+    }
 
     // Products: public catalog, server/admin inventory mutations only.
     match /products/{productId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if hasPermission('catalogue.manage');
     }
 
     // Inventory history is written by trusted server routes or admins.
     match /inventory_history/{historyId} {
       allow read: if isAdmin();
-      allow write: if isAdmin();
+      allow write: if hasPermission('catalogue.manage');
     }
 
     // Customer orders are created/cancelled by server-authoritative API routes.
     match /orders/{orderId} {
-      allow create: if isAdmin();
+      allow create: if hasPermission('orders.manage');
       allow read: if request.auth != null && (resource.data.userId == request.auth.uid || isAdmin());
       // Customers may only request a return. Payment and status changes are server/admin only.
       allow update: if request.auth != null && (
-        isAdmin() || (
+        hasPermission('orders.manage') || (
           resource.data.userId == request.auth.uid && (
             request.resource.data.diff(resource.data).affectedKeys().hasOnly(['returnStatus', 'returnReason']) &&
             request.resource.data.get('paymentStatus', resource.data.get('paymentStatus', 'Unpaid')) == resource.data.get('paymentStatus', 'Unpaid') &&
@@ -45,11 +53,11 @@ service cloud.firestore {
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == userId);
       allow create: if request.auth != null && request.auth.uid == userId && request.resource.data.get('role', 'user') == 'user';
       allow update: if (
-        isAdmin() ||
+        hasPermission('customers.manage') ||
         (request.auth != null && request.auth.uid == userId &&
          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'loyaltyPoints']))
       );
-      allow delete: if isAdmin();
+      allow delete: if hasPermission('customers.manage');
     }
 
     // Transactions are written by payment APIs (Admin SDK) or admins.
@@ -61,19 +69,19 @@ service cloud.firestore {
     // Settings: Public read (for shipping rates), Admin write
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if hasPermission('settings.manage');
     }
 
     // Shipping zones: Public read (checkout reads to compute delivery cost), Admin write
     match /shipping_zones/{zoneId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if hasPermission('settings.manage');
     }
     
     // Content: Public read, Admin write (for banners etc)
     match /content/{docId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if hasPermission('marketing.manage');
     }
     
     // Reviews: Public read, Authenticated create
@@ -138,7 +146,7 @@ service cloud.firestore {
     // Discounts/Coupons: Public read, Admin write
     match /discounts/{id} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow write: if hasPermission('catalogue.manage');
     }
 
     // M-Pesa C2B payment audit log: written only by server (admin SDK bypasses), admin reads
@@ -190,6 +198,15 @@ service cloud.firestore {
     match /adminAuditLog/{id} {
       allow read: if isAdmin();
       allow write: if false;
+    }
+    match /automationRules/{id} {
+      allow read, write: if false;
+    }
+    match /automationRuns/{id} {
+      allow read, write: if false;
+    }
+    match /adminAnalyticsPreferences/{id} {
+      allow read, write: if false;
     }
 
     // Discount usage tracking: server only

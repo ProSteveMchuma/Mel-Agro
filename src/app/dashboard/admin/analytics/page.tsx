@@ -14,6 +14,7 @@ import {
 import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import Link from 'next/link';
+import AnalyticsWorkspaceControls from '@/components/admin/AnalyticsWorkspaceControls';
 
 function InsightsContent({ markdown }: { markdown: string }) {
     return <div className="space-y-3">{markdown.split('\n').map((raw, index) => {
@@ -166,6 +167,14 @@ export default function AnalyticsPage() {
                     </div>
                 </div>
             </div>
+
+            <AnalyticsWorkspaceControls
+                range={range}
+                granularity={granularity}
+                onApplyView={(nextRange, nextGranularity) => { setRange(nextRange); setGranularity(nextGranularity); }}
+                kpis={kpis}
+                orders={ranged}
+            />
 
             {noData && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-amber-900">

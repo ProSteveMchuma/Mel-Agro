@@ -12,6 +12,8 @@ export interface User {
     joinDate?: string;
     createdAt?: string;
     status?: 'active' | 'suspended';
+    adminPermissions?: string[];
+    staffProfile?: string;
     savedAddresses?: SavedAddress[];
     affinityIndex?: Record<string, number>;
     personalizationEnabled?: boolean;
