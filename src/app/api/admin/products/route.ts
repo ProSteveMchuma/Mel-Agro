@@ -1,11 +1,22 @@
 import { NextResponse } from "next/server";
 import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
+import { z } from "zod";
 
 const PAGE_SIZE = 20;
 const SCAN_SIZE = 75;
 const MAX_SCANNED = 600;
 let categoryCache: { values: string[]; expiresAt: number } | null = null;
+
+const optionalText = (max: number) => z.string().trim().max(max).optional().default("");
+const variantSchema = z.object({ id: z.string().trim().min(1).max(100), sku: optionalText(100), name: z.string().trim().min(1).max(160), price: z.number().min(0).max(100_000_000).optional(), stockQuantity: z.number().int().min(0).max(100_000_000), weight: z.number().min(0).max(100_000).optional(), image: optionalText(1000) });
+const productSchema = z.object({
+  name: z.string().trim().min(2).max(200), price: z.number().min(0).max(100_000_000), category: z.string().trim().min(2).max(100), subCategory: optionalText(100), productCode: optionalText(100), brand: optionalText(120),
+  image: z.string().trim().url().max(1000), images: z.array(z.string().url().max(1000)).max(8).optional().default([]), rating: z.number().min(0).max(5).optional().default(0), reviews: z.number().int().min(0).max(10_000_000).optional().default(0),
+  stockQuantity: z.number().int().min(0).max(100_000_000), lowStockThreshold: z.number().int().min(0).max(1_000_000), inStock: z.boolean().optional(), description: optionalText(10_000), tags: z.array(z.string().trim().min(1).max(80)).max(30).optional().default([]), features: z.array(z.string().trim().min(1).max(300)).max(30).optional().default([]), specification: optionalText(10_000), howToUse: optionalText(10_000), variants: z.array(variantSchema).max(100).optional().default([]),
+  weight: z.number().min(0).max(100_000).optional(), weightUnit: z.enum(["kg", "g", "lb", "l", "ml"]).optional(), featured: z.boolean().optional().default(false), supplierLeadTimeDays: z.number().int().min(1).max(365).optional().default(14), incomingStock: z.number().int().min(0).max(100_000_000).optional().default(0), safetyStock: z.number().int().min(0).max(1_000_000).optional().default(0), minimumOrderQuantity: z.number().int().min(1).max(1_000_000).optional().default(1),
+}).strict();
+const mutationSchema = z.discriminatedUnion("action", [z.object({ action: z.literal("create"), data: productSchema }), z.object({ action: z.literal("update"), productId: z.string().trim().min(1).max(200), data: productSchema })]);
 
 async function getCategories() {
   if (categoryCache && categoryCache.expiresAt > Date.now()) return categoryCache.values;
@@ -74,4 +85,23 @@ export async function GET(request: Request) {
     exhausted = snapshot.size < SCAN_SIZE;
   }
   return NextResponse.json({ success: true, products, categories: await getCategories(), nextCursor: !exhausted && lastScannedId ? encodeCursor(lastScannedId) : null, searchLimited: scanned >= MAX_SCANNED && !exhausted });
+}
+
+export async function POST(request: Request) {
+  const actor = await requirePermission(request, "catalogue.manage");
+  if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 403 });
+  const parsed = mutationSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ success: false, message: parsed.error.issues[0]?.message || "Invalid product data." }, { status: 400 });
+  const input = parsed.data; const productRef = input.action === "create" ? adminDb.collection("products").doc() : adminDb.collection("products").doc(input.productId);
+  try {
+    await adminDb.runTransaction(async (transaction) => {
+      const existing = await transaction.get(productRef); if (input.action === "update" && !existing.exists) throw new Error("PRODUCT_NOT_FOUND");
+      const before = existing.data() || {}; const now = new Date().toISOString(); const totalAvailable = input.data.stockQuantity + input.data.variants.reduce((sum, variant) => sum + variant.stockQuantity, 0);
+      const product = { ...input.data, inStock: totalAvailable > 0, ...(input.action === "create" ? { createdAt: now, archived: false } : {}), updatedAt: now, updatedBy: actor.uid };
+      if (input.action === "update") transaction.set(productRef, product, { merge: true }); else transaction.set(productRef, product);
+      const previousStock = Number(before.stockQuantity || 0); if (input.action === "create" || previousStock !== input.data.stockQuantity) transaction.set(adminDb.collection("inventory_history").doc(), { productId: productRef.id, productName: input.data.name, previousStock: input.action === "create" ? 0 : previousStock, newStock: input.data.stockQuantity, change: input.data.stockQuantity - (input.action === "create" ? 0 : previousStock), type: input.action === "create" ? "initial" : "product_edit", updatedBy: actor.email || actor.uid, updatedAt: now, note: input.action === "create" ? "Product created" : "Stock changed through product editor" });
+      transaction.set(adminDb.collection("adminAuditLog").doc(), { action: input.action === "create" ? "product_created" : "product_updated", actorId: actor.uid, actorEmail: actor.email || null, targetId: productRef.id, before: input.action === "update" ? { name: before.name || null, price: before.price || null, stockQuantity: before.stockQuantity || 0 } : null, after: { name: input.data.name, price: input.data.price, stockQuantity: input.data.stockQuantity, variants: input.data.variants.length }, createdAt: now });
+    });
+    categoryCache = null; return NextResponse.json({ success: true, productId: productRef.id }, { status: input.action === "create" ? 201 : 200 });
+  } catch (error) { if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") return NextResponse.json({ success: false, message: "Product not found." }, { status: 404 }); throw error; }
 }

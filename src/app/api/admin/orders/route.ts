@@ -2,6 +2,8 @@ import { FieldPath } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth-server';
 import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
+import { z } from 'zod';
 
 const PAGE_SIZE = 20;
 const statusValues = new Set(['Pending Payment', 'Processing', 'Shipped', 'Delivered', 'Cancelled']);
@@ -45,4 +47,33 @@ export async function GET(request: Request) {
   const orders = matches.slice(0, PAGE_SIZE);
   const last = orders.at(-1); const nextCursor = last ? encode({ value: field === 'total' ? Number(last.total || 0) : String(last.date || ''), id: last.id }) : null;
   return NextResponse.json({ success: true, orders, nextCursor: hasMore ? nextCursor : null, hasMore, scanned, searchLimited: Boolean(search && scanned >= 500) });
+}
+
+const mutationSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('start_processing'), orderId: z.string().min(1).max(200) }),
+  z.object({ action: z.literal('payment_status'), orderId: z.string().min(1).max(200), paymentStatus: z.enum(['Paid', 'Unpaid']), transaction: z.object({ amount: z.number().positive().max(100_000_000), reference: z.string().trim().min(3).max(200), date: z.string().datetime(), method: z.string().trim().min(2).max(80) }).optional() }),
+]);
+
+export async function POST(request: Request) {
+  const parsed = mutationSchema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ success: false, message: parsed.error.issues[0]?.message || 'Invalid order update.' }, { status: 400 });
+  const input = parsed.data; const actor = await requirePermission(request, input.action === 'payment_status' ? 'payments.manage' : 'orders.manage');
+  if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 403 });
+  try {
+    await adminDb.runTransaction(async (transaction) => {
+      const orderRef = adminDb.collection('orders').doc(input.orderId); const orderSnapshot = await transaction.get(orderRef); if (!orderSnapshot.exists) throw new Error('ORDER_NOT_FOUND');
+      const order = orderSnapshot.data() || {}; const now = new Date().toISOString();
+      if (input.action === 'start_processing') {
+        if (order.status !== 'Pending Payment' || order.paymentStatus !== 'Paid') throw new Error('INVALID_TRANSITION');
+        transaction.update(orderRef, { status: 'Processing', processingAt: now, updatedAt: now, statusHistory: FieldValue.arrayUnion({ status: 'Processing', at: now, by: actor.email || actor.uid }) });
+        if (order.userId) transaction.set(adminDb.collection('notifications').doc(), { userId: order.userId, message: `Order #${input.orderId.slice(0, 8)} is now processing`, date: now, read: false, type: 'order' });
+        transaction.set(adminDb.collection('adminAuditLog').doc(), { action: 'order_processing_started', actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, before: { status: order.status }, after: { status: 'Processing' }, createdAt: now }); return;
+      }
+      if (input.paymentStatus === 'Paid' && !input.transaction) throw new Error('TRANSACTION_REQUIRED');
+      const update: Record<string, unknown> = { paymentStatus: input.paymentStatus, updatedAt: now };
+      if (input.paymentStatus === 'Paid' && input.transaction) { update.stockReservationStatus = 'committed'; update.paidAt = now; update.transactionId = input.transaction.reference; update.paymentMethod = input.transaction.method; transaction.set(adminDb.collection('transactions').doc(), { orderId: input.orderId, amount: input.transaction.amount, reference: input.transaction.reference, method: input.transaction.method, date: input.transaction.date, status: 'Success', recordedBy: actor.uid, recordedAt: now }); }
+      transaction.update(orderRef, update); transaction.set(adminDb.collection('adminAuditLog').doc(), { action: 'order_payment_status_changed', actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, before: { paymentStatus: order.paymentStatus || 'Unpaid' }, after: { paymentStatus: input.paymentStatus, reference: input.transaction?.reference || null }, createdAt: now });
+    });
+    return NextResponse.json({ success: true });
+  } catch (error) { const code = error instanceof Error ? error.message : ''; if (code === 'ORDER_NOT_FOUND') return NextResponse.json({ success: false, message: 'Order not found.' }, { status: 404 }); if (code === 'INVALID_TRANSITION') return NextResponse.json({ success: false, message: 'Only a paid pending order can begin processing.' }, { status: 409 }); if (code === 'TRANSACTION_REQUIRED') return NextResponse.json({ success: false, message: 'Transaction details are required when manually marking an order paid.' }, { status: 400 }); throw error; }
 }

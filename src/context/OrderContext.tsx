@@ -1,7 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, updateDoc, setDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction, limit, arrayUnion } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, setDoc, doc, query, orderBy, getDocs, where, onSnapshot, QuerySnapshot, getDoc, increment, runTransaction, limit } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
 import { NotificationService } from '@/lib/notifications';
 import { CommunicationTemplates } from '@/lib/communication-templates';
@@ -339,6 +339,14 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
+        const token = await getAuth().currentUser?.getIdToken(); if (!token) throw new Error('Your session expired. Please sign in again.');
+        const endpoint = status === 'Shipped' || status === 'Delivered' ? '/api/admin/fulfillment' : '/api/admin/orders';
+        if (status === 'Pending Payment') throw new Error('Orders cannot be moved back to pending payment.');
+        const body = status === 'Processing' ? { action: 'start_processing', orderId } : { action: 'status', orderId, status };
+        const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) }); const result = await response.json(); if (!response.ok) throw new Error(result.message || 'Could not update order status.');
+        return;
+
+        /* Legacy client flow removed from execution after the server-authoritative migration.
         const orderRef = doc(db, "orders", orderId);
 
         // Check previous status to handle stock restoration
@@ -407,9 +415,13 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
                 console.error("Unified Communications Status Update Error:", error);
             }
         }
+        */
     };
 
     const updateOrderPaymentStatus = async (orderId: string, paymentStatus: 'Paid' | 'Unpaid', transactionDetails?: { amount: number, reference: string, date: string, method: string }) => {
+        const token = await getAuth().currentUser?.getIdToken(); if (!token) throw new Error('Your session expired. Please sign in again.'); const response = await fetch('/api/admin/orders', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ action: 'payment_status', orderId, paymentStatus, transaction: transactionDetails }) }); const result = await response.json(); if (!response.ok) throw new Error(result.message || 'Could not update payment status.');
+        return;
+        /* Legacy manual payment flow removed from execution after the audited API migration.
         const orderRef = doc(db, "orders", orderId);
         const updateData: any = {
             paymentStatus,
@@ -445,6 +457,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             console.error("Failed to update order payment status:", error);
             throw error; // Re-throw to notify specific UI component
         }
+        */
     };
 
     const requestReturn = async (orderId: string, reason: string) => {
