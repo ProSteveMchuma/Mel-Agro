@@ -2,7 +2,8 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { db } from "@/lib/firebase";
-import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { DELIVERY_ZONES, DeliveryZone } from "@/lib/delivery";
 
 export interface GeneralSettings {
@@ -41,7 +42,6 @@ interface SettingsContextType {
     updateGeneralSettings: (settings: Partial<GeneralSettings>) => Promise<void>;
     updateTaxSettings: (settings: Partial<TaxSettings>) => Promise<void>;
     updateNotificationSettings: (settings: Partial<NotificationSettings>) => Promise<void>;
-    updateShippingSettings: (settings: Partial<ShippingSettings>) => Promise<void>;
 }
 
 const defaultGeneral: GeneralSettings = {
@@ -72,6 +72,16 @@ const defaultShipping: ShippingSettings = {
 };
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
+
+async function updateAdminSetting(section: "general" | "tax" | "notifications", data: unknown) {
+    const token = await getAuth().currentUser?.getIdToken();
+    if (!token) throw new Error("Sign in again to save settings.");
+    const current = await fetch("/api/admin/settings", { headers: { Authorization: `Bearer ${token}` } });
+    const currentData = await current.json();
+    if (!current.ok) throw new Error(currentData.message || "Unable to load current settings.");
+    const response = await fetch("/api/admin/settings", { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ section, version: currentData.versions?.[section] || 0, data }) });
+    const result = await response.json(); if (!response.ok) throw new Error(result.message || "Unable to save settings.");
+}
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
     const [general, setGeneral] = useState<GeneralSettings>(defaultGeneral);
@@ -108,41 +118,22 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }, []);
 
     const updateGeneralSettings = async (settings: Partial<GeneralSettings>) => {
-        try {
-            const ref = doc(db, "settings", "general");
-            await setDoc(ref, settings, { merge: true });
-        } catch (error) {
+        try { await updateAdminSetting("general", { ...general, ...settings }); } catch (error) {
             console.error("Error updating general settings:", error);
             throw error;
         }
     };
 
     const updateTaxSettings = async (settings: Partial<TaxSettings>) => {
-        try {
-            const ref = doc(db, "settings", "tax");
-            await setDoc(ref, settings, { merge: true });
-        } catch (error) {
+        try { await updateAdminSetting("tax", { ...tax, ...settings }); } catch (error) {
             console.error("Error updating tax settings:", error);
             throw error;
         }
     };
 
     const updateNotificationSettings = async (settings: Partial<NotificationSettings>) => {
-        try {
-            const ref = doc(db, "settings", "notifications");
-            await setDoc(ref, settings, { merge: true });
-        } catch (error) {
+        try { await updateAdminSetting("notifications", { ...notifications, ...settings }); } catch (error) {
             console.error("Error updating notification settings:", error);
-            throw error;
-        }
-    };
-
-    const updateShippingSettings = async (settings: Partial<ShippingSettings>) => {
-        try {
-            const ref = doc(db, "settings", "shipping");
-            await setDoc(ref, settings, { merge: true });
-        } catch (error) {
-            console.error("Error updating shipping settings:", error);
             throw error;
         }
     };
@@ -156,8 +147,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             loading,
             updateGeneralSettings,
             updateTaxSettings,
-            updateNotificationSettings,
-            updateShippingSettings
+            updateNotificationSettings
         }}>
             {children}
         </SettingsContext.Provider>

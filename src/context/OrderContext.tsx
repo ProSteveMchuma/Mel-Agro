@@ -51,6 +51,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         let q;
         if (user.role === 'admin' || user.role === 'super-admin') {
+            if (pathname === '/dashboard/admin/orders' || pathname === '/dashboard/admin/inventory' || pathname === '/dashboard/admin/fulfillment' || pathname === '/dashboard/admin/payments' || pathname === '/dashboard/admin/reports' || pathname === '/dashboard/admin/analytics' || pathname === '/dashboard/admin/logistics') { setOrders([]); return; }
             const adminOrderRoutes = ['/dashboard/admin', '/dashboard/admin/orders', '/dashboard/admin/analytics', '/dashboard/admin/reports', '/dashboard/admin/intelligence', '/dashboard/admin/logistics', '/dashboard/admin/inventory', '/dashboard/admin/fulfillment', '/dashboard/admin/operations', '/dashboard/admin/payments'];
             const needsAdminOrders = adminOrderRoutes.some((route) => pathname === route || (route !== '/dashboard/admin' && pathname.startsWith(`${route}/`)));
             if (!needsAdminOrders) { setOrders([]); return; }

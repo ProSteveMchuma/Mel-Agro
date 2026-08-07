@@ -1,10 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { db } from "@/lib/firebase";
-import { collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, updateDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import { KENYAN_COUNTIES, DeliveryZone, getDeliveryCost, FREE_SHIPPING_THRESHOLD } from "@/lib/delivery";
-import { useOrders } from "@/context/OrderContext";
 
 type ZoneFormState = {
     id?: string;
@@ -40,8 +38,10 @@ function autoEtaText(min: number, max: number): string {
 }
 
 export default function LogisticsPage() {
-    const { orders } = useOrders();
     const [zones, setZones] = useState<DeliveryZone[]>([]);
+    const [version, setVersion] = useState(0);
+    const [analytics, setAnalytics] = useState<Record<string, { orders: number; revenue: number }>>({});
+    const [coverage, setCoverage] = useState({ explicitlyAssigned: 0, totalCounties: 47, fallbackConfigured: false });
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState<ZoneFormState | null>(null);
     const [saving, setSaving] = useState(false);
@@ -51,22 +51,13 @@ export default function LogisticsPage() {
     const [previewCounty, setPreviewCounty] = useState('Nairobi');
     const [previewTotal, setPreviewTotal] = useState('5000');
 
-    // Live subscription
+    // Server-authoritative configuration snapshot.
     useEffect(() => {
-        const q = query(collection(db, 'shipping_zones'), orderBy('order', 'asc'));
-        const unsub = onSnapshot(
-            q,
-            (snap) => {
-                setZones(snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as DeliveryZone[]);
-                setLoading(false);
-            },
-            (err) => {
-                console.error('logistics listener:', err);
-                toast.error('Could not load zones');
-                setLoading(false);
-            },
-        );
-        return () => unsub();
+        const controller = new AbortController();
+        (async () => { try { const token = await getAuth().currentUser?.getIdToken(); if (!token) throw new Error('Admin session is unavailable.'); const response = await fetch('/api/admin/logistics', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }); const result = await response.json(); if (!response.ok) throw new Error(result.message); setZones(result.zones || []); setVersion(result.version || 0); setAnalytics(result.analytics || {}); setCoverage(result.coverage || coverage); } catch (error) { if ((error as Error).name !== 'AbortError') toast.error(error instanceof Error ? error.message : 'Could not load zones'); } finally { if (!controller.signal.aborted) setLoading(false); } })();
+        return () => controller.abort();
+        // Coverage is replaced by the response and should not trigger another fetch.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // Duplicate-region detection: which counties are claimed by more than one zone
@@ -86,25 +77,18 @@ export default function LogisticsPage() {
     }, [zones]);
 
     // Per-zone analytics for the last 30 days
-    const zoneAnalytics = useMemo(() => {
-        const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-        const byZone = new Map<string, { orders: number; revenue: number }>();
-        for (const o of orders) {
-            const t = new Date(o.date).getTime();
-            if (!Number.isFinite(t) || t < cutoff) continue;
-            if ((o as any).paymentStatus !== 'Paid') continue;
-            const county = String((o as any).shippingAddress?.county || '');
-            const info = getDeliveryCost(county, Number(o.total) || 0, zones);
-            const key = info.zoneName === 'Free Shipping'
-                ? (zones.find(z => (z.regions || []).some(r => r.toLowerCase() === county.toLowerCase()))?.name || 'Free Shipping')
-                : info.zoneName;
-            const cur = byZone.get(key) || { orders: 0, revenue: 0 };
-            cur.orders += 1;
-            cur.revenue += Number(o.total) || 0;
-            byZone.set(key, cur);
-        }
-        return byZone;
-    }, [orders, zones]);
+    const zoneAnalytics = useMemo(() => new Map(Object.entries(analytics)), [analytics]);
+
+    const publishZones = async (nextZones: DeliveryZone[]) => {
+        const token = await getAuth().currentUser?.getIdToken();
+        if (!token) throw new Error('Admin session is unavailable.');
+        const normalized = nextZones.map((zone, index) => ({ ...zone, id: String(zone.id || `zone_${crypto.randomUUID()}`), order: Number(zone.order ?? index + 1), freeShippingThreshold: Number(zone.freeShippingThreshold || 0) }));
+        const response = await fetch('/api/admin/logistics', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ version, zones: normalized }) });
+        const result = await response.json(); if (!response.ok) throw new Error(result.message || 'Could not publish shipping zones.');
+        setZones(normalized); setVersion(result.version);
+        const explicit = new Set(normalized.flatMap((zone) => zone.regions.filter((region) => KENYAN_COUNTIES.includes(region))));
+        setCoverage({ explicitlyAssigned: explicit.size, totalCounties: KENYAN_COUNTIES.length, fallbackConfigured: normalized.filter((zone) => zone.isFallback).length === 1 });
+    };
 
     // Preview rate
     const previewResult = useMemo(() => {
@@ -159,7 +143,8 @@ export default function LogisticsPage() {
             }
         }
 
-        const payload: Omit<DeliveryZone, 'id'> = {
+        const payload: DeliveryZone = {
+            id: editing.id || `zone_${crypto.randomUUID()}`,
             name: editing.name.trim(),
             regions: editing.regions,
             price: Math.max(0, Number(editing.price) || 0),
@@ -173,13 +158,9 @@ export default function LogisticsPage() {
 
         setSaving(true);
         try {
-            if (editing.id) {
-                await updateDoc(doc(db, 'shipping_zones', editing.id), payload as any);
-                toast.success('Zone updated');
-            } else {
-                await addDoc(collection(db, 'shipping_zones'), payload);
-                toast.success('Zone created');
-            }
+            const nextZones = editing.id ? zones.map((zone) => zone.id === editing.id ? payload : zone) : [...zones, payload];
+            await publishZones(nextZones);
+            toast.success(editing.id ? 'Zone configuration published' : 'Zone created and published');
             setEditing(null);
         } catch (err: any) {
             console.error('save zone:', err);
@@ -192,8 +173,8 @@ export default function LogisticsPage() {
     const handleDelete = async () => {
         if (!deleteId) return;
         try {
-            await deleteDoc(doc(db, 'shipping_zones', deleteId));
-            toast.success('Zone deleted');
+            await publishZones(zones.filter((zone) => zone.id !== deleteId));
+            toast.success('Zone removed and configuration published');
         } catch (err: any) {
             toast.error(err?.message || 'Delete failed');
         } finally {
@@ -214,6 +195,12 @@ export default function LogisticsPage() {
                 >
                     + New Zone
                 </button>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl border border-gray-200 bg-white p-4"><p className="text-[10px] font-black uppercase tracking-wider text-gray-400">Configuration revision</p><p className="mt-1 text-2xl font-black text-gray-950">{version}</p></div>
+                <div className="rounded-2xl border border-gray-200 bg-white p-4"><p className="text-[10px] font-black uppercase tracking-wider text-gray-400">Explicit county coverage</p><p className="mt-1 text-2xl font-black text-gray-950">{coverage.explicitlyAssigned}/{coverage.totalCounties}</p></div>
+                <div className={`rounded-2xl border p-4 ${coverage.fallbackConfigured ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}><p className="text-[10px] font-black uppercase tracking-wider text-gray-500">Fallback protection</p><p className={`mt-1 text-lg font-black ${coverage.fallbackConfigured ? 'text-green-700' : 'text-red-700'}`}>{coverage.fallbackConfigured ? 'Configured' : 'Missing'}</p></div>
             </div>
 
             {duplicateRegions.size > 0 && (

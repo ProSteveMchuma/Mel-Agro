@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast';
 import Logo from '@/components/Logo';
 import AdminNotificationsPopover from '@/components/admin/AdminNotificationsPopover';
 import AdminCommandCentre from '@/components/admin/AdminCommandCentre';
-import { AdminPermission, hasAdminPermission } from '@/lib/admin-permissions';
+import { hasAdminPermission, permissionForAdminPath } from '@/lib/admin-permissions';
 import AdminHelpDrawer from '@/components/admin/AdminHelpDrawer';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -204,19 +204,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
     const isActive = (href: string) => href === '/dashboard/admin' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
     const groupOrder = ['Overview', 'Commerce', 'Catalogue', 'Customers', 'Intelligence', 'Operations', 'System'];
-    const permissionForHref = (href: string): AdminPermission | null => {
-        if (/orders|fulfillment|operations|logistics|action-centre/.test(href)) return 'orders.manage';
-        if (/payments|mpesa/.test(href)) return 'payments.manage';
-        if (/products|inventory|discounts|reviews/.test(href)) return 'catalogue.manage';
-        if (/newsletter|cms|messages/.test(href)) return 'marketing.manage';
-        if (/analytics|reports|intelligence|audit-log/.test(href)) return 'analytics.view';
-        if (/settings|automations/.test(href)) return 'settings.manage';
-        return null;
-    };
     const groupedMenuItems = menuItems.filter((item) => {
-        const permission = permissionForHref(item.href);
+        const permission = permissionForAdminPath(item.href);
         return !permission || hasAdminPermission(user?.role, user?.adminPermissions, permission);
     }).sort((a, b) => groupOrder.indexOf(navGroup(a.href)) - groupOrder.indexOf(navGroup(b.href)));
+    const currentPermission = permissionForAdminPath(pathname);
+    const canViewCurrentPage = !currentPermission || hasAdminPermission(user?.role, user?.adminPermissions, currentPermission);
     const closeSidebarOnMobile = () => {
         if (window.innerWidth < 768) setIsSidebarOpen(false);
     };
@@ -376,7 +369,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </header>
 
                 <main className="p-4 md:p-8">
-                    {children}
+                    {canViewCurrentPage ? children : <div className="mx-auto max-w-xl rounded-3xl border border-amber-200 bg-white p-8 text-center shadow-sm"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-xl text-amber-800">!</div><h1 className="mt-4 text-2xl font-black text-gray-950">Access not assigned</h1><p className="mt-2 text-sm leading-6 text-gray-600">Your staff profile does not include <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">{currentPermission}</code>. Ask a super-admin to update your access if this is part of your role.</p><Link href="/dashboard/admin" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-gray-950 px-5 text-sm font-black text-white">Return to overview</Link></div>}
                 </main>
             </div>
         </div>

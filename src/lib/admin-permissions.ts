@@ -26,3 +26,14 @@ export function profileForPermissions(permissions: string[] | undefined): StaffP
   const match = Object.entries(STAFF_PROFILES).find(([, profile]) => [...profile.permissions].sort().join("|") === normalized);
   return (match?.[0] as StaffProfile | undefined) || "custom";
 }
+
+export function permissionForAdminPath(path: string): AdminPermission | null {
+  if (/\/admin\/(orders|fulfillment|operations|logistics|action-centre)(\/|$)/.test(path)) return "orders.manage";
+  if (/\/admin\/(payments)(\/|$)|\/admin\/settings\/mpesa/.test(path)) return "payments.manage";
+  if (/\/admin\/(products|inventory|discounts|reviews|product-intelligence)(\/|$)/.test(path)) return "catalogue.manage";
+  if (/\/admin\/(newsletter|cms)(\/|$)/.test(path)) return "marketing.manage";
+  if (/\/admin\/(users|messages)(\/|$)/.test(path)) return "customers.manage";
+  if (/\/admin\/(analytics|reports|intelligence|intelligence-health|audit-log)(\/|$)/.test(path)) return "analytics.view";
+  if (/\/admin\/(settings|automations)(\/|$)/.test(path)) return "settings.manage";
+  return null;
+}

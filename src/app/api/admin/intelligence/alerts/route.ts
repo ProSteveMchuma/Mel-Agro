@@ -1,6 +1,6 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import { adminDb } from '@/lib/firebase-admin';
 import { demandSpikes, paymentFailureClusters, refundWatch, slaBreaches, stockOutForecast } from '@/lib/operational-alerts';
 import type { Order, Product } from '@/types';
@@ -13,14 +13,14 @@ function safeId(value: string) {
 }
 
 export async function GET(request: Request) {
-    const auth = await requireAdmin(request);
+    const auth = await requirePermission(request, 'analytics.view');
     if (!auth.ok) return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
     const snapshot = await adminDb.collection('intelligence_alerts').orderBy('updatedAt', 'desc').limit(250).get();
     return NextResponse.json({ success: true, generatedAt: new Date().toISOString(), alerts: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) });
 }
 
 export async function POST(request: Request) {
-    const auth = await requireAdmin(request);
+    const auth = await requirePermission(request, 'analytics.view');
     if (!auth.ok) return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
     const [orderSnap, productSnap] = await Promise.all([
         adminDb.collection('orders').orderBy('date', 'desc').limit(1500).get(),
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-    const auth = await requireAdmin(request);
+    const auth = await requirePermission(request, 'analytics.view');
     if (!auth.ok) return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
     const body = await request.json().catch(() => ({}));
     const id = typeof body.id === 'string' ? safeId(body.id) : '';

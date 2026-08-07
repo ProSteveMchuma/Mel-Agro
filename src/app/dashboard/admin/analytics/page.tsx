@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { useOrders } from "@/context/OrderContext";
+import type { Order } from "@/types";
 import {
     DateRange, Granularity,
     filterByRange, computeKPIs, revenueSeries, topProducts,
@@ -75,7 +75,10 @@ function Card({ title, subtitle, children, className = '' }: { title: string; su
 }
 
 export default function AnalyticsPage() {
-    const { orders } = useOrders();
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [dataLoading, setDataLoading] = useState(true);
+    const [dataError, setDataError] = useState<string | null>(null);
+    const [dataTruncated, setDataTruncated] = useState(false);
     const [range, setRange] = useState<DateRange>('30d');
     const [granularity, setGranularity] = useState<Granularity>('day');
     const [aiState, setAiState] = useState<InsightsState>({
@@ -123,6 +126,24 @@ export default function AnalyticsPage() {
     useEffect(() => {
         loadInsights(false);
         // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [range]);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        (async () => {
+            setDataLoading(true); setDataError(null);
+            try {
+                const token = await getAuth().currentUser?.getIdToken();
+                if (!token) throw new Error('Admin session is unavailable.');
+                const response = await fetch(`/api/admin/analytics/data?range=${range}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || 'Could not load analytics data.');
+                setOrders(result.orders || []); setDataTruncated(Boolean(result.truncated));
+            } catch (caught) {
+                if ((caught as Error).name !== 'AbortError') setDataError(caught instanceof Error ? caught.message : 'Could not load analytics data.');
+            } finally { if (!controller.signal.aborted) setDataLoading(false); }
+        })();
+        return () => controller.abort();
     }, [range]);
 
     const ranged = useMemo(() => filterByRange(orders, range), [orders, range]);
@@ -175,6 +196,10 @@ export default function AnalyticsPage() {
                 kpis={kpis}
                 orders={ranged}
             />
+
+            {dataLoading && <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm font-semibold text-gray-500">Refreshing secured analytics data…</div>}
+            {dataError && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">{dataError}</div>}
+            {dataTruncated && <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">This view reached the 2,500-order analysis limit. Use a shorter range for complete charts.</div>}
 
             {noData && (
                 <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-amber-900">

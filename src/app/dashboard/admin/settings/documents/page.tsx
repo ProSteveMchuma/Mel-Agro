@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
-import { doc, getDoc, setDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getAuth } from "firebase/auth";
+import { toast } from "react-hot-toast";
 
 // Mock Order for Preview
 const mockOrder: any = {
@@ -38,11 +38,9 @@ export default function DocumentSettingsPage() {
     useEffect(() => {
         // Load template settings
         const loadSettings = async () => {
-            const docRef = doc(db, "settings", "documents");
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                setTemplateSettings((current) => ({ ...current, ...docSnap.data() }));
-            }
+            const token = await getAuth().currentUser?.getIdToken(); if (!token) return;
+            const response = await fetch("/api/admin/settings", { headers: { Authorization: `Bearer ${token}` } }); const data = await response.json();
+            if (response.ok && data.settings?.documents) setTemplateSettings((current) => ({ ...current, ...data.settings.documents }));
         };
         loadSettings();
     }, []);
@@ -50,15 +48,14 @@ export default function DocumentSettingsPage() {
     const handleSave = async () => {
         setSaving(true);
         try {
-            await setDoc(doc(db, "settings", "documents"), templateSettings, { merge: true });
-            alert("Template settings saved!");
+            const token = await getAuth().currentUser?.getIdToken(); if (!token) throw new Error("Sign in again to save settings.");
+            const currentResponse = await fetch("/api/admin/settings", { headers: { Authorization: `Bearer ${token}` } }); const current = await currentResponse.json();
+            if (!currentResponse.ok) throw new Error(current.message || "Unable to load settings.");
+            const response = await fetch("/api/admin/settings", { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ section: "documents", version: current.versions?.documents || 0, data: templateSettings }) }); const result = await response.json();
+            if (!response.ok) throw new Error(result.message || "Unable to save document settings."); toast.success("Document settings saved");
         } catch (error: any) {
             console.error("Error saving template settings:", error);
-            if (error.code === 'permission-denied') {
-                alert("Error: You do not have permission to save these settings.");
-            } else {
-                alert(`Failed to save settings: ${error.message}`);
-            }
+            toast.error(error?.message || "Failed to save settings");
         } finally {
             setSaving(false);
         }

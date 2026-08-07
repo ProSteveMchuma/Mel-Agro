@@ -1,97 +1,48 @@
 "use client";
-import { useOrders } from "@/context/OrderContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getAuth } from "firebase/auth";
+import { toast } from "react-hot-toast";
+import type { Order } from "@/types";
 import { SalesReportTemplate } from "@/components/documents/SalesReportTemplate";
 
 export default function ReportsPage() {
-    const { orders } = useOrders();
-    const [dateRange, setDateRange] = useState({
-        start: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-        end: new Date().toISOString().split('T')[0]
-    });
+  const [dateRange, setDateRange] = useState({ start: new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10), end: new Date().toISOString().slice(0, 10) });
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [truncated, setTruncated] = useState(false);
 
-    const filteredOrders = orders.filter(order => {
-        const orderDate = new Date(order.date).toISOString().split('T')[0];
-        return orderDate >= dateRange.start && orderDate <= dateRange.end;
-    });
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true); setError("");
+      try {
+        const token = await getAuth().currentUser?.getIdToken();
+        if (!token) throw new Error("Admin session is unavailable.");
+        const response = await fetch(`/api/admin/reports/data?start=${dateRange.start}&end=${dateRange.end}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Could not generate report.");
+        setOrders(result.orders || []); setTruncated(Boolean(result.truncated));
+      } catch (caught) { if ((caught as Error).name !== "AbortError") setError(caught instanceof Error ? caught.message : "Could not generate report."); }
+      finally { if (!controller.signal.aborted) setLoading(false); }
+    }, 250);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [dateRange.start, dateRange.end]);
 
-    return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Sales Analytics</h1>
-                    <p className="text-gray-500 text-sm">Monitor business performance and growth metrics.</p>
-                </div>
-                <button
-                    onClick={() => window.print()}
-                    className="bg-melagri-primary text-white px-6 py-2.5 rounded-xl shadow-lg shadow-melagri-primary/20 hover:bg-melagri-secondary transition-all font-bold text-sm flex items-center gap-2"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                    </svg>
-                    Print Report
-                </button>
-            </div>
+  async function exportCsv() {
+    try {
+      const token = await getAuth().currentUser?.getIdToken();
+      if (!token) throw new Error("Admin session is unavailable.");
+      const response = await fetch(`/api/admin/reports/data?start=${dateRange.start}&end=${dateRange.end}&format=csv`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!response.ok) { const result = await response.json(); throw new Error(result.message || "Export failed."); }
+      const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `melagri-sales-${dateRange.start}-to-${dateRange.end}.csv`; link.click(); URL.revokeObjectURL(url);
+    } catch (caught) { toast.error(caught instanceof Error ? caught.message : "Export failed."); }
+  }
 
-            {/* Date Filters */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-wrap gap-4 items-end print:hidden">
-                <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Start Date</label>
-                    <input
-                        type="date"
-                        className="p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-melagri-primary"
-                        value={dateRange.start}
-                        onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
-                    />
-                </div>
-                <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">End Date</label>
-                    <input
-                        type="date"
-                        className="p-2 border border-gray-200 rounded-lg text-sm outline-none focus:border-melagri-primary"
-                        value={dateRange.end}
-                        onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
-                    />
-                </div>
-                <div className="flex-grow"></div>
-                <div className="text-xs text-gray-400 font-bold mb-2">
-                    Showing {filteredOrders.length} orders in range
-                </div>
-            </div>
-
-            {/* Report Preview */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden shadow-2xl shadow-gray-200/50">
-                <div className="p-1 min-h-[800px] bg-gray-50/50 print:bg-white print:p-0">
-                    <SalesReportTemplate
-                        orders={filteredOrders}
-                        startDate={new Date(dateRange.start)}
-                        endDate={new Date(dateRange.end)}
-                    />
-                </div>
-            </div>
-
-            <style jsx global>{`
-                @media print {
-                    aside, header, .print\\:hidden {
-                        display: none !important;
-                    }
-                    main {
-                        padding: 0 !important;
-                        margin: 0 !important;
-                    }
-                    .container-custom {
-                        max-width: 100% !important;
-                    }
-                    body {
-                        background: white !important;
-                    }
-                    #sales-report-template {
-                        padding: 0 !important;
-                        margin: 0 !important;
-                        border: none !important;
-                    }
-                }
-            `}</style>
-        </div>
-    );
+  return <div className="space-y-6"><div className="flex flex-wrap items-end justify-between gap-4"><header><p className="mb-1 text-[10px] font-black uppercase tracking-[.18em] text-green-700">Business intelligence</p><h1 className="text-2xl font-black text-gray-950">Sales reports</h1><p className="mt-1 text-sm text-gray-500">Paid revenue, refunds and order activity using consistent financial definitions.</p></header><div className="flex gap-2 print:hidden"><button onClick={exportCsv} disabled={loading || Boolean(error)} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm font-black disabled:opacity-40">Export safe CSV</button><button onClick={() => window.print()} disabled={loading || Boolean(error)} className="min-h-11 rounded-xl bg-green-700 px-5 text-sm font-black text-white disabled:opacity-40">Print report</button></div></div>
+    <section className="flex flex-wrap items-end gap-4 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm print:hidden"><label className="text-[10px] font-black uppercase tracking-wider text-gray-500">Start date<input type="date" value={dateRange.start} onChange={(event) => setDateRange((current) => ({ ...current, start: event.target.value }))} className="mt-2 block min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold normal-case"/></label><label className="text-[10px] font-black uppercase tracking-wider text-gray-500">End date<input type="date" value={dateRange.end} onChange={(event) => setDateRange((current) => ({ ...current, end: event.target.value }))} className="mt-2 block min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold normal-case"/></label><p className="ml-auto pb-3 text-xs font-bold text-gray-400">{loading ? "Generating…" : `${orders.length} orders in range`}</p></section>
+    {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}{truncated && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs font-semibold text-amber-800">This report reached the 5,000-row safety limit. Shorten the date range for a complete export.</div>}
+    {loading ? <div className="rounded-2xl border border-gray-200 bg-white p-16 text-center text-sm font-semibold text-gray-500">Generating report…</div> : !error && <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-sm"><SalesReportTemplate orders={orders} startDate={new Date(`${dateRange.start}T00:00:00`)} endDate={new Date(`${dateRange.end}T23:59:59`)} /></div>}
+    <style jsx global>{`@media print { aside, header, .print\\:hidden { display:none!important } main{padding:0!important;margin:0!important} body{background:white!important} #sales-report-template{padding:0!important;margin:0!important;border:none!important} }`}</style>
+  </div>;
 }

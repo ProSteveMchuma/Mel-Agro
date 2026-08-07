@@ -99,7 +99,7 @@ export default function MpesaSettingsPage() {
                         const registeredHost = (() => { try { return new URL(config.confirmationURL).host; } catch { return ''; } })();
                         const liveHost = (() => { try { return new URL(liveBase).host; } catch { return ''; } })();
                         const domainMismatch = registeredHost && liveHost && registeredHost !== liveHost;
-                        const fullySetUp = config.success && !domainMismatch;
+                        const fullySetUp = config.registrationSuccessful && !domainMismatch;
                         return (
                             <div className="space-y-4">
                                 {fullySetUp && (
@@ -112,8 +112,8 @@ export default function MpesaSettingsPage() {
                                     </div>
                                 )}
                                 <div className="flex items-center gap-2">
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${config.success ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                                        {config.success ? 'Registered' : 'Registration may have failed'}
+                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${config.registrationSuccessful ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                                        {config.registrationSuccessful ? 'Registered' : 'Registration may have failed'}
                                     </span>
                                     <span className="text-xs text-gray-500">
                                         Last registered {config.registeredAt ? new Date(config.registeredAt).toLocaleString() : 'unknown'}
@@ -130,7 +130,6 @@ export default function MpesaSettingsPage() {
                                     <div className="flex justify-between"><span className="text-gray-500 font-bold">Validation URL</span><code className="font-mono text-xs break-all max-w-md text-right">{config.validationURL}</code></div>
                                     <div className="flex justify-between"><span className="text-gray-500 font-bold">Response Type</span><span className="font-bold">{config.responseType}</span></div>
                                     <div className="flex justify-between"><span className="text-gray-500 font-bold">Short Code</span><code className="font-mono text-xs">{config.shortCode}</code></div>
-                                    <div className="flex justify-between"><span className="text-gray-500 font-bold">Registered By</span><span className="text-xs">{config.registeredByEmail}</span></div>
                                 </div>
                                 {config.response?.errorMessage && (
                                     <div className="bg-red-50 border border-red-100 rounded-xl p-4 text-sm text-red-700">
@@ -196,7 +195,7 @@ export default function MpesaSettingsPage() {
             <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
                 <h3 className="font-black text-amber-900 text-sm mb-2">⚠️ Production note</h3>
                 <p className="text-sm text-amber-800 leading-relaxed">
-                    For production C2B to work, the URLs you register here must be publicly reachable HTTPS endpoints. Safaricom has an IP allowlist enabled by default — if you see callbacks being rejected in your logs, set <code className="bg-amber-100 px-1 rounded">MPESA_DISABLE_IP_CHECK=true</code> temporarily to debug.
+                    Production URLs must be publicly reachable HTTPS endpoints. Keep callback IP verification enabled in production; diagnose rejected callbacks through the payment alerts and server logs before changing security controls.
                 </p>
             </div>
         </div>

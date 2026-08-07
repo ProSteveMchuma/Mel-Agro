@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { requireAdmin } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import { adminDb } from '@/lib/firebase-admin';
 import { buildInventoryRecommendations, findSearchDemandGaps } from '@/lib/product-intelligence';
 import type { Order, Product } from '@/types';
 import { catalogueSeoSummary } from '@/lib/seo-quality';
 
 export async function GET(request: Request) {
-    const auth = await requireAdmin(request);
+    const auth = await requirePermission(request, 'analytics.view');
     if (!auth.ok) return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
     const [ordersSnap, productsSnap, searchesSnap, performanceSnap] = await Promise.all([
         adminDb.collection('orders').orderBy('date', 'desc').limit(1500).get(),

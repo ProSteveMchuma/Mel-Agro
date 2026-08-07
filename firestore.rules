@@ -69,26 +69,26 @@ service cloud.firestore {
     // Settings: Public read (for shipping rates), Admin write
     match /settings/{settingId} {
       allow read: if true;
-      allow write: if hasPermission('settings.manage');
+      allow write: if false; // Admin SDK only: validated, versioned settings API.
     }
 
     // Shipping zones: Public read (checkout reads to compute delivery cost), Admin write
     match /shipping_zones/{zoneId} {
       allow read: if true;
-      allow write: if hasPermission('settings.manage');
+      allow write: if false;
     }
     
     // Content: Public read, Admin write (for banners etc)
     match /content/{docId} {
       allow read: if true;
-      allow write: if hasPermission('marketing.manage');
+      allow write: if false;
     }
     
     // Reviews: Public read, Authenticated create
     match /reviews/{reviewId} {
-      allow read: if true;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && request.auth.uid == resource.data.userId;
+      allow read: if resource.data.get('status', 'pending') == 'approved' || isAdmin() || (request.auth != null && resource.data.userId == request.auth.uid);
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid && request.resource.data.get('status', 'pending') == 'pending';
+      allow update, delete: if false;
     }
 
     // Wishlist: Private to user
@@ -129,6 +129,24 @@ service cloud.firestore {
       allow read, delete: if isAdmin();
       allow write: if false;
     }
+
+    // Customer support conversations are owner-scoped for customers and managed by support staff.
+    match /conversations/{conversationId} {
+      allow read: if hasPermission('customers.manage') || (request.auth != null && request.auth.uid == conversationId);
+      allow create: if hasPermission('customers.manage') || (request.auth != null && request.auth.uid == conversationId);
+      allow update: if hasPermission('customers.manage') || (
+        request.auth != null && request.auth.uid == conversationId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['id', 'userName', 'userEmail', 'lastMessage', 'lastMessageAt', 'unreadCount'])
+      );
+      allow delete: if false;
+      match /messages/{messageId} {
+        allow read: if hasPermission('customers.manage') || (request.auth != null && request.auth.uid == conversationId);
+        allow create: if request.auth != null && (
+          hasPermission('customers.manage') || (request.auth.uid == conversationId && request.resource.data.senderId == request.auth.uid)
+        );
+        allow update, delete: if false;
+      }
+    }
     match /analytics_recommendations/{id} {
       allow read, delete: if isAdmin();
       allow write: if false;
@@ -146,7 +164,7 @@ service cloud.firestore {
     // Discounts/Coupons: Public read, Admin write
     match /discounts/{id} {
       allow read: if true;
-      allow write: if hasPermission('catalogue.manage');
+      allow write: if false;
     }
 
     // M-Pesa C2B payment audit log: written only by server (admin SDK bypasses), admin reads

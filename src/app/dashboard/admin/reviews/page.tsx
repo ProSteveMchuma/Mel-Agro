@@ -1,124 +1,16 @@
 "use client";
-import React, { useEffect, useState } from 'react';
-import { Review, getAllReviewsForAdmin, updateReviewStatus } from '@/lib/reviews';
-import { toast } from 'react-hot-toast';
+import { useEffect, useState } from "react";
+import { getAuth } from "firebase/auth";
+import { toast } from "react-hot-toast";
 
+type Review = { id: string; userName?: string; productName?: string; productId?: string; rating: number; comment: string; status: "pending" | "approved" | "rejected"; date: string; createdAt: string; verifiedPurchase?: boolean };
 export default function AdminReviewsPage() {
-    const [reviews, setReviews] = useState<Review[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
-    const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
-
-    const loadReviews = async () => {
-        setIsLoading(true);
-        const data = await getAllReviewsForAdmin();
-        setReviews(data);
-        setIsLoading(false);
-    };
-
-    useEffect(() => {
-        loadReviews();
-    }, []);
-
-    const handleStatusUpdate = async (id: string, status: 'approved' | 'rejected') => {
-        const success = await updateReviewStatus(id, status);
-        if (success) {
-            toast.success(`Review ${status}`);
-            setReviews(prev => prev.map(r => r.id === id ? { ...r, status } : r));
-        } else {
-            toast.error("Failed to update status");
-        }
-    };
-
-    const filteredReviews = reviews.filter(r => {
-        if (filter === 'all') return true;
-        return r.status === filter;
-    });
-
-    return (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Review Moderation</h1>
-                    <p className="text-sm text-gray-500 mt-1 uppercase font-bold tracking-widest">Manage customer feedback and quality control</p>
-                </div>
-                <div className="flex bg-white p-1 rounded-2xl border border-gray-100 shadow-sm">
-                    {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
-                        <button
-                            key={f}
-                            onClick={() => setFilter(f)}
-                            className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${filter === f ? 'bg-melagri-primary text-white shadow-lg shadow-melagri-primary/20' : 'text-gray-400 hover:text-gray-900'
-                                }`}
-                        >
-                            {f}
-                        </button>
-                    ))}
-                </div>
-            </div>
-
-            {isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[1, 2, 3, 4].map(i => (
-                        <div key={i} className="bg-white h-48 rounded-3xl animate-pulse border border-gray-100"></div>
-                    ))}
-                </div>
-            ) : filteredReviews.length === 0 ? (
-                <div className="bg-white p-20 rounded-3xl border border-dashed border-gray-200 text-center">
-                    <p className="text-gray-400 font-bold uppercase tracking-widest">No reviews found in this category</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {filteredReviews.map(review => (
-                        <div key={review.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all group overflow-hidden relative">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-gray-50 rounded-xl flex items-center justify-center font-bold text-gray-400">
-                                        {(review.userName || 'U').charAt(0).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <p className="font-bold text-gray-900">{review.userName || 'Anonymous'}</p>
-                                        <p className="text-[10px] text-gray-400 font-medium">{review.date}</p>
-                                    </div>
-                                </div>
-                                <div className="flex text-yellow-400 text-xs">
-                                    {[...Array(5)].map((_, i) => (
-                                        <span key={i}>{i < review.rating ? '★' : '☆'}</span>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <p className="text-sm text-gray-600 mb-6 leading-relaxed italic">"{review.comment}"</p>
-
-                            <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                                <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md ${review.status === 'approved' ? 'bg-green-50 text-green-600' :
-                                        review.status === 'rejected' ? 'bg-red-50 text-red-600' :
-                                            'bg-amber-50 text-amber-600'
-                                    }`}>
-                                    Status: {review.status}
-                                </span>
-
-                                <div className="flex gap-2">
-                                    {review.status !== 'approved' && (
-                                        <button
-                                            onClick={() => handleStatusUpdate(review.id, 'approved')}
-                                            className="px-4 py-2 bg-melagri-primary text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-lg shadow-melagri-primary/10"
-                                        >
-                                            Approve
-                                        </button>
-                                    )}
-                                    {review.status !== 'rejected' && (
-                                        <button
-                                            onClick={() => handleStatusUpdate(review.id, 'rejected')}
-                                            className="px-4 py-2 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:scale-105 transition-all"
-                                        >
-                                            Reject
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
+  const [reviews, setReviews] = useState<Review[]>([]); const [filter, setFilter] = useState("all"); const [cursor, setCursor] = useState<string | null>(null); const [history, setHistory] = useState<Array<string | null>>([]); const [nextCursor, setNextCursor] = useState<string | null>(null); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState(""); const [refreshKey, setRefreshKey] = useState(0);
+  useEffect(() => { const controller = new AbortController(); (async () => { setLoading(true); setError(""); try { const token = await getAuth().currentUser?.getIdToken(); if (!token) throw new Error("Admin session is unavailable."); const params = new URLSearchParams({ status: filter }); if (cursor) params.set("cursor", cursor); const response = await fetch(`/api/admin/reviews?${params}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }); const result = await response.json(); if (!response.ok) throw new Error(result.message); setReviews(result.reviews || []); setNextCursor(result.nextCursor || null); } catch (caught) { if ((caught as Error).name !== "AbortError") setError(caught instanceof Error ? caught.message : "Could not load reviews."); } finally { if (!controller.signal.aborted) setLoading(false); } })(); return () => controller.abort(); }, [filter, cursor, refreshKey]);
+  async function moderate(review: Review, status: "approved" | "rejected") { const note = status === "rejected" ? window.prompt("Optional internal reason for rejection:") || "" : ""; setSaving(true); try { const token = await getAuth().currentUser?.getIdToken(); if (!token) throw new Error("Admin session is unavailable."); const response = await fetch("/api/admin/reviews", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify({ reviewId: review.id, status, moderationNote: note }) }); const result = await response.json(); if (!response.ok) throw new Error(result.message); toast.success(`Review ${status}`); setRefreshKey((value) => value + 1); } catch (caught) { toast.error(caught instanceof Error ? caught.message : "Moderation failed."); } finally { setSaving(false); } }
+  return <div className="space-y-6"><div className="flex flex-wrap items-end justify-between gap-4"><header><p className="mb-1 text-[10px] font-black uppercase tracking-[.18em] text-green-700">Trust & quality</p><h1 className="text-2xl font-black text-gray-950">Review moderation</h1><p className="mt-1 text-sm text-gray-500">Publish authentic customer feedback with traceable moderation decisions.</p></header><div className="flex rounded-xl border bg-white p-1">{["all", "pending", "approved", "rejected"].map((item) => <button key={item} onClick={() => { setFilter(item); setCursor(null); setHistory([]); }} className={`rounded-lg px-3 py-2 text-xs font-black uppercase ${filter === item ? "bg-gray-950 text-white" : "text-gray-500"}`}>{item}</button>)}</div></div>
+    {error && <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>}{loading ? <Empty>Loading reviews…</Empty> : reviews.length === 0 && !error ? <Empty>No reviews found in this state.</Empty> : <div className="grid gap-4 md:grid-cols-2">{reviews.map((review) => <article key={review.id} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><div className="flex justify-between gap-3"><div><p className="font-black text-gray-950">{review.userName || "Anonymous customer"}</p><p className="text-xs text-gray-500">{review.productName || `Product ${review.productId || "unknown"}`} · {review.createdAt || review.date ? new Date(review.createdAt || review.date).toLocaleDateString() : ""}</p></div><div className="text-amber-500" aria-label={`${review.rating} out of 5 stars`}>{"★".repeat(review.rating)}<span className="text-gray-200">{"★".repeat(5 - review.rating)}</span></div></div>{review.verifiedPurchase && <span className="mt-3 inline-flex rounded-full bg-blue-50 px-2 py-1 text-[9px] font-black uppercase text-blue-700">Verified purchase</span>}<p className="my-5 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">“{review.comment}”</p><div className="flex items-center justify-between border-t border-gray-100 pt-4"><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${review.status === "approved" ? "bg-green-50 text-green-700" : review.status === "rejected" ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700"}`}>{review.status}</span><div className="flex gap-2">{review.status !== "approved" && <button disabled={saving} onClick={() => moderate(review, "approved")} className="rounded-lg bg-green-700 px-3 py-2 text-xs font-black text-white disabled:opacity-40">Approve</button>}{review.status !== "rejected" && <button disabled={saving} onClick={() => moderate(review, "rejected")} className="rounded-lg bg-gray-950 px-3 py-2 text-xs font-black text-white disabled:opacity-40">Reject</button>}</div></div></article>)}</div>}
+    {reviews.length > 0 && <footer className="flex items-center justify-between text-xs text-gray-500"><span>Page {history.length + 1}</span><div className="flex gap-2"><button disabled={history.length === 0} onClick={() => setHistory((current) => { const copy = [...current]; setCursor(copy.pop() ?? null); return copy; })} className="rounded-lg border bg-white px-3 py-2 font-bold disabled:opacity-40">Previous</button><button disabled={!nextCursor} onClick={() => { if (nextCursor) { setHistory((current) => [...current, cursor]); setCursor(nextCursor); } }} className="rounded-lg border bg-white px-3 py-2 font-bold disabled:opacity-40">Next</button></div></footer>}
+  </div>;
 }
+function Empty({ children }: { children: React.ReactNode }) { return <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-16 text-center text-sm text-gray-500">{children}</div>; }

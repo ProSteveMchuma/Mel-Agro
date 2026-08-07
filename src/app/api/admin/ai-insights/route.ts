@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAdmin } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import {
     DateRange, filterByRange, computeKPIs,
     revenueSeries, topProducts, revenueByCategory, revenueByCounty,
@@ -84,7 +84,7 @@ async function writeCache(insight: CachedInsight) {
 }
 
 export async function POST(request: Request) {
-    const auth = await requireAdmin(request);
+    const auth = await requirePermission(request, 'analytics.view');
     if (!auth.ok) {
         return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
     }
@@ -210,7 +210,7 @@ Now produce the briefing.`;
 }
 
 export async function GET(request: Request) {
-    const auth = await requireAdmin(request);
+    const auth = await requirePermission(request, 'analytics.view');
     if (!auth.ok) {
         return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
     }

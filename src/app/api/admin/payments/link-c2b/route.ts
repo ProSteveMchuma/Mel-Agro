@@ -1,116 +1,70 @@
-import { NextResponse } from 'next/server';
-import { adminDb } from '@/lib/firebase-admin';
-import { requirePermission } from '@/lib/auth-server';
+import { FieldValue } from "firebase-admin/firestore";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { adminDb } from "@/lib/firebase-admin";
+import { requirePermission } from "@/lib/auth-server";
 
-// Manually link an unmatched M-Pesa C2B payment to an order. Used by the
-// admin payments hub when the auto-match (BillRefNumber / phone+amount)
-// missed but the operator has identified the right order.
-//
-// Idempotency: refuses if the c2bPayment is already 'Matched'. Refuses if
-// the order is already 'Paid' AND the existing receipt differs from the
-// one we're about to attach (prevents double-credit). If the existing
-// receipt matches, we treat it as a no-op success.
+const schema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("ignore"), c2bPaymentId: z.string().min(1).max(200), orderId: z.string().optional() }),
+  z.object({ action: z.literal("link"), c2bPaymentId: z.string().min(1).max(200), orderId: z.string().min(1).max(200) }),
+]);
+
 export async function POST(request: Request) {
-    const auth = await requirePermission(request, 'payments.manage');
-    if (!auth.ok) {
-        return NextResponse.json({ success: false, message: auth.message }, { status: 403 });
-    }
-
-    let body: any = {};
-    try {
-        body = await request.json();
-    } catch {
-        return NextResponse.json({ success: false, message: 'Invalid JSON body' }, { status: 400 });
-    }
-
-    const c2bPaymentId = String(body?.c2bPaymentId || '').trim();
-    const orderId = String(body?.orderId || '').trim();
-    const action = String(body?.action || 'link').trim();
-
-    if (!c2bPaymentId) {
-        return NextResponse.json({ success: false, message: 'c2bPaymentId is required' }, { status: 400 });
-    }
-
-    const c2bRef = adminDb.collection('c2bPayments').doc(c2bPaymentId);
-    const c2bSnap = await c2bRef.get();
-    if (!c2bSnap.exists) {
-        return NextResponse.json({ success: false, message: 'C2B payment not found' }, { status: 404 });
-    }
-    const c2b = c2bSnap.data() as any;
-
-    if (action === 'ignore') {
-        await c2bRef.update({
-            status: 'Ignored',
-            ignoredBy: auth.uid,
-            ignoredByEmail: auth.email || null,
-            ignoredAt: new Date().toISOString(),
-        });
-        return NextResponse.json({ success: true, action: 'ignore' });
-    }
-
-    if (!orderId) {
-        return NextResponse.json({ success: false, message: 'orderId is required to link' }, { status: 400 });
-    }
-    if (c2b.status === 'Matched' && c2b.matchedOrderId === orderId) {
-        return NextResponse.json({ success: true, action: 'noop', message: 'Already matched to this order' });
-    }
-    if (c2b.status === 'Matched') {
-        return NextResponse.json({
-            success: false,
-            message: `This payment is already matched to order ${c2b.matchedOrderId}`,
-        }, { status: 409 });
-    }
-
-    const orderRef = adminDb.collection('orders').doc(orderId);
-    const orderSnap = await orderRef.get();
-    if (!orderSnap.exists) {
-        return NextResponse.json({ success: false, message: 'Order not found' }, { status: 404 });
-    }
-    const order = orderSnap.data() as any;
-    const incomingReceipt = String(c2b.transID || '');
-    const existingReceipt = String(order.mpesaReceiptNumber || order.transactionId || '');
-
-    if (order.paymentStatus === 'Paid' && existingReceipt && incomingReceipt && existingReceipt !== incomingReceipt) {
-        return NextResponse.json({
-            success: false,
-            message: `Order ${orderId} is already Paid with a different receipt (${existingReceipt}). Refusing to overwrite.`,
-        }, { status: 409 });
-    }
-
-    const now = new Date().toISOString();
-    const internalEntry = {
-        date: now,
-        author: auth.email || auth.uid || 'admin',
-        note: `Manually linked M-Pesa Till payment ${incomingReceipt || c2bPaymentId} (${Number(c2b.amount) || 0} KES) to this order via Payments hub.`,
+  const actor = await requirePermission(request, "payments.manage");
+  if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 403 });
+  const parsed = schema.safeParse(await request.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid reconciliation request." }, { status: 400 });
+  const input = parsed.data;
+  try {
+    const outcome = await adminDb.runTransaction(async (transaction) => {
+      const paymentRef = adminDb.collection("c2bPayments").doc(input.c2bPaymentId);
+      const paymentSnapshot = await transaction.get(paymentRef);
+      if (!paymentSnapshot.exists) throw new Error("PAYMENT_NOT_FOUND");
+      const payment = paymentSnapshot.data() || {};
+      const now = new Date().toISOString();
+      if (input.action === "ignore") {
+        if (payment.status === "Matched") throw new Error("ALREADY_MATCHED");
+        if (payment.status === "Ignored") return "noop";
+        transaction.update(paymentRef, { status: "Ignored", ignoredBy: actor.uid, ignoredByEmail: actor.email || null, ignoredAt: now });
+        transaction.set(adminDb.collection("adminAuditLog").doc(), { action: "c2b_payment_ignored", actorId: actor.uid, actorEmail: actor.email || null, targetId: input.c2bPaymentId, before: { status: payment.status || null }, after: { status: "Ignored" }, createdAt: now });
+        return "ignored";
+      }
+      const orderRef = adminDb.collection("orders").doc(input.orderId);
+      const orderSnapshot = await transaction.get(orderRef);
+      if (!orderSnapshot.exists) throw new Error("ORDER_NOT_FOUND");
+      const order = orderSnapshot.data() || {};
+      if (payment.status === "Matched" && payment.matchedOrderId === input.orderId) return "noop";
+      if (payment.status === "Matched") throw new Error("ALREADY_MATCHED");
+      if (payment.status === "Ignored") throw new Error("PAYMENT_IGNORED");
+      const incomingReceipt = String(payment.transID || "");
+      const existingReceipt = String(order.mpesaReceiptNumber || order.transactionId || "");
+      if (order.paymentStatus === "Paid" && existingReceipt !== incomingReceipt) throw new Error("ORDER_ALREADY_PAID");
+      const incomingAmount = Number(payment.amount || 0);
+      const orderTotal = Number(order.total || 0);
+      if (!Number.isFinite(incomingAmount) || incomingAmount <= 0 || Math.abs(incomingAmount - orderTotal) > 0.01) throw new Error("AMOUNT_MISMATCH");
+      transaction.update(orderRef, {
+        paymentStatus: "Paid", paymentMethod: order.paymentMethod || "M-Pesa", transactionId: incomingReceipt || order.transactionId || null,
+        mpesaReceiptNumber: incomingReceipt || order.mpesaReceiptNumber || null, mpesaPhoneNumber: payment.phone || order.mpesaPhoneNumber || null,
+        amountPaid: incomingAmount, paymentResolvedVia: "Manual_Admin_Link", paidAt: order.paidAt || now, updatedAt: now,
+        stockReservationStatus: "committed",
+        internalHistory: FieldValue.arrayUnion({ date: now, author: actor.email || actor.uid, note: `Manually linked M-Pesa Till payment ${incomingReceipt || input.c2bPaymentId} (${incomingAmount} KES).` }),
+      });
+      transaction.update(paymentRef, { status: "Matched", matchedOrderId: input.orderId, matchReason: "Manual_Admin_Link", matchedBy: actor.uid, matchedByEmail: actor.email || null, matchedAt: now });
+      transaction.set(adminDb.collection("adminAuditLog").doc(), { action: "c2b_payment_linked", actorId: actor.uid, actorEmail: actor.email || null, targetId: input.c2bPaymentId, before: { paymentStatus: order.paymentStatus || null, paymentRecordStatus: payment.status || null }, after: { orderId: input.orderId, paymentStatus: "Paid", receipt: incomingReceipt, amount: incomingAmount }, createdAt: now });
+      if (order.userId) transaction.set(adminDb.collection("notifications").doc(), { userId: order.userId, message: `Payment received for order #${input.orderId.slice(0, 8)}.`, date: now, read: false, type: "order" });
+      return "linked";
+    });
+    return NextResponse.json({ success: true, action: outcome });
+  } catch (error) {
+    const code = error instanceof Error ? error.message : "";
+    const responses: Record<string, { message: string; status: number }> = {
+      PAYMENT_NOT_FOUND: { message: "C2B payment not found.", status: 404 }, ORDER_NOT_FOUND: { message: "Order not found.", status: 404 },
+      ALREADY_MATCHED: { message: "This payment has already been matched.", status: 409 }, PAYMENT_IGNORED: { message: "This payment was marked as unrelated. Review its audit history before changing it.", status: 409 },
+      ORDER_ALREADY_PAID: { message: "This order is already paid with a different receipt.", status: 409 }, AMOUNT_MISMATCH: { message: "Payment amount does not exactly match the order total. Review both records before linking.", status: 409 },
     };
-
-    const batch = adminDb.batch();
-    batch.update(orderRef, {
-        paymentStatus: 'Paid',
-        paymentMethod: order.paymentMethod || 'M-Pesa',
-        transactionId: incomingReceipt || order.transactionId || null,
-        mpesaReceiptNumber: incomingReceipt || order.mpesaReceiptNumber || null,
-        mpesaPhoneNumber: c2b.phone || order.mpesaPhoneNumber || null,
-        amountPaid: Number(c2b.amount) || order.amountPaid || order.total || null,
-        paymentResolvedVia: 'Manual_Admin_Link',
-        paidAt: order.paidAt || now,
-        updatedAt: now,
-        internalHistory: [...(Array.isArray(order.internalHistory) ? order.internalHistory : []), internalEntry],
-    });
-    batch.update(c2bRef, {
-        status: 'Matched',
-        matchedOrderId: orderId,
-        matchReason: 'Manual_Admin_Link',
-        matchedBy: auth.uid,
-        matchedByEmail: auth.email || null,
-        matchedAt: now,
-    });
-
-    try {
-        await batch.commit();
-        return NextResponse.json({ success: true, action: 'link' });
-    } catch (e: any) {
-        console.error('link-c2b failed:', e);
-        return NextResponse.json({ success: false, message: e?.message || 'Update failed' }, { status: 500 });
-    }
+    const response = responses[code];
+    if (response) return NextResponse.json({ success: false, message: response.message }, { status: response.status });
+    console.error("C2B reconciliation failed", error);
+    return NextResponse.json({ success: false, message: "Reconciliation failed. Please retry." }, { status: 500 });
+  }
 }

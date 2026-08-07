@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAdmin } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { scoreCartRecovery } from '@/lib/recovery-intelligence';
 
@@ -16,7 +16,7 @@ function isoDate(value: unknown): string | null {
 }
 
 export async function GET(request: Request) {
-    const auth = await requireAdmin(request);
+    const auth = await requirePermission(request, 'analytics.view');
     if (!auth.ok) return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
 
     const snapshot = await adminDb.collection('carts').where('status', '==', 'active').limit(250).get();
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-    const auth = await requireAdmin(request);
+    const auth = await requirePermission(request, 'orders.manage');
     if (!auth.ok) return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
     const body = await request.json().catch(() => ({}));
     const cartId = typeof body.cartId === 'string' && !body.cartId.includes('/') ? body.cartId : '';

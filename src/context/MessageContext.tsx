@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
 import { collection, addDoc, doc, query, orderBy, onSnapshot, setDoc, serverTimestamp, limit } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
+import { usePathname } from 'next/navigation';
 
 export interface ChatMessage {
     id: string;
@@ -39,6 +40,7 @@ const MessageContext = createContext<MessageContextType | undefined>(undefined);
 
 export function MessageProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
+    const pathname = usePathname();
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -55,6 +57,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         let unsubscribe: () => void;
 
         if (user.role === 'admin' || user.role === 'super-admin') {
+            if (pathname === '/dashboard/admin/messages') { setConversations([]); setLoading(false); return; }
             // Admin sees the most recent conversations. Older threads remain in Firestore but
             // aren't streamed live; if needed, the messages page can paginate further on demand.
             const q = query(collection(db, 'conversations'), orderBy('lastMessageAt', 'desc'), limit(100));
@@ -77,7 +80,7 @@ export function MessageProvider({ children }: { children: React.ReactNode }) {
         return () => {
             if (unsubscribe) unsubscribe();
         };
-    }, [user]);
+    }, [pathname, user]);
 
     // 2. Listen to Messages for Active Conversation
     useEffect(() => {

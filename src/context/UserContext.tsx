@@ -30,7 +30,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         const setupRealtimeListener = async () => {
             const adminUserRoutes = ['/dashboard/admin', '/dashboard/admin/users', '/dashboard/admin/intelligence', '/dashboard/admin/orders/create'];
             const needsAdminUsers = adminUserRoutes.some((route) => pathname === route || (route !== '/dashboard/admin' && pathname.startsWith(`${route}/`)));
-            if (!user || (user.role !== 'admin' && user.role !== 'super-admin') || !needsAdminUsers) {
+            const usesPaginatedDirectory = pathname === '/dashboard/admin/users';
+            if (!user || (user.role !== 'admin' && user.role !== 'super-admin') || !needsAdminUsers || usesPaginatedDirectory) {
                 setUsers([]);
                 return;
             }

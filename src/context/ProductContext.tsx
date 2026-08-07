@@ -29,7 +29,8 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const adminProductRoutes = ['/dashboard/admin', '/dashboard/admin/products', '/dashboard/admin/inventory', '/dashboard/admin/fulfillment', '/dashboard/admin/operations', '/dashboard/admin/messages', '/dashboard/admin/orders/create'];
-        if (pathname.startsWith('/dashboard/admin') && !adminProductRoutes.some((route) => pathname === route || (route !== '/dashboard/admin' && pathname.startsWith(`${route}/`)))) {
+        const usesServerProductFeed = pathname === '/dashboard/admin/products' || pathname === '/dashboard/admin/inventory' || pathname === '/dashboard/admin/fulfillment' || pathname === '/dashboard/admin/messages';
+        if (usesServerProductFeed || (pathname.startsWith('/dashboard/admin') && !adminProductRoutes.some((route) => pathname === route || (route !== '/dashboard/admin' && pathname.startsWith(`${route}/`))))) {
             setProducts([]); setArchivedProducts([]); return;
         }
         // Cap the live stream to keep first-paint payload bounded. Stores beyond this size

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAdmin } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import { reverseTransaction } from '@/lib/mpesa-server';
 
 export async function POST(request: Request) {
     try {
-        const auth = await requireAdmin(request);
+        const auth = await requirePermission(request, 'payments.manage');
         if (!auth.ok) {
             return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
         }

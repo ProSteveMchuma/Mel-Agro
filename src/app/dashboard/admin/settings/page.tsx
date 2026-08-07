@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSettings } from "@/context/SettingsContext";
 import { toast } from "react-hot-toast";
 
 export default function SettingsPage() {
-    const { general, tax, notifications, shipping, updateGeneralSettings, updateTaxSettings, updateNotificationSettings, updateShippingSettings, loading } = useSettings();
+    const { general, tax, notifications, updateGeneralSettings, updateTaxSettings, updateNotificationSettings, loading } = useSettings();
     const [activeTab, setActiveTab] = useState("general");
     const [saving, setSaving] = useState(false);
 
@@ -14,7 +14,10 @@ export default function SettingsPage() {
     const [generalForm, setGeneralForm] = useState(general);
     const [taxForm, setTaxForm] = useState(tax);
     const [notifForm, setNotifForm] = useState(notifications);
-    const [shippingForm, setShippingForm] = useState(shipping);
+
+    useEffect(() => setGeneralForm(general), [general]);
+    useEffect(() => setTaxForm(tax), [tax]);
+    useEffect(() => setNotifForm(notifications), [notifications]);
 
     // Sync local state when context loads
     if (loading) return <div className="p-8">Loading settings...</div>;
@@ -26,7 +29,6 @@ export default function SettingsPage() {
             if (activeTab === "general") await updateGeneralSettings(generalForm);
             if (activeTab === "tax") await updateTaxSettings(taxForm);
             if (activeTab === "notifications") await updateNotificationSettings(notifForm);
-            if (activeTab === "shipping") await updateShippingSettings(shippingForm);
             toast.success('Settings saved', { id: t });
         } catch (error: any) {
             console.error("Error saving settings:", error);
@@ -40,12 +42,6 @@ export default function SettingsPage() {
         }
     };
 
-    const handleZonePriceChange = (index: number, newPrice: number) => {
-        const newZones = [...shippingForm.zones];
-        newZones[index] = { ...newZones[index], price: newPrice };
-        setShippingForm({ ...shippingForm, zones: newZones });
-    };
-
     return (
         <div className="space-y-6">
             {/* ... Header and Tabs ... */}
@@ -54,13 +50,13 @@ export default function SettingsPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
                     <p className="text-gray-500 text-sm">Manage global store configuration.</p>
                 </div>
-                <button
+                {['general', 'tax', 'notifications'].includes(activeTab) && <button
                     onClick={handleSave}
                     disabled={saving}
                     className="bg-melagri-primary text-white px-6 py-2 rounded-lg hover:bg-melagri-secondary disabled:opacity-50 transition-colors font-medium"
                 >
                     {saving ? "Saving..." : "Save Changes"}
-                </button>
+                </button>}
             </div>
 
             {/* Tabs */}
@@ -207,42 +203,9 @@ export default function SettingsPage() {
                 )}
 
                 {activeTab === "shipping" && (
-                    <div className="space-y-6">
-                        <p className="text-sm text-gray-500">Configure delivery zones and pricing. These rates will be calculated at checkout based on the customer's county.</p>
-
-                        <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 text-gray-500">
-                                    <tr>
-                                        <th className="px-6 py-3 font-medium">Zone Name</th>
-                                        <th className="px-6 py-3 font-medium">Regions (Counties)</th>
-                                        <th className="px-6 py-3 font-medium text-right">Delivery Price (KES)</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {shippingForm.zones.map((zone, index) => (
-                                        <tr key={index} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 font-medium text-gray-900">{zone.name}</td>
-                                            <td className="px-6 py-4 text-gray-600 max-w-md">
-                                                <div className="flex flex-wrap gap-1">
-                                                    {zone.regions.map(r => (
-                                                        <span key={r} className="bg-gray-100 px-2 py-0.5 rounded text-xs">{r}</span>
-                                                    ))}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <input
-                                                    type="number"
-                                                    value={zone.price}
-                                                    onChange={(e) => handleZonePriceChange(index, parseFloat(e.target.value))}
-                                                    className="w-32 p-2 text-right rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
-                                                />
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                    <div className="space-y-4 max-w-2xl">
+                        <p className="text-sm text-gray-600">Delivery zones, county coverage, pricing, ETAs and publishing controls are managed in the live logistics workspace.</p>
+                        <Link href="/dashboard/admin/logistics" className="inline-flex px-5 py-3 rounded-xl bg-melagri-primary text-white text-sm font-bold hover:bg-melagri-secondary">Open logistics settings →</Link>
                     </div>
                 )}
 

@@ -1,234 +1,87 @@
 "use client";
-import React, { useState, useEffect } from 'react';
-import { useOrders } from '@/context/OrderContext';
-import { useProducts } from '@/context/ProductContext';
-import { Order } from '@/types';
-import Link from 'next/link';
-import { toast } from 'react-hot-toast';
-import Image from 'next/image';
-import { deliveryEtaAccuracy } from '@/lib/fulfillment-intelligence';
+
+import { useEffect, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { getAuth } from "firebase/auth";
+import { toast } from "react-hot-toast";
+import type { Order } from "@/types";
+
+type Stats = { processing: number; shipped: number; stockAlerts: number };
 
 export default function FulfillmentPage() {
-    const { orders, updateOrderStatus } = useOrders();
-    const { products } = useProducts();
-    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [stats, setStats] = useState<Stats>({ processing: 0, shipped: 0, stockAlerts: 0 });
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [history, setHistory] = useState<Array<string | null>>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [searchLimited, setSearchLimited] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-    // Only orders that are Paid and not yet Delivered/Cancelled
-    const actionableOrders = orders.filter(o =>
-        o.paymentStatus === 'Paid' &&
-        ['Processing', 'Shipped'].includes(o.status)
-    );
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      setLoading(true); setError("");
+      try {
+        const token = await getAuth().currentUser?.getIdToken();
+        if (!token) throw new Error("Admin session is unavailable.");
+        const params = new URLSearchParams();
+        if (search.trim()) params.set("q", search.trim());
+        if (status !== "all") params.set("status", status);
+        if (cursor) params.set("cursor", cursor);
+        const response = await fetch(`/api/admin/fulfillment?${params}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Could not load fulfillment queue.");
+        setOrders(result.orders || []); setNextCursor(result.nextCursor || null); setStats(result.stats || { processing: 0, shipped: 0, stockAlerts: 0 }); setSearchLimited(Boolean(result.searchLimited));
+        setSelectedOrder((current) => current ? (result.orders || []).find((order: Order) => order.id === current.id) || null : null);
+      } catch (caught) { if ((caught as Error).name !== "AbortError") setError(caught instanceof Error ? caught.message : "Could not load fulfillment queue."); }
+      finally { if (!controller.signal.aborted) setLoading(false); }
+    }, search ? 300 : 0);
+    return () => { window.clearTimeout(timer); controller.abort(); };
+  }, [search, status, cursor, refreshKey]);
 
-    const stats = {
-        pending: orders.filter(o => o.status === 'Processing' && o.paymentStatus === 'Paid').length,
-        shipped: orders.filter(o => o.status === 'Shipped').length,
-        outOfStock: products.filter(p => p.stockQuantity === 0).length,
-    };
-    const eta = deliveryEtaAccuracy(orders);
+  function resetPage() { setCursor(null); setHistory([]); setSelectedOrder(null); }
+  async function mutate(body: Record<string, unknown>) {
+    const token = await getAuth().currentUser?.getIdToken();
+    if (!token) throw new Error("Admin session is unavailable.");
+    const response = await fetch("/api/admin/fulfillment", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body) });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "Fulfillment update failed.");
+  }
+  async function moveOrder(order: Order, next: "Shipped" | "Delivered") {
+    if (next === "Delivered" && !window.confirm("Confirm that this order has been delivered to the customer?")) return;
+    setPending(true); const notice = toast.loading(next === "Shipped" ? "Marking order as shipped…" : "Confirming delivery…");
+    try { await mutate({ action: "status", orderId: order.id, status: next }); toast.success(next === "Shipped" ? "Order marked as shipped" : "Delivery confirmed", { id: notice }); setSelectedOrder(null); setRefreshKey((value) => value + 1); }
+    catch (caught) { toast.error(caught instanceof Error ? caught.message : "Could not update order", { id: notice }); }
+    finally { setPending(false); }
+  }
 
-    return (
-        <div className="space-y-6 pb-24 md:space-y-8 md:pb-0">
-            {/* Header / Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 012 2v4a2 2 0 01-2 2H4a2 2 0 01-2-2v-4a2 2 0 012-2m16 0h-2m-2 0H8m-2 0H4" /></svg>
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">To Fulfill</p>
-                        <p className="text-2xl font-black text-gray-900">{stats.pending}</p>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100"><p className="text-sm font-medium text-gray-500">ETA Accuracy</p><p className={`mt-1 text-2xl font-black ${eta.deliveredOrders && eta.onTimeRate < 80 ? 'text-amber-600' : 'text-emerald-700'}`}>{eta.deliveredOrders ? `${eta.onTimeRate.toFixed(0)}%` : 'Learning'}</p><p className="mt-1 text-[10px] text-gray-400">{eta.deliveredOrders} timestamped deliveries</p></div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-green-600">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">In Transit</p>
-                        <p className="text-2xl font-black text-gray-900">{stats.shipped}</p>
-                    </div>
-                </div>
-                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center text-red-600">
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">Stock Alerts</p>
-                        <p className="text-2xl font-black text-gray-900">{stats.outOfStock}</p>
-                    </div>
-                </div>
-            </div>
-
-            {selectedOrder && <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,.12)] backdrop-blur lg:hidden"><div className="mx-auto flex max-w-lg gap-2"><Link href={`/dashboard/admin/orders/${selectedOrder.id}`} className="flex min-h-12 items-center justify-center rounded-xl border border-gray-200 px-4 text-sm font-black text-gray-700">Details</Link>{selectedOrder.status === 'Processing' ? <button type="button" onClick={async () => { try { await updateOrderStatus(selectedOrder.id, 'Shipped'); toast.success('Order marked as shipped'); } catch { toast.error('Could not update order'); } }} className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white">Mark shipped</button> : <button type="button" onClick={async () => { if (!window.confirm('Confirm delivery for this order?')) return; try { await updateOrderStatus(selectedOrder.id, 'Delivered'); toast.success('Delivery confirmed'); } catch { toast.error('Could not update order'); } }} className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white">Confirm delivered</button>}</div></div>}
-
-            {/* Main Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* List of Orders */}
-                <div className="lg:col-span-2 space-y-4">
-                    <h2 className="text-xl font-bold text-gray-900">Paid Orders Waiting</h2>
-                    {actionableOrders.length === 0 ? (
-                        <div className="bg-white p-12 rounded-2xl border border-dashed border-gray-200 text-center text-gray-500">
-                            Clear for now! No pending fulfillment.
-                        </div>
-                    ) : (
-                        actionableOrders.map(order => (
-                            <div
-                                key={order.id}
-                                className={`bg-white p-5 rounded-2xl border transition-all cursor-pointer ${selectedOrder?.id === order.id ? 'border-melagri-primary ring-1 ring-melagri-primary shadow-md' : 'border-gray-100 hover:border-gray-200 shadow-sm'}`}
-                                onClick={() => setSelectedOrder(order)}
-                            >
-                                <div className="flex justify-between items-start mb-3">
-                                    <div>
-                                        <p className="font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
-                                        <p className="text-xs text-gray-500">{new Date(order.date).toLocaleString()}</p>
-                                        <p className={`mt-1 text-[10px] font-black uppercase tracking-widest ${(Date.now() - new Date(order.status === 'Shipped' ? order.shippedAt || order.date : order.processingAt || order.paidAt || order.date).getTime()) / 3_600_000 > 48 ? 'text-red-600' : 'text-gray-400'}`}>{Math.floor((Date.now() - new Date(order.status === 'Shipped' ? order.shippedAt || order.date : order.processingAt || order.paidAt || order.date).getTime()) / 3_600_000)}h in {order.status}</p>
-                                    </div>
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${order.status === 'Processing' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                                        {order.status}
-                                    </span>
-                                </div>
-                                <div className="flex items-center gap-3 text-sm text-gray-600">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                    {order.shippingAddress?.county || 'No county'}, {order.shippingAddress?.details || 'No address'}
-                                </div>
-                                <div className="mt-4 flex justify-between items-center bg-gray-50 p-3 rounded-lg overflow-x-auto">
-                                    <div className="flex -space-x-2">
-                                        {order.items.slice(0, 3).map((item, i) => (
-                                            <div key={i} className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-[10px] font-bold overflow-hidden shadow-sm">
-                                                {item.image ? <Image src={item.image} alt="" width={32} height={32} unoptimized className="w-full h-full object-cover" /> : item.name[0]}
-                                            </div>
-                                        ))}
-                                        {order.items.length > 3 && (
-                                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold">+ {order.items.length - 3}</div>
-                                        )}
-                                    </div>
-                                    <p className="text-sm font-black text-gray-900">KES {order.total.toLocaleString()}</p>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-
-                {/* Details / Actions Sidebar */}
-                <div className="lg:col-span-1">
-                    {selectedOrder ? (
-                        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 sticky top-[120px] space-y-6">
-                            <h3 className="text-lg font-bold text-gray-900 border-b pb-4">Fulfillment Actions</h3>
-
-                            <div className="space-y-4">
-                                <div className="p-4 bg-gray-50 rounded-xl space-y-3">
-                                    <p className="text-xs font-bold text-gray-400 tracking-widest uppercase">Quick Move</p>
-                                    <div className="flex flex-col gap-2">
-                                        {selectedOrder.status === 'Processing' && (
-                                            <button
-                                                onClick={() => updateOrderStatus(selectedOrder.id, 'Shipped')}
-                                                className="w-full py-3 bg-melagri-primary text-white rounded-xl font-bold hover:bg-melagri-secondary transition-all shadow-md active:scale-95"
-                                            >
-                                                Mark as Shipped
-                                            </button>
-                                        )}
-                                        {selectedOrder.status === 'Shipped' && (
-                                            <button
-                                                onClick={() => updateOrderStatus(selectedOrder.id, 'Delivered')}
-                                                className="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-md active:scale-95"
-                                            >
-                                                Confirm Delivered
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={async () => { if (!window.confirm('Cancel this order and restore its reserved stock? Any completed payment must be reversed separately.')) return; try { await updateOrderStatus(selectedOrder.id, 'Cancelled'); toast.success('Order cancelled and stock restored'); } catch { toast.error('Could not cancel order'); } }}
-                                            className="w-full py-3 text-red-600 font-bold hover:bg-red-50 rounded-xl transition-all"
-                                        >
-                                            Cancel & Restock
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <p className="text-xs font-bold text-gray-400 tracking-widest uppercase">Print Documents</p>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <Link
-                                            href={`/dashboard/admin/orders/${selectedOrder.id}/delivery-note`}
-                                            className="flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-lg text-xs font-medium hover:bg-gray-50"
-                                        >
-                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                            Packing Slip
-                                        </Link>
-                                        <Link
-                                            href={`/dashboard/admin/orders/${selectedOrder.id}/invoice`}
-                                            className="flex items-center justify-center gap-2 py-2 border border-gray-200 rounded-lg text-xs font-medium hover:bg-gray-50"
-                                        >
-                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                                            Invoice
-                                        </Link>
-                                    </div>
-                                </div>
-
-                                <InternalNotes orderId={selectedOrder.id} initialNote={selectedOrder.internalNotes || ''} history={selectedOrder.internalHistory || []} />
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="bg-gray-50 h-[400px] rounded-2xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-400 p-8 text-center">
-                            Select an order to view fulfillment actions
-                        </div>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
+  return <div className="space-y-6 pb-24 lg:pb-0">
+    <header><p className="mb-1 text-[10px] font-black uppercase tracking-[.18em] text-green-700">Order operations</p><h1 className="text-2xl font-black text-gray-950">Fulfillment queue</h1><p className="mt-1 text-sm text-gray-500">Move paid orders through dispatch and delivery with an audited workflow.</p></header>
+    <div className="grid gap-4 sm:grid-cols-3"><StatCard label="Processing" value={stats.processing} tone="blue"/><StatCard label="In transit" value={stats.shipped} tone="green"/><StatCard label="Stock alerts" value={stats.stockAlerts} tone="red"/></div>
+    <section className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:flex-row"><label className="relative flex-1"><span className="sr-only">Search queue</span><input value={search} onChange={(event) => { setSearch(event.target.value); resetPage(); }} placeholder="Order, customer, phone or county" className="min-h-11 w-full rounded-xl border border-gray-200 bg-gray-50 px-4 text-sm outline-none focus:border-green-600 focus:bg-white focus:ring-4 focus:ring-green-600/10" /></label><select value={status} onChange={(event) => { setStatus(event.target.value); resetPage(); }} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm font-bold"><option value="all">All fulfillment stages</option><option value="Processing">Processing</option><option value="Shipped">Shipped</option></select></section>
+    {searchLimited && <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">This search checked the next 600 orders. Use an order number, customer, phone, or county for a narrower match.</p>}
+    {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error} <button type="button" onClick={() => setRefreshKey((value) => value + 1)} className="ml-2 font-black underline">Retry</button></div>}
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+      <section className="space-y-3">{loading ? <QueueMessage>Loading paid orders…</QueueMessage> : orders.length === 0 && !error ? <QueueMessage>No paid orders are waiting in this stage.</QueueMessage> : orders.map((order) => <button key={order.id} type="button" onClick={() => setSelectedOrder(order)} className={`w-full rounded-2xl border bg-white p-5 text-left shadow-sm transition ${selectedOrder?.id === order.id ? "border-green-600 ring-2 ring-green-600/10" : "border-gray-200 hover:border-gray-300"}`}><div className="flex items-start justify-between gap-3"><div><p className="font-black text-gray-950">Order #{order.id.slice(0, 8)}</p><p className="mt-1 text-xs text-gray-500">{order.userName || order.userEmail || order.phone || "Guest customer"} · {new Date(order.date).toLocaleString()}</p></div><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${order.status === "Processing" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>{order.status}</span></div><p className="mt-3 text-sm text-gray-600">{order.shippingAddress?.county || "No county"} · {order.shippingAddress?.details || "No delivery address"}</p><div className="mt-4 flex items-center justify-between rounded-xl bg-gray-50 p-3"><div className="flex -space-x-2">{order.items.slice(0, 3).map((item, index) => <span key={`${item.id}-${index}`} className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gray-200 text-[10px] font-bold">{item.image ? <Image src={item.image} alt="" fill className="object-cover"/> : item.name?.[0] || "?"}</span>)}</div><span className="font-black text-gray-950">KES {Number(order.total || 0).toLocaleString()}</span></div></button>)}
+        {!loading && orders.length > 0 && <footer className="flex items-center justify-between pt-2 text-sm text-gray-500"><span>Page {history.length + 1} · {orders.length} orders</span><div className="flex gap-2"><button disabled={history.length === 0} onClick={() => setHistory((current) => { const copy = [...current]; setCursor(copy.pop() ?? null); setSelectedOrder(null); return copy; })} className="min-h-10 rounded-lg border border-gray-200 bg-white px-3 font-bold disabled:opacity-40">Previous</button><button disabled={!nextCursor} onClick={() => { if (nextCursor) { setHistory((current) => [...current, cursor]); setCursor(nextCursor); setSelectedOrder(null); } }} className="min-h-10 rounded-lg border border-gray-200 bg-white px-3 font-bold disabled:opacity-40">Next</button></div></footer>}
+      </section>
+      <aside>{selectedOrder ? <div className="sticky top-24 space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><h2 className="font-black text-gray-950">Fulfillment actions</h2><Link href={`/dashboard/admin/orders/${selectedOrder.id}`} className="text-xs font-black text-green-700 hover:underline">Full details</Link></div><div className="rounded-xl bg-gray-50 p-4"><p className="text-xs font-black uppercase tracking-wider text-gray-400">Required next step</p><button type="button" disabled={pending} onClick={() => moveOrder(selectedOrder, selectedOrder.status === "Processing" ? "Shipped" : "Delivered")} className="mt-3 min-h-12 w-full rounded-xl bg-green-700 px-4 text-sm font-black text-white hover:bg-green-800 disabled:opacity-50">{selectedOrder.status === "Processing" ? "Mark as shipped" : "Confirm delivered"}</button><p className="mt-2 text-xs text-gray-500">Paid-order cancellation and refunds must be handled from the full order screen.</p></div><div className="grid grid-cols-2 gap-2"><Link href={`/orders/${selectedOrder.id}/delivery-note`} className="rounded-lg border border-gray-200 px-3 py-2 text-center text-xs font-bold hover:bg-gray-50">Packing slip</Link><Link href={`/orders/${selectedOrder.id}/invoice`} className="rounded-lg border border-gray-200 px-3 py-2 text-center text-xs font-bold hover:bg-gray-50">Invoice</Link></div><InternalNotes order={selectedOrder} mutate={mutate} onSaved={(note) => setSelectedOrder((current) => current ? { ...current, internalNotes: note, internalHistory: [...(current.internalHistory || []), { date: new Date().toISOString(), note, author: "Current admin" }] } : current)}/></div> : <div className="flex min-h-72 items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-400">Select an order to see its next action.</div>}</aside>
+    </div>
+  </div>;
 }
 
-function InternalNotes({ orderId, initialNote, history }: { orderId: string, initialNote: string, history: any[] }) {
-    const { addInternalNote } = useOrders();
-    const [note, setNote] = useState(initialNote);
-    const [isSaving, setIsSaving] = useState(false);
-
-    useEffect(() => {
-        setNote(initialNote);
-    }, [initialNote]);
-
-    const handleSave = async () => {
-        setIsSaving(true);
-        try {
-            await addInternalNote(orderId, note);
-            toast.success("Internal note saved");
-        } catch {
-            toast.error("Failed to save note");
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    return (
-        <div className="space-y-3 pt-4 border-t border-gray-50">
-            <p className="text-xs font-bold text-gray-400 tracking-widest uppercase">Internal Notes</p>
-            <textarea
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                className="w-full text-xs rounded-xl border-gray-200 focus:ring-melagri-primary/20 p-3 min-h-[80px]"
-                placeholder="Add logistics or status notes here..."
-            />
-            <button
-                disabled={isSaving || note === initialNote}
-                onClick={handleSave}
-                className="w-full py-2 bg-gray-100 text-gray-600 text-[10px] font-black uppercase rounded-lg hover:bg-gray-200 transition-all disabled:opacity-50"
-            >
-                {isSaving ? 'Saving...' : 'Save Note'}
-            </button>
-            {history.length > 0 && (
-                <div className="mt-4 space-y-2 max-h-[150px] overflow-y-auto pr-2 custom-scrollbar">
-                    {history.slice().reverse().map((h, i) => (
-                        <div key={i} className="p-2 bg-gray-50/50 rounded-lg text-[9px] border border-gray-50">
-                            <div className="flex justify-between items-center mb-1">
-                                <span className="font-bold text-gray-900">{h.author}</span>
-                                <span className="text-gray-400">{new Date(h.date).toLocaleDateString()}</span>
-                            </div>
-                            <p className="text-gray-600 italic">"{h.note}"</p>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
+function StatCard({ label, value, tone }: { label: string; value: number; tone: "blue" | "green" | "red" }) { const colors = { blue: "bg-blue-50 text-blue-700", green: "bg-green-50 text-green-700", red: "bg-red-50 text-red-700" }; return <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold text-gray-500">{label}</p><p className={`mt-2 inline-flex rounded-xl px-3 py-1 text-2xl font-black ${colors[tone]}`}>{value}</p></div>; }
+function QueueMessage({ children }: { children: React.ReactNode }) { return <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-14 text-center text-sm font-semibold text-gray-500">{children}</div>; }
+function InternalNotes({ order, mutate, onSaved }: { order: Order; mutate: (body: Record<string, unknown>) => Promise<void>; onSaved: (note: string) => void }) {
+  const [note, setNote] = useState(order.internalNotes || ""); const [saving, setSaving] = useState(false);
+  useEffect(() => setNote(order.internalNotes || ""), [order.id, order.internalNotes]);
+  async function save() { setSaving(true); try { await mutate({ action: "note", orderId: order.id, note }); onSaved(note); toast.success("Internal note saved"); } catch (caught) { toast.error(caught instanceof Error ? caught.message : "Could not save note"); } finally { setSaving(false); } }
+  return <div className="border-t border-gray-100 pt-4"><label className="text-xs font-black uppercase tracking-wider text-gray-400">Internal note<textarea value={note} onChange={(event) => setNote(event.target.value)} maxLength={1000} className="mt-2 min-h-24 w-full rounded-xl border border-gray-200 p-3 text-sm font-normal normal-case tracking-normal outline-none focus:border-green-600" placeholder="Dispatch instructions or blocker…"/></label><button type="button" disabled={saving || !note.trim() || note === (order.internalNotes || "")} onClick={save} className="mt-2 min-h-10 w-full rounded-lg bg-gray-100 text-xs font-black text-gray-700 disabled:opacity-40">{saving ? "Saving…" : "Save note"}</button>{(order.internalHistory || []).length > 0 && <div className="mt-4 max-h-40 space-y-2 overflow-y-auto">{[...(order.internalHistory || [])].reverse().slice(0, 10).map((entry, index) => <div key={`${entry.date}-${index}`} className="rounded-lg bg-gray-50 p-2 text-xs"><p className="font-bold text-gray-700">{entry.author} · {new Date(entry.date).toLocaleDateString()}</p><p className="mt-1 text-gray-500">{entry.note}</p></div>)}</div>}</div>;
 }

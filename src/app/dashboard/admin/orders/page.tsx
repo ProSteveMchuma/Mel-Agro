@@ -1,24 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { useOrders } from "@/context/OrderContext";
 import type { Order } from "@/types";
+import { getAuth } from "firebase/auth";
 
 type OrderStatus = Order["status"];
 type ViewId = "all" | "attention" | "unfulfilled" | "unpaid" | "completed";
 type SortOption = "newest" | "oldest" | "highest" | "lowest";
 
-const PAGE_SIZE = 20;
 const statuses: OrderStatus[] = ["Pending Payment", "Processing", "Shipped", "Delivered", "Cancelled"];
-const views: Array<{ id: ViewId; label: string; predicate: (order: Order) => boolean }> = [
-  { id: "all", label: "All orders", predicate: () => true },
-  { id: "attention", label: "Needs attention", predicate: (order) => order.status === "Pending Payment" || order.paymentStatus === "Failed" },
-  { id: "unfulfilled", label: "Unfulfilled", predicate: (order) => order.status === "Processing" },
-  { id: "unpaid", label: "Unpaid", predicate: (order) => order.paymentStatus !== "Paid" },
-  { id: "completed", label: "Completed", predicate: (order) => order.status === "Delivered" },
+const views: Array<{ id: ViewId; label: string }> = [
+  { id: "all", label: "All orders" }, { id: "attention", label: "Needs attention" }, { id: "unfulfilled", label: "Unfulfilled" }, { id: "unpaid", label: "Unpaid" }, { id: "completed", label: "Completed" },
 ];
 
 const statusStyle: Record<OrderStatus, string> = {
@@ -30,7 +26,7 @@ const statusStyle: Record<OrderStatus, string> = {
 };
 
 export default function OrderManagement() {
-  const { orders, updateOrderStatus } = useOrders();
+  const { updateOrderStatus } = useOrders();
   const router = useRouter();
   const [activeView, setActiveView] = useState<ViewId>("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,34 +34,47 @@ export default function OrderManagement() {
   const [paymentFilter, setPaymentFilter] = useState("All");
   const [sort, setSort] = useState<SortOption>("newest");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [cursorHistory, setCursorHistory] = useState<Array<string | null>>([null]);
   const [page, setPage] = useState(1);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [searchLimited, setSearchLimited] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [bulkStatus, setBulkStatus] = useState<OrderStatus>("Processing");
   const [updating, setUpdating] = useState(false);
 
-  const counts = useMemo(() => Object.fromEntries(views.map((view) => [view.id, orders.filter(view.predicate).length])), [orders]);
-  const filteredOrders = useMemo(() => {
-    const query = searchTerm.trim().toLowerCase();
-    const view = views.find((item) => item.id === activeView) || views[0];
-    return orders
-      .filter(view.predicate)
-      .filter((order) => !query || [order.id, order.userId, order.userName, order.userEmail, order.phone, order.transactionId].some((value) => String(value || "").toLowerCase().includes(query)))
-      .filter((order) => statusFilter === "All" || order.status === statusFilter)
-      .filter((order) => paymentFilter === "All" || (paymentFilter === "Unpaid" ? order.paymentStatus !== "Paid" : order.paymentStatus === paymentFilter))
-      .sort((a, b) => sort === "newest" ? Date.parse(b.date) - Date.parse(a.date) : sort === "oldest" ? Date.parse(a.date) - Date.parse(b.date) : sort === "highest" ? b.total - a.total : a.total - b.total);
-  }, [orders, activeView, searchTerm, statusFilter, paymentFilter, sort]);
-
-  const pageCount = Math.max(1, Math.ceil(filteredOrders.length / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
-  const visibleOrders = filteredOrders.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const loadOrders = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true);
+    try {
+      const token = await getAuth().currentUser?.getIdToken(); if (!token) throw new Error("Admin session unavailable");
+      const params = new URLSearchParams({ view: activeView, sort });
+      params.set("refresh", String(refreshKey));
+      if (statusFilter !== "All") params.set("status", statusFilter);
+      if (paymentFilter !== "All") params.set("payment", paymentFilter);
+      if (searchTerm.trim()) params.set("q", searchTerm.trim());
+      if (cursor) params.set("cursor", cursor);
+      const response = await fetch(`/api/admin/orders?${params}`, { headers: { Authorization: `Bearer ${token}` }, signal });
+      const data = await response.json(); if (!response.ok) throw new Error(data.message || "Could not load orders");
+      setOrders(data.orders || []); setNextCursor(data.nextCursor || null); setSearchLimited(Boolean(data.searchLimited));
+    } catch (error) { if (!(error instanceof DOMException && error.name === "AbortError")) toast.error(error instanceof Error ? error.message : "Could not load orders"); }
+    finally { if (!signal?.aborted) setLoading(false); }
+  }, [activeView, sort, statusFilter, paymentFilter, searchTerm, cursor, refreshKey]);
+  useEffect(() => { const controller = new AbortController(); const timer = window.setTimeout(() => void loadOrders(controller.signal), searchTerm ? 300 : 0); return () => { window.clearTimeout(timer); controller.abort(); }; }, [loadOrders, searchTerm]);
+  const visibleOrders = orders;
+  const currentPage = page;
   const allVisibleSelected = visibleOrders.length > 0 && visibleOrders.every((order) => selected.has(order.id));
 
-  function resetPage() { setPage(1); setSelected(new Set()); }
+  function resetPage() { setPage(1); setCursor(null); setCursorHistory([null]); setSelected(new Set()); }
   function chooseView(id: ViewId) { setActiveView(id); setStatusFilter("All"); setPaymentFilter("All"); resetPage(); }
+  function nextPage() { if (!nextCursor) return; setCursorHistory((history) => [...history.slice(0, page), nextCursor]); setCursor(nextCursor); setPage((value) => value + 1); setSelected(new Set()); }
+  function previousPage() { if (page <= 1) return; setCursor(cursorHistory[page - 2] || null); setPage((value) => value - 1); setSelected(new Set()); }
   function toggleOrder(id: string) { setSelected((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; }); }
   function toggleVisible() { setSelected((current) => { const next = new Set(current); visibleOrders.forEach((order) => allVisibleSelected ? next.delete(order.id) : next.add(order.id)); return next; }); }
 
   async function changeStatus(orderId: string, next: OrderStatus) {
-    try { await updateOrderStatus(orderId, next); toast.success(`Order moved to ${next}`); }
+    try { await updateOrderStatus(orderId, next); toast.success(`Order moved to ${next}`); setRefreshKey((value) => value + 1); }
     catch (error) { toast.error(error instanceof Error ? error.message : "Could not update status"); }
   }
 
@@ -81,6 +90,7 @@ export default function OrderManagement() {
     if (failures) toast.error(`${ids.length - failures} updated; ${failures} failed.`);
     else toast.success(`${ids.length} orders moved to ${bulkStatus}.`);
     setSelected(new Set());
+    setRefreshKey((value) => value + 1);
   }
 
   return <div className="space-y-5">
@@ -90,7 +100,7 @@ export default function OrderManagement() {
     </header>
 
     <section aria-label="Saved order views" className="overflow-x-auto rounded-2xl border border-gray-200 bg-white px-2 shadow-sm">
-      <div className="flex min-w-max gap-1" role="tablist">{views.map((view) => <button key={view.id} type="button" role="tab" aria-selected={activeView === view.id} onClick={() => chooseView(view.id)} className={`relative min-h-12 px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 ${activeView === view.id ? "text-green-700 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-green-600" : "text-gray-500 hover:text-gray-900"}`}>{view.label}<span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-500">{counts[view.id] || 0}</span></button>)}</div>
+      <div className="flex min-w-max gap-1" role="tablist">{views.map((view) => <button key={view.id} type="button" role="tab" aria-selected={activeView === view.id} onClick={() => chooseView(view.id)} className={`relative min-h-12 px-4 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 ${activeView === view.id ? "text-green-700 after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:rounded-full after:bg-green-600" : "text-gray-500 hover:text-gray-900"}`}>{view.label}</button>)}</div>
     </section>
 
     <section className="flex flex-col rounded-2xl border border-gray-200 bg-white shadow-sm max-md:[&>.overflow-x-auto]:hidden [&>footer]:order-4">
@@ -100,7 +110,7 @@ export default function OrderManagement() {
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <label><span className="sr-only">Status</span><select value={statusFilter} onChange={(event) => { setStatusFilter(event.target.value as "All" | OrderStatus); resetPage(); }} className="min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold"><option value="All">Any status</option>{statuses.map((status) => <option key={status}>{status}</option>)}</select></label>
           <label><span className="sr-only">Payment</span><select value={paymentFilter} onChange={(event) => { setPaymentFilter(event.target.value); resetPage(); }} className="min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold"><option value="All">Any payment</option><option value="Paid">Paid</option><option value="Unpaid">Unpaid</option><option value="Failed">Failed</option></select></label>
-          <label className="col-span-2 sm:col-span-1"><span className="sr-only">Sort orders</span><select value={sort} onChange={(event) => { setSort(event.target.value as SortOption); setPage(1); }} className="min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="highest">Highest value</option><option value="lowest">Lowest value</option></select></label>
+          <label className="col-span-2 sm:col-span-1"><span className="sr-only">Sort orders</span><select value={sort} onChange={(event) => { setSort(event.target.value as SortOption); resetPage(); }} className="min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="highest">Highest value</option><option value="lowest">Lowest value</option></select></label>
         </div>
       </div>
 
@@ -109,7 +119,7 @@ export default function OrderManagement() {
       <div className="overflow-x-auto"><table className="w-full min-w-[980px] text-left text-sm"><thead className="border-b border-gray-100 bg-gray-50/80 text-[10px] font-black uppercase tracking-wider text-gray-500"><tr><th className="w-12 px-4 py-3"><input type="checkbox" aria-label="Select visible orders" checked={allVisibleSelected} onChange={toggleVisible} className="h-4 w-4 rounded border-gray-300 text-green-700 focus:ring-green-600" /></th><th className="px-3 py-3">Order</th><th className="px-3 py-3">Date</th><th className="px-3 py-3">Customer</th><th className="px-3 py-3">Total</th><th className="px-3 py-3">Payment</th><th className="px-3 py-3">Fulfilment</th><th className="px-4 py-3 text-right">Documents</th></tr></thead>
       <tbody className="divide-y divide-gray-100">{visibleOrders.map((order) => <tr key={order.id} onClick={() => router.push(`/dashboard/admin/orders/${order.id}`)} className={`cursor-pointer transition-colors hover:bg-gray-50 ${selected.has(order.id) ? "bg-green-50/60" : ""}`}><td className="px-4 py-4" onClick={(event) => event.stopPropagation()}><input type="checkbox" aria-label={`Select order ${order.id}`} checked={selected.has(order.id)} onChange={() => toggleOrder(order.id)} className="h-4 w-4 rounded border-gray-300 text-green-700 focus:ring-green-600" /></td><td className="px-3 py-4"><Link href={`/dashboard/admin/orders/${order.id}`} className="font-black text-gray-950 hover:text-green-700">#{order.id.slice(0, 10)}</Link><span className="mt-0.5 block text-[10px] text-gray-400">{order.items?.length || 0} item{order.items?.length === 1 ? "" : "s"}</span></td><td className="px-3 py-4 text-gray-600">{new Date(order.date).toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" })}</td><td className="max-w-48 px-3 py-4"><span className="block truncate font-semibold text-gray-800">{order.userName || "Guest customer"}</span><span className="block truncate text-xs text-gray-400">{order.phone || order.userEmail || order.userId}</span></td><td className="px-3 py-4 font-black text-gray-950">KES {order.total.toLocaleString()}</td><td className="px-3 py-4"><span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-black uppercase ring-1 ring-inset ${order.paymentStatus === "Paid" ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20" : order.paymentStatus === "Failed" ? "bg-red-50 text-red-700 ring-red-600/20" : "bg-gray-100 text-gray-600 ring-gray-500/20"}`}>{order.paymentStatus || "Unpaid"}</span></td><td className="px-3 py-4" onClick={(event) => event.stopPropagation()}><select aria-label={`Status for order ${order.id}`} value={order.status} onChange={(event) => changeStatus(order.id, event.target.value as OrderStatus)} className={`rounded-full border-0 px-2.5 py-1 text-xs font-bold ring-1 ring-inset focus:ring-2 focus:ring-green-600 ${statusStyle[order.status]}`}>{statuses.map((status) => <option key={status}>{status}</option>)}</select></td><td className="px-4 py-4 text-right" onClick={(event) => event.stopPropagation()}><div className="flex justify-end gap-1"><Link href={`/orders/${order.id}/receipt`} className="rounded-lg px-2.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 hover:text-green-700">Receipt</Link><Link href={`/orders/${order.id}/delivery-note`} className="rounded-lg px-2.5 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 hover:text-green-700">Delivery note</Link></div></td></tr>)}</tbody></table></div>
 
-      {visibleOrders.length === 0 ? <div className="px-6 py-16 text-center"><p className="font-black text-gray-900">No orders in this view</p><p className="mt-1 text-sm text-gray-500">Try another saved view or clear the filters.</p><button type="button" onClick={() => { setSearchTerm(""); chooseView("all"); }} className="mt-4 text-sm font-bold text-green-700">Clear filters</button></div> : <footer className="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between"><span>Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredOrders.length)} of {filteredOrders.length}</span><div className="flex items-center gap-2"><button type="button" disabled={currentPage === 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="min-h-10 rounded-lg border border-gray-200 px-3 font-bold text-gray-700 disabled:opacity-40">Previous</button><span className="px-2 text-xs font-bold">Page {currentPage} of {pageCount}</span><button type="button" disabled={currentPage === pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))} className="min-h-10 rounded-lg border border-gray-200 px-3 font-bold text-gray-700 disabled:opacity-40">Next</button></div></footer>}
+      {loading ? <div className="order-3 px-6 py-16 text-center text-sm font-semibold text-gray-500">Loading orders...</div> : visibleOrders.length === 0 ? <div className="order-3 px-6 py-16 text-center"><p className="font-black text-gray-900">No orders in this view</p><p className="mt-1 text-sm text-gray-500">Try another saved view or clear the filters.</p><button type="button" onClick={() => { setSearchTerm(""); chooseView("all"); }} className="mt-4 text-sm font-bold text-green-700">Clear filters</button></div> : <footer className="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between"><span>Page {currentPage} · {visibleOrders.length} orders{searchLimited ? ' · Search checked the 500 most relevant records' : ''}</span><div className="flex items-center gap-2"><button type="button" disabled={currentPage === 1 || loading} onClick={previousPage} className="min-h-10 rounded-lg border border-gray-200 px-3 font-bold text-gray-700 disabled:opacity-40">Previous</button><button type="button" disabled={!nextCursor || loading} onClick={nextPage} className="min-h-10 rounded-lg border border-gray-200 px-3 font-bold text-gray-700 disabled:opacity-40">Next</button></div></footer>}
     </section>
   </div>;
 }

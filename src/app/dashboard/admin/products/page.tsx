@@ -1,7 +1,9 @@
 "use client";
 import { useProducts } from "@/context/ProductContext";
+import type { Product } from "@/types";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getAuth } from "firebase/auth";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -9,45 +11,54 @@ import BulkUploadButton from "@/components/admin/BulkUploadButton";
 import ExportProductsButton from "@/components/admin/ExportProductsButton";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
-const PAGE_SIZE = 20;
-
 export default function ProductManagement() {
-    const { products, archivedProducts, deleteProduct, restoreProduct } = useProducts();
+    const { deleteProduct, restoreProduct } = useProducts();
     const router = useRouter();
+    const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<string[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [filterCategory, setFilterCategory] = useState("All");
-    const [filterStock, setFilterStock] = useState("All"); // All, In Stock, Low Stock, Out of Stock
+    const [filterStock, setFilterStock] = useState("all");
     const [deleteId, setDeleteId] = useState<string | number | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
-    const [page, setPage] = useState(1);
+    const [cursor, setCursor] = useState<string | null>(null);
+    const [cursorHistory, setCursorHistory] = useState<Array<string | null>>([]);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
+    const [searchLimited, setSearchLimited] = useState(false);
+    const [refreshKey, setRefreshKey] = useState(0);
 
-    // Get unique categories
-    const sourceProducts = showArchived ? archivedProducts : products;
-    const categories = ["All", ...Array.from(new Set(sourceProducts.map(p => p.category)))];
+    useEffect(() => {
+        const controller = new AbortController();
+        const timer = window.setTimeout(async () => {
+            setLoading(true); setError("");
+            try {
+                const token = await getAuth().currentUser?.getIdToken();
+                if (!token) throw new Error("Admin session is unavailable.");
+                const params = new URLSearchParams({ archived: String(showArchived), stock: filterStock });
+                if (searchTerm.trim()) params.set("q", searchTerm.trim());
+                if (filterCategory !== "All") params.set("category", filterCategory);
+                if (cursor) params.set("cursor", cursor);
+                const response = await fetch(`/api/admin/products?${params}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || "Could not load products.");
+                setProducts(result.products || []); setNextCursor(result.nextCursor || null); setSearchLimited(Boolean(result.searchLimited));
+                setCategories((current) => Array.from(new Set([...current, ...(result.categories || [])])).sort());
+            } catch (caught) {
+                if ((caught as Error).name !== "AbortError") setError(caught instanceof Error ? caught.message : "Could not load products.");
+            } finally { if (!controller.signal.aborted) setLoading(false); }
+        }, searchTerm ? 300 : 0);
+        return () => { window.clearTimeout(timer); controller.abort(); };
+    }, [showArchived, searchTerm, filterCategory, filterStock, cursor, refreshKey]);
 
-    const filteredProducts = sourceProducts.filter(product => {
-        const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            product.category.toLowerCase().includes(searchTerm.toLowerCase());
-
-        const matchesCategory = filterCategory === "All" || product.category === filterCategory;
-
-        let matchesStock = true;
-        const isLowStock = product.stockQuantity <= (product.lowStockThreshold || 10);
-        const isOutOfStock = product.stockQuantity === 0;
-
-        if (filterStock === "In Stock") matchesStock = !isOutOfStock;
-        if (filterStock === "Low Stock") matchesStock = isLowStock && !isOutOfStock;
-        if (filterStock === "Out of Stock") matchesStock = isOutOfStock;
-
-        return matchesSearch && matchesCategory && matchesStock;
-    });
-    const pageCount = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE));
-    const currentPage = Math.min(page, pageCount);
-    const visibleProducts = filteredProducts.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+    const visibleProducts = products;
     const visibleIds = visibleProducts.map(product => String(product.id));
     const allVisibleSelected = visibleIds.length > 0 && visibleIds.every(id => selectedProducts.includes(id));
+    const resetPage = () => { setCursor(null); setCursorHistory([]); setSelectedProducts([]); };
+    const refresh = () => setRefreshKey(value => value + 1);
 
     const toggleSelectAll = () => {
         setSelectedProducts(current => allVisibleSelected
@@ -72,6 +83,7 @@ export default function ProductManagement() {
         if (failures) toast.error(`${selectedProducts.length - failures} updated; ${failures} failed.`, { id: notice });
         else toast.success(`${selectedProducts.length} products ${action}d.`, { id: notice });
         setSelectedProducts([]);
+        refresh();
     };
 
     return (
@@ -107,8 +119,8 @@ export default function ProductManagement() {
             {/* Filters */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
                 <div className="flex shrink-0 rounded-lg border border-gray-200 p-1">
-                    <button type="button" onClick={() => { setShowArchived(false); setSelectedProducts([]); setPage(1); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${!showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Active ({products.length})</button>
-                    <button type="button" onClick={() => { setShowArchived(true); setSelectedProducts([]); setPage(1); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Archived ({archivedProducts.length})</button>
+                    <button type="button" onClick={() => { setShowArchived(false); resetPage(); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${!showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Active</button>
+                    <button type="button" onClick={() => { setShowArchived(true); resetPage(); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Archived</button>
                 </div>
                 <div className="relative flex-grow max-w-md">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -119,27 +131,30 @@ export default function ProductManagement() {
                         placeholder="Search products..."
                         className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary focus:ring-1 focus:ring-melagri-primary outline-none transition-all"
                         value={searchTerm}
-                        onChange={(e) => { setSearchTerm(e.target.value); setPage(1); }}
+                        onChange={(e) => { setSearchTerm(e.target.value); resetPage(); }}
                     />
                 </div>
                 <select
                     value={filterCategory}
-                    onChange={(e) => { setFilterCategory(e.target.value); setPage(1); }}
+                    onChange={(e) => { setFilterCategory(e.target.value); resetPage(); }}
                     className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary outline-none bg-white"
                 >
+                    <option value="All">All categories</option>
                     {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
                 <select
                     value={filterStock}
-                    onChange={(e) => { setFilterStock(e.target.value); setPage(1); }}
+                    onChange={(e) => { setFilterStock(e.target.value); resetPage(); }}
                     className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary outline-none bg-white"
                 >
-                    <option value="All">All Stock Status</option>
-                    <option value="In Stock">In Stock</option>
-                    <option value="Low Stock">Low Stock</option>
-                    <option value="Out of Stock">Out of Stock</option>
+                    <option value="all">All Stock Status</option>
+                    <option value="in">In Stock</option>
+                    <option value="low">Low Stock</option>
+                    <option value="out">Out of Stock</option>
                 </select>
             </div>
+            {searchLimited && <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">This broad filter checked the next 600 catalogue records. Add a product name, code, brand, or category to narrow it.</p>}
+            {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error} <button type="button" onClick={refresh} className="ml-2 font-black underline">Retry</button></div>}
 
             {/* Product Table */}
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -163,7 +178,7 @@ export default function ProductManagement() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {visibleProducts.map(product => {
+                            {!loading && visibleProducts.map(product => {
                                 const totalStock = product.stockQuantity + (product.variants?.reduce((acc, v) => acc + (v.stockQuantity || 0), 0) || 0);
                                 const isLowStock = totalStock <= (product.lowStockThreshold || 10);
                                 const isOutOfStock = totalStock === 0;
@@ -229,7 +244,7 @@ export default function ProductManagement() {
                                                 <button
                                                     onClick={async () => {
                                                         if (!showArchived) return setDeleteId(product.id);
-                                                        try { await restoreProduct(product.id); toast.success('Product restored'); } catch (err: any) { toast.error(err?.message || 'Could not restore product'); }
+                                                        try { await restoreProduct(product.id); toast.success('Product restored'); refresh(); } catch (caught) { toast.error(caught instanceof Error ? caught.message : 'Could not restore product'); }
                                                     }}
                                                     className={`p-2 rounded-lg transition-colors ${showArchived ? 'text-green-700 hover:bg-green-50' : 'text-red-600 hover:bg-red-50'}`}
                                                     title={showArchived ? "Restore" : "Archive"}
@@ -246,18 +261,18 @@ export default function ProductManagement() {
                         </tbody>
                     </table>
                 </div>
-                {filteredProducts.length === 0 && (
+                {loading && <div className="p-12 text-center text-sm font-semibold text-gray-500">Loading catalogue records…</div>}
+                {!loading && products.length === 0 && !error && (
                     <div className="p-12 text-center text-gray-500">
                         No products found matching "{searchTerm}".
                     </div>
                 )}
-                {filteredProducts.length > 0 && (
+                {!loading && products.length > 0 && !error && (
                     <div className="flex flex-col gap-3 border-t border-gray-100 px-4 py-4 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
-                        <span>Showing {(currentPage - 1) * PAGE_SIZE + 1}-{Math.min(currentPage * PAGE_SIZE, filteredProducts.length)} of {filteredProducts.length}</span>
+                        <span>Page {cursorHistory.length + 1} · showing {products.length} products</span>
                         <div className="flex items-center gap-2">
-                            <button type="button" disabled={currentPage === 1} onClick={() => { setPage(value => Math.max(1, value - 1)); setSelectedProducts([]); }} className="min-h-10 rounded-lg border border-gray-200 px-3 font-bold text-gray-700 disabled:opacity-40">Previous</button>
-                            <span className="px-2 text-xs font-bold">Page {currentPage} of {pageCount}</span>
-                            <button type="button" disabled={currentPage === pageCount} onClick={() => { setPage(value => Math.min(pageCount, value + 1)); setSelectedProducts([]); }} className="min-h-10 rounded-lg border border-gray-200 px-3 font-bold text-gray-700 disabled:opacity-40">Next</button>
+                            <button type="button" disabled={cursorHistory.length === 0} onClick={() => { setCursorHistory(history => { const copy = [...history]; setCursor(copy.pop() ?? null); return copy; }); setSelectedProducts([]); }} className="min-h-10 rounded-lg border border-gray-200 px-3 font-bold text-gray-700 disabled:opacity-40">Previous</button>
+                            <button type="button" disabled={!nextCursor} onClick={() => { if (nextCursor) { setCursorHistory(history => [...history, cursor]); setCursor(nextCursor); setSelectedProducts([]); } }} className="min-h-10 rounded-lg border border-gray-200 px-3 font-bold text-gray-700 disabled:opacity-40">Next</button>
                         </div>
                     </div>
                 )}
@@ -274,8 +289,9 @@ export default function ProductManagement() {
                         await deleteProduct(deleteId);
                         toast.success('Product archived');
                         setDeleteId(null);
-                    } catch (err: any) {
-                        toast.error(err?.message || 'Could not delete product');
+                        refresh();
+                    } catch (caught) {
+                        toast.error(caught instanceof Error ? caught.message : 'Could not archive product');
                     } finally {
                         setDeleting(false);
                     }

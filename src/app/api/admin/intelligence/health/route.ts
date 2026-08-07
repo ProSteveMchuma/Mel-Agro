@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAdmin } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import { INTELLIGENCE_RETENTION_DAYS, PERSONALIZED_HOME_EXPERIMENT } from '@/lib/experimentation';
 
 function timestampMs(value: any): number | null {
@@ -10,7 +10,7 @@ function timestampMs(value: any): number | null {
 }
 
 export async function GET(request: Request) {
-    const auth = await requireAdmin(request);
+    const auth = await requirePermission(request, 'analytics.view');
     if (!auth.ok) return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
 
     const [paidOrders, purchases, recommendationDocs, products, alerts, dedupExpired] = await Promise.all([

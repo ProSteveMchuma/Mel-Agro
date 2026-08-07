@@ -1,145 +1,22 @@
 "use client";
-
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { toast } from "react-hot-toast";
+import { useCallback, useEffect, useState } from "react";
 import { getAuth } from "firebase/auth";
-import { useAuth } from "@/context/AuthContext";
+import { toast } from "react-hot-toast";
 
-type Subscriber = {
-  id: string;
-  email: string;
-  status: "active" | "unsubscribed";
-  source?: string;
-  subscribedAt?: string;
-  updatedAt?: string;
-};
-
-function csvCell(value: string) {
-  return `"${value.replace(/"/g, '""')}"`;
-}
-
+type Subscriber = { id: string; email: string; status: "active" | "unsubscribed"; source?: string; subscribedAt?: string };
+type Summary = { total: number; active: number; unsubscribed: number };
 export default function NewsletterAdminPage() {
-  const { user } = useAuth();
-  const [subscribers, setSubscribers] = useState<Subscriber[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "active" | "unsubscribed">("all");
-  const [updating, setUpdating] = useState<string | null>(null);
-
-  const token = useCallback(async () => {
-    const value = await getAuth().currentUser?.getIdToken();
-    if (!value) throw new Error("Admin session is not ready.");
-    return value;
-  }, []);
-
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    try {
-      const response = await fetch("/api/admin/newsletter", { headers: { Authorization: `Bearer ${await token()}` }, cache: "no-store" });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || "Could not load subscribers.");
-      setSubscribers(result.subscribers || []);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not load subscribers.");
-    } finally {
-      setLoading(false);
-    }
-  }, [token, user]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const visible = useMemo(() => subscribers.filter((subscriber) => {
-    const matchesStatus = filter === "all" || subscriber.status === filter;
-    const matchesSearch = subscriber.email.toLowerCase().includes(search.trim().toLowerCase());
-    return matchesStatus && matchesSearch;
-  }), [filter, search, subscribers]);
-
-  const active = subscribers.filter((subscriber) => subscriber.status === "active").length;
-  const unsubscribed = subscribers.length - active;
-
-  async function updateStatus(subscriber: Subscriber) {
-    const status = subscriber.status === "active" ? "unsubscribed" : "active";
-    setUpdating(subscriber.id);
-    try {
-      const response = await fetch("/api/admin/newsletter", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${await token()}` },
-        body: JSON.stringify({ id: subscriber.id, status }),
-      });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.message || "Could not update subscriber.");
-      setSubscribers((current) => current.map((item) => item.id === subscriber.id ? { ...item, status } : item));
-      toast.success(status === "active" ? "Subscriber reactivated." : "Subscriber unsubscribed.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Could not update subscriber.");
-    } finally {
-      setUpdating(null);
-    }
-  }
-
-  function exportCsv() {
-    const rows = visible.map((item) => [item.email, item.status, item.source || "", item.subscribedAt || ""]);
-    const csv = [["Email", "Status", "Source", "Subscribed at"], ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
-    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `melagri-newsletter-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-green-700">Audience</p>
-          <h1 className="mt-1 text-2xl font-black text-gray-900 md:text-3xl">Newsletter Subscribers</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage consented email subscribers and export active campaign audiences.</p>
-        </div>
-        <button type="button" onClick={exportCsv} disabled={!visible.length} className="rounded-xl bg-gray-900 px-5 py-3 text-xs font-black uppercase tracking-wider text-white hover:bg-black disabled:opacity-40">Export visible CSV</button>
-      </div>
-
-      <section className="grid gap-4 sm:grid-cols-3" aria-label="Subscriber summary">
-        {[{ label: "Total records", value: subscribers.length }, { label: "Active", value: active }, { label: "Unsubscribed", value: unsubscribed }].map((item) => (
-          <article key={item.label} className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
-            <p className="text-xs font-bold text-gray-500">{item.label}</p>
-            <p className="mt-2 text-3xl font-black text-gray-900">{item.value.toLocaleString()}</p>
-          </article>
-        ))}
-      </section>
-
-      <section className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
-        <div className="flex flex-col gap-3 border-b border-gray-100 p-4 sm:flex-row">
-          <label className="flex-grow">
-            <span className="sr-only">Search subscribers</span>
-            <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search email address…" className="min-h-11 w-full rounded-xl border border-gray-200 px-4 text-sm outline-none focus:border-green-700 focus:ring-4 focus:ring-green-600/10" />
-          </label>
-          <label>
-            <span className="sr-only">Filter by status</span>
-            <select value={filter} onChange={(event) => setFilter(event.target.value as typeof filter)} className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm font-bold text-gray-700 outline-none focus:border-green-700">
-              <option value="all">All statuses</option><option value="active">Active</option><option value="unsubscribed">Unsubscribed</option>
-            </select>
-          </label>
-        </div>
-
-        {loading ? <div className="p-12 text-center text-sm text-gray-500">Loading subscribers…</div> : visible.length === 0 ? <div className="p-12 text-center"><p className="font-black text-gray-800">No subscribers found</p><p className="mt-1 text-sm text-gray-500">New confirmed subscriptions will appear here.</p></div> : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] text-left text-sm">
-              <thead className="border-b border-gray-100 bg-gray-50 text-xs text-gray-500"><tr><th className="px-6 py-4">Email</th><th className="px-6 py-4">Status</th><th className="px-6 py-4">Source</th><th className="px-6 py-4">Subscribed</th><th className="px-6 py-4 text-right">Action</th></tr></thead>
-              <tbody className="divide-y divide-gray-100">{visible.map((subscriber) => (
-                <tr key={subscriber.id} className="hover:bg-gray-50/80">
-                  <td className="px-6 py-4 font-semibold text-gray-900">{subscriber.email}</td>
-                  <td className="px-6 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${subscriber.status === "active" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-600"}`}>{subscriber.status}</span></td>
-                  <td className="px-6 py-4 text-gray-500">{subscriber.source || "—"}</td>
-                  <td className="px-6 py-4 text-gray-500">{subscriber.subscribedAt ? new Date(subscriber.subscribedAt).toLocaleDateString("en-KE") : "—"}</td>
-                  <td className="px-6 py-4 text-right"><button type="button" onClick={() => void updateStatus(subscriber)} disabled={updating === subscriber.id} className={`text-xs font-black ${subscriber.status === "active" ? "text-red-600 hover:text-red-700" : "text-green-700 hover:text-green-800"} disabled:opacity-40`}>{updating === subscriber.id ? "Updating…" : subscriber.status === "active" ? "Unsubscribe" : "Reactivate"}</button></td>
-                </tr>
-              ))}</tbody>
-            </table>
-          </div>
-        )}
-      </section>
-    </div>
-  );
+  const [subscribers, setSubscribers] = useState<Subscriber[]>([]); const [summary, setSummary] = useState<Summary>({ total: 0, active: 0, unsubscribed: 0 }); const [search, setSearch] = useState(""); const [status, setStatus] = useState("all"); const [cursor, setCursor] = useState<string | null>(null); const [history, setHistory] = useState<Array<string | null>>([]); const [nextCursor, setNextCursor] = useState<string | null>(null); const [loading, setLoading] = useState(true); const [updating, setUpdating] = useState<string | null>(null); const [error, setError] = useState(""); const [searchLimited, setSearchLimited] = useState(false); const [refreshKey, setRefreshKey] = useState(0);
+  const token = useCallback(async () => { const value = await getAuth().currentUser?.getIdToken(); if (!value) throw new Error("Admin session is unavailable."); return value; }, []);
+  useEffect(() => { const controller = new AbortController(); const timer = window.setTimeout(async () => { setLoading(true); setError(""); try { const params = new URLSearchParams({ status }); if (search.trim()) params.set("q", search.trim()); if (cursor) params.set("cursor", cursor); const response = await fetch(`/api/admin/newsletter?${params}`, { headers: { Authorization: `Bearer ${await token()}` }, signal: controller.signal }); const result = await response.json(); if (!response.ok) throw new Error(result.message); setSubscribers(result.subscribers || []); setSummary(result.summary || { total: 0, active: 0, unsubscribed: 0 }); setNextCursor(result.nextCursor || null); setSearchLimited(Boolean(result.searchLimited)); } catch (caught) { if ((caught as Error).name !== "AbortError") setError(caught instanceof Error ? caught.message : "Could not load subscribers."); } finally { if (!controller.signal.aborted) setLoading(false); } }, search ? 300 : 0); return () => { window.clearTimeout(timer); controller.abort(); }; }, [cursor, refreshKey, search, status, token]);
+  function resetPage() { setCursor(null); setHistory([]); }
+  async function updateStatus(subscriber: Subscriber) { const next = subscriber.status === "active" ? "unsubscribed" : "active"; if (next === "active" && !window.confirm("Reactivate this subscriber only if you have a valid consent basis. Continue?")) return; setUpdating(subscriber.id); try { const response = await fetch("/api/admin/newsletter", { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${await token()}` }, body: JSON.stringify({ id: subscriber.id, status: next }) }); const result = await response.json(); if (!response.ok) throw new Error(result.message); toast.success(next === "active" ? "Subscriber reactivated" : "Subscriber unsubscribed"); setRefreshKey((value) => value + 1); } catch (caught) { toast.error(caught instanceof Error ? caught.message : "Update failed."); } finally { setUpdating(null); } }
+  async function exportActive() { try { const response = await fetch("/api/admin/newsletter?format=csv", { headers: { Authorization: `Bearer ${await token()}` } }); if (!response.ok) { const result = await response.json(); throw new Error(result.message); } const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `melagri-active-newsletter-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url); } catch (caught) { toast.error(caught instanceof Error ? caught.message : "Export failed."); } }
+  return <div className="space-y-6"><div className="flex flex-wrap items-end justify-between gap-4"><header><p className="mb-1 text-[10px] font-black uppercase tracking-[.18em] text-green-700">Audience governance</p><h1 className="text-2xl font-black text-gray-950">Newsletter subscribers</h1><p className="mt-1 text-sm text-gray-500">Manage consent state and export only currently active campaign recipients.</p></header><button onClick={exportActive} disabled={summary.active === 0} className="min-h-11 rounded-xl bg-gray-950 px-5 text-sm font-black text-white disabled:opacity-40">Export active audience</button></div>
+    <div className="grid gap-4 sm:grid-cols-3">{[{ label: "Total records", value: summary.total }, { label: "Active consent", value: summary.active }, { label: "Unsubscribed", value: summary.unsubscribed }].map((item) => <div key={item.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold text-gray-500">{item.label}</p><p className="mt-2 text-3xl font-black text-gray-950">{item.value.toLocaleString()}</p></div>)}</div>
+    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm"><div className="flex flex-col gap-3 border-b p-4 sm:flex-row"><input type="search" value={search} onChange={(event) => { setSearch(event.target.value); resetPage(); }} placeholder="Search email address" className="min-h-11 flex-1 rounded-xl border border-gray-200 px-4 text-sm outline-none focus:border-green-600"/><select value={status} onChange={(event) => { setStatus(event.target.value); resetPage(); }} className="min-h-11 rounded-xl border border-gray-200 px-4 text-sm font-bold"><option value="all">All statuses</option><option value="active">Active</option><option value="unsubscribed">Unsubscribed</option></select></div>{searchLimited && <p className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-800">This search checked the next 500 records. Enter more of the email address.</p>}{error && <p className="m-4 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>}
+      <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="border-b bg-gray-50 text-[10px] font-black uppercase tracking-wider text-gray-500"><tr><th className="px-5 py-3">Email</th><th>Status</th><th>Source</th><th>Subscribed</th><th className="px-5 text-right">Action</th></tr></thead><tbody className="divide-y">{!loading && subscribers.map((subscriber) => <tr key={subscriber.id}><td className="px-5 py-4 font-bold text-gray-900">{subscriber.email}</td><td><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${subscriber.status === "active" ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-600"}`}>{subscriber.status}</span></td><td className="text-gray-500">{subscriber.source || "—"}</td><td className="text-gray-500">{subscriber.subscribedAt ? new Date(subscriber.subscribedAt).toLocaleDateString() : "—"}</td><td className="px-5 text-right"><button disabled={updating === subscriber.id} onClick={() => updateStatus(subscriber)} className={`rounded-lg px-3 py-2 text-xs font-black disabled:opacity-40 ${subscriber.status === "active" ? "text-red-600 hover:bg-red-50" : "text-green-700 hover:bg-green-50"}`}>{updating === subscriber.id ? "Updating…" : subscriber.status === "active" ? "Unsubscribe" : "Reactivate"}</button></td></tr>)}</tbody></table></div>{loading ? <Empty>Loading subscribers…</Empty> : subscribers.length === 0 && !error ? <Empty>No subscribers found.</Empty> : <footer className="flex items-center justify-between border-t p-4 text-xs text-gray-500"><span>Page {history.length + 1} · {subscribers.length} records</span><div className="flex gap-2"><button disabled={history.length === 0} onClick={() => setHistory((current) => { const copy = [...current]; setCursor(copy.pop() ?? null); return copy; })} className="rounded-lg border px-3 py-2 font-bold disabled:opacity-40">Previous</button><button disabled={!nextCursor} onClick={() => { if (nextCursor) { setHistory((current) => [...current, cursor]); setCursor(nextCursor); } }} className="rounded-lg border px-3 py-2 font-bold disabled:opacity-40">Next</button></div></footer>}</section>
+    <p className="text-xs text-gray-400">Audience exports are capped at 5,000 active subscribers. Campaign sending remains a separate reviewed operation.</p>
+  </div>;
 }
+function Empty({ children }: { children: React.ReactNode }) { return <p className="p-14 text-center text-sm text-gray-500">{children}</p>; }
