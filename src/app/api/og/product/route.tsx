@@ -29,6 +29,30 @@ function sanitiseText(s: string | null, fallback: string, max = 120): string {
     return s.replace(/[<>]/g, '').slice(0, max);
 }
 
+// Raster formats the OG renderer (resvg via <img>) can safely decode.
+const SUPPORTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+
+/**
+ * Fetch the product image and return it as a data URI, but only when it is a
+ * fetchable, supported raster image within a sane size. Returns null on any
+ * problem (bad URL, network error, unsupported/SVG type, too large) so the
+ * card falls back to the emoji instead of 500-ing the whole OG image.
+ */
+async function loadImageDataUrl(url: string | null): Promise<string | null> {
+    if (!url) return null;
+    try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
+        if (!res.ok) return null;
+        const type = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+        if (!SUPPORTED_IMAGE_TYPES.includes(type)) return null;
+        const buffer = await res.arrayBuffer();
+        if (buffer.byteLength === 0 || buffer.byteLength > 3_000_000) return null;
+        return `data:${type};base64,${Buffer.from(buffer).toString('base64')}`;
+    } catch {
+        return null;
+    }
+}
+
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
@@ -37,7 +61,7 @@ export async function GET(req: NextRequest) {
         const rawPrice = searchParams.get('price') || '';
         const price = /^\d+(\.\d+)?$/.test(rawPrice) ? rawPrice : '';
         const category = sanitiseText(searchParams.get('category'), 'Agriculture', 40);
-        const image = isAllowedImageUrl(searchParams.get('image'));
+        const image = await loadImageDataUrl(isAllowedImageUrl(searchParams.get('image')));
 
         return new ImageResponse(
             (
@@ -54,7 +78,7 @@ export async function GET(req: NextRequest) {
                         padding: '40px',
                     }}
                 >
-                    {/* Background Pattern */}
+                    {/* Background Pattern (painted first, so it sits behind the content) */}
                     <div
                         style={{
                             position: 'absolute',
@@ -65,7 +89,6 @@ export async function GET(req: NextRequest) {
                             backgroundColor: '#f0fdf4',
                             borderRadius: '50%',
                             filter: 'blur(100px)',
-                            zIndex: -1,
                         }}
                     />
 
@@ -154,12 +177,13 @@ export async function GET(req: NextRequest) {
                             >
                                 <div
                                     style={{
+                                        display: 'flex',
                                         fontSize: '36px',
                                         fontWeight: '900',
                                         color: '#111827',
                                     }}
                                 >
-                                    KES {price}
+                                    {`KES ${price}`}
                                 </div>
                                 <div
                                     style={{
