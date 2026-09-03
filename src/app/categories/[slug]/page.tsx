@@ -7,6 +7,10 @@ import { categoryEditorial, productSeoPath, resolveSeoValue, slugifySeoValue } f
 
 type Props = { params: Promise<{ slug: string }> };
 
+// Refresh category landing pages hourly (ISR) so new products, prices and
+// stock appear without a redeploy.
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
     return (await getUniqueCategoriesCached()).map(category => ({ slug: slugifySeoValue(category) }));
 }
