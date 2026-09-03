@@ -1,11 +1,29 @@
 const admin = require('firebase-admin');
-const serviceAccount = require('c:/Users/sk/Downloads/melagri-firebase-adminsdk-fbsvc-5fca444862.json');
 
-// Initialize Firebase Admin
+// Initialize Firebase Admin from the environment (never a hard-coded path).
+// Supported configurations, in priority order:
+//   1. FIRESTORE_EMULATOR_HOST set  -> connect to the local emulator (project id only)
+//   2. GOOGLE_APPLICATION_CREDENTIALS -> service-account JSON path (admin.credential.applicationDefault)
+//   3. FIREBASE_PROJECT_ID / FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY -> inline cert
 if (!admin.apps.length) {
-    admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
-    });
+    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
+
+    if (process.env.FIRESTORE_EMULATOR_HOST) {
+        admin.initializeApp({ projectId: projectId || 'demo-melagri' });
+    } else if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+        admin.initializeApp({ credential: admin.credential.applicationDefault() });
+    } else if (projectId && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+        admin.initializeApp({
+            credential: admin.credential.cert({
+                projectId,
+                clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+                privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+            }),
+        });
+    } else {
+        console.error('Missing Firebase credentials. Set FIRESTORE_EMULATOR_HOST for the emulator, or GOOGLE_APPLICATION_CREDENTIALS, or FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY.');
+        process.exit(1);
+    }
 }
 
 const db = admin.firestore();
