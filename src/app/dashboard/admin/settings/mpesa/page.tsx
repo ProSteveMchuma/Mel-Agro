@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { getAuth } from "firebase/auth";
+import { MPESA_TILL_DISPLAY } from "@/lib/site";
 
 async function authedFetch(url: string, init: RequestInit = {}) {
     const token = await getAuth().currentUser?.getIdToken();
@@ -84,7 +85,7 @@ export default function MpesaSettingsPage() {
             <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6">
                 <h3 className="font-black text-blue-900 text-sm mb-2">What does this do?</h3>
                 <p className="text-sm text-blue-800 leading-relaxed">
-                    When you register C2B URLs, Safaricom calls your site every time someone pays into your Till (3130847) — even outside your STK push checkout. The system tries to match the payment to an unpaid order by phone+amount or order ID, and auto-marks it Paid. No admin intervention needed.
+                    When you register C2B URLs, Safaricom calls your site every time someone pays into your Till ({MPESA_TILL_DISPLAY}) — even outside your STK push checkout. The system tries to match the payment to an unpaid order by phone+amount or order ID, and auto-marks it Paid. No admin intervention needed.
                 </p>
                 <p className="text-xs text-blue-700 mt-3">You only need to register once per environment. Re-register if your domain or callback paths change.</p>
             </div>
@@ -106,7 +107,7 @@ export default function MpesaSettingsPage() {
                                     <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-start gap-3">
                                         <span className="text-2xl">✅</span>
                                         <div>
-                                            <p className="font-black text-emerald-900 text-sm">Customers paying to Till {config.shortCode || '3130847'} are now auto-detected</p>
+                                            <p className="font-black text-emerald-900 text-sm">Customers paying to Till {config.shortCode || MPESA_TILL_DISPLAY} are now auto-detected</p>
                                             <p className="text-xs text-emerald-800 mt-1">No admin verification needed — orders flip to Paid within seconds of the M-Pesa SMS.</p>
                                         </div>
                                     </div>

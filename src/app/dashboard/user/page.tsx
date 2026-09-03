@@ -25,6 +25,7 @@ import { Input } from '@/components/ui/form/Input';
 import { useProducts } from '@/context/ProductContext';
 import { actionableReorders, buildReorderPredictions, ReorderPrediction } from '@/lib/reorder-intelligence';
 import { AnalyticsService } from '@/lib/analytics';
+import { whatsAppUrl } from '@/lib/site';
 
 type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses' | 'payments';
 
@@ -659,7 +660,7 @@ export default function UserDashboard() {
         <div className="max-w-2xl space-y-8">
             <h2 className="text-2xl font-bold text-gray-900">Customer Support</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <a href="https://wa.me/254748970757" target="_blank" className="p-6 bg-white border border-gray-100 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                <a href={whatsAppUrl()} target="_blank" className="p-6 bg-white border border-gray-100 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
                     <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center text-green-500">
                         <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.038 3.284l-.54 1.964 2.009-.528c.954.524 1.942.85 3.037.852 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.586-5.772-5.744-5.772zm3.374 8.086c-.1.272-.58.513-.801.551-.237.042-.46.079-.769-.015-.297-.091-.676-.239-1.144-.442-1.99-.861-3.284-2.885-3.383-3.018-.099-.134-.736-.979-.736-1.959 0-.979.512-1.46.694-1.658.183-.198.396-.247.53-.247.13 0 .26.012.37.012.11 0 .26-.041.408.321.148.36.512 1.25.56 1.348.049.099.083.214.016.347-.066.13-.1.214-.2.33-.1.115-.208.261-.297.35-.099.099-.198.198-.083.396.115.198.512.845 1.099 1.366.759.673 1.398.882 1.596.981.198.099.313.082.43-.049.115-.132.512-.596.644-.793.132-.198.26-.165.43-.099.172.066 1.09.514 1.277.613.183.1.312.148.363.23.049.082.049.479-.05.751z" /></svg>
                     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { whatsAppUrl } from "@/lib/site";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useSearchParams } from "next/navigation";
@@ -334,7 +335,7 @@ function OrderSuccessContent() {
                         <div>
                             <h3 className="font-bold text-gray-900 mb-2">Need help with your order?</h3>
                             <p className="text-gray-600 mb-4">Contact support via WhatsApp for real-time assistance</p>
-                            <Link href="https://wa.me/254748970757" target="_blank" className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-bold transition-colors">
+                            <Link href={whatsAppUrl()} target="_blank" className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg font-bold transition-colors">
                                 <span>💬</span> WhatsApp Support
                             </Link>
                         </div>

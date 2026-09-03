@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Logo from "./Logo";
+import { whatsAppUrl, SUPPORT_PHONE_DISPLAY } from "@/lib/site";
 
 export default function Footer() {
     return (
@@ -15,8 +16,8 @@ export default function Footer() {
                         <p className="text-sm text-gray-400 leading-relaxed">
                             Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests.
                         </p>
-                        <a href="https://wa.me/254748970757" target="_blank" rel="noopener noreferrer" className="inline-flex text-sm font-bold text-green-400 hover:text-green-300 transition-colors">
-                            WhatsApp support: +254 748 970 757
+                        <a href={whatsAppUrl()} target="_blank" rel="noopener noreferrer" className="inline-flex text-sm font-bold text-green-400 hover:text-green-300 transition-colors">
+                            WhatsApp support: {SUPPORT_PHONE_DISPLAY}
                         </a>
                     </div>
 

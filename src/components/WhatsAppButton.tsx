@@ -1,9 +1,10 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { SUPPORT_WHATSAPP } from "@/lib/site";
 
 export default function WhatsAppButton() {
-    const phoneNumber = "254748970757";
+    const phoneNumber = SUPPORT_WHATSAPP;
     const message = encodeURIComponent("Hello Mel-Agri! I'm interested in your products.");
 
     return (

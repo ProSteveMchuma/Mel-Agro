@@ -25,6 +25,7 @@ import { useShippingZones } from '@/hooks/useShippingZones';
 import { get, useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { checkoutSchema, CheckoutFormData } from '@/lib/schemas';
+import { MPESA_TILL_DISPLAY } from '@/lib/site';
 import { Input } from '@/components/ui/form/Input';
 import { Select } from '@/components/ui/form/Select';
 import { Textarea } from '@/components/ui/form/Textarea';
@@ -1185,7 +1186,7 @@ export default function CheckoutPage() {
                                                         <div className="bg-white p-4 rounded-xl border border-gray-200 mb-4 space-y-3">
                                                             <div className="flex justify-between items-center border-b border-gray-100 pb-2">
                                                                 <span className="text-gray-500 text-sm font-medium">Till No.</span>
-                                                                <span className="font-black text-xl text-gray-900 tracking-wider">3130847</span>
+                                                                <span className="font-black text-xl text-gray-900 tracking-wider">{MPESA_TILL_DISPLAY}</span>
                                                             </div>
                                                             <div className="flex justify-between items-center">
                                                                 <span className="text-gray-500 text-sm font-medium">Amount</span>

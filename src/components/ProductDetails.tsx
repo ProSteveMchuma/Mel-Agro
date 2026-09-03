@@ -15,6 +15,7 @@ import Logo from '@/components/Logo';
 import IntelligentDescription from '@/components/IntelligentDescription';
 import ProductFaqs from '@/components/ProductFaqs';
 import { slugifySeoValue } from '@/lib/seo';
+import { whatsAppUrl } from '@/lib/site';
 
 interface ProductDetailsProps {
     id: string;
@@ -309,7 +310,7 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                 Buy Now
                             </button>
                             <a
-                                href={`https://wa.me/254748970757?text=${encodeURIComponent(`*PRODUCT INQUIRY*\n\nI am interested in buying: *${product.name}*\nPrice: KES ${product.price.toLocaleString()}\n\nIs this available?`)}`}
+                                href={whatsAppUrl(`*PRODUCT INQUIRY*\n\nI am interested in buying: *${product.name}*\nPrice: KES ${product.price.toLocaleString()}\n\nIs this available?`)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-full h-12 bg-[#25D366] text-white font-bold rounded-lg hover:bg-[#128C7E] transition-colors flex items-center justify-center gap-2"

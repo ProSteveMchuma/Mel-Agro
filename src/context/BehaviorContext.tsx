@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { whatsAppUrl } from '@/lib/site';
 
 interface BehaviorContextType {
     trackAction: (action: string, metadata?: any) => void;
@@ -141,7 +142,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 "Need help completing your order? Our support team is one click away via WhatsApp.",
                 {
                     label: "Get Help",
-                    onClick: () => window.open('https://wa.me/254748970757?text=Hello,%20I%20am%20having%20some%20trouble%20completing%20my%20order.', '_blank')
+                    onClick: () => window.open(whatsAppUrl('Hello, I am having some trouble completing my order.'), '_blank')
                 }
             );
             setHasShownCheckoutHelp(true);
@@ -173,7 +174,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     "Can't find what you're looking for? Our team can help you source it via WhatsApp!",
                     {
                         label: "WhatsApp Support",
-                        onClick: () => window.open('https://wa.me/254748970757?text=Hello,%20I%20am%20looking%20for%20something%20I%20can%20not%20find%20on%20the%20website.', '_blank')
+                        onClick: () => window.open(whatsAppUrl('Hello, I am looking for something I can not find on the website.'), '_blank')
                     }
                 );
                 setHasShownSearchHelp(true);
@@ -185,7 +186,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 "Having trouble with the form? Feel free to contact us or use 'WhatsApp Order' to checkout faster!",
                 {
                     label: "Order via WhatsApp",
-                    onClick: () => window.open('https://wa.me/254748970757?text=Hello,%20I%20need%20help%20completing%20my%20order.', '_blank')
+                    onClick: () => window.open(whatsAppUrl('Hello, I need help completing my order.'), '_blank')
                 }
             );
         }

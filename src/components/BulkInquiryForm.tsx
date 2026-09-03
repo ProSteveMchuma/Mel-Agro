@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "react-hot-toast";
+import { SUPPORT_PHONE_E164, SUPPORT_PHONE_DISPLAY } from "@/lib/site";
 
 const CATEGORIES = ['Seeds', 'Fertilizers', 'Agrochemicals', 'Equipment', 'Animal Feed', 'Other'];
 const TIMELINES = ['Within 1 week', '2–4 weeks', '1–3 months', 'Just exploring'];
@@ -63,7 +64,7 @@ export default function BulkInquiryForm() {
                 <div className="text-5xl mb-4">✅</div>
                 <h3 className="font-black text-xl text-green-900 mb-2">Inquiry received</h3>
                 <p className="text-sm text-green-800">Our sales team will contact you within 24 hours via phone or email.</p>
-                <p className="text-xs text-green-700 mt-3">Need it urgently? Call us: <a href="tel:+254748970757" className="underline font-bold">+254 748 970 757</a></p>
+                <p className="text-xs text-green-700 mt-3">Need it urgently? Call us: <a href={`tel:${SUPPORT_PHONE_E164}`} className="underline font-bold">{SUPPORT_PHONE_DISPLAY}</a></p>
             </div>
         );
     }
@@ -191,7 +192,7 @@ export default function BulkInquiryForm() {
             </button>
 
             <p className="text-xs text-gray-600">
-                Or call us directly: <a href="tel:+254748970757" className="font-bold text-yellow-700">+254 748 970 757</a>
+                Or call us directly: <a href={`tel:${SUPPORT_PHONE_E164}`} className="font-bold text-yellow-700">{SUPPORT_PHONE_DISPLAY}</a>
             </p>
         </form>
     );

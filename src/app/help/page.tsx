@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { useState } from "react";
+import { whatsAppUrl, SUPPORT_PHONE_E164, SUPPORT_PHONE_DISPLAY } from "@/lib/site";
 
 const faqCategories = [
     {
@@ -182,7 +183,7 @@ export default function HelpCenterPage() {
                                 <p className="text-gray-600 mb-8">Our support team is available Monday - Friday, 8am - 5pm</p>
 
                                 <div className="space-y-4">
-                                    <Link href="https://wa.me/254748970757" target="_blank" className="w-full flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors group text-left">
+                                    <Link href={whatsAppUrl()} target="_blank" className="w-full flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-xl hover:bg-green-100 transition-colors group text-left">
                                         <span className="text-3xl">💬</span>
                                         <div className="text-left flex-1">
                                             <p className="font-bold text-gray-900">WhatsApp</p>
@@ -191,11 +192,11 @@ export default function HelpCenterPage() {
                                         <span className="text-melagri-primary group-hover:translate-x-1 transition-transform">→</span>
                                     </Link>
 
-                                    <Link href="tel:+254748970757" className="w-full flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors group text-left">
+                                    <Link href={`tel:${SUPPORT_PHONE_E164}`} className="w-full flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors group text-left">
                                         <span className="text-3xl">📞</span>
                                         <div className="text-left flex-1">
                                             <p className="font-bold text-gray-900">Call Us</p>
-                                            <p className="text-sm text-gray-600">+254 748 970 757</p>
+                                            <p className="text-sm text-gray-600">{SUPPORT_PHONE_DISPLAY}</p>
                                         </div>
                                         <span className="text-melagri-primary group-hover:translate-x-1 transition-transform">→</span>
                                     </Link>

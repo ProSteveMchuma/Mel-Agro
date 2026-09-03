@@ -2,6 +2,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { Metadata } from 'next';
+import { whatsAppUrl, SUPPORT_PHONE_E164 } from "@/lib/site";
 
 export const metadata: Metadata = {
     title: "Agrovet Customer Support & Location in Nairobi",
@@ -146,7 +147,7 @@ export default function ContactPage() {
                                     </div>
                                 </div>
                                 <div className="mt-8">
-                                    <Link href="https://wa.me/254748970757" target="_blank" className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2">
+                                    <Link href={whatsAppUrl()} target="_blank" className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2">
                                         <span>💬</span> Chat on WhatsApp
                                     </Link>
                                 </div>
@@ -196,10 +197,10 @@ export default function ContactPage() {
                         <h2 className="text-3xl font-bold mb-4">Still need help?</h2>
                         <p className="text-lg mb-8 opacity-90">Our support team is available Monday–Friday, 8am–5pm, and Saturday, 8am–1pm.</p>
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <Link href="https://wa.me/254748970757" target="_blank" className="bg-white text-melagri-primary px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors">
+                            <Link href={whatsAppUrl()} target="_blank" className="bg-white text-melagri-primary px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors">
                                 💬 WhatsApp
                             </Link>
-                            <Link href="tel:+254748970757" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">
+                            <Link href={`tel:${SUPPORT_PHONE_E164}`} className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">
                                 📞 Call Us
                             </Link>
                             <Link href="mailto:support@melagri.com" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">

@@ -1,3 +1,4 @@
+import { SUPPORT_WHATSAPP } from './site';
 
 export interface WhatsAppOrderDetails {
     orderId: string;
@@ -30,8 +31,8 @@ export const generateWhatsAppMessage = (details: WhatsAppOrderDetails) => {
 };
 
 export const getWhatsAppUrl = (message: string) => {
-    const phoneNumber = '254748970757'; // Admin WhatsApp number
-    return `https://wa.me/${phoneNumber}?text=${message}`;
+    // `message` is expected to already be URL-encoded by the caller.
+    return `https://wa.me/${SUPPORT_WHATSAPP}?text=${message}`;
 };
 
 export const generateWhatsAppProductInquiry = (productName: string, price: number) => {

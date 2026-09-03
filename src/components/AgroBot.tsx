@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useSettings } from '@/context/SettingsContext';
 import { useOrders } from '@/context/OrderContext';
 import { productSeoPath } from '@/lib/seo';
+import { whatsAppUrl } from '@/lib/site';
 
 type ChatMessage = {
     text: string;
@@ -66,7 +67,7 @@ export default function AgroBot() {
 
     const handleOptionClick = (option: string) => {
         if (option === "WhatsApp Expert") {
-            window.open("https://wa.me/254748970757", "_blank", "noopener,noreferrer");
+            window.open(whatsAppUrl(), "_blank", "noopener,noreferrer");
             return;
         }
         if (option === "Browse Shop") {

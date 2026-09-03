@@ -112,7 +112,7 @@ export const metadata: Metadata = {
     images: [SITE_SOCIAL_IMAGE],
   },
   verification: {
-    google: 'SmMoEZQ9Z1KQVluCgL0QUSjhPN9QqNwCXDUWq83DoO4',
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || 'SmMoEZQ9Z1KQVluCgL0QUSjhPN9QqNwCXDUWq83DoO4',
   },
   category: 'shopping',
 };

@@ -1,4 +1,4 @@
-import { SITE_LOGO, SITE_SOCIAL_IMAGE, SITE_URL } from '@/lib/site';
+import { SITE_LOGO, SITE_SOCIAL_IMAGE, SITE_URL, SUPPORT_PHONE_E164 } from '@/lib/site';
 
 export default function JsonLd() {
     const storeId = `${SITE_URL}/#store`;
@@ -20,12 +20,12 @@ export default function JsonLd() {
                     height: 1024,
                 },
                 image: SITE_SOCIAL_IMAGE,
-                telephone: '+254748970757',
+                telephone: SUPPORT_PHONE_E164,
                 email: 'support@melagri.com',
                 priceRange: '$$',
                 contactPoint: {
                     '@type': 'ContactPoint',
-                    telephone: '+254748970757',
+                    telephone: SUPPORT_PHONE_E164,
                     email: 'support@melagri.com',
                     contactType: 'customer service',
                     areaServed: 'KE',
