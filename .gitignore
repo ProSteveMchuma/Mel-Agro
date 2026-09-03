@@ -22,13 +22,38 @@
 
 # misc
 .DS_Store
+
+# secrets / key material (never commit)
 *.pem
+*.cer
+key-raw.txt
+key*.txt
+serviceAccount*.json
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+
+# local build / debug output dumps (never commit)
+*.log
+build_*.txt
+build_*.log
+tsc_*.log
+tsc_*.txt
+tsc_output.txt
+lint_output*.txt
+check_output*.txt
+audit_log.txt
+image-check-results.txt
+fb_error.txt
+firebase-debug.log
+firestore-debug.log
+
+# Next.js-generated agent rule files (regenerated on dev/build)
+AGENTS.md
+CLAUDE.md
 
 # env files (can opt-in for committing if needed)
 .env*
