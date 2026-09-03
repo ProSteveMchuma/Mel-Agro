@@ -7,6 +7,10 @@ import { productSeoPath, resolveSeoValue, slugifySeoValue } from '@/lib/seo';
 
 type Props = { params: Promise<{ slug: string }> };
 
+// Refresh brand landing pages hourly (ISR) so new products, prices and stock
+// appear without a redeploy.
+export const revalidate = 3600;
+
 export async function generateStaticParams() {
     return (await getUniqueBrandsCached()).map(brand => ({ slug: slugifySeoValue(brand) }));
 }

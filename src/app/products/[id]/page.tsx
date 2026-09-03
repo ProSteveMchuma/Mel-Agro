@@ -1,6 +1,6 @@
 import { Metadata } from 'next';
 import ProductDetails from '@/components/ProductDetails';
-import { getProductByIdServerCached, getRelatedProductsCached, getSafeCoPurchaseProductsCached } from '@/lib/products-server';
+import { getAllProductsServerCached, getProductByIdServerCached, getRelatedProductsCached, getSafeCoPurchaseProductsCached } from '@/lib/products-server';
 import { absoluteUrl, SITE_URL } from '@/lib/site';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { productIdFromRouteParam, productSeoPath, productSeoSlug } from '@/lib/seo';
@@ -8,6 +8,22 @@ import { productIdFromRouteParam, productSeoPath, productSeoSlug } from '@/lib/s
 type Props = {
     params: Promise<{ id: string }>;
 };
+
+// Incrementally regenerate product pages instead of rendering every request
+// on demand. Pre-render the catalogue at build time; new/updated products are
+// rendered on first request and cached, then refreshed at most hourly.
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+    try {
+        const products = await getAllProductsServerCached(1000);
+        return products.map((product) => ({ id: productSeoSlug(product) }));
+    } catch {
+        // Don't fail the build if the catalogue can't be read; pages fall back
+        // to on-demand ISR rendering.
+        return [];
+    }
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id } = await params;
