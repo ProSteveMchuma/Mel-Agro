@@ -56,8 +56,20 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
     // Real-time search state
     const [localSearch, setLocalSearch] = useState(searchParams.get("search") || "");
 
-    // Debounce effect for real-time search
+    // Keep the quick-filter input in sync when the URL `search` changes from
+    // elsewhere (suggestion pills, header search, back/forward navigation) so
+    // external selections aren't lost.
     useEffect(() => {
+        const urlSearch = searchParams.get("search") || "";
+        setLocalSearch(prev => (prev === urlSearch ? prev : urlSearch));
+    }, [searchParams]);
+
+    // Debounce the user's typing into the URL. Only write when the debounced
+    // value actually differs from the current URL search, so external changes
+    // (pills / brand selection) are never clobbered back to the full catalogue.
+    useEffect(() => {
+        const urlSearch = searchParams.get("search") || "";
+        if (localSearch === urlSearch) return;
         const timer = setTimeout(() => {
             const params = new URLSearchParams(searchParams.toString());
             if (localSearch) {
