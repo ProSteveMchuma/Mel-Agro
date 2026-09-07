@@ -35,7 +35,7 @@ export default async function CategoryPage({ params }: Props) {
     const categories = await getUniqueCategoriesCached();
     const category = resolveSeoValue(slug, categories);
     if (!category) notFound();
-    const products = await getProductsByTaxonomyCached('category', category, 12);
+    const products = await getProductsByTaxonomyCached('category', category, 200);
     const editorial = categoryEditorial(category);
     const canonical = `/categories/${slugifySeoValue(category)}`;
     const graph = { '@context': 'https://schema.org', '@graph': [{ '@type': 'CollectionPage', '@id': `${absoluteUrl(canonical)}#page`, url: absoluteUrl(canonical), name: `${category} in Kenya`, description: editorial.summary, breadcrumb: { '@id': `${absoluteUrl(canonical)}#breadcrumbs` }, mainEntity: { '@type': 'ItemList', numberOfItems: products.length, itemListElement: products.map((product, index) => ({ '@type': 'ListItem', position: index + 1, url: absoluteUrl(productSeoPath(product)), name: product.name })) } }, { '@type': 'BreadcrumbList', '@id': `${absoluteUrl(canonical)}#breadcrumbs`, itemListElement: [{ '@type': 'ListItem', position: 1, name: 'Home', item: absoluteUrl('/') }, { '@type': 'ListItem', position: 2, name: 'Products', item: absoluteUrl('/products') }, { '@type': 'ListItem', position: 3, name: category, item: absoluteUrl(canonical) }] }, { '@type': 'FAQPage', mainEntity: editorial.faq.map(item => ({ '@type': 'Question', name: item.question, acceptedAnswer: { '@type': 'Answer', text: item.answer } })) }] };

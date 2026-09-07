@@ -22,8 +22,8 @@ export const getAllProductsServerCached = unstable_cache(
 );
 
 export const getProductsByTaxonomyCached = unstable_cache(
-    async (field: 'category' | 'brand', value: string, limitCount = 48): Promise<Product[]> => {
-        const snapshot = await adminDb.collection('products').where(field, '==', value).limit(Math.min(100, Math.max(1, limitCount))).get();
+    async (field: 'category' | 'brand', value: string, limitCount = 200): Promise<Product[]> => {
+        const snapshot = await adminDb.collection('products').where(field, '==', value).limit(Math.min(500, Math.max(1, limitCount))).get();
         return snapshot.docs.filter(doc => doc.data().archived !== true).map(plainProduct);
     },
     ['products-by-taxonomy'],
