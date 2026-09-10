@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { verifySafaricomCallback } from '@/lib/safaricom-ips';
 import { normalizeMpesaReceipt } from '@/lib/mpesa';
+import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
 
 export async function POST(request: Request) {
     const ipCheck = verifySafaricomCallback(request);
@@ -174,6 +175,19 @@ export async function POST(request: Request) {
                     status: 'Success',
                     recordedBy: 'System (C2B Auto-Match)',
                     matchReason,
+                });
+
+                void notifyCustomerPaymentReceived({
+                    orderId: matchedOrderId,
+                    order: {
+                        ...orderData,
+                        amountPaid: amount,
+                        mpesaReceiptNumber: transID,
+                        paymentMethod: 'M-Pesa Till (C2B)',
+                    },
+                    receipt: transID,
+                    phone: phone || orderData?.phone,
+                    method: 'M-Pesa Till (C2B)',
                 });
             }
         }

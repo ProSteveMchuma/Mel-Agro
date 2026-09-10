@@ -3,8 +3,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { findOrderByCheckoutRequestId } from '@/lib/mpesa-orders';
 import { verifySafaricomCallback } from '@/lib/safaricom-ips';
-import { CommunicationTemplates } from '@/lib/communication-templates';
-import { sendServerSms, sendServerEmail } from '@/lib/server-notifications';
+import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
 import { reportIncident } from '@/lib/incident-reporting';
 
 export async function POST(request: Request) {
@@ -50,6 +49,15 @@ export async function POST(request: Request) {
 
         const callbackEventId = `${CheckoutRequestID}-${ResultCode}`;
         if (orderData.lastCallbackEventId === callbackEventId) {
+            if (String(ResultCode) === '0' && !orderData.paymentSmsSentAt) {
+                void notifyCustomerPaymentReceived({
+                    orderId: orderDoc.id,
+                    order: orderData,
+                    receipt: mpesaReceiptNumber || orderData.mpesaReceiptNumber,
+                    phone: phoneNumber || orderData.phone,
+                    method: 'M-Pesa',
+                });
+            }
             console.log(`Idempotent skip — duplicate callback for ${callbackEventId}`);
             return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
         }
@@ -64,6 +72,18 @@ export async function POST(request: Request) {
                     amountPaid: orderData.amountPaid || amountPaid,
                     lastCallbackEventId: callbackEventId,
                     updatedAt: new Date().toISOString(),
+                });
+            }
+            if (ResultCode === 0 && !orderData.paymentSmsSentAt) {
+                void notifyCustomerPaymentReceived({
+                    orderId: orderDoc.id,
+                    order: {
+                        ...orderData,
+                        mpesaReceiptNumber: mpesaReceiptNumber || orderData.mpesaReceiptNumber,
+                    },
+                    receipt: mpesaReceiptNumber || orderData.mpesaReceiptNumber,
+                    phone: phoneNumber || orderData.phone,
+                    method: 'M-Pesa',
                 });
             }
             console.log(`Idempotent skip — order ${orderDoc.id} already Paid`);
@@ -122,25 +142,18 @@ export async function POST(request: Request) {
                 recordedBy: 'System (M-Pesa)',
             });
 
-            // Fire-and-forget customer notification — don't block the Safaricom ack
-            try {
-                const orderForTpl = {
+            void notifyCustomerPaymentReceived({
+                orderId: orderDoc.id,
+                order: {
                     ...orderData,
-                    id: orderDoc.id,
-                    paymentMethod: 'M-Pesa',
-                    mpesaReceiptNumber,
                     amountPaid,
-                } as any;
-                const tpl = CommunicationTemplates.getPaymentReceived(orderForTpl, {
-                    receipt: mpesaReceiptNumber,
-                    method: 'M-Pesa',
-                });
-                const customerPhone = phoneNumber || orderData.phone;
-                if (customerPhone) sendServerSms(customerPhone, tpl.smsBody).catch(() => { });
-                if (orderData.userEmail) sendServerEmail(orderData.userEmail, tpl.subject, tpl.emailBody).catch(() => { });
-            } catch (e) {
-                console.warn('Payment-received notification failed (non-fatal):', e);
-            }
+                    mpesaReceiptNumber,
+                    paymentMethod: 'M-Pesa',
+                },
+                receipt: mpesaReceiptNumber,
+                phone: phoneNumber || orderData.phone,
+                method: 'M-Pesa',
+            });
         } else {
             void reportIncident({
                 type: 'payment_failure',

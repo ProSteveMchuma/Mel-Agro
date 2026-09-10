@@ -4,6 +4,7 @@ import { requirePermission } from '@/lib/auth-server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
+import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
 
 const PAGE_SIZE = 20;
 const statusValues = new Set(['Pending Payment', 'Processing', 'Shipped', 'Delivered', 'Cancelled']);
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
   const input = parsed.data; const actor = await requirePermission(request, input.action === 'payment_status' ? 'payments.manage' : 'orders.manage');
   if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 403 });
   try {
+    let paidOrder: Record<string, unknown> | null = null;
     await adminDb.runTransaction(async (transaction) => {
       const orderRef = adminDb.collection('orders').doc(input.orderId); const orderSnapshot = await transaction.get(orderRef); if (!orderSnapshot.exists) throw new Error('ORDER_NOT_FOUND');
       const order = orderSnapshot.data() || {}; const now = new Date().toISOString();
@@ -71,9 +73,17 @@ export async function POST(request: Request) {
       }
       if (input.paymentStatus === 'Paid' && !input.transaction) throw new Error('TRANSACTION_REQUIRED');
       const update: Record<string, unknown> = { paymentStatus: input.paymentStatus, updatedAt: now };
-      if (input.paymentStatus === 'Paid' && input.transaction) { update.stockReservationStatus = 'committed'; update.paidAt = now; update.transactionId = input.transaction.reference; update.paymentMethod = input.transaction.method; transaction.set(adminDb.collection('transactions').doc(), { orderId: input.orderId, amount: input.transaction.amount, reference: input.transaction.reference, method: input.transaction.method, date: input.transaction.date, status: 'Success', recordedBy: actor.uid, recordedAt: now }); }
+      if (input.paymentStatus === 'Paid' && input.transaction) { update.stockReservationStatus = 'committed'; update.paidAt = now; update.transactionId = input.transaction.reference; update.paymentMethod = input.transaction.method; transaction.set(adminDb.collection('transactions').doc(), { orderId: input.orderId, amount: input.transaction.amount, reference: input.transaction.reference, method: input.transaction.method, date: input.transaction.date, status: 'Success', recordedBy: actor.uid, recordedAt: now }); paidOrder = { ...order, ...update, amountPaid: input.transaction.amount, mpesaReceiptNumber: input.transaction.reference }; }
       transaction.update(orderRef, update); transaction.set(adminDb.collection('adminAuditLog').doc(), { action: 'order_payment_status_changed', actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, before: { paymentStatus: order.paymentStatus || 'Unpaid' }, after: { paymentStatus: input.paymentStatus, reference: input.transaction?.reference || null }, createdAt: now });
     });
+    if (paidOrder) {
+      void notifyCustomerPaymentReceived({
+        orderId: input.orderId,
+        order: paidOrder,
+        receipt: String(paidOrder.transactionId || ''),
+        method: String(paidOrder.paymentMethod || 'M-Pesa'),
+      });
+    }
     return NextResponse.json({ success: true });
   } catch (error) { const code = error instanceof Error ? error.message : ''; if (code === 'ORDER_NOT_FOUND') return NextResponse.json({ success: false, message: 'Order not found.' }, { status: 404 }); if (code === 'INVALID_TRANSITION') return NextResponse.json({ success: false, message: 'Only a paid pending order can begin processing.' }, { status: 409 }); if (code === 'TRANSACTION_REQUIRED') return NextResponse.json({ success: false, message: 'Transaction details are required when manually marking an order paid.' }, { status: 400 }); throw error; }
 }

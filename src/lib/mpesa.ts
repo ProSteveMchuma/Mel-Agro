@@ -28,6 +28,13 @@ export function isValidMpesaReceipt(code: string): boolean {
     return /^[A-Z0-9]{8,12}$/.test(code);
 }
 
+export function paymentSmsPhone(
+    order: { phone?: string; mpesaPhoneNumber?: string } | null | undefined,
+    preferred?: string,
+): string {
+    return String(preferred || order?.mpesaPhoneNumber || order?.phone || '').trim();
+}
+
 export const MPESA_RESULT_CODES = {
     SUCCESS: '0',
     INSUFFICIENT_FUNDS: '1',

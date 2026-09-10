@@ -117,9 +117,11 @@ Get **API Key**, **Partner ID**, and the approved **Sender ID / shortcode** from
 
 Use the API key, not an App Key. Sender ID must match the value Advanta assigned (case-sensitive).
 
+These must be set on **Vercel Production** (and Preview if you test there). The website cannot send SMS until they are present:
+
 ```env
 ADVANTA_API_KEY=
-ADVANTA_PARTNER_ID=
+ADVANTA_PARTNER_ID=12763
 ADVANTA_SENDER_ID=Makamithi
 ```
 

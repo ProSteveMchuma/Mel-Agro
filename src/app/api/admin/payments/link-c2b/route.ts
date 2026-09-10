@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
+import { notifyCustomerPaymentReceived } from "@/lib/payment-notifications";
 
 const schema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("ignore"), c2bPaymentId: z.string().min(1).max(200), orderId: z.string().optional() }),
@@ -54,6 +55,15 @@ export async function POST(request: Request) {
       if (order.userId) transaction.set(adminDb.collection("notifications").doc(), { userId: order.userId, message: `Payment received for order #${input.orderId.slice(0, 8)}.`, date: now, read: false, type: "order" });
       return "linked";
     });
+    if (outcome === "linked" && input.action === "link") {
+      const orderSnap = await adminDb.collection("orders").doc(input.orderId).get();
+      void notifyCustomerPaymentReceived({
+        orderId: input.orderId,
+        order: { id: input.orderId, ...orderSnap.data() },
+        receipt: String(orderSnap.data()?.mpesaReceiptNumber || orderSnap.data()?.transactionId || ""),
+        method: String(orderSnap.data()?.paymentMethod || "M-Pesa"),
+      });
+    }
     return NextResponse.json({ success: true, action: outcome });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";

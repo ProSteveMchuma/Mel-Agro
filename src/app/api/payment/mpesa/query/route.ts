@@ -4,6 +4,7 @@ import { querySTKStatus } from '@/lib/mpesa-server';
 import { checkoutIdsToQuery, getMpesaErrorMessage, resolveStkQueryProbes } from '@/lib/mpesa';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 import { enforceRateLimit } from '@/lib/request-guard';
+import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
 
 export async function POST(request: Request) {
     const limited = enforceRateLimit(request, 'mpesa-query', 30, 10 * 60_000);
@@ -39,6 +40,14 @@ export async function POST(request: Request) {
         }
 
         if (order?.paymentStatus === 'Paid') {
+            if (!order.paymentSmsSentAt) {
+                void notifyCustomerPaymentReceived({
+                    orderId,
+                    order,
+                    receipt: order.mpesaReceiptNumber || order.transactionId,
+                    method: order.paymentMethod || 'M-Pesa',
+                });
+            }
             return NextResponse.json({
                 success: true,
                 paid: true,
@@ -104,6 +113,16 @@ export async function POST(request: Request) {
                     paymentResolvedVia: 'STK_QUERY',
                 });
             }
+            await notifyCustomerPaymentReceived({
+                orderId,
+                order: {
+                    ...order,
+                    paymentStatus: 'Paid',
+                    paymentMethod: order.paymentMethod || 'M-Pesa',
+                },
+                receipt: order?.mpesaReceiptNumber || order?.transactionId,
+                method: order?.paymentMethod || 'M-Pesa',
+            });
             return NextResponse.json({
                 success: true,
                 paid: true,

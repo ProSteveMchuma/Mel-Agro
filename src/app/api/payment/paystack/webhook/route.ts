@@ -2,8 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import crypto from 'crypto';
-import { CommunicationTemplates } from '@/lib/communication-templates';
-import { sendServerSms, sendServerEmail } from '@/lib/server-notifications';
+import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
 import { reportIncident } from '@/lib/incident-reporting';
 
 export async function POST(request: Request) {
@@ -115,26 +114,17 @@ export async function POST(request: Request) {
                     customerEmail: customer?.email || null,
                 });
 
-                // Fire-and-forget customer notification
-                try {
-                    const orderData = orderDoc.data();
-                    const orderForTpl = {
-                        ...orderData,
-                        id: orderId,
-                        paymentMethod: 'Card',
+                void notifyCustomerPaymentReceived({
+                    orderId,
+                    order: {
+                        ...orderDoc.data(),
                         amountPaid,
-                    } as any;
-                    const tpl = CommunicationTemplates.getPaymentReceived(orderForTpl, {
-                        receipt: reference,
-                        method: 'Card (Paystack)',
-                    });
-                    if (orderData?.phone) sendServerSms(orderData.phone, tpl.smsBody).catch(() => { });
-                    if (orderData?.userEmail || customer?.email) {
-                        sendServerEmail(orderData?.userEmail || customer.email, tpl.subject, tpl.emailBody).catch(() => { });
-                    }
-                } catch (e) {
-                    console.warn('Paystack payment-received notification failed (non-fatal):', e);
-                }
+                        paymentMethod: 'Card (Paystack)',
+                        transactionId: reference,
+                    },
+                    receipt: reference,
+                    method: 'Card (Paystack)',
+                });
 
                 console.log(`Paystack Webhook: order ${orderId} marked Paid`);
             }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { verifySafaricomCallback } from '@/lib/safaricom-ips';
+import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
 
 export async function POST(request: Request) {
     const ipCheck = verifySafaricomCallback(request);
@@ -112,6 +113,20 @@ export async function POST(request: Request) {
         }
 
         await orderRef.update(update);
+
+        if (isCompleted && amountMatches && order.paymentStatus !== 'Paid') {
+            void notifyCustomerPaymentReceived({
+                orderId: querySnap.docs[0].id,
+                order: {
+                    ...order,
+                    amountPaid: transactionAmount,
+                    mpesaReceiptNumber: receiptNo,
+                    paymentMethod: update.paymentMethod,
+                },
+                receipt: receiptNo,
+                method: String(update.paymentMethod || 'M-Pesa'),
+            });
+        }
 
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     } catch (error) {

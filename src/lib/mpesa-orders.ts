@@ -1,5 +1,6 @@
 import { FieldValue, type DocumentData } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
+import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
 
 export async function findOrderByCheckoutRequestId(checkoutRequestID: string) {
     if (!checkoutRequestID) return null;
@@ -75,5 +76,20 @@ export async function markOrderPaidWithReceipt(args: {
         date: now,
         status: 'Success',
         recordedBy: args.recordedBy,
+    });
+
+    await notifyCustomerPaymentReceived({
+        orderId: args.orderId,
+        order: {
+            ...args.order,
+            amountPaid,
+            mpesaReceiptNumber: args.receipt,
+            paymentMethod: args.paymentMethod,
+            phone: args.phone || args.order.phone,
+            mpesaPhoneNumber: args.phone || args.order.mpesaPhoneNumber,
+        },
+        receipt: args.receipt,
+        phone: args.phone,
+        method: args.paymentMethod,
     });
 }

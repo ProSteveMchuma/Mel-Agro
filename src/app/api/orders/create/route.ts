@@ -381,11 +381,16 @@ export async function POST(request: Request) {
         });
 
         try {
-            const confirmation = CommunicationTemplates.getOrderConfirmation(order as any);
-            const notifications: Promise<unknown>[] = [];
-            if (order.phone) notifications.push(sendServerSms(order.phone, confirmation.smsBody));
-            if (order.userEmail) notifications.push(sendServerEmail(order.userEmail, confirmation.subject, confirmation.emailBody));
-            await Promise.allSettled(notifications);
+            const paidOrPlaced = order.paymentStatus === 'Paid'
+                || String(order.paymentMethod || '').includes('Cash')
+                || String(order.paymentMethod || '').includes('WhatsApp');
+            if (paidOrPlaced) {
+                const confirmation = CommunicationTemplates.getOrderConfirmation(order as any);
+                const notifications: Promise<unknown>[] = [];
+                if (order.phone) notifications.push(sendServerSms(order.phone, confirmation.smsBody));
+                if (order.userEmail) notifications.push(sendServerEmail(order.userEmail, confirmation.subject, confirmation.emailBody));
+                await Promise.allSettled(notifications);
+            }
         } catch (notificationError) {
             console.warn('Order confirmation notification failed (non-fatal):', notificationError);
         }

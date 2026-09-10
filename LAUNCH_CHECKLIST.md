@@ -28,6 +28,7 @@
 ## Customer communications
 
 - [ ] Deliver a test order email externally and check SPF, DKIM, and DMARC alignment.
+- [ ] Set `ADVANTA_API_KEY`, `ADVANTA_PARTNER_ID`, and `ADVANTA_SENDER_ID=Makamithi` on Vercel Production.
 - [ ] Deliver a production Advanta SMS to a Kenyan number.
 - [ ] Deliver a Twilio WhatsApp notification from the approved sender.
 - [ ] Confirm notification failures cannot change payment or order status.

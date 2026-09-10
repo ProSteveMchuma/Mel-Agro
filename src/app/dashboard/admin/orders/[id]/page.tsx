@@ -494,6 +494,26 @@ export default function AdminOrderDetailsPage() {
                             >
                                 Revert to Unpaid
                             </button>
+                            <button
+                                onClick={async () => {
+                                    setMpesaActionLoading('resend-sms');
+                                    const t = toast.loading('Sending payment SMS...');
+                                    try {
+                                        const res = await authedFetch('/api/admin/orders/resend-payment-sms', { orderId: order.id });
+                                        const data = await res.json();
+                                        if (data.success) toast.success(data.message, { id: t });
+                                        else toast.error(data.message || 'SMS failed', { id: t, duration: 7000 });
+                                    } catch (e: any) {
+                                        toast.error(e?.message || 'SMS failed', { id: t });
+                                    } finally {
+                                        setMpesaActionLoading(null);
+                                    }
+                                }}
+                                disabled={mpesaActionLoading === 'resend-sms'}
+                                className="w-full bg-emerald-50 text-emerald-800 border border-emerald-200 py-3 rounded-2xl hover:bg-emerald-100 transition-all font-black uppercase text-[10px] tracking-widest active:scale-95 disabled:opacity-60"
+                            >
+                                {mpesaActionLoading === 'resend-sms' ? 'Sending SMS...' : 'Resend Payment SMS'}
+                            </button>
                         )}
 
                         {(order.mpesaReceiptNumber || order.transactionId) && (

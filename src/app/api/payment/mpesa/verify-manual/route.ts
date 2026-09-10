@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requirePermission } from '@/lib/auth-server';
 import { queryTransactionStatus } from '@/lib/mpesa-server';
 import { normalizeMpesaReceipt, isValidMpesaReceipt } from '@/lib/mpesa';
+import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
 
 export async function POST(request: Request) {
     try {
@@ -156,6 +157,18 @@ export async function POST(request: Request) {
             status: 'Success',
             recordedBy: `Admin (${auth.email})`,
             verifiedBy: auth.uid,
+        });
+
+        await notifyCustomerPaymentReceived({
+            orderId,
+            order: {
+                ...order,
+                amountPaid: order.total,
+                mpesaReceiptNumber: transactionCode,
+                paymentMethod: order.paymentMethod || 'M-Pesa Till (manual)',
+            },
+            receipt: transactionCode,
+            method: order.paymentMethod || 'M-Pesa Till (manual)',
         });
 
         return NextResponse.json({

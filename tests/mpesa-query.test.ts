@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkoutIdsToQuery, isStkQueryInFlight, isValidMpesaReceipt, normalizeMpesaReceipt, resolveStkQueryProbes } from '../src/lib/mpesa.ts';
+import { checkoutIdsToQuery, isStkQueryInFlight, isValidMpesaReceipt, normalizeMpesaReceipt, paymentSmsPhone, resolveStkQueryProbes } from '../src/lib/mpesa.ts';
 
 test('treats Safaricom in-flight query as pending', () => {
     assert.equal(isStkQueryInFlight({ errorCode: '500.001.1001' }), true);
@@ -58,4 +58,10 @@ test('normalizes and validates M-Pesa receipt codes', () => {
     assert.equal(isValidMpesaReceipt('TJK7H8K9L0'), true);
     assert.equal(isValidMpesaReceipt('ABC'), false);
     assert.equal(isValidMpesaReceipt('not a code!!'), false);
+});
+
+test('prefers the paying M-Pesa phone for payment SMS', () => {
+    assert.equal(paymentSmsPhone({ phone: '0711111111', mpesaPhoneNumber: '254722222222' }), '254722222222');
+    assert.equal(paymentSmsPhone({ phone: '0711111111' }, '254733333333'), '254733333333');
+    assert.equal(paymentSmsPhone({ phone: '0711111111' }), '0711111111');
 });
