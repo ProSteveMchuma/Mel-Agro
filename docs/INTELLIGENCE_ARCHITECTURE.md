@@ -41,7 +41,7 @@ Set `CRON_SECRET` and configure the daily `/api/cron/intelligence-maintenance` s
 ## External verification still required
 
 - Confirm the hosting scheduler is enabled and successfully invokes the maintenance endpoint.
-- Confirm production Africa's Talking sender approval and deliver a real opt-in SMS to a controlled test number.
+- Confirm production Advanta sender approval and deliver a real opt-in SMS to a controlled test number.
 - Confirm alert webhook delivery to the production receiver.
 - Run a real low-value M-Pesa payment, callback, order claim, and refund/reversal drill.
 - Verify daily Firestore export creation and complete a restore drill into a non-production project.

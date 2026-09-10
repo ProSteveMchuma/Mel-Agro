@@ -6,7 +6,7 @@ Covered events:
 
 - M-Pesa payment failures and callback exceptions
 - Paystack webhook exceptions
-- Africa's Talking, SMTP, and Twilio WhatsApp failures
+- Advanta SMS, SMTP, and Twilio WhatsApp failures
 - API rate-limit violations indicating unusual traffic
 - Scheduled Firestore backup workflow failures
 
