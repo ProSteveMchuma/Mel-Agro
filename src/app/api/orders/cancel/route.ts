@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
+import { CommunicationTemplates } from '@/lib/communication-templates';
+import { notifyCustomer } from '@/lib/customer-notifications';
 
 const cancelSchema = z.object({ orderId: z.string().trim().min(1).max(200) });
 
@@ -31,7 +33,7 @@ export async function POST(request: Request) {
             const order: any = initialOrderSnap.data();
 
             if (!authorized.isAdmin && order.userId !== authorized.uid) throw new Error('FORBIDDEN');
-            if (order.status === 'Cancelled' && order.stockRestored) return { alreadyCancelled: true };
+            if (order.status === 'Cancelled' && order.stockRestored) return { alreadyCancelled: true, order: null };
             if (!['Pending Payment', 'Processing'].includes(order.status)) throw new Error('STATUS_NOT_CANCELLABLE');
             if (order.paymentStatus === 'Paid') throw new Error('PAID_ORDER');
 
@@ -105,18 +107,25 @@ export async function POST(request: Request) {
                 cancelledAt: now,
                 cancelledBy: authorized.uid,
             });
-            transaction.set(adminDb.collection('notifications').doc(), {
-                userId: order.userId,
-                message: `Order #${orderId.slice(0, 5)} has been cancelled.`,
-                date: now,
-                read: false,
-                type: 'order',
-            });
 
-            return { alreadyCancelled: false };
+            return { alreadyCancelled: false, order: { id: orderId, ...order, status: 'Cancelled' } };
         });
 
-        return NextResponse.json({ success: true, ...outcome });
+        if (!outcome.alreadyCancelled && outcome.order) {
+            try {
+                const tpl = CommunicationTemplates.getStatusUpdate(outcome.order as any, 'Cancelled');
+                await notifyCustomer({
+                    userId: outcome.order.userId,
+                    phone: outcome.order.mpesaPhoneNumber || outcome.order.phone,
+                    message: tpl.smsBody,
+                    orderId,
+                });
+            } catch (error) {
+                console.warn('Cancel customer notification failed (non-fatal):', error);
+            }
+        }
+
+        return NextResponse.json({ success: true, alreadyCancelled: outcome.alreadyCancelled });
     } catch (error: any) {
         const code = error?.message;
         if (code === 'ORDER_NOT_FOUND') {

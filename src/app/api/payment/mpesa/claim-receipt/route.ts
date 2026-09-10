@@ -96,15 +96,6 @@ export async function POST(request: Request) {
                     matchReason: 'CustomerClaimedReceipt',
                     matchedAt: new Date().toISOString(),
                 });
-                if (order.userId) {
-                    await adminDb.collection('notifications').add({
-                        userId: order.userId,
-                        message: `Payment confirmed for order #${String(orderId).slice(0, 8)}.`,
-                        date: new Date().toISOString(),
-                        read: false,
-                        type: 'order',
-                    });
-                }
                 return NextResponse.json({
                     success: true,
                     paid: true,

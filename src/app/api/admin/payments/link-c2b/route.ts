@@ -52,7 +52,6 @@ export async function POST(request: Request) {
       });
       transaction.update(paymentRef, { status: "Matched", matchedOrderId: input.orderId, matchReason: "Manual_Admin_Link", matchedBy: actor.uid, matchedByEmail: actor.email || null, matchedAt: now });
       transaction.set(adminDb.collection("adminAuditLog").doc(), { action: "c2b_payment_linked", actorId: actor.uid, actorEmail: actor.email || null, targetId: input.c2bPaymentId, before: { paymentStatus: order.paymentStatus || null, paymentRecordStatus: payment.status || null }, after: { orderId: input.orderId, paymentStatus: "Paid", receipt: incomingReceipt, amount: incomingAmount }, createdAt: now });
-      if (order.userId) transaction.set(adminDb.collection("notifications").doc(), { userId: order.userId, message: `Payment received for order #${input.orderId.slice(0, 8)}.`, date: now, read: false, type: "order" });
       return "linked";
     });
     if (outcome === "linked" && input.action === "link") {

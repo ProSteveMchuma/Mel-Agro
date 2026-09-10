@@ -3,7 +3,8 @@ import * as admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase-admin';
 import { requirePermission } from '@/lib/auth-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
-import { sendServerSms, sendServerEmail } from '@/lib/server-notifications';
+import { notifyCustomer } from '@/lib/customer-notifications';
+import { sendServerEmail } from '@/lib/server-notifications';
 
 type Channel = 'sms' | 'email';
 
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
     try {
         const body = await request.json().catch(() => ({}));
         const orderId = body?.orderId as string | undefined;
-        const requestedChannels = (Array.isArray(body?.channels) ? body.channels : ['sms', 'email']) as Channel[];
+        const requestedChannels = (Array.isArray(body?.channels) ? body.channels : ['sms']) as Channel[];
         const channels: Channel[] = requestedChannels.filter(c => c === 'sms' || c === 'email');
 
         if (!orderId) {
@@ -47,11 +48,21 @@ export async function POST(request: Request) {
 
         if (channels.includes('sms')) {
             const phone = order.phone || order.mpesaPhoneNumber;
-            if (!phone) {
-                results.sms = { ok: false, reason: 'No phone number on order' };
-            } else {
-                results.sms = await sendServerSms(phone, tpl.smsBody);
-            }
+            const result = await notifyCustomer({
+                userId: order.userId,
+                phone,
+                message: tpl.smsBody,
+                orderId,
+            });
+            results.sms = result.sms;
+        } else {
+            await notifyCustomer({
+                userId: order.userId,
+                phone: null,
+                message: tpl.smsBody,
+                orderId,
+                skipSms: true,
+            });
         }
 
         if (channels.includes('email')) {

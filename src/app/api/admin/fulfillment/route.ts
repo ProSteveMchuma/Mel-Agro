@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
+import { CommunicationTemplates } from "@/lib/communication-templates";
+import { notifyCustomer } from "@/lib/customer-notifications";
 
 const PAGE_SIZE = 20;
 type Cursor = { date: string; id: string };
@@ -59,7 +61,7 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid fulfillment update." }, { status: 400 });
   const input = parsed.data;
   try {
-    await adminDb.runTransaction(async (transaction) => {
+    const outcome = await adminDb.runTransaction(async (transaction) => {
       const orderRef = adminDb.collection("orders").doc(input.orderId);
       const orderSnapshot = await transaction.get(orderRef);
       if (!orderSnapshot.exists) throw new Error("ORDER_NOT_FOUND");
@@ -69,7 +71,7 @@ export async function POST(request: Request) {
         const entry = { date: now, note: input.note, author: actor.email || actor.uid };
         transaction.update(orderRef, { internalNotes: input.note, internalHistory: FieldValue.arrayUnion(entry), updatedAt: now });
         transaction.set(adminDb.collection("adminAuditLog").doc(), { action: "fulfillment_note_added", actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, after: { note: input.note }, createdAt: now });
-        return;
+        return { kind: "note" as const };
       }
       const allowed = (order.status === "Processing" && input.status === "Shipped") || (order.status === "Shipped" && input.status === "Delivered");
       if (!allowed) throw new Error("INVALID_TRANSITION");
@@ -91,9 +93,22 @@ export async function POST(request: Request) {
         }
       }
       transaction.update(orderRef, update);
-      if (order.userId) transaction.set(adminDb.collection("notifications").doc(), { userId: order.userId, message: `Order #${input.orderId.slice(0, 8)} status updated to ${input.status}`, date: now, read: false, type: "order" });
       transaction.set(adminDb.collection("adminAuditLog").doc(), { action: "fulfillment_status_changed", actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, before: { status: order.status }, after: { status: input.status }, createdAt: now });
+      return { kind: "status" as const, order: { id: input.orderId, ...order, status: input.status } as Record<string, unknown>, status: input.status };
     });
+    if (outcome.kind === "status") {
+      try {
+        const tpl = CommunicationTemplates.getStatusUpdate(outcome.order as any, outcome.status);
+        await notifyCustomer({
+          userId: String(outcome.order.userId || ""),
+          phone: String(outcome.order.mpesaPhoneNumber || outcome.order.phone || ""),
+          message: tpl.smsBody,
+          orderId: input.orderId,
+        });
+      } catch (error) {
+        console.warn("Fulfillment customer notification failed (non-fatal):", error);
+      }
+    }
     return NextResponse.json({ success: true });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";

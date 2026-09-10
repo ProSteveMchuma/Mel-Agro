@@ -1,10 +1,25 @@
-import { Order } from "@/types";
+import type { Order } from "../types/index.ts";
+import { SITE_URL } from './site.ts';
 
-import { SITE_URL } from '@/lib/site';
+function shortOrderId(order: { id?: string }): string {
+    return String(order.id || '').slice(0, 5).toUpperCase();
+}
 
 export const CommunicationTemplates = {
+    getAwaitingPayment: (order: Order) => {
+        const id = shortOrderId(order);
+        const userName = order.userName || "Farmer";
+        const amount = Number(order.total) || 0;
+        const smsBody = `Habari ${userName}, your Mel-Agri order #${id} (KES ${amount.toLocaleString()}) has been placed and is awaiting payment. Complete M-Pesa from your dashboard.`;
+        return {
+            subject: `Order Awaiting Payment - Mel-Agri #${id}`,
+            emailBody: `<p>Your order #${id} is awaiting payment.</p>`,
+            smsBody,
+        };
+    },
+
     getOrderConfirmation: (order: Order) => {
-        const orderIdShort = order.id.slice(0, 5).toUpperCase();
+        const orderIdShort = shortOrderId(order);
         const userName = order.userName || "Farmer";
 
         const smsBody = `Habari ${userName}, your Mel-Agri order #${orderIdShort} has been received! We are prepping your items for dispatch. Total: KES ${order.total.toLocaleString()}. Thank you for farming with us!`;
@@ -62,7 +77,7 @@ export const CommunicationTemplates = {
     },
 
     getPaymentReceived: (order: Order, opts: { receipt?: string; method?: string } = {}) => {
-        const orderIdShort = order.id.slice(0, 5).toUpperCase();
+        const orderIdShort = shortOrderId(order);
         const userName = order.userName || "Farmer";
         const receipt = opts.receipt || (order as any).mpesaReceiptNumber || (order as any).transactionId || '';
         const method = opts.method || (order as any).paymentMethod || 'M-Pesa';
@@ -101,16 +116,37 @@ export const CommunicationTemplates = {
     },
 
     getStatusUpdate: (order: Order, status: string) => {
-        const orderIdShort = order.id.slice(0, 5).toUpperCase();
+        const id = shortOrderId(order);
+        const userName = order.userName || 'Farmer';
+        const statusCopy: Record<string, string> = {
+            'Pending Payment': `Habari ${userName}, your Mel-Agri order #${id} is awaiting payment. Complete M-Pesa from your dashboard.`,
+            Processing: `Habari ${userName}, we're packing your Mel-Agri order #${id}. You'll get another SMS when it ships.`,
+            Shipped: `Habari ${userName}, your Mel-Agri order #${id} is on the way. Track it from your dashboard.`,
+            Delivered: `Habari ${userName}, your Mel-Agri order #${id} has been delivered. Asante for farming with us!`,
+            Cancelled: `Habari ${userName}, your Mel-Agri order #${id} has been cancelled. If you already paid, contact support for help.`,
+        };
+        const smsBody = statusCopy[status]
+            || `Habari ${userName}, your Mel-Agri order #${id} status is now: ${status}. Thank you for farming with us!`;
         return {
-            subject: `Order Update - Mel-Agri #${orderIdShort}`,
-            smsBody: `Habari ${order.userName || 'Farmer'}, your Mel-Agri order #${orderIdShort} status is now: ${status}. Thank you for farming with us!`,
-            emailBody: `<h1>Order Update</h1><p>Your order #${orderIdShort} is now <strong>${status}</strong>.</p>`
+            subject: `Order Update - Mel-Agri #${id}`,
+            smsBody,
+            emailBody: `<h1>Order Update</h1><p>Your order #${id} is now <strong>${status}</strong>.</p>`,
+        };
+    },
+
+    getReturnUpdate: (order: Order, status: 'Approved' | 'Rejected') => {
+        const id = shortOrderId(order);
+        const userName = order.userName || 'Farmer';
+        const smsBody = `Habari ${userName}, your return request for Mel-Agri order #${id} has been ${status.toLowerCase()}.`;
+        return {
+            subject: `Return ${status} - Mel-Agri #${id}`,
+            smsBody,
+            emailBody: `<p>Your return request for order #${id} has been ${status.toLowerCase()}.</p>`,
         };
     },
 
     getPaymentReminder: (order: Order, opts: { tillNumber?: string } = {}) => {
-        const orderIdShort = order.id.slice(0, 5).toUpperCase();
+        const orderIdShort = shortOrderId(order);
         const userName = order.userName || "Farmer";
         const amount = Number(order.total) || 0;
         const tillNumber = opts.tillNumber || process.env.MPESA_TILL_NUMBER || '3130847';

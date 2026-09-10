@@ -163,16 +163,24 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             };
             transaction.set(newOrderRef, newOrderBase);
 
-            // 3. Create User Notification
+            // 3. Create User Notification (same copy as the SMS)
+            const placedOrder = {
+                ...orderData,
+                id: orderId,
+                date,
+                status: initialStatus,
+            } as Order;
+            const placedMessage = requiresPaymentConfirmation
+                ? CommunicationTemplates.getAwaitingPayment(placedOrder)
+                : CommunicationTemplates.getOrderConfirmation(placedOrder);
             const userNotifRef = doc(collection(db, 'notifications'));
             transaction.set(userNotifRef, {
                 userId: orderData.userId,
-                message: requiresPaymentConfirmation
-                    ? `Order #${orderId.substr(0, 5)} is awaiting payment confirmation.`
-                    : `Order #${orderId.substr(0, 5)} has been placed successfully!`,
+                message: placedMessage.smsBody,
                 date,
                 read: false,
-                type: 'order'
+                type: 'order',
+                orderId,
             });
 
             // 4. Update Stock and Log Inventory History for each item
@@ -249,22 +257,22 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             console.warn("Handled permission error in admin notification, order was still placed:", error);
         }
 
-        // 5. Trigger Unified Customer Notifications (Email, SMS, WhatsApp)
+        // 5. Customer SMS (email will be wired later)
         try {
-            const preferences = orderData.notificationPreferences || ['sms'];
-            const contact = {
-                email: orderData.userEmail,
-                phone: orderData.phone
-            };
-
-            const message = CommunicationTemplates.getOrderConfirmation({
+            const placedOrder = {
                 ...orderData,
                 id: orderId,
                 date,
-                status: initialStatus
-            } as Order);
+                status: initialStatus,
+            } as Order;
+            const message = requiresPaymentConfirmation
+                ? CommunicationTemplates.getAwaitingPayment(placedOrder)
+                : CommunicationTemplates.getOrderConfirmation(placedOrder);
 
-            await NotificationService.notify(preferences, contact, message);
+            await NotificationService.notify(['sms'], {
+                email: orderData.userEmail,
+                phone: orderData.phone
+            }, message);
         } catch (err) {
             console.error("Unified Communications Error:", err);
         }
@@ -491,16 +499,23 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         const order = orders.find(o => o.id === orderId);
         if (order) {
+            const updateMessage = CommunicationTemplates.getReturnUpdate(order, status);
             try {
                 await addDoc(collection(db, 'notifications'), {
                     userId: order.userId,
-                    message: `Your return request for Order #${orderId.substr(0, 5)} has been ${status}`,
+                    message: updateMessage.smsBody,
                     date: new Date().toISOString(),
                     read: false,
-                    type: 'order'
+                    type: 'order',
+                    orderId,
                 });
             } catch (error) {
                 console.error("Error creating return status notification:", error);
+            }
+            try {
+                await NotificationService.notify(['sms'], { phone: order.phone, email: order.userEmail }, updateMessage);
+            } catch (error) {
+                console.error("Return status SMS error:", error);
             }
         }
     };
@@ -512,16 +527,23 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         // Create Notification
         const order = orders.find(o => o.id === orderId);
         if (order) {
+            const delivered = CommunicationTemplates.getStatusUpdate({ ...order, status: 'Delivered' }, 'Delivered');
             try {
                 await addDoc(collection(db, 'notifications'), {
                     userId: order.userId,
-                    message: `Order #${orderId.slice(0, 5)} has been successfully delivered and confirmed.`,
+                    message: delivered.smsBody,
                     date: new Date().toISOString(),
                     read: false,
-                    type: 'order'
+                    type: 'order',
+                    orderId,
                 });
             } catch (error) {
                 console.error("Error creating receipt confirmation notification:", error);
+            }
+            try {
+                await NotificationService.notify(['sms'], { phone: order.phone, email: order.userEmail }, delivered);
+            } catch (error) {
+                console.error("Delivery confirmation SMS error:", error);
             }
         }
     };

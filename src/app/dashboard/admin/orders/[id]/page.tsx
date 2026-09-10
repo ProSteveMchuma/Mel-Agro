@@ -28,7 +28,7 @@ export default function AdminOrderDetailsPage() {
     const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
     const [isReverseModalOpen, setIsReverseModalOpen] = useState(false);
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
-    const [reminderChannels, setReminderChannels] = useState<{ sms: boolean; email: boolean }>({ sms: true, email: true });
+    const [reminderChannels, setReminderChannels] = useState<{ sms: boolean; email: boolean }>({ sms: true, email: false });
     const [verifyCode, setVerifyCode] = useState('');
     const [reverseRemarks, setReverseRemarks] = useState('');
     const [mpesaActionLoading, setMpesaActionLoading] = useState<string | null>(null);
@@ -903,7 +903,7 @@ export default function AdminOrderDetailsPage() {
                             <label className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${reminderChannels.email ? 'border-melagri-primary bg-green-50/50' : 'border-gray-100 hover:border-gray-200'} ${!order.userEmail ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                 <div>
                                     <p className="font-bold text-gray-900 text-sm">Email</p>
-                                    <p className="text-[10px] text-gray-500 mt-0.5">{order.userEmail || 'No email on order'}</p>
+                                    <p className="text-[10px] text-gray-500 mt-0.5">{order.userEmail || 'No email on order'} · coming later</p>
                                 </div>
                                 <input
                                     type="checkbox"

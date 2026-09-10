@@ -37,21 +37,10 @@ export const NotificationService = {
         }
     },
 
-    notify: async (preferences: string[], contact: { email?: string, phone?: string }, message: { subject: string, emailBody: string, smsBody: string }) => {
-        const promises = [];
-
-        if (preferences.includes('email') && contact.email) {
-            promises.push(NotificationService.sendEmail(contact.email, message.subject, message.emailBody));
+    notify: async (_preferences: string[], contact: { email?: string, phone?: string }, message: { subject: string, emailBody: string, smsBody: string }) => {
+        // System notifications go out as SMS. Email will be wired later.
+        if (contact.phone) {
+            await NotificationService.sendSMS(contact.phone, message.smsBody);
         }
-
-        if (preferences.includes('sms') && contact.phone) {
-            promises.push(NotificationService.sendSMS(contact.phone, message.smsBody));
-        }
-
-        if (preferences.includes('whatsapp') && contact.phone) {
-            promises.push(NotificationService.sendWhatsApp(contact.phone, message.smsBody));
-        }
-
-        await Promise.all(promises);
     }
 };

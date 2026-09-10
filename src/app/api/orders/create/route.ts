@@ -6,7 +6,7 @@ import { requireUser } from '@/lib/auth-server';
 import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
 import { getZonesServer } from '@/lib/delivery-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
-import { sendServerEmail, sendServerSms } from '@/lib/server-notifications';
+import { notifyCustomer } from '@/lib/customer-notifications';
 import { enforceRateLimit } from '@/lib/request-guard';
 
 const lineItemSchema = z.object({
@@ -285,7 +285,7 @@ export async function POST(request: Request) {
                 paymentMethod: payment.paymentMethod,
                 paymentStatus: payment.paymentStatus,
                 status: payment.status,
-                notificationPreferences: ['sms', 'email'],
+                notificationPreferences: ['sms'],
                 date,
                 createdAt: date,
                 stockReservationStatus: inventoryCommitted ? 'committed' : 'active',
@@ -293,14 +293,16 @@ export async function POST(request: Request) {
             };
 
             transaction.set(orderRef, createdOrder);
+            const placedTemplate = payment.status === 'Pending Payment'
+                ? CommunicationTemplates.getAwaitingPayment(createdOrder as any)
+                : CommunicationTemplates.getOrderConfirmation(createdOrder as any);
             transaction.set(adminDb.collection('notifications').doc(), {
                 userId: uid,
-                message: payment.status === 'Pending Payment'
-                    ? `Order #${orderRef.id.slice(0, 5)} is awaiting payment confirmation.`
-                    : `Order #${orderRef.id.slice(0, 5)} has been placed successfully!`,
+                message: placedTemplate.smsBody,
                 date,
                 read: false,
                 type: 'order',
+                orderId: orderRef.id,
             });
 
             for (const productId of productIds) {
@@ -381,16 +383,17 @@ export async function POST(request: Request) {
         });
 
         try {
-            const paidOrPlaced = order.paymentStatus === 'Paid'
-                || String(order.paymentMethod || '').includes('Cash')
-                || String(order.paymentMethod || '').includes('WhatsApp');
-            if (paidOrPlaced) {
-                const confirmation = CommunicationTemplates.getOrderConfirmation(order as any);
-                const notifications: Promise<unknown>[] = [];
-                if (order.phone) notifications.push(sendServerSms(order.phone, confirmation.smsBody));
-                if (order.userEmail) notifications.push(sendServerEmail(order.userEmail, confirmation.subject, confirmation.emailBody));
-                await Promise.allSettled(notifications);
-            }
+            const awaitingPayment = order.status === 'Pending Payment';
+            const confirmation = awaitingPayment
+                ? CommunicationTemplates.getAwaitingPayment(order as any)
+                : CommunicationTemplates.getOrderConfirmation(order as any);
+            await notifyCustomer({
+                userId: order.userId,
+                phone: order.phone,
+                message: confirmation.smsBody,
+                orderId: order.id,
+                skipDashboard: true,
+            });
         } catch (notificationError) {
             console.warn('Order confirmation notification failed (non-fatal):', notificationError);
         }

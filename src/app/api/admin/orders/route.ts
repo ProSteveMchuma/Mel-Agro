@@ -5,6 +5,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
+import { CommunicationTemplates } from '@/lib/communication-templates';
+import { notifyCustomer } from '@/lib/customer-notifications';
 
 const PAGE_SIZE = 20;
 const statusValues = new Set(['Pending Payment', 'Processing', 'Shipped', 'Delivered', 'Cancelled']);
@@ -61,14 +63,14 @@ export async function POST(request: Request) {
   const input = parsed.data; const actor = await requirePermission(request, input.action === 'payment_status' ? 'payments.manage' : 'orders.manage');
   if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 403 });
   try {
-    await adminDb.runTransaction(async (transaction) => {
+    const outcome = await adminDb.runTransaction(async (transaction) => {
       const orderRef = adminDb.collection('orders').doc(input.orderId); const orderSnapshot = await transaction.get(orderRef); if (!orderSnapshot.exists) throw new Error('ORDER_NOT_FOUND');
       const order = orderSnapshot.data() || {}; const now = new Date().toISOString();
       if (input.action === 'start_processing') {
         if (order.status !== 'Pending Payment' || order.paymentStatus !== 'Paid') throw new Error('INVALID_TRANSITION');
         transaction.update(orderRef, { status: 'Processing', processingAt: now, updatedAt: now, statusHistory: FieldValue.arrayUnion({ status: 'Processing', at: now, by: actor.email || actor.uid }) });
-        if (order.userId) transaction.set(adminDb.collection('notifications').doc(), { userId: order.userId, message: `Order #${input.orderId.slice(0, 8)} is now processing`, date: now, read: false, type: 'order' });
-        transaction.set(adminDb.collection('adminAuditLog').doc(), { action: 'order_processing_started', actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, before: { status: order.status }, after: { status: 'Processing' }, createdAt: now }); return;
+        transaction.set(adminDb.collection('adminAuditLog').doc(), { action: 'order_processing_started', actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, before: { status: order.status }, after: { status: 'Processing' }, createdAt: now });
+        return { kind: 'processing' as const, order: { id: input.orderId, ...order, status: 'Processing' } as Record<string, any> };
       }
       if (input.paymentStatus === 'Paid' && !input.transaction) throw new Error('TRANSACTION_REQUIRED');
       const update: Record<string, unknown> = { paymentStatus: input.paymentStatus, updatedAt: now };
@@ -80,7 +82,21 @@ export async function POST(request: Request) {
         transaction.set(adminDb.collection('transactions').doc(), { orderId: input.orderId, amount: input.transaction.amount, reference: input.transaction.reference, method: input.transaction.method, date: input.transaction.date, status: 'Success', recordedBy: actor.uid, recordedAt: now });
       }
       transaction.update(orderRef, update); transaction.set(adminDb.collection('adminAuditLog').doc(), { action: 'order_payment_status_changed', actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, before: { paymentStatus: order.paymentStatus || 'Unpaid' }, after: { paymentStatus: input.paymentStatus, reference: input.transaction?.reference || null }, createdAt: now });
+      return { kind: 'payment' as const };
     });
+    if (outcome.kind === 'processing') {
+      try {
+        const tpl = CommunicationTemplates.getStatusUpdate(outcome.order as any, 'Processing');
+        await notifyCustomer({
+          userId: outcome.order.userId,
+          phone: outcome.order.mpesaPhoneNumber || outcome.order.phone,
+          message: tpl.smsBody,
+          orderId: input.orderId,
+        });
+      } catch (error) {
+        console.warn('Processing customer notification failed (non-fatal):', error);
+      }
+    }
     if (input.action === 'payment_status' && input.paymentStatus === 'Paid' && input.transaction) {
       const paidSnap = await adminDb.collection('orders').doc(input.orderId).get();
       void notifyCustomerPaymentReceived({
