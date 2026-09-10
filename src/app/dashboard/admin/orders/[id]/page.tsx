@@ -170,6 +170,22 @@ export default function AdminOrderDetailsPage() {
         }
     };
 
+    const handleResendPaymentSms = async () => {
+        if (!order) return;
+        setMpesaActionLoading('resend-sms');
+        const t = toast.loading('Sending payment SMS...');
+        try {
+            const res = await authedFetch('/api/admin/orders/resend-payment-sms', { orderId: order.id });
+            const data = await res.json();
+            if (data.success) toast.success(data.message, { id: t });
+            else toast.error(data.message || 'SMS failed', { id: t, duration: 7000 });
+        } catch (e: any) {
+            toast.error(e?.message || 'SMS failed', { id: t });
+        } finally {
+            setMpesaActionLoading(null);
+        }
+    };
+
     const handleReverse = async () => {
         if (!order) return;
         // Confirmation already happens in the styled modal that opens this handler — no native confirm needed.
@@ -488,32 +504,22 @@ export default function AdminOrderDetailsPage() {
                                 )}
                             </div>
                         ) : (
-                            <button
-                                onClick={() => updateOrderPaymentStatus(order.id, 'Unpaid')}
-                                className="w-full bg-gray-50 text-gray-400 py-4 rounded-2xl hover:bg-gray-100 transition-all font-black uppercase text-[10px] tracking-widest active:scale-95"
-                            >
-                                Revert to Unpaid
-                            </button>
-                            <button
-                                onClick={async () => {
-                                    setMpesaActionLoading('resend-sms');
-                                    const t = toast.loading('Sending payment SMS...');
-                                    try {
-                                        const res = await authedFetch('/api/admin/orders/resend-payment-sms', { orderId: order.id });
-                                        const data = await res.json();
-                                        if (data.success) toast.success(data.message, { id: t });
-                                        else toast.error(data.message || 'SMS failed', { id: t, duration: 7000 });
-                                    } catch (e: any) {
-                                        toast.error(e?.message || 'SMS failed', { id: t });
-                                    } finally {
-                                        setMpesaActionLoading(null);
-                                    }
-                                }}
-                                disabled={mpesaActionLoading === 'resend-sms'}
-                                className="w-full bg-emerald-50 text-emerald-800 border border-emerald-200 py-3 rounded-2xl hover:bg-emerald-100 transition-all font-black uppercase text-[10px] tracking-widest active:scale-95 disabled:opacity-60"
-                            >
-                                {mpesaActionLoading === 'resend-sms' ? 'Sending SMS...' : 'Resend Payment SMS'}
-                            </button>
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => updateOrderPaymentStatus(order.id, 'Unpaid')}
+                                    className="w-full bg-gray-50 text-gray-400 py-4 rounded-2xl hover:bg-gray-100 transition-all font-black uppercase text-[10px] tracking-widest active:scale-95"
+                                >
+                                    Revert to Unpaid
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => void handleResendPaymentSms()}
+                                    disabled={mpesaActionLoading === 'resend-sms'}
+                                    className="w-full bg-emerald-50 text-emerald-800 border border-emerald-200 py-3 rounded-2xl hover:bg-emerald-100 transition-all font-black uppercase text-[10px] tracking-widest active:scale-95 disabled:opacity-60"
+                                >
+                                    {mpesaActionLoading === 'resend-sms' ? 'Sending SMS...' : 'Resend Payment SMS'}
+                                </button>
+                            </div>
                         )}
 
                         {(order.mpesaReceiptNumber || order.transactionId) && (
