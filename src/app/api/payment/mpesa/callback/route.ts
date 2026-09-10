@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
+import { findOrderByCheckoutRequestId } from '@/lib/mpesa-orders';
 import { verifySafaricomCallback } from '@/lib/safaricom-ips';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { sendServerSms, sendServerEmail } from '@/lib/server-notifications';
@@ -32,25 +33,20 @@ export async function POST(request: Request) {
             resultCode: String(ResultCode ?? 'missing'),
         });
 
-        const ordersSnap = await adminDb
-            .collection('orders')
-            .where('checkoutRequestId', '==', CheckoutRequestID)
-            .limit(1)
-            .get();
-
-        if (ordersSnap.empty) {
+        const orderDoc = await findOrderByCheckoutRequestId(CheckoutRequestID);
+        if (!orderDoc) {
             console.warn(`Order not found for CheckoutRequestID: ${CheckoutRequestID}`);
             return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
         }
 
-        const orderDoc = ordersSnap.docs[0];
         const orderData = orderDoc.data();
         const orderRef = orderDoc.ref;
-
-        if (orderData.paymentStatus === 'Paid') {
-            console.log(`Idempotent skip — order ${orderDoc.id} already Paid`);
-            return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
-        }
+        const items = (CallbackMetadata?.Item || []) as Array<{ Name: string; Value: any }>;
+        const findVal = (name: string) => items.find(i => i.Name === name)?.Value;
+        const mpesaReceiptNumber = String(findVal('MpesaReceiptNumber') || '');
+        const amountPaid = Number(findVal('Amount') || 0);
+        const phoneNumber = String(findVal('PhoneNumber') || '');
+        const transactionDate = String(findVal('TransactionDate') || '');
 
         const callbackEventId = `${CheckoutRequestID}-${ResultCode}`;
         if (orderData.lastCallbackEventId === callbackEventId) {
@@ -58,14 +54,23 @@ export async function POST(request: Request) {
             return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
         }
 
-        if (ResultCode === 0) {
-            const items = (CallbackMetadata?.Item || []) as Array<{ Name: string; Value: any }>;
-            const findVal = (name: string) => items.find(i => i.Name === name)?.Value;
+        if (orderData.paymentStatus === 'Paid') {
+            if (ResultCode === 0 && mpesaReceiptNumber && !orderData.mpesaReceiptNumber) {
+                await orderRef.update({
+                    mpesaReceiptNumber,
+                    transactionId: orderData.transactionId || mpesaReceiptNumber,
+                    mpesaPhoneNumber: orderData.mpesaPhoneNumber || phoneNumber,
+                    mpesaTransactionDate: orderData.mpesaTransactionDate || transactionDate,
+                    amountPaid: orderData.amountPaid || amountPaid,
+                    lastCallbackEventId: callbackEventId,
+                    updatedAt: new Date().toISOString(),
+                });
+            }
+            console.log(`Idempotent skip — order ${orderDoc.id} already Paid`);
+            return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+        }
 
-            const mpesaReceiptNumber = String(findVal('MpesaReceiptNumber') || '');
-            const amountPaid = Number(findVal('Amount') || 0);
-            const phoneNumber = String(findVal('PhoneNumber') || '');
-            const transactionDate = String(findVal('TransactionDate') || '');
+        if (ResultCode === 0) {
             const orderTotal = Number(orderData.total || 0);
             const amountMatches = orderTotal > 0 && Math.abs(amountPaid - orderTotal) < 1;
 
@@ -99,6 +104,9 @@ export async function POST(request: Request) {
                 lastCallbackEventId: callbackEventId,
                 paidAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
+                paymentFailureReason: null,
+                paymentFailureCode: null,
+                paymentFailureMessage: null,
             });
 
             await adminDb.collection('transactions').add({

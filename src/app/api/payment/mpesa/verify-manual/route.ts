@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requirePermission } from '@/lib/auth-server';
 import { queryTransactionStatus } from '@/lib/mpesa-server';
+import { normalizeMpesaReceipt, isValidMpesaReceipt } from '@/lib/mpesa';
 
 export async function POST(request: Request) {
     try {
@@ -10,7 +11,16 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
         }
 
-        const { orderId, transactionCode, action = 'approve' } = await request.json();
+        const body = await request.json();
+        const { orderId, action = 'approve' } = body;
+        const transactionCode = normalizeMpesaReceipt(body.transactionCode);
+
+        if ((action === 'approve' || action === 'auto-verify') && transactionCode && !isValidMpesaReceipt(transactionCode)) {
+            return NextResponse.json(
+                { success: false, message: 'Enter a valid M-Pesa receipt code (8–12 letters and numbers)' },
+                { status: 400 }
+            );
+        }
 
         if (!orderId) {
             return NextResponse.json(

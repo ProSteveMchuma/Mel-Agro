@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { initiateSTKPush } from '@/lib/mpesa-server';
+import { checkoutRequestFields } from '@/lib/mpesa-orders';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 import { enforceRateLimit } from '@/lib/request-guard';
 
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
             }
             const mockId = `ws_CO_${Date.now()}_Mock`;
             await orderSnap.ref.update({
-                checkoutRequestId: mockId,
+                ...checkoutRequestFields(mockId),
                 paymentInitiatedAt: new Date().toISOString(),
                 paymentStatus: 'Unpaid',
                 retryCount: (order.retryCount || 0) + 1,
@@ -77,7 +78,7 @@ export async function POST(request: Request) {
 
         if (stkData.ResponseCode === '0' && stkData.CheckoutRequestID) {
             await orderSnap.ref.update({
-                checkoutRequestId: stkData.CheckoutRequestID,
+                ...checkoutRequestFields(stkData.CheckoutRequestID),
                 merchantRequestId: stkData.MerchantRequestID || null,
                 paymentInitiatedAt: new Date().toISOString(),
                 paymentStatus: 'Unpaid',

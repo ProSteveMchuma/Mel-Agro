@@ -19,6 +19,15 @@ export function formatKenyanPhone(phone: string): string {
     return cleaned;
 }
 
+/** Safaricom receipt codes are 8–12 alphanumeric characters (usually 10). */
+export function normalizeMpesaReceipt(raw: unknown): string {
+    return String(raw || '').replace(/[\s-]/g, '').toUpperCase();
+}
+
+export function isValidMpesaReceipt(code: string): boolean {
+    return /^[A-Z0-9]{8,12}$/.test(code);
+}
+
 export const MPESA_RESULT_CODES = {
     SUCCESS: '0',
     INSUFFICIENT_FUNDS: '1',
@@ -27,7 +36,80 @@ export const MPESA_RESULT_CODES = {
     INVALID_INITIATOR: '2001',
     REJECTED: '17',
     DUPLICATE: '1019',
+    IN_FLIGHT: '500.001.1001',
 } as const;
+
+/** STK query is still processing. Timeout (1037) and cancel (1032) are terminal. */
+export function isStkQueryInFlight(data: { ResultCode?: string | number; errorCode?: string } | null | undefined): boolean {
+    if (!data) return true;
+    const resultCode = data.ResultCode !== undefined && data.ResultCode !== null ? String(data.ResultCode) : '';
+    const errorCode = data.errorCode ? String(data.errorCode) : '';
+    if (errorCode === MPESA_RESULT_CODES.IN_FLIGHT || resultCode === MPESA_RESULT_CODES.IN_FLIGHT) return true;
+    return !resultCode;
+}
+
+export function checkoutIdsToQuery(
+    order: { checkoutRequestId?: string; checkoutRequestIds?: unknown },
+    preferred?: string,
+): string[] {
+    const ids: string[] = [];
+    const add = (id?: unknown) => {
+        if (typeof id === 'string' && id && !ids.includes(id)) ids.push(id);
+    };
+    add(preferred);
+    add(order.checkoutRequestId);
+    if (Array.isArray(order.checkoutRequestIds)) {
+        for (const id of order.checkoutRequestIds) add(id);
+    }
+    return ids.slice(0, 5);
+}
+
+export type StkQueryProbe = {
+    checkoutRequestId: string;
+    resultCode?: string;
+    resultDesc?: string;
+    data: { ResultCode?: string | number; errorCode?: string; ResultDesc?: string } | null | undefined;
+};
+
+/** Prefer a successful historic STK over a later timeout/cancel on retry. */
+export function resolveStkQueryProbes(results: StkQueryProbe[]): {
+    outcome: 'paid' | 'pending' | 'failed';
+    resultCode?: string;
+    resultDesc?: string;
+    checkoutRequestId?: string;
+    data?: StkQueryProbe['data'];
+} {
+    const paid = results.find((result) => String(result.resultCode ?? '') === MPESA_RESULT_CODES.SUCCESS);
+    if (paid) {
+        return {
+            outcome: 'paid',
+            resultCode: MPESA_RESULT_CODES.SUCCESS,
+            resultDesc: paid.resultDesc,
+            checkoutRequestId: paid.checkoutRequestId,
+            data: paid.data,
+        };
+    }
+
+    const pending = results.find((result) => isStkQueryInFlight(result.data));
+    if (pending) {
+        return {
+            outcome: 'pending',
+            resultCode: pending.resultCode,
+            resultDesc: pending.resultDesc,
+            checkoutRequestId: pending.checkoutRequestId,
+            data: pending.data,
+        };
+    }
+
+    const failed = results[0];
+    return {
+        outcome: 'failed',
+        resultCode: failed?.resultCode,
+        resultDesc: failed?.resultDesc,
+        checkoutRequestId: failed?.checkoutRequestId,
+        data: failed?.data,
+    };
+}
 
 export interface STKPushParams {
     phoneNumber: string;

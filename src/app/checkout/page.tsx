@@ -27,6 +27,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { checkoutSchema, CheckoutFormData } from '@/lib/schemas';
 import { MPESA_TILL_DISPLAY } from '@/lib/site';
 import { Input } from '@/components/ui/form/Input';
+import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
 import { Select } from '@/components/ui/form/Select';
 import { Textarea } from '@/components/ui/form/Textarea';
 import type { Order } from '@/types';
@@ -587,7 +588,7 @@ export default function CheckoutPage() {
                                 body: JSON.stringify({ orderId: newOrder.id }),
                             });
                             const j = await r.json();
-                            if (j.paid) finish('paid');
+                            if (j.paid || j.paymentStatus === 'Paid') finish('paid');
                             else if (j.paymentStatus === 'Failed') finish('failed', j.message);
                         } catch {
                             // ignore transient errors
@@ -1435,6 +1436,14 @@ export default function CheckoutPage() {
                                                             <span>⏱</span> Pay Later
                                                         </button>
                                                     </div>
+                                                    <MpesaReceiptClaim
+                                                        orderId={paymentFailure.orderId}
+                                                        onPaid={() => {
+                                                            clearCart();
+                                                            setPaymentFailure(null);
+                                                            router.push(`/checkout/success?orderId=${paymentFailure.orderId}`);
+                                                        }}
+                                                    />
                                                 </div>
                                             )}
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { initiateSTKPush } from '@/lib/mpesa-server';
+import { checkoutRequestFields } from '@/lib/mpesa-orders';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 import { enforceRateLimit } from '@/lib/request-guard';
 
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
             console.warn("M-Pesa: Running in development mock mode due to missing keys.");
             const mockId = `ws_CO_${Date.now()}_Mock`;
             await adminDb.collection('orders').doc(orderId).update({
-                checkoutRequestId: mockId,
+                ...checkoutRequestFields(mockId),
                 paymentInitiatedAt: new Date().toISOString(),
                 paymentStatus: 'Unpaid',
             }).catch(() => { });
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
 
         if (stkData.ResponseCode === '0' && stkData.CheckoutRequestID) {
             await adminDb.collection('orders').doc(orderId).update({
-                checkoutRequestId: stkData.CheckoutRequestID,
+                ...checkoutRequestFields(stkData.CheckoutRequestID),
                 merchantRequestId: stkData.MerchantRequestID || null,
                 paymentInitiatedAt: new Date().toISOString(),
                 paymentStatus: 'Unpaid',

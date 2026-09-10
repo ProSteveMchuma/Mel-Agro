@@ -14,6 +14,7 @@ import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { format } from "date-fns";
 import AccountUpgradePrompt from '@/components/checkout/AccountUpgradePrompt';
+import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
 import { AnalyticsService } from '@/lib/analytics';
 
 function OrderSuccessContent() {
@@ -183,6 +184,16 @@ function OrderSuccessContent() {
                                     Shop More
                                 </Link>
                             </div>
+                            {!isPaid && !isPayOnDelivery && (
+                                <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl print:hidden">
+                                    <p className="text-sm font-black text-amber-950">Already paid on your phone?</p>
+                                    <p className="text-xs text-amber-800 mt-1">Enter the M-Pesa transaction code from your SMS so we can match it to this order.</p>
+                                    <MpesaReceiptClaim
+                                        orderId={order.id}
+                                        defaultCode={String((order as any).claimedMpesaReceipt || '')}
+                                    />
+                                </div>
+                            )}
                             <div className="flex flex-col sm:flex-row gap-4 mt-4">
                                 <button
                                     onClick={() => setActiveDocument('invoice')}

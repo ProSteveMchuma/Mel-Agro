@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { querySTKStatus } from '@/lib/mpesa-server';
-import { getMpesaErrorMessage } from '@/lib/mpesa';
+import { checkoutIdsToQuery, getMpesaErrorMessage, resolveStkQueryProbes } from '@/lib/mpesa';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 import { enforceRateLimit } from '@/lib/request-guard';
 
@@ -71,27 +71,50 @@ export async function POST(request: Request) {
             });
         }
 
-        const data = await querySTKStatus(crid);
-
-        const resultCode = data.ResultCode !== undefined ? String(data.ResultCode) : undefined;
-        const resultDesc = data.ResultDesc || data.errorMessage || 'Unknown';
-
-        if (resultCode === '0') {
-            // A successful query response does not include enough transaction detail to
-            // validate the paid amount. The signed callback is the source of truth.
-            return NextResponse.json({
-                success: true,
-                paid: false,
-                paymentStatus: 'Pending',
-                resultCode,
-                message: 'Payment completed; awaiting callback confirmation',
+        const ids = checkoutIdsToQuery(order || {}, crid);
+        const probes = [];
+        for (const id of ids) {
+            const data = await querySTKStatus(id);
+            probes.push({
+                checkoutRequestId: id,
+                resultCode: data.ResultCode !== undefined && data.ResultCode !== null ? String(data.ResultCode) : undefined,
+                resultDesc: data.ResultDesc || data.errorMessage || 'Unknown',
+                data,
             });
         }
 
-        const stillPending = ['1037', '1032', '500.001.1001'].includes(resultCode || '') ||
-            data.errorCode === '500.001.1001';
+        const resolved = resolveStkQueryProbes(probes);
+        const resultCode = resolved.resultCode;
+        const resultDesc = resolved.resultDesc || 'Unknown';
+        const data = resolved.data;
 
-        if (resultCode && resultCode !== '0' && !stillPending && orderRef && order?.paymentStatus !== 'Paid') {
+        if (resolved.outcome === 'paid') {
+            if (orderRef && order?.paymentStatus !== 'Paid') {
+                await orderRef.update({
+                    paymentStatus: 'Paid',
+                    paymentMethod: order.paymentMethod || 'M-Pesa',
+                    status: order.status === 'Pending Payment' || !order.status ? 'Processing' : order.status,
+                    processingAt: new Date().toISOString(),
+                    stockReservationStatus: 'committed',
+                    paidAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    paymentFailureReason: null,
+                    paymentFailureCode: null,
+                    paymentFailureMessage: null,
+                    paymentResolvedVia: 'STK_QUERY',
+                });
+            }
+            return NextResponse.json({
+                success: true,
+                paid: true,
+                paymentStatus: 'Paid',
+                resultCode,
+                receipt: order?.mpesaReceiptNumber || order?.transactionId || null,
+                message: 'Payment confirmed',
+            });
+        }
+
+        if (resolved.outcome === 'failed' && resultCode && orderRef && order?.paymentStatus !== 'Paid') {
             await orderRef.update({
                 paymentStatus: 'Failed',
                 status: 'Pending Payment',
@@ -105,7 +128,7 @@ export async function POST(request: Request) {
         return NextResponse.json({
             success: true,
             paid: false,
-            paymentStatus: stillPending ? 'Pending' : (resultCode === '0' ? 'Paid' : 'Failed'),
+            paymentStatus: resolved.outcome === 'pending' ? 'Pending' : 'Failed',
             resultCode,
             message: getMpesaErrorMessage(resultCode || ''),
             raw: data,

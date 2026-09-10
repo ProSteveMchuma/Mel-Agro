@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { verifySafaricomCallback } from '@/lib/safaricom-ips';
+import { normalizeMpesaReceipt } from '@/lib/mpesa';
 
 export async function POST(request: Request) {
     const ipCheck = verifySafaricomCallback(request);
@@ -38,17 +39,18 @@ export async function POST(request: Request) {
             TransTime,
         } = payload || {};
 
-        if (!TransID) {
+        const transID = normalizeMpesaReceipt(TransID);
+        if (!transID) {
             return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
         }
 
         const dupSnap = await adminDb
             .collection('c2bPayments')
-            .where('transID', '==', TransID)
+            .where('transID', '==', transID)
             .limit(1)
             .get();
         if (!dupSnap.empty) {
-            console.log(`C2B idempotent skip — TransID ${TransID} already recorded`);
+            console.log(`C2B idempotent skip — TransID ${transID} already recorded`);
             return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
         }
 
@@ -85,6 +87,18 @@ export async function POST(request: Request) {
             }
         }
 
+        if (!matchedOrderId) {
+            const claimedSnap = await adminDb
+                .collection('orders')
+                .where('claimedMpesaReceipt', '==', transID)
+                .limit(1)
+                .get();
+            if (!claimedSnap.empty && claimedSnap.docs[0].data()?.paymentStatus !== 'Paid') {
+                matchedOrderId = claimedSnap.docs[0].id;
+                matchReason = 'ClaimedReceipt=TransID';
+            }
+        }
+
         if (!matchedOrderId && phone && amount) {
             const phoneVariants = [phone, '0' + phone.slice(-9), '+' + phone, phone.slice(-9)];
             const candidates = await adminDb
@@ -107,7 +121,7 @@ export async function POST(request: Request) {
         }
 
         await adminDb.collection('c2bPayments').add({
-            transID: TransID,
+            transID,
             transactionType: TransactionType || null,
             amount,
             shortCode: String(BusinessShortCode || ''),
@@ -137,8 +151,8 @@ export async function POST(request: Request) {
                     paymentStatus: 'Paid',
                     processingAt: new Date().toISOString(),
                     paymentMethod: 'M-Pesa Till (C2B)',
-                    transactionId: TransID,
-                    mpesaReceiptNumber: TransID,
+                    transactionId: transID,
+                    mpesaReceiptNumber: transID,
                     mpesaPhoneNumber: phone,
                     mpesaTransactionDate: TransTime || null,
                     amountPaid: amount,
@@ -153,7 +167,7 @@ export async function POST(request: Request) {
                     orderId: matchedOrderId,
                     userId: orderData?.userId || null,
                     amount,
-                    receipt: TransID,
+                    receipt: transID,
                     phone,
                     method: 'M-Pesa Till (C2B)',
                     date: new Date().toISOString(),

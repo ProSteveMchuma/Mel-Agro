@@ -69,11 +69,7 @@ export default function AdminOrderDetailsPage() {
         setMpesaActionLoading('retry');
         const t = toast.loading("Sending STK Push to customer...");
         try {
-            const res = await fetch('/api/payment/mpesa/retry', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId: order.id })
-            });
+            const res = await authedFetch('/api/payment/mpesa/retry', { orderId: order.id });
             const data = await res.json();
             if (data.success) {
                 toast.success("STK Push sent. Customer will see prompt on phone.", { id: t });
@@ -92,11 +88,7 @@ export default function AdminOrderDetailsPage() {
         setMpesaActionLoading('query');
         const t = toast.loading("Querying Safaricom for status...");
         try {
-            const res = await fetch('/api/payment/mpesa/query', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId: order.id })
-            });
+            const res = await authedFetch('/api/payment/mpesa/query', { orderId: order.id });
             const data = await res.json();
             if (data.paid) {
                 toast.success("Payment confirmed!", { id: t });
@@ -539,7 +531,6 @@ export default function AdminOrderDetailsPage() {
                         if (!isMpesa) return null;
 
                         const isStkMpesa = m === 'm-pesa' || m === 'mpesa';
-                        const isManualMpesa = m.includes('till') || m.includes('paybill') || m.includes('manual');
                         const status = order.paymentStatus;
                         const isUnpaid = status !== 'Paid' && status !== 'Refunded';
 
@@ -571,16 +562,16 @@ export default function AdminOrderDetailsPage() {
                                         </button>
                                     )}
 
-                                    {isManualMpesa && isUnpaid && (
+                                    {isMpesa && isUnpaid && (
                                         <button
                                             onClick={() => {
-                                                const codeFromOrder = (order.paymentMethod || '').match(/\(([^)]+)\)/)?.[1] || '';
-                                                setVerifyCode(codeFromOrder.toUpperCase());
+                                                const codeFromOrder = order.claimedMpesaReceipt || (order.paymentMethod || '').match(/\(([^)]+)\)/)?.[1] || '';
+                                                setVerifyCode(String(codeFromOrder).toUpperCase());
                                                 setIsVerifyModalOpen(true);
                                             }}
                                             className="w-full bg-amber-500 text-white py-3.5 rounded-2xl hover:bg-amber-600 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-amber-500/10 active:scale-95"
                                         >
-                                            ✓ Verify Manual Code
+                                            ✓ Enter / Verify Transaction Code
                                         </button>
                                     )}
 

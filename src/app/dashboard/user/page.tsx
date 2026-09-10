@@ -26,6 +26,7 @@ import { useProducts } from '@/context/ProductContext';
 import { actionableReorders, buildReorderPredictions, ReorderPrediction } from '@/lib/reorder-intelligence';
 import { AnalyticsService } from '@/lib/analytics';
 import { whatsAppUrl } from '@/lib/site';
+import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
 
 type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses' | 'payments';
 
@@ -50,6 +51,7 @@ export default function UserDashboard() {
     const [printMode, setPrintMode] = useState<'invoice' | 'receipt' | 'delivery' | null>(null);
     const [printOrder, setPrintOrder] = useState<Order | null>(null);
     const [showProfileModal, setShowProfileModal] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
     useEffect(() => {
         // Smart Profile Prompt: Only annoy user if they have NEITHER phone nor email
@@ -82,7 +84,23 @@ export default function UserDashboard() {
         }
     }, [user]);
 
-    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    useEffect(() => {
+        if (!selectedOrder) return;
+        const live = orders.find(o => o.id === selectedOrder.id);
+        if (!live) return;
+        if (
+            live.status !== selectedOrder.status
+            || (live as any).paymentStatus !== (selectedOrder as any).paymentStatus
+            || (live as any).paymentFailureMessage !== (selectedOrder as any).paymentFailureMessage
+            || (live as any).mpesaReceiptNumber !== (selectedOrder as any).mpesaReceiptNumber
+            || (live as any).claimedMpesaReceipt !== (selectedOrder as any).claimedMpesaReceipt
+        ) {
+            setSelectedOrder(live);
+        }
+        if (['Paid', 'Failed'].includes((live as any).paymentStatus) && retryingPayment === live.id) {
+            setRetryingPayment(null);
+        }
+    }, [orders, selectedOrder, retryingPayment]);
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -144,6 +162,15 @@ export default function UserDashboard() {
 
         setRetryingPayment(orderId);
         const loadingToast = toast.loading("Sending M-Pesa prompt...");
+        let pollInterval: ReturnType<typeof setInterval> | null = null;
+        let hungTimer: ReturnType<typeof setTimeout> | null = null;
+        const stopPolling = () => {
+            if (pollInterval) clearInterval(pollInterval);
+            if (hungTimer) clearTimeout(hungTimer);
+            pollInterval = null;
+            hungTimer = null;
+            setRetryingPayment(null);
+        };
         try {
             const idToken = await getAuth().currentUser?.getIdToken();
             const authHeaders: Record<string, string> = {
@@ -158,13 +185,19 @@ export default function UserDashboard() {
             const data = await res.json();
             if (!data.success) {
                 toast.error(data.message || "Failed to send M-Pesa prompt", { id: loadingToast });
-                setRetryingPayment(null);
+                stopPolling();
                 return;
             }
             toast.success("Sent! Check your phone to enter PIN.", { id: loadingToast, duration: 5000 });
 
-            const start = Date.now();
-            const pollInterval = setInterval(async () => {
+            hungTimer = setTimeout(() => {
+                stopPolling();
+                toast("Payment status check timed out. Refresh to see latest.");
+            }, 120000);
+
+            pollInterval = setInterval(async () => {
+                const controller = new AbortController();
+                const abortTimer = setTimeout(() => controller.abort(), 8000);
                 try {
                     const tok = await getAuth().currentUser?.getIdToken();
                     const r = await fetch('/api/payment/mpesa/query', {
@@ -173,27 +206,25 @@ export default function UserDashboard() {
                             'Content-Type': 'application/json',
                             ...(tok ? { Authorization: `Bearer ${tok}` } : {}),
                         },
-                        body: JSON.stringify({ orderId })
+                        body: JSON.stringify({ orderId }),
+                        signal: controller.signal,
                     });
                     const j = await r.json();
-                    if (j.paid) {
-                        clearInterval(pollInterval);
-                        setRetryingPayment(null);
+                    if (j.paid || j.paymentStatus === 'Paid') {
+                        stopPolling();
                         toast.success("Payment confirmed!");
                     } else if (j.paymentStatus === 'Failed') {
-                        clearInterval(pollInterval);
-                        setRetryingPayment(null);
+                        stopPolling();
                         toast.error(j.message || "Payment failed");
-                    } else if (Date.now() - start > 120000) {
-                        clearInterval(pollInterval);
-                        setRetryingPayment(null);
-                        toast("Payment status check timed out. Refresh to see latest.");
                     }
                 } catch { /* ignore transient */ }
+                finally {
+                    clearTimeout(abortTimer);
+                }
             }, 4000);
         } catch (e: any) {
             toast.error(e?.message || "Retry failed", { id: loadingToast });
-            setRetryingPayment(null);
+            stopPolling();
         }
     };
 
@@ -860,27 +891,40 @@ export default function UserDashboard() {
                             </div>
                             {(() => {
                                 const m = ((selectedOrder as any).paymentMethod || '').toLowerCase();
-                                const isStkMpesa = m === 'm-pesa' || m === 'mpesa';
+                                const isStkMpesa = m === 'm-pesa' || m === 'mpesa' || m.includes('till') || m.includes('paybill');
                                 const status = (selectedOrder as any).paymentStatus;
-                                const isRetryable = isStkMpesa && ['Unpaid', 'Failed'].includes(status || '') && selectedOrder.status !== 'Cancelled';
-                                if (!isRetryable) return null;
+                                const needsPayment = isStkMpesa && ['Unpaid', 'Failed', 'Pending Verification'].includes(status || '') && selectedOrder.status !== 'Cancelled';
+                                if (!needsPayment) return null;
+                                const isPendingVerification = status === 'Pending Verification';
                                 return (
                                     <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                                         <div className="flex items-center justify-between gap-3 flex-wrap">
                                             <div>
-                                                <p className="text-xs font-black uppercase text-amber-900 tracking-widest">Pending M-Pesa Payment</p>
+                                                <p className="text-xs font-black uppercase text-amber-900 tracking-widest">
+                                                    {isPendingVerification ? 'Payment under review' : 'Pending M-Pesa Payment'}
+                                                </p>
                                                 <p className="text-xs text-amber-800 mt-1">
-                                                    {(selectedOrder as any).paymentFailureMessage || 'Tap below to receive a new STK Push prompt.'}
+                                                    {isPendingVerification
+                                                        ? `We received code ${(selectedOrder as any).claimedMpesaReceipt || ''}. We will confirm it against the payment.`
+                                                        : ((selectedOrder as any).paymentFailureMessage || 'Tap below to receive a new STK Push prompt, or enter the code from your M-Pesa SMS.')}
                                                 </p>
                                             </div>
-                                            <button
-                                                onClick={() => handleRetryMpesa(selectedOrder.id)}
-                                                disabled={retryingPayment === selectedOrder.id}
-                                                className="px-4 py-2 bg-melagri-primary text-white text-xs font-bold rounded-lg hover:bg-melagri-secondary transition-all disabled:opacity-60"
-                                            >
-                                                {retryingPayment === selectedOrder.id ? 'Sending...' : 'Complete Payment'}
-                                            </button>
+                                            {!isPendingVerification && (
+                                                <button
+                                                    onClick={() => handleRetryMpesa(selectedOrder.id)}
+                                                    disabled={retryingPayment === selectedOrder.id}
+                                                    className="px-4 py-2 bg-melagri-primary text-white text-xs font-bold rounded-lg hover:bg-melagri-secondary transition-all disabled:opacity-60"
+                                                >
+                                                    {retryingPayment === selectedOrder.id ? 'Sending...' : 'Complete Payment'}
+                                                </button>
+                                            )}
                                         </div>
+                                        <MpesaReceiptClaim
+                                            orderId={selectedOrder.id}
+                                            defaultCode={(selectedOrder as any).claimedMpesaReceipt || ''}
+                                            disabled={retryingPayment === selectedOrder.id}
+                                            onPaid={() => setRetryingPayment(null)}
+                                        />
                                     </div>
                                 );
                             })()}
