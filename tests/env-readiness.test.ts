@@ -39,7 +39,6 @@ test('treats SMS as ready when Africa\'s Talking is configured instead of Advant
     const env = completeEnvironment();
     delete env.ADVANTA_API_KEY;
     delete env.ADVANTA_PARTNER_ID;
-    delete env.ADVANTA_SENDER_ID;
     env.AFRICASTALKING_API_KEY = 'configured-at-key';
     env.AFRICASTALKING_USERNAME = 'melagri';
     const result = getEnvironmentReadiness(env, true);

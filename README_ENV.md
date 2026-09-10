@@ -120,7 +120,7 @@ Use the API key, not an App Key. Sender ID must match the value Advanta assigned
 ```env
 ADVANTA_API_KEY=
 ADVANTA_PARTNER_ID=
-ADVANTA_SENDER_ID=
+ADVANTA_SENDER_ID=Makamithi
 ```
 
 Africa's Talking remains an optional fallback only when Advanta is not configured:

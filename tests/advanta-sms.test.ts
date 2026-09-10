@@ -14,22 +14,21 @@ test('normalizes Kenyan numbers to Advanta 254 format', () => {
     assert.equal(formatAdvantaMobile('712345678'), '254712345678');
 });
 
-test('treats Advanta as configured only when key, partner, and sender exist', () => {
+test('treats Advanta as configured when key and partner exist, defaulting sender to Makamithi', () => {
     assert.equal(isAdvantaConfigured({}), false);
     assert.equal(isAdvantaConfigured({
         ADVANTA_API_KEY: 'key',
         ADVANTA_PARTNER_ID: '12763',
-    }), false);
-    assert.equal(isAdvantaConfigured({
-        ADVANTA_API_KEY: 'key',
-        ADVANTA_PARTNER_ID: '12763',
-        ADVANTA_SENDER_ID: 'MELAGRI',
     }), true);
     assert.equal(getAdvantaConfig({
         ADVANTA_API_KEY: 'key',
         ADVANTA_PARTNER_ID: '12763',
-        AFRICASTALKING_SENDER_ID: 'MELAGRO',
-    }).shortcode, 'MELAGRO');
+    }).shortcode, 'Makamithi');
+    assert.equal(getAdvantaConfig({
+        ADVANTA_API_KEY: 'key',
+        ADVANTA_PARTNER_ID: '12763',
+        ADVANTA_SENDER_ID: 'MELAGRI',
+    }).shortcode, 'MELAGRI');
 });
 
 test('parses Advanta success and the documented misspelled response-code field', () => {

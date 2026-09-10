@@ -1,5 +1,8 @@
 export const ADVANTA_BASE_URL = 'https://quicksms.advantasms.com';
 
+/** Approved Advanta sender ID / shortcode. Override with ADVANTA_SENDER_ID. */
+export const DEFAULT_ADVANTA_SENDER_ID = 'Makamithi';
+
 type Env = Record<string, string | undefined>;
 
 export interface AdvantaSendResult {
@@ -33,7 +36,9 @@ export function formatAdvantaMobile(raw: string): string {
 export function getAdvantaConfig(env: Env = process.env) {
     const apiKey = env.ADVANTA_API_KEY?.trim() || '';
     const partnerID = env.ADVANTA_PARTNER_ID?.trim() || '';
-    const shortcode = env.ADVANTA_SENDER_ID?.trim() || env.AFRICASTALKING_SENDER_ID?.trim() || '';
+    const shortcode = env.ADVANTA_SENDER_ID?.trim()
+        || env.AFRICASTALKING_SENDER_ID?.trim()
+        || DEFAULT_ADVANTA_SENDER_ID;
     return { apiKey, partnerID, shortcode };
 }
 
