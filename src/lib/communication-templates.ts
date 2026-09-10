@@ -5,12 +5,19 @@ function shortOrderId(order: { id?: string }): string {
     return String(order.id || '').slice(0, 5).toUpperCase();
 }
 
+export function customerDashboardUrl(orderId?: string, tab: 'orders' | 'returns' = 'orders') {
+    const params = new URLSearchParams({ tab });
+    if (orderId) params.set('orderId', orderId);
+    return `${SITE_URL}/dashboard/user?${params.toString()}`;
+}
+
 export const CommunicationTemplates = {
     getAwaitingPayment: (order: Order) => {
         const id = shortOrderId(order);
         const userName = order.userName || "Farmer";
         const amount = Number(order.total) || 0;
-        const smsBody = `Habari ${userName}, your Mel-Agri order #${id} (KES ${amount.toLocaleString()}) has been placed and is awaiting payment. Complete M-Pesa from your dashboard.`;
+        const link = customerDashboardUrl(order.id);
+        const smsBody = `Habari ${userName}, your Mel-Agri order #${id} (KES ${amount.toLocaleString()}) is awaiting payment. Pay here: ${link}`;
         return {
             subject: `Order Awaiting Payment - Mel-Agri #${id}`,
             emailBody: `<p>Your order #${id} is awaiting payment.</p>`,
@@ -21,8 +28,9 @@ export const CommunicationTemplates = {
     getOrderConfirmation: (order: Order) => {
         const orderIdShort = shortOrderId(order);
         const userName = order.userName || "Farmer";
+        const link = customerDashboardUrl(order.id);
 
-        const smsBody = `Habari ${userName}, your Mel-Agri order #${orderIdShort} has been received! We are prepping your items for dispatch. Total: KES ${order.total.toLocaleString()}. Thank you for farming with us!`;
+        const smsBody = `Habari ${userName}, your Mel-Agri order #${orderIdShort} has been received. Total: KES ${order.total.toLocaleString()}. View: ${link}`;
 
         const emailSubject = `Order Confirmed - Mel-Agri #${orderIdShort}`;
         const emailHtml = `
@@ -60,7 +68,7 @@ export const CommunicationTemplates = {
                     <p>We will notify you via SMS when your payment is confirmed and when your order has shipped.</p>
 
                     <div style="text-align: center; margin-top: 40px;">
-                        <a href="${SITE_URL}/dashboard/user" style="background: #22c55e; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">Track Order Status</a>
+                        <a href="${link}" style="background: #22c55e; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">Track Order Status</a>
                     </div>
                 </div>
                 <div style="background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -83,7 +91,8 @@ export const CommunicationTemplates = {
         const method = opts.method || (order as any).paymentMethod || 'M-Pesa';
         const amount = (order as any).amountPaid || order.total;
 
-        const smsBody = `Habari ${userName}! Payment of KES ${Number(amount).toLocaleString()} received for order #${orderIdShort}${receipt ? ` (Receipt: ${receipt})` : ''}. We're packing your order — you'll get another SMS once it ships.`;
+        const link = customerDashboardUrl(order.id);
+        const smsBody = `Habari ${userName}! Payment of KES ${Number(amount).toLocaleString()} received for order #${orderIdShort}${receipt ? ` (Receipt: ${receipt})` : ''}. We're packing it. View: ${link}`;
 
         const emailSubject = `Payment Received - Mel-Agri #${orderIdShort}`;
         const emailHtml = `
@@ -103,7 +112,7 @@ export const CommunicationTemplates = {
                         </table>
                     </div>
                     <div style="text-align: center; margin-top: 40px;">
-                        <a href="${SITE_URL}/dashboard/user" style="background: #16a34a; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">View Order</a>
+                        <a href="${link}" style="background: #16a34a; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block;">View Order</a>
                     </div>
                 </div>
                 <div style="background: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
@@ -118,15 +127,16 @@ export const CommunicationTemplates = {
     getStatusUpdate: (order: Order, status: string) => {
         const id = shortOrderId(order);
         const userName = order.userName || 'Farmer';
+        const link = customerDashboardUrl(order.id);
         const statusCopy: Record<string, string> = {
-            'Pending Payment': `Habari ${userName}, your Mel-Agri order #${id} is awaiting payment. Complete M-Pesa from your dashboard.`,
-            Processing: `Habari ${userName}, we're packing your Mel-Agri order #${id}. You'll get another SMS when it ships.`,
-            Shipped: `Habari ${userName}, your Mel-Agri order #${id} is on the way. Track it from your dashboard.`,
-            Delivered: `Habari ${userName}, your Mel-Agri order #${id} has been delivered. Asante for farming with us!`,
-            Cancelled: `Habari ${userName}, your Mel-Agri order #${id} has been cancelled. If you already paid, contact support for help.`,
+            'Pending Payment': `Habari ${userName}, your Mel-Agri order #${id} is awaiting payment. Pay here: ${link}`,
+            Processing: `Habari ${userName}, we're packing your Mel-Agri order #${id}. You'll get another SMS when it ships. View: ${link}`,
+            Shipped: `Habari ${userName}, your Mel-Agri order #${id} is on the way. Track it: ${link}`,
+            Delivered: `Habari ${userName}, your Mel-Agri order #${id} has been delivered. Asante! View: ${link}`,
+            Cancelled: `Habari ${userName}, your Mel-Agri order #${id} has been cancelled. If you paid, contact support. View: ${link}`,
         };
         const smsBody = statusCopy[status]
-            || `Habari ${userName}, your Mel-Agri order #${id} status is now: ${status}. Thank you for farming with us!`;
+            || `Habari ${userName}, your Mel-Agri order #${id} status is now: ${status}. View: ${link}`;
         return {
             subject: `Order Update - Mel-Agri #${id}`,
             smsBody,
@@ -134,10 +144,21 @@ export const CommunicationTemplates = {
         };
     },
 
+    getReturnRequested: (order: Order) => {
+        const id = shortOrderId(order);
+        const userName = order.userName || 'Farmer';
+        const smsBody = `Habari ${userName}, we received your return request for Mel-Agri order #${id}. We'll review it. View: ${customerDashboardUrl(order.id, 'returns')}`;
+        return {
+            subject: `Return requested - Mel-Agri #${id}`,
+            smsBody,
+            emailBody: `<p>We received your return request for order #${id}.</p>`,
+        };
+    },
+
     getReturnUpdate: (order: Order, status: 'Approved' | 'Rejected') => {
         const id = shortOrderId(order);
         const userName = order.userName || 'Farmer';
-        const smsBody = `Habari ${userName}, your return request for Mel-Agri order #${id} has been ${status.toLowerCase()}.`;
+        const smsBody = `Habari ${userName}, your return request for Mel-Agri order #${id} has been ${status.toLowerCase()}. View: ${customerDashboardUrl(order.id, 'returns')}`;
         return {
             subject: `Return ${status} - Mel-Agri #${id}`,
             smsBody,
@@ -150,9 +171,8 @@ export const CommunicationTemplates = {
         const userName = order.userName || "Farmer";
         const amount = Number(order.total) || 0;
         const tillNumber = opts.tillNumber || process.env.MPESA_TILL_NUMBER || '3130847';
-        const dashboardUrl = `${SITE_URL}/dashboard/user?orderId=${order.id}`;
-
-        const smsBody = `Habari ${userName}! Your Mel-Agri order #${orderIdShort} (KES ${amount.toLocaleString()}) is awaiting payment. Complete it: ${dashboardUrl} or pay via M-Pesa Buy Goods Till ${tillNumber}.`;
+        const dashboardUrl = customerDashboardUrl(order.id);
+        const smsBody = `Habari ${userName}! Your Mel-Agri order #${orderIdShort} (KES ${amount.toLocaleString()}) is awaiting payment. Pay here: ${dashboardUrl} or M-Pesa Till ${tillNumber}.`;
 
         const emailSubject = `Payment Reminder - Mel-Agri #${orderIdShort}`;
         const emailHtml = `

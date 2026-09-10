@@ -27,7 +27,7 @@ test('payment received SMS includes amount and receipt', () => {
     const sms = CommunicationTemplates.getPaymentReceived(order, { receipt: 'TJK7H8K9L0', method: 'M-Pesa' }).smsBody;
     assert.match(sms, /KES 2,?500/);
     assert.match(sms, /TJK7H8K9L0/);
-    assert.match(sms, /ships/);
+    assert.match(sms, /packing/i);
 });
 
 test('status SMS copy is specific for shipped and delivered', () => {
@@ -37,7 +37,14 @@ test('status SMS copy is specific for shipped and delivered', () => {
     assert.match(CommunicationTemplates.getStatusUpdate(order, 'Cancelled').smsBody, /cancelled/);
 });
 
-test('customer-facing copy is the SMS body reused on the dashboard', () => {
-    const shipped = CommunicationTemplates.getStatusUpdate(order, 'Shipped').smsBody;
-    assert.ok(shipped.startsWith('Habari Amina'));
+test('customer SMS includes a dashboard link for the order', () => {
+    const link = 'https://www.melagri.com/dashboard/user?tab=orders&orderId=abcde12345';
+    assert.match(CommunicationTemplates.getAwaitingPayment(order).smsBody, /Pay here: /);
+    assert.ok(CommunicationTemplates.getAwaitingPayment(order).smsBody.includes(link));
+    assert.ok(CommunicationTemplates.getPaymentReceived(order, { receipt: 'TJK7H8K9L0' }).smsBody.includes(link));
+    assert.ok(CommunicationTemplates.getStatusUpdate(order, 'Shipped').smsBody.includes(link));
+    assert.ok(CommunicationTemplates.getOrderConfirmation(order).smsBody.includes(link));
+    assert.ok(CommunicationTemplates.getPaymentReminder(order).smsBody.includes(link));
+    assert.match(CommunicationTemplates.getReturnUpdate(order, 'Approved').smsBody, /tab=returns/);
+    assert.match(CommunicationTemplates.getReturnRequested(order).smsBody, /tab=returns/);
 });

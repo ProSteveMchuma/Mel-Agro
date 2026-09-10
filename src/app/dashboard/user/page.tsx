@@ -82,21 +82,27 @@ function UserDashboardInner() {
     }, [user]);
 
     useEffect(() => {
+        if (isLoading || user) return;
+        const next = `${window.location.pathname}${window.location.search}`;
+        router.replace(`/auth/login?callbackUrl=${encodeURIComponent(next)}`);
+    }, [isLoading, user, router]);
+
+    useEffect(() => {
         const tab = searchParams.get('tab');
         if (tab && TABS.includes(tab as Tab)) setActiveTab(tab as Tab);
     }, [searchParams]);
 
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const queryOrderId = new URLSearchParams(window.location.search).get('orderId');
+        const queryOrderId = searchParams.get('orderId');
         if (queryOrderId && orders.length > 0) {
             const order = orders.find(o => o.id === queryOrderId);
             if (order) {
                 setSelectedOrder(order);
-                setActiveTab('orders');
+                const tab = searchParams.get('tab');
+                if (tab !== 'returns') setActiveTab('orders');
             }
         }
-    }, [orders]);
+    }, [orders, searchParams]);
 
     useEffect(() => {
         if (user) {

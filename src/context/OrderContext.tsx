@@ -477,8 +477,10 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             returnRequestedAt: new Date().toISOString(),
         });
 
-        const shortId = orderId.slice(0, 5).toUpperCase();
-        const smsBody = `Habari ${order?.userName || 'Farmer'}, we received your return request for Mel-Agri order #${shortId}. Our team will review it.`;
+        const smsBody = CommunicationTemplates.getReturnRequested({
+            ...(order || {}),
+            id: orderId,
+        } as Order).smsBody;
         if (order?.userId) {
             try {
                 await addDoc(collection(db, 'notifications'), {
@@ -507,7 +509,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             adminDocs.forEach(async (adminDoc) => {
                 await addDoc(collection(db, 'notifications'), {
                     userId: adminDoc.id,
-                    message: `Return Requested for Order #${shortId}`,
+                    message: `Return Requested for Order #${orderId.slice(0, 5).toUpperCase()}`,
                     date: new Date().toISOString(),
                     read: false,
                     type: 'system'
