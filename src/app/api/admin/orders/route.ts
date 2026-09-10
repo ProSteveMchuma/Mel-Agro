@@ -61,7 +61,6 @@ export async function POST(request: Request) {
   const input = parsed.data; const actor = await requirePermission(request, input.action === 'payment_status' ? 'payments.manage' : 'orders.manage');
   if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 403 });
   try {
-    let notifyPaid: { order: Record<string, any>; receipt: string; method: string } | null = null;
     await adminDb.runTransaction(async (transaction) => {
       const orderRef = adminDb.collection('orders').doc(input.orderId); const orderSnapshot = await transaction.get(orderRef); if (!orderSnapshot.exists) throw new Error('ORDER_NOT_FOUND');
       const order = orderSnapshot.data() || {}; const now = new Date().toISOString();
@@ -79,20 +78,16 @@ export async function POST(request: Request) {
         update.transactionId = input.transaction.reference;
         update.paymentMethod = input.transaction.method;
         transaction.set(adminDb.collection('transactions').doc(), { orderId: input.orderId, amount: input.transaction.amount, reference: input.transaction.reference, method: input.transaction.method, date: input.transaction.date, status: 'Success', recordedBy: actor.uid, recordedAt: now });
-        notifyPaid = {
-          order: { ...order, ...update, amountPaid: input.transaction.amount, mpesaReceiptNumber: input.transaction.reference },
-          receipt: input.transaction.reference,
-          method: input.transaction.method,
-        };
       }
       transaction.update(orderRef, update); transaction.set(adminDb.collection('adminAuditLog').doc(), { action: 'order_payment_status_changed', actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, before: { paymentStatus: order.paymentStatus || 'Unpaid' }, after: { paymentStatus: input.paymentStatus, reference: input.transaction?.reference || null }, createdAt: now });
     });
-    if (notifyPaid) {
+    if (input.action === 'payment_status' && input.paymentStatus === 'Paid' && input.transaction) {
+      const paidSnap = await adminDb.collection('orders').doc(input.orderId).get();
       void notifyCustomerPaymentReceived({
         orderId: input.orderId,
-        order: notifyPaid.order,
-        receipt: notifyPaid.receipt,
-        method: notifyPaid.method,
+        order: { ...paidSnap.data(), amountPaid: input.transaction.amount, mpesaReceiptNumber: input.transaction.reference },
+        receipt: input.transaction.reference,
+        method: input.transaction.method,
       });
     }
     return NextResponse.json({ success: true });
