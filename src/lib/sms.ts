@@ -1,5 +1,5 @@
-// Browser-safe SMS facade. The authenticated API route owns Africa's Talking
-// credentials and switches between sandbox and production by username.
+// Browser-safe SMS facade. The authenticated API route owns provider
+// credentials and sends via Advanta Africa (Africa's Talking fallback).
 
 export const SmsService = {
     sendOrderUpdate: async (phoneNumber: string, orderId: string, status: string, name?: string) => {

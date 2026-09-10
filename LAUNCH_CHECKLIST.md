@@ -28,7 +28,7 @@
 ## Customer communications
 
 - [ ] Deliver a test order email externally and check SPF, DKIM, and DMARC alignment.
-- [ ] Deliver a production Africa's Talking SMS to a Kenyan number.
+- [ ] Deliver a production Advanta SMS to a Kenyan number.
 - [ ] Deliver a Twilio WhatsApp notification from the approved sender.
 - [ ] Confirm notification failures cannot change payment or order status.
 

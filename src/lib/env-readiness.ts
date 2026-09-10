@@ -22,7 +22,7 @@ export const PRODUCTION_ENV_GROUPS = {
     ],
     paystack: ['PAYSTACK_SECRET_KEY', 'NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY'],
     email: ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS', 'SMTP_FROM'],
-    sms: ['AFRICASTALKING_API_KEY', 'AFRICASTALKING_USERNAME'],
+    sms: ['ADVANTA_API_KEY', 'ADVANTA_PARTNER_ID'],
     whatsapp: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_WHATSAPP_NUMBER'],
     intelligence: ['CRON_SECRET'],
 } as const;
@@ -52,6 +52,12 @@ export function getEnvironmentReadiness(env: Environment, requireProductionServi
             keys.filter((key) => !isConfigured(env[key])),
         ]),
     ) as EnvironmentReadiness['missingByService'];
+
+    const africaTalkingReady = ['AFRICASTALKING_API_KEY', 'AFRICASTALKING_USERNAME']
+        .every((key) => isConfigured(env[key]));
+    const advantaReady = isConfigured(env.ADVANTA_API_KEY)
+        && isConfigured(env.ADVANTA_PARTNER_ID);
+    if (africaTalkingReady || advantaReady) missingByService.sms = [];
 
     const issues: string[] = [];
     if (env.NEXT_PUBLIC_BASE_URL && !env.NEXT_PUBLIC_BASE_URL.startsWith('https://')) {

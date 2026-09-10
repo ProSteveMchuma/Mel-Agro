@@ -79,7 +79,7 @@ The codebase supports three escalating levels of automation for manual M-Pesa (B
 
 Admins can dispatch SMS + email reminders for any unpaid order from the order detail page (under Financial Settlement → **Send Payment Reminder**). The reminder includes the outstanding amount, a deep link to the user's dashboard for one-tap M-Pesa retry, and the Till number for direct Buy Goods payment. Each reminder is recorded on the order doc (`reminders[]`, `reminderCount`, `lastReminderAt`) so admins can see how many times a customer has been nudged.
 
-The reminder feature uses the same SMTP + Africa's Talking credentials as the rest of the comms stack — no extra setup beyond what's already needed for order confirmations.
+The reminder feature uses the same SMTP + Advanta SMS credentials as the rest of the comms stack — no extra setup beyond what's already needed for order confirmations.
 
 ## Paystack API (Required for Card Payments)
 Get these from the [Paystack Dashboard](https://dashboard.paystack.com/).
@@ -112,8 +112,18 @@ ADMIN_SECRET_CODE=some-long-random-string
 ```
 Once your first admin is set up, delete `/admin-setup` and remove this env var.
 
-## Africa's Talking SMS (Required for SMS)
-Get these from [Africa's Talking](https://africastalking.com/).
+## Advanta Africa SMS (Required for SMS)
+Get **API Key**, **Partner ID**, and the approved **Sender ID / shortcode** from the Advanta dashboard (**GET API KEY & PARTNER ID**). Docs: [developers.advantasms.com](https://developers.advantasms.com/).
+
+Use the API key, not an App Key. Sender ID must match the value Advanta assigned (case-sensitive).
+
+```env
+ADVANTA_API_KEY=
+ADVANTA_PARTNER_ID=
+ADVANTA_SENDER_ID=Makamithi
+```
+
+Africa's Talking remains an optional fallback only when Advanta is not configured:
 ```env
 AFRICASTALKING_API_KEY=your_api_key
 AFRICASTALKING_USERNAME=sandbox

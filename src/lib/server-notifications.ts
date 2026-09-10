@@ -1,4 +1,5 @@
 import 'server-only';
+import { isAdvantaConfigured, sendAdvantaSms } from '@/lib/advanta-sms';
 
 function formatKenyanPhoneE164(raw: string): string {
     let p = (raw || '').replace(/\s+/g, '').replace(/-/g, '');
@@ -8,22 +9,12 @@ function formatKenyanPhoneE164(raw: string): string {
     return p;
 }
 
-/**
- * Send SMS via Africa's Talking, server-to-server (no Firebase Auth required).
- * Used by webhooks where there's no signed-in user — e.g. M-Pesa callback,
- * Paystack webhook. Falls through gracefully when keys are missing.
- */
-export async function sendServerSms(to: string, message: string): Promise<{ ok: boolean; reason?: string }> {
-    if (!to || !message) return { ok: false, reason: 'Missing to/message' };
-
+async function sendAfricaTalkingSms(to: string, message: string): Promise<{ ok: boolean; reason?: string }> {
     const apiKey = process.env.AFRICASTALKING_API_KEY;
     const username = process.env.AFRICASTALKING_USERNAME || 'sandbox';
     const from = process.env.AFRICASTALKING_SENDER_ID;
 
-    if (!apiKey) {
-        console.warn(`[server-sms] AFRICASTALKING_API_KEY missing — would send to ${to}: ${message.slice(0, 80)}...`);
-        return { ok: false, reason: 'AT key not configured' };
-    }
+    if (!apiKey) return { ok: false, reason: 'SMS provider is not configured' };
 
     const formattedPhone = formatKenyanPhoneE164(to);
     const endpoint = username === 'sandbox'
@@ -49,14 +40,38 @@ export async function sendServerSms(to: string, message: string): Promise<{ ok: 
         const data: any = await res.json().catch(() => ({}));
         const recipients = data?.SMSMessageData?.Recipients;
         if (!Array.isArray(recipients) || recipients.length === 0) {
-            console.warn('[server-sms] AT did not accept the message:', data);
+            console.warn('[server-sms] Africa\'s Talking did not accept the message:', data);
             return { ok: false, reason: 'Provider rejected' };
         }
         return { ok: true };
     } catch (e: any) {
-        console.error('[server-sms] error:', e);
+        console.error('[server-sms] Africa\'s Talking error:', e);
         return { ok: false, reason: e?.message || 'Network error' };
     }
+}
+
+/**
+ * Send SMS via Advanta Africa when configured, otherwise Africa's Talking.
+ * Used by webhooks where there's no signed-in user — e.g. M-Pesa callback,
+ * Paystack webhook. Falls through gracefully when keys are missing.
+ */
+export async function sendServerSms(to: string, message: string): Promise<{ ok: boolean; reason?: string }> {
+    if (!to || !message) return { ok: false, reason: 'Missing to/message' };
+
+    if (isAdvantaConfigured()) {
+        const result = await sendAdvantaSms(to, message);
+        if (!result.ok) {
+            console.warn(`[server-sms] Advanta did not send to ${to}: ${result.reason}`);
+        }
+        return result;
+    }
+
+    if (!process.env.AFRICASTALKING_API_KEY) {
+        console.warn(`[server-sms] SMS provider missing — would send to ${to}: ${message.slice(0, 80)}...`);
+        return { ok: false, reason: 'SMS provider is not configured' };
+    }
+
+    return sendAfricaTalkingSms(to, message);
 }
 
 /**
