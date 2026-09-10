@@ -470,19 +470,44 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
     const requestReturn = async (orderId: string, reason: string) => {
         const orderRef = doc(db, "orders", orderId);
+        const order = orders.find(o => o.id === orderId);
         await updateDoc(orderRef, {
             returnStatus: 'Requested',
-            returnReason: reason
+            returnReason: reason,
+            returnRequestedAt: new Date().toISOString(),
         });
 
-        // Notify Admins
+        const shortId = orderId.slice(0, 5).toUpperCase();
+        const smsBody = `Habari ${order?.userName || 'Farmer'}, we received your return request for Mel-Agri order #${shortId}. Our team will review it.`;
+        if (order?.userId) {
+            try {
+                await addDoc(collection(db, 'notifications'), {
+                    userId: order.userId,
+                    message: smsBody,
+                    date: new Date().toISOString(),
+                    read: false,
+                    type: 'order',
+                    orderId,
+                });
+            } catch (error) {
+                console.error("Error creating return request notification:", error);
+            }
+        }
+        if (order?.phone) {
+            try {
+                await NotificationService.sendSMS(order.phone, smsBody);
+            } catch (error) {
+                console.error("Return request SMS error:", error);
+            }
+        }
+
         try {
             const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
             const adminDocs = await getDocs(adminsQuery);
             adminDocs.forEach(async (adminDoc) => {
                 await addDoc(collection(db, 'notifications'), {
                     userId: adminDoc.id,
-                    message: `Return Requested for Order #${orderId.substr(0, 5)}`,
+                    message: `Return Requested for Order #${shortId}`,
                     date: new Date().toISOString(),
                     read: false,
                     type: 'system'

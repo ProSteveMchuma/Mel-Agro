@@ -9,11 +9,11 @@ const FAQS = [
     },
     {
         question: "What payment methods do you accept?",
-        answer: "We accept M-Pesa, Credit/Debit Cards, and Bank Transfers. All payments are secure and encrypted."
+        answer: "We accept M-Pesa at checkout (STK push or Buy Goods Till) and Cash on Delivery where offered. Bank transfer is available for bulk orders — contact sales."
     },
     {
         question: "Can I return products if I'm not satisfied?",
-        answer: "We have a 7-day return policy for unopened and unused products. Please contact our support team for assistance with returns."
+        answer: "We have a 7-day return policy for unopened, unused, defective, or incorrect products. Open the order in your dashboard and tap Request Return."
     },
     {
         question: "Do you provide technical advice for farmers?",
@@ -21,7 +21,7 @@ const FAQS = [
     },
     {
         question: "How can I track my order?",
-        answer: "Once your order is shipped, you will receive a tracking number via SMS and Email. You can also track your order status in your account dashboard."
+        answer: "When your order ships you will receive an SMS, and the same update appears in your dashboard Alerts. You can also follow status from Orders in your account."
     }
 ];
 

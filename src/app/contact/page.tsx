@@ -3,6 +3,7 @@ import Footer from "@/components/Footer";
 import Link from "next/link";
 import { Metadata } from 'next';
 import { whatsAppUrl, SUPPORT_PHONE_E164 } from "@/lib/site";
+import ContactForm from "@/components/ContactForm";
 
 export const metadata: Metadata = {
     title: "Agrovet Customer Support & Location in Nairobi",
@@ -33,58 +34,7 @@ export default function ContactPage() {
                         <div className="bg-white rounded-2xl p-8 border border-gray-200">
                             <h2 className="text-2xl font-bold text-gray-900 mb-8">Send us a message</h2>
 
-                            <form className="space-y-6">
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-900 mb-2">Full Name</label>
-                                        <input
-                                            type="text"
-                                            placeholder="Enter your name"
-                                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-900 mb-2">Email Address</label>
-                                        <input
-                                            type="email"
-                                            placeholder="Enter your email"
-                                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-900 mb-2">Phone Number (Optional)</label>
-                                    <input
-                                        type="tel"
-                                        placeholder="+254 712 345 678"
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-900 mb-2">Subject</label>
-                                    <select className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50">
-                                        <option>General Inquiry</option>
-                                        <option>Order Issue</option>
-                                        <option>Partnership</option>
-                                        <option>Feedback</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-900 mb-2">Message</label>
-                                    <textarea
-                                        rows={5}
-                                        placeholder="How can we help you today?"
-                                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-melagri-primary/50 resize-none"
-                                    />
-                                </div>
-
-                                <button type="submit" className="w-full bg-melagri-primary hover:bg-melagri-secondary text-white font-bold py-3 px-6 rounded-lg transition-colors">
-                                    Send Message
-                                </button>
-                            </form>
+                            <ContactForm />
                         </div>
 
                         {/* Contact Information */}
@@ -169,7 +119,7 @@ export default function ContactPage() {
                             {[
                                 {
                                     question: "What are your delivery options?",
-                                    answer: "We offer Standard Delivery (1-3 business days) and Pick-up Station options for all orders."
+                                    answer: "Delivery is zone-based from about KES 200 in Nairobi to KES 750 upcountry. Pickup at our Nairobi store is free. You'll see the exact cost at checkout."
                                 },
                                 {
                                     question: "How do I track my order?",

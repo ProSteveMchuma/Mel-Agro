@@ -5,8 +5,8 @@ import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { useOrders, Order, Notification } from "@/context/OrderContext";
 import { useCart } from "@/context/CartContext";
-import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import React, { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { getAuth } from "firebase/auth";
 import Image from "next/image";
 import Link from "next/link";
@@ -29,10 +29,27 @@ import { whatsAppUrl } from '@/lib/site';
 import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
 
 type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses' | 'payments';
+const TABS: Tab[] = ['dashboard', 'orders', 'returns', 'notifications', 'profile', 'support', 'wishlist', 'addresses', 'payments'];
+
+function isReturnEligible(order: Order) {
+    if (order.status !== 'Delivered' || order.returnStatus) return false;
+    const deliveredAt = (order as { deliveredAt?: string }).deliveredAt;
+    if (!deliveredAt) return true;
+    const elapsed = Date.now() - new Date(deliveredAt).getTime();
+    return Number.isFinite(elapsed) && elapsed <= 7 * 24 * 60 * 60 * 1000;
+}
 
 export default function UserDashboard() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagri-primary"></div></div>}>
+            <UserDashboardInner />
+        </Suspense>
+    );
+}
+
+function UserDashboardInner() {
     const { user, isLoading, logout, updateProfile } = useAuth();
-    const { orders } = useOrders();
+    const { orders, requestReturn } = useOrders();
     const { addToCart } = useCart();
     const { products } = useProducts();
     const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
@@ -52,6 +69,9 @@ export default function UserDashboard() {
     const [printOrder, setPrintOrder] = useState<Order | null>(null);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [returnReason, setReturnReason] = useState('');
+    const [returningId, setReturningId] = useState<string | null>(null);
+    const searchParams = useSearchParams();
 
     useEffect(() => {
         // Smart Profile Prompt: Only annoy user if they have NEITHER phone nor email
@@ -62,13 +82,18 @@ export default function UserDashboard() {
     }, [user]);
 
     useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && TABS.includes(tab as Tab)) setActiveTab(tab as Tab);
+    }, [searchParams]);
+
+    useEffect(() => {
         if (typeof window === 'undefined') return;
         const queryOrderId = new URLSearchParams(window.location.search).get('orderId');
         if (queryOrderId && orders.length > 0) {
             const order = orders.find(o => o.id === queryOrderId);
             if (order) {
                 setSelectedOrder(order);
-                setActiveTab('dashboard');
+                setActiveTab('orders');
             }
         }
     }, [orders]);
@@ -147,6 +172,24 @@ export default function UserDashboard() {
         addToCart(product, prediction.recommendedQuantity);
         void AnalyticsService.logRecommendationClick(prediction.productId, 'reorder-v1');
         toast.success(`${product.name} added to your cart`);
+    };
+
+    const handleRequestReturn = async (order: Order) => {
+        const reason = returnReason.trim();
+        if (reason.length < 8) {
+            toast.error('Tell us why you are returning this order.');
+            return;
+        }
+        const notice = toast.loading('Submitting return request...');
+        try {
+            await requestReturn(order.id, reason);
+            toast.success('Return requested. We will follow up by SMS.', { id: notice });
+            setReturnReason('');
+            setReturningId(null);
+            setSelectedOrder({ ...order, returnStatus: 'Requested', returnReason: reason });
+        } catch (error: any) {
+            toast.error(error?.message || 'Could not submit the return', { id: notice });
+        }
     };
 
     const handleRetryMpesa = async (orderId: string, phoneOverride?: string) => {
@@ -537,6 +580,9 @@ export default function UserDashboard() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button onClick={() => setSelectedOrder(order)} className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-melagri-primary transition-colors">Details</button>
+                                        {isReturnEligible(order) && (
+                                            <button onClick={() => { setSelectedOrder(order); setReturningId(order.id); }} className="px-3 py-1.5 text-xs font-bold text-amber-700 hover:text-amber-900">Request Return</button>
+                                        )}
                                         <button onClick={() => handleReorder(order)} className="px-4 py-2 bg-melagri-primary text-white text-xs font-bold rounded-lg hover:bg-melagri-secondary transition-all">Reorder</button>
                                     </div>
                                 </div>
@@ -700,7 +746,7 @@ export default function UserDashboard() {
                         <p className="text-[10px] text-gray-400">Fastest response</p>
                     </div>
                 </a>
-                <a href="mailto:support@Mel-Agri.com" className="p-6 bg-white border border-gray-100 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
+                <a href="mailto:support@melagri.com" className="p-6 bg-white border border-gray-100 rounded-2xl flex items-center gap-4 hover:shadow-md transition-all">
                     <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500">
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
                     </div>
@@ -933,6 +979,34 @@ export default function UserDashboard() {
                                 <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('receipt'); }} className="py-2.5 md:py-3 px-2 md:px-4 bg-gray-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:scale-[1.02] transition-all">Receipt</button>
                                 <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('delivery'); }} className="py-2.5 md:py-3 px-2 md:px-4 bg-gray-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:scale-[1.02] transition-all">Ship Doc</button>
                             </div>
+                            {selectedOrder.returnStatus && (
+                                <p className="mt-4 text-sm font-bold text-amber-800">Return status: {selectedOrder.returnStatus}</p>
+                            )}
+                            {isReturnEligible(selectedOrder) && (
+                                <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+                                    {returningId === selectedOrder.id ? (
+                                        <>
+                                            <label htmlFor="return-reason" className="block text-xs font-black uppercase tracking-widest text-amber-900 mb-2">Why are you returning this order?</label>
+                                            <textarea
+                                                id="return-reason"
+                                                rows={3}
+                                                value={returnReason}
+                                                onChange={(event) => setReturnReason(event.target.value)}
+                                                placeholder="e.g. Wrong variety delivered, unopened pack"
+                                                className="w-full rounded-xl border border-amber-200 px-3 py-2 text-sm"
+                                            />
+                                            <div className="mt-3 flex gap-2">
+                                                <button type="button" onClick={() => setReturningId(null)} className="px-4 py-2 text-xs font-bold text-gray-600">Cancel</button>
+                                                <button type="button" onClick={() => void handleRequestReturn(selectedOrder)} className="px-4 py-2 rounded-lg bg-amber-700 text-white text-xs font-bold">Submit return</button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <button type="button" onClick={() => setReturningId(selectedOrder.id)} className="w-full py-3 rounded-xl bg-amber-700 text-white text-xs font-black uppercase tracking-widest">
+                                            Request Return
+                                        </button>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

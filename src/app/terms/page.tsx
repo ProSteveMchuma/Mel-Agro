@@ -48,7 +48,7 @@ export default function TermsPage() {
                         <section className="mb-12">
                             <h2 className="text-2xl font-bold text-gray-900 mb-6">4. Payments & Delivery</h2>
                             <p className="text-gray-600 mb-4">
-                                All payments must be made through our authorized payment channels (M-Pesa, Credit/Debit Cards). Delivery is subject to the conditions outlined in our Shipping Policy. We reserve the right to refuse service or cancel orders at our discretion.
+                                All payments must be made through our authorized payment channels (M-Pesa, and Cash on Delivery where offered). Bank transfer is available for bulk orders by arrangement. Delivery is subject to the conditions outlined in our Shipping Policy. We reserve the right to refuse service or cancel orders at our discretion.
                             </p>
                         </section>
 

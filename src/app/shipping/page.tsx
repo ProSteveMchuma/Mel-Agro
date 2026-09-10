@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
+import Link from "next/link";
 import { DELIVERY_ZONES, FREE_SHIPPING_THRESHOLD } from "@/lib/delivery";
 
 export const metadata: Metadata = {
@@ -105,9 +106,9 @@ export default function ShippingPage() {
                             <section id="tracking" className="mb-12">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Order Tracking</h2>
                                 <p className="text-gray-600 mb-4">
-                                    Once your order has been dispatched, you will receive an SMS and an email with a tracking link. You can also track your order directly from your dashboard.
+                                    Once your order has been dispatched, you will receive an SMS and the same update will appear in your dashboard Alerts. You can also track your order directly from your dashboard.
                                 </p>
-                                <button className="btn-primary">Track My Order</button>
+                                <Link href="/dashboard/user?tab=orders" className="btn-primary inline-flex">Track My Order</Link>
                             </section>
 
                             <section id="returns" className="mb-12">

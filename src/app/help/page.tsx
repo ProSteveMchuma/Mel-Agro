@@ -14,15 +14,15 @@ const faqCategories = [
         faqs: [
             {
                 question: "How do I pay using M-PESA?",
-                answer: "To pay via M-PESA, select MPESA at checkout. You will receive a prompt on your phone. Enter your M-Pesa PIN to complete the payment. Account: Your Order Number. Once payment is confirmed, you'll receive SMS and email notification."
+                answer: "Select M-Pesa at checkout. You will get a prompt on your phone — enter your PIN. Once payment is confirmed you will receive an SMS, and the same update appears in your dashboard Alerts."
             },
             {
                 question: "Do you deliver to upcountry locations?",
-                answer: "Yes, we deliver countrywide. Delivery costs vary based on your location. See our delivery information page for estimated costs and delivery times."
+                answer: "Yes, we deliver countrywide. Delivery cost depends on your county (about KES 200 in Nairobi up to KES 750 upcountry). Pickup at our Nairobi store is free. You see the exact fee at checkout."
             },
             {
                 question: "Can I return items if I bought the wrong variety?",
-                answer: "Yes! We have a 14-day return policy for unopened items. Contact support with your order number and reason for return."
+                answer: "Yes. Unopened, defective, or incorrect items can be returned within 7 days of delivery. Open your order in the dashboard and tap Request Return, or contact support with your order number."
             }
         ]
     },
@@ -33,11 +33,11 @@ const faqCategories = [
         faqs: [
             {
                 question: "What shipping methods are available?",
-                answer: "We offer Standard Delivery (1-3 business days) at KES 400 and Pick-up Station option at KES 100. Select your preferred method during checkout."
+                answer: "Choose home delivery (priced by zone at checkout) or free pickup from our Nairobi store, usually ready in 1–2 hours."
             },
             {
                 question: "How do I track my delivery?",
-                answer: "Once your order ships, you'll receive a tracking link via email and SMS. You can also track your order from your account dashboard."
+                answer: "When your order ships you get an SMS, and the same update is saved under Alerts in your dashboard. Open Orders in your account to follow status."
             },
             {
                 question: "What happens if my item arrives damaged?",
@@ -66,12 +66,12 @@ const faqCategories = [
         icon: "👤",
         faqs: [
             {
-                question: "How do I create a Makamithi account?",
-                answer: "Click 'Sign Up' on the homepage. Enter your email and password. Once verified, you can start shopping immediately."
+                question: "How do I create a Mel-Agri account?",
+                answer: "Tap Sign In and use your Kenyan phone number (we send an SMS code), a magic link to your email, or Google. There is no password to remember."
             },
             {
-                question: "I forgot my password. How do I reset it?",
-                answer: "Click 'Forgot Password' on the login page. Enter your email and follow the reset link sent to your inbox."
+                question: "I did not get my login code. What should I do?",
+                answer: "Wait a minute, check that the phone number starts with 07 or +254, then request a new code. You can also sign in with Google or an email magic link."
             },
             {
                 question: "Can I have multiple addresses?",
@@ -84,8 +84,17 @@ const faqCategories = [
 export default function HelpCenterPage() {
     const [selectedCategory, setSelectedCategory] = useState("ordering-payments");
     const [expandedFaq, setExpandedFaq] = useState<string | null>(null);
+    const [query, setQuery] = useState("");
 
     const currentCategory = faqCategories.find(cat => cat.id === selectedCategory);
+    const search = query.trim().toLowerCase();
+    const searchResults = search.length >= 2
+        ? faqCategories.flatMap((category) =>
+            category.faqs
+                .filter((faq) => `${faq.question} ${faq.answer}`.toLowerCase().includes(search))
+                .map((faq, idx) => ({ ...faq, category: category.label, key: `${category.id}-${idx}` }))
+        )
+        : null;
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
@@ -102,11 +111,16 @@ export default function HelpCenterPage() {
                         <div className="max-w-2xl mx-auto mb-12">
                             <div className="relative">
                                 <input
-                                    type="text"
+                                    type="search"
+                                    value={query}
+                                    onChange={(event) => setQuery(event.target.value)}
                                     placeholder="Search for answers (e.g., 'Delivery fees', 'M-PESA')"
                                     className="w-full px-6 py-4 border-2 border-gray-300 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-melagri-primary focus:border-transparent"
                                 />
-                                <button className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-melagri-primary text-white px-6 py-2 rounded-xl font-bold hover:bg-melagri-secondary transition-colors">
+                                <button
+                                    type="button"
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-melagri-primary text-white px-6 py-2 rounded-xl font-bold hover:bg-melagri-secondary transition-colors"
+                                >
                                     Search
                                 </button>
                             </div>
@@ -135,7 +149,23 @@ export default function HelpCenterPage() {
                         </div>
                     </div>
 
-                    {/* FAQs */}
+                    {searchResults ? (
+                        <div className="bg-white rounded-2xl p-8 md:p-12 border border-gray-200 mb-16">
+                            <h2 className="text-3xl font-bold text-gray-900 mb-2">Search results</h2>
+                            <p className="text-gray-600 mb-8">
+                                {searchResults.length === 0 ? `No answers matched “${query.trim()}”.` : `${searchResults.length} matching answer${searchResults.length === 1 ? '' : 's'}.`}
+                            </p>
+                            <div className="space-y-4">
+                                {searchResults.map((faq) => (
+                                    <div key={faq.key} className="border border-gray-200 rounded-xl p-6">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-melagri-primary mb-2">{faq.category}</p>
+                                        <h3 className="font-bold text-gray-900 mb-2">{faq.question}</h3>
+                                        <p className="text-gray-600 leading-relaxed">{faq.answer}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
                     <div className="bg-white rounded-2xl p-8 md:p-12 border border-gray-200 mb-16">
                         <div className="mb-8">
                             <h2 className="text-3xl font-bold text-gray-900">{currentCategory?.label}</h2>
@@ -173,6 +203,7 @@ export default function HelpCenterPage() {
                             ))}
                         </div>
                     </div>
+                    )}
 
                     {/* Still Need Help */}
                     <div className="bg-white rounded-2xl p-8 md:p-12 border border-gray-200">
@@ -219,9 +250,9 @@ export default function HelpCenterPage() {
                                     {[
                                         { label: "Browse Products", href: "/products", icon: "🛍️" },
                                         { label: "Track Your Order", href: "/dashboard/user?tab=orders", icon: "📦" },
-                                        { label: "Return an Item", href: "/contact", icon: "🔄" },
+                                        { label: "Return an Item", href: "/returns", icon: "🔄" },
                                         { label: "Contact Us", href: "/contact", icon: "💬" },
-                                        { label: "About Makamithi", href: "/about", icon: "ℹ️" }
+                                        { label: "About Mel-Agri", href: "/about", icon: "ℹ️" }
                                     ].map((link, idx) => (
                                         <Link
                                             key={idx}

@@ -483,7 +483,7 @@ function LoginForm() {
                     )}
 
                     <div className="mt-6 text-center text-xs text-gray-500">
-                        By continuing, you agree to our <a href="#" className="underline hover:text-gray-900">Terms of Service</a> and <a href="#" className="underline hover:text-gray-900">Privacy Policy</a>.
+                        By continuing, you agree to our <a href="/terms" className="underline hover:text-gray-900">Terms of Service</a> and <a href="/privacy" className="underline hover:text-gray-900">Privacy Policy</a>.
                     </div>
                 </div>
             </main>
