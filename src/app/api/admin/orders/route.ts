@@ -61,7 +61,7 @@ export async function POST(request: Request) {
   const input = parsed.data; const actor = await requirePermission(request, input.action === 'payment_status' ? 'payments.manage' : 'orders.manage');
   if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 403 });
   try {
-    let paidOrder: Record<string, unknown> | null = null;
+    let notifyPaid: { order: Record<string, any>; receipt: string; method: string } | null = null;
     await adminDb.runTransaction(async (transaction) => {
       const orderRef = adminDb.collection('orders').doc(input.orderId); const orderSnapshot = await transaction.get(orderRef); if (!orderSnapshot.exists) throw new Error('ORDER_NOT_FOUND');
       const order = orderSnapshot.data() || {}; const now = new Date().toISOString();
@@ -73,15 +73,26 @@ export async function POST(request: Request) {
       }
       if (input.paymentStatus === 'Paid' && !input.transaction) throw new Error('TRANSACTION_REQUIRED');
       const update: Record<string, unknown> = { paymentStatus: input.paymentStatus, updatedAt: now };
-      if (input.paymentStatus === 'Paid' && input.transaction) { update.stockReservationStatus = 'committed'; update.paidAt = now; update.transactionId = input.transaction.reference; update.paymentMethod = input.transaction.method; transaction.set(adminDb.collection('transactions').doc(), { orderId: input.orderId, amount: input.transaction.amount, reference: input.transaction.reference, method: input.transaction.method, date: input.transaction.date, status: 'Success', recordedBy: actor.uid, recordedAt: now }); paidOrder = { ...order, ...update, amountPaid: input.transaction.amount, mpesaReceiptNumber: input.transaction.reference }; }
+      if (input.paymentStatus === 'Paid' && input.transaction) {
+        update.stockReservationStatus = 'committed';
+        update.paidAt = now;
+        update.transactionId = input.transaction.reference;
+        update.paymentMethod = input.transaction.method;
+        transaction.set(adminDb.collection('transactions').doc(), { orderId: input.orderId, amount: input.transaction.amount, reference: input.transaction.reference, method: input.transaction.method, date: input.transaction.date, status: 'Success', recordedBy: actor.uid, recordedAt: now });
+        notifyPaid = {
+          order: { ...order, ...update, amountPaid: input.transaction.amount, mpesaReceiptNumber: input.transaction.reference },
+          receipt: input.transaction.reference,
+          method: input.transaction.method,
+        };
+      }
       transaction.update(orderRef, update); transaction.set(adminDb.collection('adminAuditLog').doc(), { action: 'order_payment_status_changed', actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, before: { paymentStatus: order.paymentStatus || 'Unpaid' }, after: { paymentStatus: input.paymentStatus, reference: input.transaction?.reference || null }, createdAt: now });
     });
-    if (paidOrder) {
+    if (notifyPaid) {
       void notifyCustomerPaymentReceived({
         orderId: input.orderId,
-        order: paidOrder,
-        receipt: String(paidOrder.transactionId || ''),
-        method: String(paidOrder.paymentMethod || 'M-Pesa'),
+        order: notifyPaid.order,
+        receipt: notifyPaid.receipt,
+        method: notifyPaid.method,
       });
     }
     return NextResponse.json({ success: true });
