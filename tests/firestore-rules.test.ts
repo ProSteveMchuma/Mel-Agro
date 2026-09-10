@@ -64,3 +64,9 @@ test('keeps per-admin analytics preferences server-authoritative', () => {
     assert.ok(block, 'Missing adminAnalyticsPreferences rules block');
     assert.match(block[1], /allow read, write: if false;/);
 });
+
+test('keeps login OTP challenges server-authoritative', () => {
+    const block = rules.match(/match \/otpChallenges\/\{id\} \{([\s\S]*?)\n    \}/);
+    assert.ok(block, 'Missing otpChallenges rules block');
+    assert.match(block[1], /allow read, write: if false;/);
+});

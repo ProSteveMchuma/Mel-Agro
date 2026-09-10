@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, Suspense, useEffect } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Logo from '@/components/Logo';
-import { sendSignInLinkToEmail, GoogleAuthProvider, signInWithPopup, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, updateProfile } from 'firebase/auth';
+import { sendSignInLinkToEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, updateProfile } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
@@ -14,13 +14,6 @@ import { doc, setDoc } from 'firebase/firestore';
 // their own role / status / loyaltyPoints fields (firestore.rules:60), so any
 // merge-update from this page must skip those.
 
-declare global {
-    interface Window {
-        recaptchaVerifier: any;
-    }
-}
-
-// Map Firebase Auth Error Codes to User-Friendly Messages
 const getErrorMessage = (error: any) => {
     const code = error.code as string;
     switch (code) {
@@ -52,7 +45,6 @@ function LoginForm() {
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
-    const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
 
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -65,55 +57,8 @@ function LoginForm() {
     const searchParams = useSearchParams();
     const callbackUrl = searchParams.get('callbackUrl') || '/';
 
-    // Initialize Recaptcha with proper lifecycle management
-    useEffect(() => {
-        let verifier: RecaptchaVerifier | null = null;
-
-        if (loginMethod === 'phone') {
-            const container = document.getElementById('recaptcha-container');
-
-            // Only init if container exists (it's conditionally rendered)
-            if (container) {
-                try {
-                    // Clear any existing instance to prevent "already rendered" errors
-                    if (window.recaptchaVerifier) {
-                        try { window.recaptchaVerifier.clear(); } catch (e) { console.warn("Cleanup warning:", e); }
-                    }
-
-                    verifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-                        'size': 'invisible',
-                        'callback': () => {
-                            // reCAPTCHA solved, allow signInWithPhoneNumber.
-                            console.log("Recaptcha verified");
-                        },
-                        'expired-callback': () => {
-                            // Response expired. Ask user to solve reCAPTCHA again.
-                            setError('Security check expired. Please try again.');
-                            if (window.recaptchaVerifier) {
-                                try { window.recaptchaVerifier.clear(); } catch { }
-                            }
-                        }
-                    });
-
-                    window.recaptchaVerifier = verifier;
-                } catch (err: any) {
-                    console.error("Recaptcha Initialization Error:", err);
-                    setError("Failed to load security check. Please refresh the page.");
-                }
-            }
-        }
-
-        // Cleanup function
-        return () => {
-            if (verifier) {
-                try { verifier.clear(); } catch (e) { console.warn("Cleanup warning:", e); }
-                window.recaptchaVerifier = undefined;
-            }
-        };
-    }, [loginMethod]); // Re-run when switching to/from phone login
-
-    const handleSendOtp = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSendOtp = async (e?: React.FormEvent) => {
+        e?.preventDefault();
         setIsLoading(true);
         setError('');
 
@@ -123,52 +68,21 @@ function LoginForm() {
             return;
         }
 
-        // Clean phone number (Kenyan formatting helper)
-        let formattedPhone = phone.replace(/\s+/g, '').replace(/-/g, '');
-        // Remove leading 0 if present
-        if (formattedPhone.startsWith('0')) {
-            formattedPhone = formattedPhone.substring(1);
-        }
-        // Add +254 if missing
-        if (!formattedPhone.startsWith('+')) {
-            if (formattedPhone.startsWith('254')) {
-                formattedPhone = '+' + formattedPhone;
-            } else {
-                formattedPhone = '+254' + formattedPhone;
-            }
-        }
-
-        // Simple length check for Kenya (+254 7XX XXX XXX is 13 chars)
-        if (formattedPhone.length < 10 || formattedPhone.length > 15) {
-            setError("Please enter a valid phone number (e.g., 0712 345 678)");
-            setIsLoading(false);
-            return;
-        }
-
         try {
-            if (!window.recaptchaVerifier) {
-                throw new Error("Security check not initialized. Please refresh.");
+            const res = await fetch('/api/auth/otp/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || 'Could not send the verification code.');
             }
-
-            const appVerifier = window.recaptchaVerifier;
-            const confirmation = await signInWithPhoneNumber(auth, formattedPhone, appVerifier);
-            setConfirmationResult(confirmation);
             setOtpSent(true);
-            setOtp(''); // Clear any previous OTP
+            setOtp('');
         } catch (err: any) {
             console.error("Phone Auth Error:", err);
-            setError(getErrorMessage(err));
-
-            // Reset captcha on error so user can try again
-            if (window.recaptchaVerifier) {
-                try {
-                    window.recaptchaVerifier.render().then((widgetId: any) => {
-                         
-                        // @ts-ignore
-                        if (typeof grecaptcha !== 'undefined') grecaptcha.reset(widgetId);
-                    });
-                } catch (e) { console.warn("Reset warning", e); }
-            }
+            setError(err?.message || 'Could not send the verification code.');
         } finally {
             setIsLoading(false);
         }
@@ -179,13 +93,25 @@ function LoginForm() {
         setIsLoading(true);
         setError('');
 
-        if (!otp || !confirmationResult) return;
+        if (!otp) {
+            setError('Enter the 6-digit code from your SMS.');
+            setIsLoading(false);
+            return;
+        }
 
         try {
-            const cred = await confirmationResult.confirm(otp);
+            const res = await fetch('/api/auth/otp/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone, code: otp }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.token) {
+                throw new Error(data.message || 'Invalid OTP code. Please check and try again.');
+            }
+            const cred = await signInWithCustomToken(auth, data.token);
             const fbUser = cred.user;
             const dn = (fbUser.displayName || '').trim();
-            // Phone OTP doesn't carry a displayName, so prompt for one before redirecting.
             if (!dn || dn === 'User') {
                 setNeedsName(true);
                 setIsLoading(false);
@@ -398,7 +324,6 @@ function LoginForm() {
                                             onChange={(e) => setPhone(e.target.value)}
                                         />
                                     </div>
-                                    <div id="recaptcha-container"></div>
                                     <button
                                         type="submit"
                                         disabled={isLoading}
@@ -410,8 +335,8 @@ function LoginForm() {
                             ) : (
                                 <form onSubmit={handleVerifyOtp} className="space-y-6">
                                     <div className="text-center mb-4">
-                                        <p className="text-sm text-gray-600">Enter the code sent to <strong>{phone}</strong></p>
-                                        <button type="button" onClick={() => setOtpSent(false)} className="text-xs text-melagri-primary underline mt-1">Change Number</button>
+                                        <p className="text-sm text-gray-600">Enter the 6-digit code sent from <strong>Makamithi</strong> to <strong>{phone}</strong></p>
+                                        <button type="button" onClick={() => { setOtpSent(false); setOtp(''); setError(''); }} className="text-xs text-melagri-primary underline mt-1">Change Number</button>
                                     </div>
                                     <div>
                                         <label htmlFor="otp" className="sr-only">Verification Code</label>
@@ -419,20 +344,30 @@ function LoginForm() {
                                             id="otp"
                                             name="otp"
                                             type="text"
+                                            inputMode="numeric"
+                                            autoComplete="one-time-code"
                                             required
                                             maxLength={6}
                                             className="text-center tracking-[1em] font-mono text-xl appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary"
                                             placeholder="000000"
                                             value={otp}
-                                            onChange={(e) => setOtp(e.target.value)}
+                                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                                         />
                                     </div>
                                     <button
                                         type="submit"
-                                        disabled={isLoading}
+                                        disabled={isLoading || otp.length !== 6}
                                         className={`w-full flex justify-center py-3 px-4 border border-transparent text-sm font-bold rounded-lg text-white bg-melagri-primary hover:bg-melagri-secondary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-melagri-primary transition-all disabled:opacity-70`}
                                     >
                                         {isLoading ? 'Verifying...' : 'Verify & Login'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => void handleSendOtp()}
+                                        disabled={isLoading}
+                                        className="w-full text-xs text-gray-500 hover:text-gray-700"
+                                    >
+                                        Resend code
                                     </button>
                                 </form>
                             )}

@@ -107,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     await setDoc(userDocRef, {
                         name: firebaseUser.displayName || 'User',
                         email: firebaseUser.email || '',
+                        phone: firebaseUser.phoneNumber || '',
                         role: 'user',
                         createdAt: new Date().toISOString(),
                     });

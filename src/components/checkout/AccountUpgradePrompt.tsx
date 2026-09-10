@@ -1,15 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import {
-    PhoneAuthProvider,
-    RecaptchaVerifier,
-    linkWithCredential,
-    signInWithCredential,
-} from 'firebase/auth';
+import { signInWithCustomToken } from 'firebase/auth';
 import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import { AccountUpgradeEvent, normalizeKenyanPhone } from '@/lib/account-upgrade';
+import { AccountUpgradeEvent } from '@/lib/account-upgrade';
 
 interface AccountUpgradePromptProps {
     orderId: string;
@@ -23,12 +18,10 @@ type Step = 'offer' | 'otp' | 'complete';
 export default function AccountUpgradePrompt({ orderId, phone, name, onCompleted }: AccountUpgradePromptProps) {
     const [step, setStep] = useState<Step>('offer');
     const [phoneInput, setPhoneInput] = useState(phone);
-    const [verificationId, setVerificationId] = useState('');
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [dismissed, setDismissed] = useState(false);
-    const verifierRef = useRef<RecaptchaVerifier | null>(null);
     const guestTokenRef = useRef('');
     const dismissedKey = `melagri_account_prompt_dismissed:${orderId}`;
 
@@ -46,17 +39,11 @@ export default function AccountUpgradePrompt({ orderId, phone, name, onCompleted
     useEffect(() => {
         if (sessionStorage.getItem(dismissedKey)) setDismissed(true);
         else void recordEvent('account_prompt_shown');
-        return () => verifierRef.current?.clear();
     }, [dismissedKey]);
 
     if (dismissed) return null;
-    if (!auth.currentUser?.isAnonymous && step !== 'complete') return null;
-
-    const ensureVerifier = () => {
-        verifierRef.current?.clear();
-        verifierRef.current = new RecaptchaVerifier(auth, 'account-upgrade-recaptcha', { size: 'invisible' });
-        return verifierRef.current;
-    };
+    const showPrompt = Boolean(auth.currentUser?.isAnonymous || step === 'otp' || step === 'complete');
+    if (!showPrompt) return null;
 
     const sendOtp = async () => {
         setLoading(true);
@@ -64,18 +51,20 @@ export default function AccountUpgradePrompt({ orderId, phone, name, onCompleted
         try {
             const guest = auth.currentUser;
             if (!guest?.isAnonymous) throw new Error('This guest session has expired. Sign in to save your order.');
-            const formattedPhone = normalizeKenyanPhone(phoneInput);
             guestTokenRef.current = await guest.getIdToken(true);
-            const provider = new PhoneAuthProvider(auth);
-            const id = await provider.verifyPhoneNumber(formattedPhone, ensureVerifier());
-            setPhoneInput(formattedPhone);
-            setVerificationId(id);
+            const res = await fetch('/api/auth/otp/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phoneInput }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                throw new Error(data.message || 'Unable to send the verification code');
+            }
             setStep('otp');
             void recordEvent('account_prompt_accepted');
         } catch (caught) {
             setError(caught instanceof Error ? caught.message : 'Unable to send the verification code');
-            verifierRef.current?.clear();
-            verifierRef.current = null;
         } finally {
             setLoading(false);
         }
@@ -86,21 +75,31 @@ export default function AccountUpgradePrompt({ orderId, phone, name, onCompleted
         setError('');
         try {
             const guest = auth.currentUser;
-            if (!guest?.isAnonymous) throw new Error('This guest session has expired. Sign in to save your order.');
+            if (!guest) throw new Error('This session has expired. Sign in to save your order.');
             if (!/^\d{6}$/.test(otp)) throw new Error('Enter the 6-digit verification code');
+            if (guest.isAnonymous) {
+                guestTokenRef.current = guestTokenRef.current || await guest.getIdToken(true);
+            }
 
-            const credential = PhoneAuthProvider.credential(verificationId, otp);
-            try {
-                await linkWithCredential(guest, credential);
-                await setDoc(doc(db, 'users', guest.uid), {
-                    name: name || 'Farmer',
-                    phone: phoneInput,
-                    updatedAt: new Date().toISOString(),
-                }, { merge: true });
-            } catch (caught: any) {
-                if (caught?.code !== 'auth/credential-already-in-use') throw caught;
+            const res = await fetch('/api/auth/otp/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ phone: phoneInput, code: otp }),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.token) {
+                throw new Error(data.message || 'That code is not correct. Check the SMS from Makamithi and try again.');
+            }
 
-                const signedIn = await signInWithCredential(auth, credential);
+            const guestToken = guestTokenRef.current || await guest.getIdToken(true);
+            const signedIn = await signInWithCustomToken(auth, data.token);
+            await setDoc(doc(db, 'users', signedIn.user.uid), {
+                name: name || 'Farmer',
+                phone: phoneInput,
+                updatedAt: new Date().toISOString(),
+            }, { merge: true });
+
+            if (guestToken) {
                 const targetToken = await signedIn.user.getIdToken(true);
                 const claim = await fetch('/api/orders/claim', {
                     method: 'POST',
@@ -108,9 +107,9 @@ export default function AccountUpgradePrompt({ orderId, phone, name, onCompleted
                         'Content-Type': 'application/json',
                         Authorization: `Bearer ${targetToken}`,
                     },
-                    body: JSON.stringify({ guestToken: guestTokenRef.current }),
+                    body: JSON.stringify({ guestToken }),
                 });
-                const claimResult = await claim.json();
+                const claimResult = await claim.json().catch(() => ({}));
                 if (!claim.ok || !claimResult.success) {
                     throw new Error(claimResult.message || 'Unable to attach this order to your account');
                 }
@@ -120,10 +119,7 @@ export default function AccountUpgradePrompt({ orderId, phone, name, onCompleted
             void recordEvent('account_upgrade_completed');
             onCompleted?.();
         } catch (caught: any) {
-            const message = caught?.code === 'auth/invalid-verification-code'
-                ? 'That code is not correct. Check the SMS and try again.'
-                : caught?.message || 'Unable to create your account';
-            setError(message);
+            setError(caught?.message || 'Unable to create your account');
             void recordEvent('account_upgrade_failed');
         } finally {
             setLoading(false);
@@ -174,7 +170,7 @@ export default function AccountUpgradePrompt({ orderId, phone, name, onCompleted
                     ) : (
                         <>
                             <label htmlFor="upgrade-otp" className="text-xs font-black uppercase tracking-widest text-gray-500">Verification code</label>
-                            <p className="mt-1 text-xs text-gray-500">Enter the 6-digit SMS code sent to {phoneInput}.</p>
+                            <p className="mt-1 text-xs text-gray-500">Enter the 6-digit SMS from Makamithi sent to {phoneInput}.</p>
                             <input id="upgrade-otp" value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" className="mt-3 w-full rounded-xl border border-gray-200 px-4 py-3 text-center font-mono text-xl font-black tracking-[0.35em] outline-none focus:border-green-500 focus:ring-4 focus:ring-green-100" />
                             <button onClick={verifyAndUpgrade} disabled={loading || otp.length !== 6} className="mt-4 w-full rounded-xl bg-green-600 px-5 py-3.5 font-black text-white transition hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-200 disabled:opacity-60">
                                 {loading ? 'Securing account…' : 'Verify & save order'}
@@ -183,7 +179,6 @@ export default function AccountUpgradePrompt({ orderId, phone, name, onCompleted
                         </>
                     )}
                     {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</p>}
-                    <div id="account-upgrade-recaptcha" />
                     <p className="mt-3 text-[10px] leading-4 text-gray-400">Your paid order is already confirmed. Creating an account is optional and does not subscribe you to marketing.</p>
                 </div>
             </div>

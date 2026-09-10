@@ -67,11 +67,11 @@ const faqCategories = [
         faqs: [
             {
                 question: "How do I create a Mel-Agri account?",
-                answer: "Tap Sign In and use your Kenyan phone number (we send an SMS code), a magic link to your email, or Google. There is no password to remember."
+                answer: "Tap Sign In and use your Kenyan phone number. We send a 6-digit SMS from Makamithi — there is no password to remember. You can also use a magic link to your email, or Google."
             },
             {
                 question: "I did not get my login code. What should I do?",
-                answer: "Wait a minute, check that the phone number starts with 07 or +254, then request a new code. You can also sign in with Google or an email magic link."
+                answer: "Look for an SMS from Makamithi. Wait a minute, check that the phone number starts with 07 or +254, then tap Resend code. You can also sign in with Google or an email magic link."
             },
             {
                 question: "Can I have multiple addresses?",
