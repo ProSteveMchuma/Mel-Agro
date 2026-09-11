@@ -176,6 +176,14 @@ export default function CheckoutPage() {
         }
     }, [cartItems.length, isProcessing, router]);
 
+    useEffect(() => {
+        if (currentStep === 1) trackAction('checkout_start');
+        if (currentStep >= 2) trackAction('checkout_step', { step: 'payment' });
+        if (currentStep >= 3) trackAction('checkout_step', { step: 'review' });
+        // trackAction is recreated each render; step number is the real trigger.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentStep]);
+
     // Stock revalidation — re-check the catalog for any cart items now under-stocked or removed.
     // The cart can sit idle for days; ProductContext is streamed via onSnapshot so this stays fresh.
     const stockIssues = (() => {

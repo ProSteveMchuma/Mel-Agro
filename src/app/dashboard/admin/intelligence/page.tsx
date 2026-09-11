@@ -15,6 +15,7 @@ export default function IntelligencePage() {
     const { users } = useUsers();
     const { orders } = useOrders();
     const [cartCount, setCartCount] = useState<number | null>(null);
+    const [funnel, setFunnel] = useState<{ sampled: number; steps: Array<{ key: string; label: string; count: number; conversionFromStart: number }> } | null>(null);
     const [activeSegment, setActiveSegment] = useState<Segment | 'all'>('all');
     const [tableSort, setTableSort] = useState<'ltv' | 'frequency' | 'recency'>('ltv');
 
@@ -39,26 +40,40 @@ export default function IntelligencePage() {
     const visible = filtered.slice(0, 50);
 
     useEffect(() => {
-        auth.currentUser?.getIdToken()
-            .then(token => fetch('/api/admin/intelligence/abandoned-carts', { headers: { Authorization: `Bearer ${token}` } }))
-            .then(response => response?.ok ? response.json() : null)
-            .then(data => setCartCount(Array.isArray(data?.carts) ? data.carts.length : null))
+        const tokenPromise = auth.currentUser?.getIdToken();
+        if (!tokenPromise) return;
+        tokenPromise
+            .then(token => Promise.all([
+                fetch('/api/admin/intelligence/abandoned-carts', { headers: { Authorization: `Bearer ${token}` } }),
+                fetch('/api/admin/analytics/overview', { headers: { Authorization: `Bearer ${token}` } }),
+            ]))
+            .then(async ([cartsResponse, overviewResponse]) => {
+                const cartsData = cartsResponse.ok ? await cartsResponse.json() : null;
+                const overviewData = overviewResponse.ok ? await overviewResponse.json() : null;
+                setCartCount(Array.isArray(cartsData?.carts) ? cartsData.carts.length : null);
+                if (overviewData?.funnel?.steps) setFunnel(overviewData.funnel);
+            })
             .catch(() => setCartCount(null));
     }, []);
 
-    const totalOrders = orders.length;
     const paidOrders = orders.filter(o => (o as any).paymentStatus === 'Paid').length;
-    const ordersWithPayment = orders.filter(o => (o as any).paymentMethod).length;
-    const cartViewed = cartCount ?? users.length;
-
-    const pct = (n: number) => cartViewed > 0 ? `${Math.round((n / cartViewed) * 100)}%` : '—';
-
-    const funnelSteps = [
-        { label: 'Cart Started', count: cartViewed, conversion: '100%', color: 'bg-blue-500' },
-        { label: 'Shipping Info', count: totalOrders, conversion: pct(totalOrders), color: 'bg-indigo-500' },
-        { label: 'Payment Method', count: ordersWithPayment, conversion: pct(ordersWithPayment), color: 'bg-purple-500' },
-        { label: 'Order Paid', count: paidOrders, conversion: pct(paidOrders), color: 'bg-melagri-primary' },
-    ];
+    const funnelColors = ['bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-violet-500', 'bg-melagri-primary'];
+    const liveFunnelSteps = funnel?.steps?.length
+        ? [
+            ...funnel.steps.map((step, index) => ({
+                label: step.label,
+                count: step.count,
+                conversion: funnel.steps[0].count > 0 ? `${Math.round(step.conversionFromStart * 100)}%` : '—',
+                color: funnelColors[index] || 'bg-gray-400',
+            })),
+            {
+                label: 'Order Paid',
+                count: paidOrders,
+                conversion: 'all-time',
+                color: 'bg-melagri-primary',
+            },
+        ]
+        : null;
 
     // Filter to only show users with behavioral data
     const intelligentUsers = users
@@ -118,13 +133,13 @@ export default function IntelligencePage() {
                     <div>
                         <Link href="/dashboard/admin/intelligence/abandoned-carts" className="group">
                             <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight group-hover:text-melagri-primary transition-colors">Checkout Conversion Funnel</h2>
-                            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Live Drop-off Tracking • <span className="text-melagri-primary">Recover Sales →</span></p>
+                            <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Signed-in sessions from analytics_funnels • Paid orders from Firestore{cartCount != null ? ` • ${cartCount} recoverable carts` : ''} • <span className="text-melagri-primary">Recover Sales →</span></p>
                         </Link>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
-                    {funnelSteps.map((step, i) => (
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
+                    {(liveFunnelSteps || []).map((step, i) => (
                         <div key={step.label} className="relative group">
                             <div className="h-24 bg-gray-50 rounded-2xl p-6 flex flex-col justify-center border border-gray-100 group-hover:border-melagri-primary/30 transition-all overflow-hidden">
                                 <div className={`absolute left-0 top-0 bottom-0 w-1 ${step.color}`}></div>
@@ -138,11 +153,16 @@ export default function IntelligencePage() {
                                     </div>
                                 </div>
                             </div>
-                            {i < 3 && (
+                            {i < (liveFunnelSteps?.length || 1) - 1 && (
                                 <div className="hidden md:block absolute -right-2 top-1/2 -translate-y-1/2 z-10 w-4 h-4 bg-gray-100 rotate-45 border-t border-r border-gray-200"></div>
                             )}
                         </div>
                     ))}
+                    {!liveFunnelSteps && (
+                        <div className="md:col-span-5 rounded-2xl bg-gray-50 p-6 text-sm font-semibold text-gray-500">
+                            Checkout funnel data appears after signed-in customers reach checkout. Paid orders are already counted separately below.
+                        </div>
+                    )}
                 </div>
             </div>
 

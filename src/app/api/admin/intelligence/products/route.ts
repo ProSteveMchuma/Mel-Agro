@@ -21,7 +21,8 @@ export async function GET(request: Request) {
         const data = doc.data();
         const views = Number(data.views || 0);
         const carts = Number(data.addToCartCount || 0);
-        return { productId: String(data.productId || doc.id), views, carts, cartRate: views > 0 ? (carts / views) * 100 : 0 };
+        const purchases = Number(data.purchases || 0);
+        return { productId: String(data.productId || doc.id), views, carts, purchases, cartRate: views > 0 ? (carts / views) * 100 : 0, purchaseRate: views > 0 ? (purchases / views) * 100 : 0 };
     }).sort((a, b) => b.views - a.views);
     return NextResponse.json({
         success: true,

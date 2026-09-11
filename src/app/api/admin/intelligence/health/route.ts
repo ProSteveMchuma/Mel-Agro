@@ -13,13 +13,14 @@ export async function GET(request: Request) {
     const auth = await requirePermission(request, 'analytics.view');
     if (!auth.ok) return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
 
-    const [paidOrders, purchases, recommendationDocs, products, alerts, dedupExpired] = await Promise.all([
+    const [paidOrders, purchases, recommendationDocs, products, alerts, dedupExpired, funnelCount] = await Promise.all([
         adminDb.collection('orders').where('paymentStatus', '==', 'Paid').count().get(),
         adminDb.collection('analytics_purchases').count().get(),
         adminDb.collection('analytics_recommendations').limit(500).get(),
         adminDb.collection('products').limit(500).get(),
         adminDb.collection('intelligence_alerts').orderBy('updatedAt', 'desc').limit(1).get(),
         adminDb.collection('analytics_visit_dedup').where('createdAt', '<', new Date(Date.now() - INTELLIGENCE_RETENTION_DAYS.visitDeduplication * 86_400_000)).count().get(),
+        adminDb.collection('analytics_funnels').count().get(),
     ]);
 
     const paidOrderCount = paidOrders.data().count;
@@ -48,6 +49,7 @@ export async function GET(request: Request) {
 
     const checks = [
         { id: 'purchase-reconciliation', label: 'Paid-order reconciliation', status: reconciliationGap === 0 ? 'healthy' : 'warning', detail: `${paidOrderCount} paid orders; ${purchaseCount} purchase analytics; gap ${reconciliationGap}.` },
+        { id: 'checkout-funnel', label: 'Checkout funnel coverage', status: funnelCount.data().count > 0 ? 'healthy' : 'warning', detail: `${funnelCount.data().count} signed-in checkout sessions recorded in analytics_funnels.` },
         { id: 'recommendation-freshness', label: 'Recommendation event freshness', status: latestRecommendationEvent && Date.now() - latestRecommendationEvent < 7 * 86_400_000 ? 'healthy' : 'warning', detail: latestRecommendationEvent ? `Last event ${new Date(latestRecommendationEvent).toISOString()}.` : 'No recommendation event recorded yet.' },
         { id: 'schema-coverage', label: 'Analytics schema coverage', status: schemaMissing === 0 ? 'healthy' : 'warning', detail: `${schemaMissing} of ${recommendationDocs.size} sampled recommendation records use a legacy schema.` },
         { id: 'supply-data', label: 'Product supply-data coverage', status: productsMissingSupplyData === 0 ? 'healthy' : 'warning', detail: `${productsMissingSupplyData} of ${products.size} sampled products need lead time, safety stock, or MOQ data.` },

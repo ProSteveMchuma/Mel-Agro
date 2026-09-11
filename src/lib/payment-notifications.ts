@@ -2,6 +2,7 @@ import 'server-only';
 import { adminDb } from '@/lib/firebase-admin';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { customerNotifyContact, notifyCustomer } from '@/lib/customer-notifications';
+import { recordPaidPurchase } from '@/lib/purchase-analytics';
 
 export async function notifyCustomerPaymentReceived(args: {
     orderId: string;
@@ -12,6 +13,14 @@ export async function notifyCustomerPaymentReceived(args: {
     force?: boolean;
 }): Promise<{ sms: { ok: boolean; reason?: string } }> {
     const order = args.order || {};
+    try {
+        await recordPaidPurchase({
+            orderId: args.orderId,
+            order: { ...order, paymentStatus: 'Paid' },
+        });
+    } catch (error) {
+        console.warn('Could not record purchase analytics:', error);
+    }
     if (!args.force && order.paymentSmsSentAt) {
         return { sms: { ok: true, reason: 'already-sent' } };
     }

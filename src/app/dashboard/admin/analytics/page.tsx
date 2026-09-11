@@ -76,6 +76,12 @@ function Card({ title, subtitle, children, className = '' }: { title: string; su
 
 export default function AnalyticsPage() {
     const [orders, setOrders] = useState<Order[]>([]);
+    const [storefront, setStorefront] = useState<{
+        traffic: Array<{ date: string; totalVisits: number; uniqueVisitors: number }>;
+        searches: Array<{ term: string; count: number }>;
+        products: Array<{ productId: string; views: number; addToCartCount: number; purchases: number }>;
+        funnel: { sampled: number; steps: Array<{ key: string; label: string; count: number; conversionFromStart: number }> };
+    } | null>(null);
     const [dataLoading, setDataLoading] = useState(true);
     const [dataError, setDataError] = useState<string | null>(null);
     const [dataTruncated, setDataTruncated] = useState(false);
@@ -139,6 +145,7 @@ export default function AnalyticsPage() {
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.message || 'Could not load analytics data.');
                 setOrders(result.orders || []); setDataTruncated(Boolean(result.truncated));
+                setStorefront(result.storefront || null);
             } catch (caught) {
                 if ((caught as Error).name !== 'AbortError') setDataError(caught instanceof Error ? caught.message : 'Could not load analytics data.');
             } finally { if (!controller.signal.aborted) setDataLoading(false); }
@@ -165,7 +172,7 @@ export default function AnalyticsPage() {
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Revenue Analytics</h1>
-                    <p className="text-gray-500 text-sm mt-1">Live numbers across orders, products, and customer segments.</p>
+                    <p className="text-gray-500 text-sm mt-1">Live numbers across orders, storefront traffic, searches, and checkout sessions.</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <select
@@ -293,6 +300,52 @@ export default function AnalyticsPage() {
                 <Kpi label="Conversion" value={fmtPct(kpis.conversionRate)} sub="paid / total" accent="text-emerald-600" />
                 <Kpi label="Refunded" value={fmtKES(kpis.refundedRevenue)} sub={`${kpis.cancelledCount} cancelled`} accent="text-red-600" />
             </div>
+
+            {storefront && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <Card title="Storefront Traffic" subtitle="UTC calendar days from analytics_traffic">
+                        {storefront.traffic.length === 0 ? <p className="text-gray-400 text-sm">No visit events yet.</p> : (
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={[...storefront.traffic].reverse()}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                        <XAxis dataKey="date" stroke="#9ca3af" fontSize={10} tickFormatter={(value) => String(value).slice(5)} />
+                                        <YAxis stroke="#9ca3af" fontSize={11} />
+                                        <Tooltip />
+                                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                                        <Bar dataKey="totalVisits" name="Visits" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                                        <Bar dataKey="uniqueVisitors" name="Uniques" fill="#22c55e" radius={[6, 6, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        )}
+                    </Card>
+                    <Card title="Top Searches" subtitle="Lifetime counts from /api/analytics">
+                        {storefront.searches.length === 0 ? <p className="text-gray-400 text-sm">No searches recorded yet.</p> : (
+                            <div className="space-y-3">
+                                {storefront.searches.map(item => (
+                                    <div key={item.term} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
+                                        <span className="truncate font-bold text-gray-900">{item.term}</span>
+                                        <span className="shrink-0 text-xs font-black uppercase tracking-widest text-melagri-primary">{item.count} searches</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                    <Card title="Checkout Funnel" subtitle={`${storefront.funnel.sampled} signed-in sessions`}>
+                        {storefront.funnel.steps.every(step => step.count === 0) ? <p className="text-gray-400 text-sm">Funnel fills after signed-in checkout starts.</p> : (
+                            <div className="space-y-3">
+                                {storefront.funnel.steps.map(step => (
+                                    <div key={step.key} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
+                                        <span className="font-bold text-gray-900">{step.label}</span>
+                                        <span className="text-sm font-black text-gray-900">{step.count} <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{Math.round(step.conversionFromStart * 100)}%</span></span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </div>
+            )}
 
             <Card title="Revenue Trend" subtitle="Total paid revenue over time">
                 <div className="h-72">

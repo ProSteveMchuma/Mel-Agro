@@ -239,6 +239,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         trackAction('page_view', { path: pathname });
         if (pathname === '/checkout') {
             resetInactivityTimer(120000);
+            if (user?.uid) logFunnelEvent('start');
         } else {
             if (inactivityTimer.current) clearTimeout(inactivityTimer.current);
         }
@@ -247,6 +248,13 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     useEffect(() => {
         handlePathnameChange();
     }, [pathname]);
+
+    useEffect(() => {
+        if (pathname === '/checkout' && user?.uid) {
+            logFunnelEvent('start');
+            resetInactivityTimer(120000);
+        }
+    }, [pathname, user?.uid]);
 
     return (
         <BehaviorContext.Provider value={{ trackAction, lastAction, affinityIndex, getTopAffinity, personalizationEnabled, setPersonalizationEnabled }}>

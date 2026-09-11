@@ -24,6 +24,22 @@ interface ViewedProduct {
     image?: string;
 }
 
+interface AnalyticsOverview {
+    traffic: {
+        today: { totalVisits: number; uniqueVisitors: number };
+        yesterday: { totalVisits: number; uniqueVisitors: number };
+        visitDeltaPct: number | null;
+        uniqueDeltaPct: number | null;
+    };
+    searches: SearchTerm[];
+    products: Array<{ productId: string; views: number; addToCartCount: number; purchases: number }>;
+    demand: { term: string; count: number; headline: string; detail: string } | null;
+    bottleneck: { headline: string; detail: string } | null;
+    paidToday: number;
+    visitorToPaidPct: number | null;
+    funnel: { sampled: number };
+}
+
 export default function AdminDashboard() {
     const { orders } = useOrders();
     const { products } = useProducts();
@@ -39,6 +55,7 @@ export default function AdminDashboard() {
     const [traffic, setTraffic] = useState({ totalVisits: 0, uniqueVisitors: 0 });
     const [, setLoadingAnalytics] = useState(true);
     const [authoritativeSummary, setAuthoritativeSummary] = useState<{ orders: number; products: number; users: number; revenue: number } | null>(null);
+    const [overview, setOverview] = useState<AnalyticsOverview | null>(null);
 
     // Calculate Stats
     const recentTotalSales = orders
@@ -56,6 +73,18 @@ export default function AdminDashboard() {
             if (response.ok) setAuthoritativeSummary(result.summary);
         };
         void loadSummary();
+    }, []);
+
+    useEffect(() => {
+        const loadOverview = async () => {
+            const token = await getAuth().currentUser?.getIdToken();
+            if (!token) return;
+            const response = await fetch('/api/admin/analytics/overview', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
+            if (!response.ok) return;
+            const result = await response.json();
+            if (result?.success) setOverview(result);
+        };
+        void loadOverview();
     }, []);
 
 
@@ -152,8 +181,8 @@ export default function AdminDashboard() {
                         </svg>
                     </div>
                     <div>
-                        <h2 className="text-xl font-black text-gray-900 tracking-tight">AI Market Intelligence</h2>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Behavioral Patterns & Intent Signals</p>
+                        <h2 className="text-xl font-black text-gray-900 tracking-tight">Live Market Intelligence</h2>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Search demand, traffic, and checkout funnel from Firestore</p>
                     </div>
                 </div>
 
@@ -164,65 +193,96 @@ export default function AdminDashboard() {
 
                         <div className="relative z-10">
                             <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-melagri-primary">Prophet: Demand Forecasting</h3>
-                                <span className="px-3 py-1 bg-melagri-primary/20 text-melagri-primary text-[10px] font-black rounded-full uppercase truncate">Live Market Sync</span>
+                                <h3 className="text-sm font-black uppercase tracking-[0.2em] text-melagri-primary">Demand & Conversion Signals</h3>
+                                <span className="px-3 py-1 bg-melagri-primary/20 text-melagri-primary text-[10px] font-black rounded-full uppercase truncate">Live Firestore</span>
                             </div>
 
                             <div className="space-y-6">
-                                {/* Demand Surge Card */}
-                                {topSearches.length > 0 && (
+                                {overview?.demand || topSearches.length > 0 ? (
                                     <div className="p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm group hover:border-melagri-primary/50 transition-all">
                                         <div className="flex items-start gap-4">
                                             <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-400 group-hover:scale-110 transition-transform">
                                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
                                             </div>
                                             <div className="flex-grow">
-                                                <p className="text-lg font-black tracking-tight">Demand Surge: {topSearches[0].term}</p>
-                                                <p className="text-xs text-gray-400 mt-1 italic">Interest has increased by ~40% in the last 24hrs. Supply check recommended.</p>
+                                                <p className="text-lg font-black tracking-tight">{overview?.demand?.headline || `Top search: ${topSearches[0]?.term}`}</p>
+                                                <p className="text-xs text-gray-400 mt-1">{overview?.demand?.detail || `${(topSearches[0]?.count || 0).toLocaleString()} recorded searches. Lifetime demand, not a 24-hour forecast.`}</p>
 
                                                 <div className="mt-4 flex gap-2">
-                                                    <Link href={`/dashboard/admin/products?search=${encodeURIComponent(topSearches[0].term)}`} className="px-3 py-1.5 bg-melagri-primary text-white text-[10px] font-black uppercase rounded-lg hover:bg-melagri-secondary transition-colors">Find in Catalog</Link>
-                                                    <Link href="/dashboard/admin/discounts" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg hover:bg-white/20 transition-colors">Run Promo</Link>
+                                                    <Link href={`/dashboard/admin/products?search=${encodeURIComponent(overview?.demand?.term || topSearches[0]?.term || '')}`} className="px-3 py-1.5 bg-melagri-primary text-white text-[10px] font-black uppercase rounded-lg hover:bg-melagri-secondary transition-colors">Find in Catalog</Link>
+                                                    <Link href="/dashboard/admin/product-intelligence" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg hover:bg-white/20 transition-colors">Product Intel</Link>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
+                                ) : (
+                                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
+                                        <p className="text-lg font-black tracking-tight">No search demand yet</p>
+                                        <p className="text-xs text-gray-400 mt-1">Top searches appear here after customers use storefront search.</p>
+                                    </div>
                                 )}
 
-                                {/* Potential Bottleneck Card */}
-                                <div className="p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm group hover:border-red-500/50 transition-all">
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
-                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                        </div>
-                                        <div className="flex-grow">
-                                            <p className="text-lg font-black tracking-tight">Checkout Bottleneck Detected</p>
-                                            <p className="text-xs text-gray-400 mt-1">Conversion drop-off at "Shipping Details" is 15% higher than usual.</p>
+                                {overview?.bottleneck ? (
+                                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm group hover:border-red-500/50 transition-all">
+                                        <div className="flex items-start gap-4">
+                                            <div className="w-12 h-12 bg-red-500/20 rounded-xl flex items-center justify-center text-red-400 group-hover:scale-110 transition-transform">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                            </div>
+                                            <div className="flex-grow">
+                                                <p className="text-lg font-black tracking-tight">{overview.bottleneck.headline}</p>
+                                                <p className="text-xs text-gray-400 mt-1">{overview.bottleneck.detail}</p>
 
-                                            <div className="mt-4 flex gap-2">
-                                                <Link href="/dashboard/admin/intelligence/abandoned-carts" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg">Analyze Funnel</Link>
-                                                <Link href="/dashboard/admin/intelligence/abandoned-carts" className="px-3 py-1.5 bg-melagri-primary text-white text-[10px] font-black uppercase rounded-lg">View Recoverable Carts</Link>
+                                                <div className="mt-4 flex gap-2">
+                                                    <Link href="/dashboard/admin/intelligence" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg">Analyze Funnel</Link>
+                                                    <Link href="/dashboard/admin/intelligence/abandoned-carts" className="px-3 py-1.5 bg-melagri-primary text-white text-[10px] font-black uppercase rounded-lg">View Recoverable Carts</Link>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
+                                        <p className="text-lg font-black tracking-tight">{(overview?.funnel?.sampled || 0) > 0 ? 'No large checkout drop-off' : 'Checkout funnel warming up'}</p>
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            {(overview?.funnel?.sampled || 0) > 0
+                                                ? `${overview?.funnel.sampled} signed-in checkout sessions sampled. A bottleneck is only shown after 5+ starts and a 25%+ step drop.`
+                                                : 'Signed-in customers reaching checkout will populate analytics_funnels. This card stays quiet until there is a real drop-off.'}
+                                        </p>
+                                        <div className="mt-4 flex gap-2">
+                                            <Link href="/dashboard/admin/intelligence" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg">Open Funnel</Link>
+                                        </div>
+                                    </div>
+                                )}
 
-                                {/* Website Traffic Pulse */}
                                 <div className="p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-sm group hover:border-blue-500/50 transition-all">
                                     <div className="flex items-start gap-4">
                                         <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-400 group-hover:scale-110 transition-transform">
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         </div>
                                         <div className="flex-grow">
-                                            <p className="text-lg font-black tracking-tight">Today's Traffic Pulse</p>
-                                            <div className="mt-2 flex gap-6">
+                                            <p className="text-lg font-black tracking-tight">Today&apos;s Traffic Pulse</p>
+                                            <div className="mt-2 flex flex-wrap gap-6">
                                                 <div>
                                                     <p className="text-[10px] font-black text-gray-400 uppercase">Live Visits</p>
-                                                    <p className="text-xl font-black text-white">{traffic.totalVisits || 0}</p>
+                                                    <p className="text-xl font-black text-white">{overview?.traffic.today.totalVisits ?? traffic.totalVisits ?? 0}</p>
                                                 </div>
                                                 <div>
                                                     <p className="text-[10px] font-black text-gray-400 uppercase">Unique Users</p>
-                                                    <p className="text-xl font-black text-melagri-primary">{traffic.uniqueVisitors || 0}</p>
+                                                    <p className="text-xl font-black text-melagri-primary">{overview?.traffic.today.uniqueVisitors ?? traffic.uniqueVisitors ?? 0}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase">vs Yesterday</p>
+                                                    <p className="text-xl font-black text-white">
+                                                        {overview?.traffic.visitDeltaPct == null
+                                                            ? '—'
+                                                            : `${overview.traffic.visitDeltaPct > 0 ? '+' : ''}${Math.round(overview.traffic.visitDeltaPct)}%`}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase">Paid today</p>
+                                                    <p className="text-xl font-black text-white">
+                                                        {overview ? overview.paidToday : '—'}
+                                                        {overview?.visitorToPaidPct != null ? <span className="ml-2 text-xs font-bold text-gray-400">{overview.visitorToPaidPct.toFixed(1)}% of uniques</span> : null}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </div>
