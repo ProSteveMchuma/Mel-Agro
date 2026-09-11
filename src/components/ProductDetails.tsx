@@ -14,6 +14,7 @@ import { toast } from "react-hot-toast";
 import Logo from '@/components/Logo';
 import IntelligentDescription from '@/components/IntelligentDescription';
 import ProductFaqs from '@/components/ProductFaqs';
+import { useLiveProduct } from '@/context/ProductContext';
 import { slugifySeoValue } from '@/lib/seo';
 import { whatsAppUrl } from '@/lib/site';
 
@@ -25,9 +26,9 @@ interface ProductDetailsProps {
 }
 
 export default function ProductDetails({ id, initialProduct, initialRelatedProducts = [], initialComplementProducts = [] }: ProductDetailsProps) {
-    // Seed the interactive view with server-fetched data so the complete product
-    // content is present in the first HTML response for customers and crawlers.
-    const [product] = useState<Product>(initialProduct);
+    // Seed from the server HTML, then overlay live Firestore stock so restocks
+    // show immediately instead of waiting for the hourly catalogue cache.
+    const product = useLiveProduct(initialProduct);
     const [relatedProducts] = useState<Product[]>(initialRelatedProducts);
     const [complementProducts] = useState<Product[]>(initialComplementProducts);
     const [quantity, setQuantity] = useState(1);
@@ -35,16 +36,22 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
     const { user } = useAuth();
     const router = useRouter();
 
-    const firstVariant = initialProduct.variants?.length === 1 ? initialProduct.variants[0] : null;
-    const [selectedImage, setSelectedImage] = useState<string>(firstVariant?.image || initialProduct.image || "");
-    const [selectedVariant, setSelectedVariant] = useState<any>(firstVariant);
+    const firstVariant = product.variants?.length === 1 ? product.variants[0] : null;
+    const [selectedImage, setSelectedImage] = useState<string>(firstVariant?.image || product.image || "");
+    const [selectedVariantId, setSelectedVariantId] = useState<string | null>(firstVariant ? String(firstVariant.id) : null);
 
     const userCity = user?.city || user?.county;
     const hasVariants = Boolean(product.variants?.length);
+    const selectedVariant = product.variants?.find(variant => String(variant.id) === selectedVariantId)
+        || (product.variants?.length === 1 ? product.variants[0] : undefined);
     const requiresVariantSelection = hasVariants && !selectedVariant;
     const availableStock = Number(selectedVariant?.stockQuantity ?? (hasVariants ? 0 : product.stockQuantity ?? product.stock ?? 0));
     const canPurchase = !requiresVariantSelection && product.inStock !== false && availableStock > 0;
     const selectedPrice = Number(selectedVariant?.price ?? product.price);
+
+    useEffect(() => {
+        if (availableStock > 0 && quantity > availableStock) setQuantity(availableStock);
+    }, [availableStock, quantity]);
 
     useEffect(() => {
         import('@/lib/analytics').then(({ AnalyticsService }) => {
@@ -198,7 +205,7 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                         <button
                                             key={v.id}
                                             onClick={() => {
-                                                setSelectedVariant(v);
+                                                setSelectedVariantId(String(v.id));
                                                 setQuantity(1);
                                                 if (v.image) setSelectedImage(v.image);
                                             }}

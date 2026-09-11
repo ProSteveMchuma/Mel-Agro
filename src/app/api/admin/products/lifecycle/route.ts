@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requirePermission } from "@/lib/auth-server";
 import { adminDb } from "@/lib/firebase-admin";
+import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
 
 const schema = z.object({ productId: z.string().min(1).max(180), action: z.enum(["archive", "restore"]) });
 
@@ -19,5 +20,6 @@ export async function POST(request: Request) {
   batch.update(ref, { archived, archivedAt: archived ? now : null, archivedBy: archived ? (actor.email || actor.uid) : null, updatedAt: now });
   batch.set(adminDb.collection("adminAuditLog").doc(), { action: archived ? "product_archived" : "product_restored", actorId: actor.uid, actorEmail: actor.email || null, targetId: parsed.data.productId, before: { archived: snapshot.data()?.archived === true }, after: { archived }, createdAt: now });
   await batch.commit();
+  revalidateStorefrontCatalogue();
   return NextResponse.json({ success: true, archived });
 }

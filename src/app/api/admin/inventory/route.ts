@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
+import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
 
 const PAGE_SIZE = 20;
 const SCAN_SIZE = 75;
@@ -102,5 +103,6 @@ export async function POST(request: Request) {
   });
   if (!result) return NextResponse.json({ success: false, message: "Product not found." }, { status: 404 });
   if ("negative" in result) return NextResponse.json({ success: false, message: "Adjustment would make stock negative." }, { status: 409 });
+  revalidateStorefrontCatalogue();
   return NextResponse.json({ success: true, ...result });
 }

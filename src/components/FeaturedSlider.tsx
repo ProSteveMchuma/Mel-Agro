@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
+import { useLiveProduct } from '@/context/ProductContext';
 import { productSeoPath } from '@/lib/seo';
 
 export default function FeaturedSlider({ products: initialProducts }: { products?: Product[] }) {
@@ -37,6 +38,15 @@ export default function FeaturedSlider({ products: initialProducts }: { products
         return () => clearInterval(interval);
     }, [products]);
 
+    const currentProduct = useLiveProduct(products[activeIndex] || {
+        id: '',
+        name: '',
+        price: 0,
+        category: '',
+        inStock: false,
+        stockQuantity: 0,
+    });
+
     if (loading) {
         return (
             <div className="w-full h-[500px] bg-gray-50 animate-pulse rounded-[2.5rem] flex items-center justify-center">
@@ -47,7 +57,6 @@ export default function FeaturedSlider({ products: initialProducts }: { products
 
     if (products.length === 0) return null;
 
-    const currentProduct = products[activeIndex];
     const featuredVariant = currentProduct.variants?.length === 1 ? currentProduct.variants[0] : undefined;
     const requiresOptions = (currentProduct.variants?.length || 0) > 1;
     const featuredStock = Number(featuredVariant?.stockQuantity ?? currentProduct.stockQuantity ?? currentProduct.stock ?? 0);

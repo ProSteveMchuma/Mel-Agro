@@ -5,6 +5,7 @@ import { collection, onSnapshot, query, limit } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { usePathname } from 'next/navigation';
 import { Product } from '@/types';
+import { applyLiveCatalogueProduct } from '@/lib/live-product';
 export type { Product };
 
 interface ProductContextType {
@@ -100,4 +101,9 @@ export function useProducts() {
         throw new Error('useProducts must be used within a ProductProvider');
     }
     return context;
+}
+
+export function useLiveProduct<T extends { id?: string | number }>(seed: T): T {
+    const { getProduct } = useProducts();
+    return applyLiveCatalogueProduct(seed, seed.id != null ? getProduct(seed.id) : undefined);
 }

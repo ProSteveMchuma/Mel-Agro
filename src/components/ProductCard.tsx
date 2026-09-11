@@ -10,6 +10,7 @@ import { Product, ProductVariant } from "@/types";
 import { useBehavior } from "@/context/BehaviorContext";
 import { AnalyticsService } from "@/lib/analytics";
 import { productSeoPath } from '@/lib/seo';
+import { useLiveProduct } from '@/context/ProductContext';
 
 interface ProductCardProps {
     id: string | number;
@@ -31,25 +32,43 @@ interface ProductCardProps {
     recommendationReason?: string;
 }
 
-export default function ProductCard({
-    id,
-    name,
-    price,
-    image,
-    images = [],
-    category,
-    variants = [],
-    description = "",
-    brand,
-    productCode,
-    inStock = false,
-    stockQuantity = 0,
-    lowStockThreshold = 10,
-    rating = 0,
-    reviews = 0,
-    recommendationSource,
-    recommendationReason,
-}: ProductCardProps) {
+export default function ProductCard(props: ProductCardProps) {
+    const live = useLiveProduct({
+        id: props.id,
+        name: props.name,
+        price: props.price,
+        image: props.image,
+        images: props.images,
+        category: props.category,
+        variants: props.variants,
+        description: props.description,
+        brand: props.brand,
+        productCode: props.productCode,
+        inStock: props.inStock,
+        stockQuantity: props.stockQuantity,
+        lowStockThreshold: props.lowStockThreshold,
+        rating: props.rating,
+        reviews: props.reviews,
+    } as Product);
+    const {
+        id,
+        name,
+        price,
+        image,
+        images = [],
+        category,
+        variants = [],
+        description = "",
+        brand,
+        productCode,
+        inStock = false,
+        stockQuantity = 0,
+        lowStockThreshold = 10,
+        rating = 0,
+        reviews = 0,
+        recommendationSource,
+        recommendationReason,
+    } = { ...props, ...live, id: props.id };
     const { addToCart } = useCart();
     const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
     const [isAdding, setIsAdding] = useState(false);

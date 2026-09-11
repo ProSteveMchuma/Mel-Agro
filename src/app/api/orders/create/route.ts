@@ -8,6 +8,7 @@ import { getZonesServer } from '@/lib/delivery-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { enforceRateLimit } from '@/lib/request-guard';
+import { revalidateStorefrontCatalogue } from '@/lib/revalidate-catalogue';
 
 const lineItemSchema = z.object({
     id: z.union([z.string(), z.number()]).transform(String),
@@ -398,6 +399,7 @@ export async function POST(request: Request) {
             console.warn('Order confirmation notification failed (non-fatal):', notificationError);
         }
 
+        revalidateStorefrontCatalogue();
         return NextResponse.json({ success: true, order }, { status: 201 });
     } catch (error: any) {
         const known = error instanceof OrderCreationError;

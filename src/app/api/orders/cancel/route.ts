@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { notifyCustomer } from '@/lib/customer-notifications';
+import { revalidateStorefrontCatalogue } from '@/lib/revalidate-catalogue';
 
 const cancelSchema = z.object({ orderId: z.string().trim().min(1).max(200) });
 
@@ -112,6 +113,7 @@ export async function POST(request: Request) {
         });
 
         if (!outcome.alreadyCancelled && outcome.order) {
+            revalidateStorefrontCatalogue();
             try {
                 const tpl = CommunicationTemplates.getStatusUpdate(outcome.order as any, 'Cancelled');
                 await notifyCustomer({
