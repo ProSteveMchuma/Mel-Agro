@@ -1,18 +1,14 @@
-# Mel-Agri brand logo exports
+# Mel-Agri logo (as used on the website)
 
-Static logo files extracted from the site `Logo` component (`src/components/Logo.tsx`).
+Captured from the live site header at [melagri.com](https://www.melagri.com) — the same mark rendered by `src/components/Logo.tsx`.
 
-## Primary files
+## Files
 
 | File | Description |
 |------|-------------|
-| `mel-agri-logo.png` | Full wordmark logo (PNG, white background) |
-| `mel-agri-logo.pdf` | Full wordmark logo (PDF) |
-| `mel-agri-logo-icon.png` | Icon mark only (PNG, white background) |
+| `mel-agri-logo.png` | Full header logo (PNG) |
+| `mel-agri-logo.pdf` | Full header logo (PDF) |
+| `mel-agri-logo-icon.png` | Icon mark only (PNG) |
 | `mel-agri-logo-icon.pdf` | Icon mark only (PDF) |
-
-## Extra variants
-
-- `mel-agri-logo.svg` / `mel-agri-logo-icon.svg` — vector sources
-- `mel-agri-logo-transparent.png` / `mel-agri-logo-icon-transparent.png` — transparent PNG
-- `site-app-icon.png` / `site-app-icon.pdf` — current `public/icon-512x512.png` exported as PNG/PDF
+| `mel-agri-logo-transparent.png` | Full logo, transparent background |
+| `mel-agri-logo-icon-transparent.png` | Icon only, transparent background |
