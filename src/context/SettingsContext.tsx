@@ -48,7 +48,7 @@ const defaultGeneral: GeneralSettings = {
     companyName: "Mel-Agri",
     logoUrl: "",
     supportEmail: "support@Mel-Agri.com",
-    supportPhone: "+254 748 970757",
+    supportPhone: "0788 970757",
     currency: "KES",
     address: "Nairobi, Kenya",
     websiteUrl: "https://Mel-Agri.com"

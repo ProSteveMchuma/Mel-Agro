@@ -15,9 +15,9 @@ export function absoluteUrl(path = '/') {
  * business phone, WhatsApp line and Till number are configured in one place
  * instead of being hard-coded across the UI.
  */
-export const SUPPORT_WHATSAPP = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '254748970757').replace(/\D/g, '');
-export const SUPPORT_PHONE_E164 = process.env.NEXT_PUBLIC_SUPPORT_PHONE || '+254748970757';
-export const SUPPORT_PHONE_DISPLAY = process.env.NEXT_PUBLIC_SUPPORT_PHONE_DISPLAY || '+254 748 970 757';
+export const SUPPORT_WHATSAPP = (process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '254788970757').replace(/\D/g, '');
+export const SUPPORT_PHONE_E164 = process.env.NEXT_PUBLIC_SUPPORT_PHONE || '+254788970757';
+export const SUPPORT_PHONE_DISPLAY = process.env.NEXT_PUBLIC_SUPPORT_PHONE_DISPLAY || '0788 970757';
 
 /** Storefront display of the M-Pesa Till (Buy Goods) number. */
 export const MPESA_TILL_DISPLAY = process.env.NEXT_PUBLIC_MPESA_TILL_NUMBER || '3130847';

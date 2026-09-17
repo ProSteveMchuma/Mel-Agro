@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { Metadata } from 'next';
-import { whatsAppUrl, SUPPORT_PHONE_E164 } from "@/lib/site";
+import { whatsAppUrl, SUPPORT_PHONE_E164, SUPPORT_PHONE_DISPLAY } from "@/lib/site";
 import ContactForm from "@/components/ContactForm";
 
 export const metadata: Metadata = {
@@ -51,7 +51,7 @@ export default function ContactPage() {
                                         </div>
                                         <div>
                                             <p className="text-sm font-bold text-gray-500 uppercase">Phone Support</p>
-                                            <p className="text-lg font-bold text-gray-900">+254 748 970 757</p>
+                                            <p className="text-lg font-bold text-gray-900">{SUPPORT_PHONE_DISPLAY}</p>
                                         </div>
                                     </div>
 

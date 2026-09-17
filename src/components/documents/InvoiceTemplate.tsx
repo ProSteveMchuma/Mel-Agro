@@ -35,7 +35,7 @@ export const InvoiceTemplate: React.FC<InvoiceTemplateProps> = ({ order, setting
                     <div className="text-xl font-black text-gray-900 mb-1">{general.companyName || "Mel-Agri Kenya"}</div>
                     <p className="text-gray-500 text-xs max-w-[200px]">{general.address || "Premium Agricultural Hub"}</p>
                     <p className="text-gray-500 text-xs">{general.supportEmail || "support@Mel-Agri.com"}</p>
-                    <p className="text-gray-800 text-xs font-bold">{general.supportPhone || "+254 748 970 757"}</p>
+                    <p className="text-gray-800 text-xs font-bold">{general.supportPhone || "0788 970757"}</p>
                 </div>
             </div>
 
