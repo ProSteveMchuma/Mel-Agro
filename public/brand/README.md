@@ -1,14 +1,21 @@
-# Mel-Agri logo (as used on the website)
+# Mel-Agri logo downloads
 
-Captured from the live site header at [melagri.com](https://www.melagri.com) — the same mark rendered by `src/components/Logo.tsx`.
+Captured from the live website — not recreations.
 
-## Files
+## Footer logo (dark background) — the one in your screenshot
+This is the mark in the site footer (`Footer.tsx`: light icon + "Mel-Agri" text).
 
-| File | Description |
-|------|-------------|
-| `mel-agri-logo.png` | Full header logo (PNG) |
-| `mel-agri-logo.pdf` | Full header logo (PDF) |
-| `mel-agri-logo-icon.png` | Icon mark only (PNG) |
-| `mel-agri-logo-icon.pdf` | Icon mark only (PDF) |
-| `mel-agri-logo-transparent.png` | Full logo, transparent background |
-| `mel-agri-logo-icon-transparent.png` | Icon only, transparent background |
+- `mel-agri-logo-footer.png`
+- `mel-agri-logo-footer.pdf`
+- Same files also saved as `mel-agri-logo-dark.png` / `.pdf`
+
+## Header logo (light background)
+- `mel-agri-logo.png` / `mel-agri-logo.pdf`
+- `mel-agri-logo-icon.png` / `mel-agri-logo-icon.pdf`
+
+## Admin sidebar light variant
+- `mel-agri-logo-light.png` / `.pdf`
+- `mel-agri-logo-light-icon.png` / `.pdf`
+
+Source component: `src/components/Logo.tsx`
+Footer usage: `src/components/Footer.tsx`
