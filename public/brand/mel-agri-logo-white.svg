@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320">
+  <rect width="1200" height="320" fill="#ffffff"/>
+  <defs>
+    <filter id="shadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <g transform="translate(80,160) rotate(3)">
+    <rect x="-64" y="-64" width="128" height="128" rx="36" ry="36" fill="#16a34a" filter="url(#shadow)"/>
+    <g transform="scale(3.2) translate(-12,-12)">
+      <path d="M12 21C12 21 12 14 17 10C19 8.4 21 8 21 5C21 3 19 3 19 3C19 3 12 3 12 10C12 3 5 3 5 3C5 3 3 3 3 5C3 8 5 8.4 7 10C12 14 12 21 12 21Z" fill="#ffffff"/>
+      <path d="M12 21V10" stroke="#ffffff" stroke-width="2" stroke-linecap="round" fill="none"/>
+    </g>
+    <circle cx="52" cy="-52" r="10" fill="#fb923c"/>
+  </g>
+  <g transform="translate(220,118)">
+    <text font-family="Inter, DejaVu Sans, Arial, sans-serif" font-size="96" font-weight="800" letter-spacing="-4">
+      <tspan fill="#111827">MEL</tspan><tspan fill="#16a34a">-AGRI</tspan>
+    </text>
+    <text y="48" font-family="Inter, DejaVu Sans, Arial, sans-serif" font-size="22" font-weight="700" fill="#9ca3af" letter-spacing="8.5">PREMIUM AGRICULTURE</text>
+  </g>
+</svg>
