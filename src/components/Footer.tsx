@@ -38,7 +38,7 @@ export default function Footer() {
                         <ul className="space-y-3 text-sm">
                             <li><Link href="/delivery" className="text-gray-400 hover:text-white transition-colors">Delivery</Link></li>
                             <li><Link href="/returns" className="text-gray-400 hover:text-white transition-colors">Return Policy</Link></li>
-                            <li><Link href="/bulk" className="text-gray-400 hover:text-white transition-colors">Bulk Orders</Link></li>
+                            <li><Link href="/bulk" className="text-gray-400 hover:text-white transition-colors">Bulk & Wholesale</Link></li>
                             <li><Link href="/compare/online-agrovets-kenya" className="text-gray-400 hover:text-white transition-colors">Compare Online Agrovets</Link></li>
                         </ul>
                     </div>

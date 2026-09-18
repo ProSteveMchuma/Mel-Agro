@@ -169,10 +169,10 @@ export default function Sidebar({
                 <div className="pt-8 border-t border-gray-50">
                     <div className="bg-gradient-to-br from-melagri-primary to-green-700 p-6 rounded-[2.5rem] shadow-xl shadow-green-100 relative overflow-hidden group">
                         <div className="relative z-10">
-                            <p className="text-[9px] font-black text-green-100 mb-2 uppercase tracking-widest">Global Supply</p>
-                            <p className="text-base font-black text-white leading-tight mb-4">Bulk orders available for cooperatives</p>
-                            <Link href="/bulk-orders" className="inline-block px-5 py-2.5 bg-white text-melagri-primary text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-green-50 transition-all shadow-sm">
-                                View Pricing
+                            <p className="text-[9px] font-black text-green-100 mb-2 uppercase tracking-widest">Via Makamithi</p>
+                            <p className="text-base font-black text-white leading-tight mb-4">Bulk & wholesale supply for cooperatives</p>
+                            <Link href="/bulk" className="inline-block px-5 py-2.5 bg-white text-melagri-primary text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-green-50 transition-all shadow-sm">
+                                Request Quote
                             </Link>
                         </div>
                         <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-white/10 rounded-full group-hover:scale-150 transition-transform duration-700" />

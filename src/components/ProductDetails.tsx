@@ -470,8 +470,8 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                     <div className="hidden lg:block">
                         <div className="bg-yellow-50 rounded-2xl p-6 border border-yellow-100">
                             <h4 className="font-bold text-yellow-800 mb-2">Need Bulk Supply?</h4>
-                            <p className="text-xs text-yellow-700 mb-4">We offer special rates for orders over 100 bags.</p>
-                            <Link href="/dashboard/user?tab=support" className="text-sm font-bold text-yellow-800 underline">Contact Sales Team</Link>
+                            <p className="text-xs text-yellow-700 mb-4">Wholesale and bulk orders are offered via Makamithi, our parent company — with special rates for high-volume supply.</p>
+                            <Link href="/bulk" className="text-sm font-bold text-yellow-800 underline">Request a Makamithi quote</Link>
                         </div>
                     </div>
                 </div>

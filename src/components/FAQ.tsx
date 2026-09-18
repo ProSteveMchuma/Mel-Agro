@@ -9,7 +9,11 @@ const FAQS = [
     },
     {
         question: "What payment methods do you accept?",
-        answer: "We accept M-Pesa at checkout (STK push or Buy Goods Till) and Cash on Delivery where offered. Bank transfer is available for bulk orders — contact sales."
+        answer: "We accept M-Pesa at checkout (STK push or Buy Goods Till) and Cash on Delivery where offered. Bank transfer is available for bulk and wholesale orders fulfilled via Makamithi, our parent company — request a quote on the Bulk page."
+    },
+    {
+        question: "Do you offer bulk or wholesale supply?",
+        answer: "Yes. Bulk supply and wholesale orders are offered via Makamithi, Mel-Agri’s parent company. Visit the Bulk & Wholesale page to request a quote."
     },
     {
         question: "Can I return products if I'm not satisfied?",

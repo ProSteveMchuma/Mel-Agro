@@ -63,7 +63,7 @@ export default function BulkInquiryForm() {
             <div className="bg-green-50 border-2 border-green-200 p-8 rounded-2xl text-center">
                 <div className="text-5xl mb-4">✅</div>
                 <h3 className="font-black text-xl text-green-900 mb-2">Inquiry received</h3>
-                <p className="text-sm text-green-800">Our sales team will contact you within 24 hours via phone or email.</p>
+                <p className="text-sm text-green-800">The Makamithi wholesale team will contact you within 24 hours via phone or email.</p>
                 <p className="text-xs text-green-700 mt-3">Need it urgently? Call us: <a href={`tel:${SUPPORT_PHONE_E164}`} className="underline font-bold">{SUPPORT_PHONE_DISPLAY}</a></p>
             </div>
         );
@@ -72,8 +72,8 @@ export default function BulkInquiryForm() {
     return (
         <form onSubmit={handleSubmit} className="bg-yellow-50 p-6 sm:p-8 rounded-2xl border border-yellow-100 mt-8 space-y-5">
             <div>
-                <h3 className="font-black text-xl text-yellow-900 mb-1">Request a Quote</h3>
-                <p className="text-sm text-yellow-800">Tell us what you need. Our sales team will reach out within 24 hours.</p>
+                <h3 className="font-black text-xl text-yellow-900 mb-1">Request a Wholesale Quote</h3>
+                <p className="text-sm text-yellow-800">Tell us what you need. Bulk and wholesale orders are fulfilled via Makamithi, our parent company — their team will reach out within 24 hours.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
