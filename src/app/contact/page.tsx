@@ -26,7 +26,7 @@ export default function ContactPage() {
                     {/* Header */}
                     <div className="mb-16 text-center lg:text-left">
                         <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Contact Mel-Agri</h1>
-                        <p className="text-lg text-gray-600">Bringing Quality Agricultural Inputs Online in Kenya. Reach out with your orders or partnerships.</p>
+                        <p className="text-lg text-gray-600">Bringing Quality Agricultural Inputs online in Kenya and Beyond. Reach out with your orders or partnerships.</p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">

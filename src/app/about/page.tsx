@@ -158,9 +158,9 @@ export default function AboutPage() {
                 <section className="py-24 bg-gray-900 relative overflow-hidden text-center">
                     <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
                     <div className="container-custom relative z-10">
-                        <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter">Ready to Scale?</h2>
+                        <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter">Shop Quality Inputs Online</h2>
                         <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto font-medium">
-                            Step into the future of farming with premium inputs and expert guidance from the pros.
+                            Explore animal feeds, seeds, fertilizers, crop protection, and veterinary products — backed by Makamithi Enterprises Ltd.
                         </p>
                         <Link
                             href="/products"

@@ -14,7 +14,7 @@ export default function Footer() {
                             <span className="text-xl font-black text-white tracking-widest ml-2">Mel-Agri</span>
                         </Link>
                         <p className="text-sm text-gray-400 leading-relaxed">
-                            Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests.
+                            Bringing Quality Agricultural Inputs online in Kenya and Beyond. Trusted by farmers for better harvests.
                         </p>
                         <a href={whatsAppUrl()} target="_blank" rel="noopener noreferrer" className="inline-flex text-sm font-bold text-green-400 hover:text-green-300 transition-colors">
                             WhatsApp support: {SUPPORT_PHONE_DISPLAY}
