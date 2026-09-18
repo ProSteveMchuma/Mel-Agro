@@ -5,11 +5,11 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: "About Our Premium Agritech & Agrovet Business in Kenya",
-    description: "Learn about Mel-Agri, a proud subsidiary of Makamithi. For over 20 years, we have supplied premium certified hybrid seeds, high-yield fertilizers, and agrochemicals to Kenyan farmers.",
+    description: "Bringing quality agricultural inputs online in Kenya and beyond. Mel-Agri is the online retail arm of Makamithi Enterprises Ltd — distributors and retailers of animal feeds, seeds, fertilizers, crop protection, and veterinary products.",
     alternates: { canonical: '/about' },
     openGraph: {
-        title: 'About Mel-Agri | Premium Agritech & Agrovet Supplier Kenya',
-        description: '20+ years of agricultural expertise, now digital. Proud subsidiary of Makamithi.',
+        title: 'About Mel-Agri | Online Retail Arm of Makamithi Enterprises Ltd',
+        description: 'Bringing quality agricultural inputs online in Kenya and beyond. Mel-Agri is the online retail arm of Makamithi Enterprises Ltd.',
         url: '/about',
     },
 };
@@ -29,13 +29,15 @@ export default function AboutPage() {
                     <div className="container-custom relative z-10">
                         <div className="max-w-4xl">
                             <span className="inline-block px-4 py-2 bg-melagri-primary/10 border border-melagri-primary/20 rounded-full text-melagri-primary text-xs font-black tracking-widest uppercase mb-6 animate-fade-in">
-                                Established for Excellence
+                                Online Retail Arm of Makamithi
                             </span>
-                            <h1 className="text-5xl md:text-8xl font-black text-white mb-8 tracking-tighter leading-[0.9]">
-                                Cultivating the <span className="text-transparent bg-clip-text bg-gradient-to-r from-melagri-primary to-green-300">Future</span> of Agri-Tech
+                            <h1 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter leading-[0.95]">
+                                Bringing Quality Agricultural Inputs{' '}
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-melagri-primary to-green-300">Online</span>{' '}
+                                in Kenya and Beyond
                             </h1>
-                            <p className="text-xl md:text-2xl text-gray-400 font-medium leading-relaxed max-w-2xl">
-                                Mel-Agri is redefining the agricultural landscape in Africa through innovation and quality inputs.
+                            <p className="text-xl md:text-2xl text-gray-400 font-medium leading-relaxed max-w-3xl">
+                                We are the online retail arm of Makamithi Enterprises Ltd, one of the largest distributors and retailers of agricultural inputs in Kenya.
                             </p>
                         </div>
                     </div>
@@ -49,17 +51,18 @@ export default function AboutPage() {
                                 <div className="lg:w-1/2">
                                     <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-50 rounded-full text-green-700 text-[10px] font-bold uppercase tracking-wider mb-6">
                                         <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                                        Our Heritage
+                                        Who We Are
                                     </div>
                                     <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 tracking-tight">
-                                        A Proud Subsidiary of <span className="text-melagri-primary">Makamithi</span>
+                                        The Online Retail Arm of{' '}
+                                        <span className="text-melagri-primary">Makamithi Enterprises Ltd</span>
                                     </h2>
                                     <div className="space-y-6 text-gray-600 text-lg leading-relaxed">
                                         <p>
-                                            Mel-Agri operates as a specialized digital arm of <strong className="font-arizonia font-normal text-3xl">Makamithi</strong>, leveraging decades of on-field expertise and supply chain mastery.
+                                            Mel-Agri brings quality agricultural inputs online in Kenya and beyond — making trusted farm supplies easier to find, order, and receive.
                                         </p>
                                         <p>
-                                            Our ecosystem is built on the foundation of research and development, ensuring that every product on our platform meets the highest standards of agricultural efficacy.
+                                            We are the online retail arm of <strong className="font-arizonia font-normal text-3xl text-gray-900">Makamithi Enterprises Ltd</strong>, one of the largest distributors and retailers of agricultural inputs in Kenya — including animal feeds, seeds, fertilizers, crop protection products, and veterinary products.
                                         </p>
                                     </div>
                                     <div className="mt-10 grid grid-cols-2 md:grid-cols-3 gap-8">
@@ -83,7 +86,7 @@ export default function AboutPage() {
                                         <div className="p-12 h-full flex flex-col justify-end text-white">
                                             <div className="text-6xl font-black mb-4">"</div>
                                             <p className="text-2xl font-bold leading-tight italic">
-                                                Leading the digital revolution in African agriculture, one farm at a time.
+                                                Bringing quality agricultural inputs online in Kenya and beyond.
                                             </p>
                                         </div>
                                     </div>
