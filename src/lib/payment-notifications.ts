@@ -1,6 +1,7 @@
 import 'server-only';
 import { adminDb } from '@/lib/firebase-admin';
 import { CommunicationTemplates } from '@/lib/communication-templates';
+import { withActionUrls } from '@/lib/order-access';
 import { customerNotifyContact, notifyCustomer } from '@/lib/customer-notifications';
 import { recordPaidPurchase } from '@/lib/purchase-analytics';
 
@@ -29,13 +30,13 @@ export async function notifyCustomerPaymentReceived(args: {
     const receipt = args.receipt || order.mpesaReceiptNumber || order.transactionId || '';
     const method = args.method || order.paymentMethod || 'M-Pesa';
     const tpl = CommunicationTemplates.getPaymentReceived(
-        {
+        withActionUrls({
             ...order,
             id: args.orderId,
             paymentMethod: method,
             mpesaReceiptNumber: receipt,
             amountPaid: order.amountPaid || order.total,
-        } as any,
+        } as any),
         { receipt, method },
     );
 

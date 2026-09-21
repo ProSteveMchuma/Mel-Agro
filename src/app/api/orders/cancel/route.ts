@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
+import { withActionUrls } from '@/lib/order-access';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { revalidateStorefrontCatalogue } from '@/lib/revalidate-catalogue';
 
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
         if (!outcome.alreadyCancelled && outcome.order) {
             revalidateStorefrontCatalogue();
             try {
-                const tpl = CommunicationTemplates.getStatusUpdate(outcome.order as any, 'Cancelled');
+                const tpl = CommunicationTemplates.getStatusUpdate(withActionUrls(outcome.order as any), 'Cancelled');
                 await notifyCustomer({
                     userId: outcome.order.userId,
                     phone: outcome.order.mpesaPhoneNumber || outcome.order.phone,

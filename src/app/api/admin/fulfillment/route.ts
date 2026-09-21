@@ -4,6 +4,7 @@ import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
 import { CommunicationTemplates } from "@/lib/communication-templates";
+import { withActionUrls } from "@/lib/order-access";
 import { notifyCustomer } from "@/lib/customer-notifications";
 
 const PAGE_SIZE = 20;
@@ -98,7 +99,7 @@ export async function POST(request: Request) {
     });
     if (outcome.kind === "status") {
       try {
-        const tpl = CommunicationTemplates.getStatusUpdate(outcome.order as any, outcome.status);
+        const tpl = CommunicationTemplates.getStatusUpdate(withActionUrls(outcome.order as any), outcome.status);
         await notifyCustomer({
           userId: String(outcome.order.userId || ""),
           phone: String(outcome.order.mpesaPhoneNumber || outcome.order.phone || ""),

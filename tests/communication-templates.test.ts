@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CommunicationTemplates } from '../src/lib/communication-templates.ts';
+import { withActionUrls } from '../src/lib/order-access.ts';
 
 const order = {
     id: 'abcde12345',
@@ -15,6 +16,8 @@ const order = {
     items: [{ id: 'p1', name: 'Seed', price: 2500, quantity: 1 }],
     shippingAddress: { county: 'Nairobi', details: 'Westlands' },
 } as any;
+
+const signed = withActionUrls(order);
 
 test('awaiting-payment SMS is for unpaid orders, not dispatch', () => {
     const sms = CommunicationTemplates.getAwaitingPayment(order).smsBody;
@@ -37,14 +40,23 @@ test('status SMS copy is specific for shipped and delivered', () => {
     assert.match(CommunicationTemplates.getStatusUpdate(order, 'Cancelled').smsBody, /cancelled/);
 });
 
-test('customer SMS includes a dashboard link for the order', () => {
-    const link = 'https://www.melagri.com/dashboard/user?tab=orders&orderId=abcde12345';
+test('customer SMS uses unsigned deep-link paths by default', () => {
     assert.match(CommunicationTemplates.getAwaitingPayment(order).smsBody, /Pay here: /);
-    assert.ok(CommunicationTemplates.getAwaitingPayment(order).smsBody.includes(link));
-    assert.ok(CommunicationTemplates.getPaymentReceived(order, { receipt: 'TJK7H8K9L0' }).smsBody.includes(link));
-    assert.ok(CommunicationTemplates.getStatusUpdate(order, 'Shipped').smsBody.includes(link));
-    assert.ok(CommunicationTemplates.getOrderConfirmation(order).smsBody.includes(link));
-    assert.ok(CommunicationTemplates.getPaymentReminder(order).smsBody.includes(link));
-    assert.match(CommunicationTemplates.getReturnUpdate(order, 'Approved').smsBody, /tab=returns/);
-    assert.match(CommunicationTemplates.getReturnRequested(order).smsBody, /tab=returns/);
+    assert.match(CommunicationTemplates.getAwaitingPayment(order).smsBody, /\/orders\/abcde12345\/pay(?!\?)/);
+    assert.match(CommunicationTemplates.getPaymentReceived(order, { receipt: 'TJK7H8K9L0' }).smsBody, /\/orders\/abcde12345(?!\?)/);
+    assert.match(CommunicationTemplates.getStatusUpdate(order, 'Shipped').smsBody, /\/orders\/abcde12345(?![/\w])/);
+    assert.match(CommunicationTemplates.getOrderConfirmation(order).smsBody, /\/orders\/abcde12345(?!\?)/);
+    assert.match(CommunicationTemplates.getPaymentReminder(order).smsBody, /\/orders\/abcde12345\/pay(?!\?)/);
+    assert.match(CommunicationTemplates.getReturnUpdate(order, 'Approved').smsBody, /\/orders\/abcde12345\/return(?!\?)/);
+    assert.match(CommunicationTemplates.getReturnRequested(order).smsBody, /\/orders\/abcde12345\/return(?!\?)/);
+});
+
+test('server-signed action URLs appear in SMS when withActionUrls is used', () => {
+    assert.match(CommunicationTemplates.getAwaitingPayment(signed).smsBody, /\/orders\/abcde12345\/pay\?t=/);
+    assert.match(CommunicationTemplates.getPaymentReceived(signed, { receipt: 'TJK7H8K9L0' }).smsBody, /\/orders\/abcde12345\?t=/);
+    assert.match(CommunicationTemplates.getStatusUpdate(signed, 'Shipped').smsBody, /\/orders\/abcde12345\?t=/);
+    assert.match(CommunicationTemplates.getOrderConfirmation(signed).smsBody, /\/orders\/abcde12345\?t=/);
+    assert.match(CommunicationTemplates.getPaymentReminder(signed).smsBody, /\/orders\/abcde12345\/pay\?t=/);
+    assert.match(CommunicationTemplates.getReturnUpdate(signed, 'Approved').smsBody, /\/orders\/abcde12345\/return\?t=/);
+    assert.match(CommunicationTemplates.getReturnRequested(signed).smsBody, /\/orders\/abcde12345\/return\?t=/);
 });
