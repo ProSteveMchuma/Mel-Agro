@@ -16,7 +16,7 @@ export const DEFAULT_AUTOMATION_RULES: AutomationRule[] = [
   { key: "payment_recovery", name: "Payment recovery", description: "Flag unpaid orders that remain pending beyond the configured window.", enabled: true, mode: "assisted", threshold: 30, thresholdLabel: "Minutes pending" },
   { key: "low_stock", name: "Low-stock watch", description: "Create replenishment work when stock reaches the configured unit level.", enabled: true, mode: "alert_only", threshold: 10, thresholdLabel: "Units remaining" },
   { key: "fulfillment_delay", name: "Fulfilment delay", description: "Escalate processing orders that have not moved within the service window.", enabled: true, mode: "alert_only", threshold: 48, thresholdLabel: "Hours processing" },
-  { key: "abandoned_cart", name: "Abandoned checkout", description: "Surface consented carts for human-reviewed recovery after customer inactivity.", enabled: false, mode: "assisted", threshold: 60, thresholdLabel: "Minutes inactive" },
+  { key: "abandoned_cart", name: "Abandoned checkout", description: "Surface consented carts for human-reviewed recovery after customer inactivity.", enabled: true, mode: "assisted", threshold: 60, thresholdLabel: "Minutes inactive" },
 ];
 
 export function normalizeAutomationRule(input: Partial<AutomationRule>, fallback: AutomationRule): AutomationRule {

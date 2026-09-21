@@ -56,7 +56,7 @@ const DELIVERY_FIELDS = [
 export default function CheckoutPage() {
     const router = useRouter();
     const { cartItems, cartTotal, clearCart, removeFromCart, updateQuantity } = useCart();
-    const { user } = useAuth();
+    const { user, updateProfile } = useAuth();
     const isGuest = !user || user.isAnonymous;
     const { orders: userOrders } = useOrders();
     const { trackAction } = useBehavior();
@@ -1491,24 +1491,42 @@ export default function CheckoutPage() {
 
                                     <div className="space-y-3 mb-6 pb-6 border-b">
                                         {(user?.loyaltyPoints || 0) > 0 && (
-                                            <div className="bg-purple-50 rounded-xl p-4 border border-purple-100 mb-4">
+                                            <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100 mb-4">
                                                 <div className="flex justify-between items-center mb-2">
-                                                    <p className="text-xs font-bold text-purple-700 uppercase tracking-tight">Available Points: {user?.loyaltyPoints}</p>
+                                                    <p className="text-xs font-bold text-emerald-800 uppercase tracking-tight">Available Points: {user?.loyaltyPoints}</p>
                                                     <div className="relative inline-block w-8 h-4 align-middle select-none transition duration-200 ease-in">
                                                         <input
                                                             type="checkbox"
                                                             checked={usePoints}
                                                             onChange={(e) => setUsePoints(e.target.checked)}
                                                             className="toggle-checkbox absolute block w-4 h-4 rounded-full bg-white border-4 appearance-none cursor-pointer"
-                                                            style={{ right: usePoints ? '0' : 'auto', borderColor: usePoints ? '#7c3aed' : '#d1d5db' }}
+                                                            style={{ right: usePoints ? '0' : 'auto', borderColor: usePoints ? '#059669' : '#d1d5db' }}
                                                         />
-                                                        <label className={`toggle-label block overflow-hidden h-4 rounded-full cursor-pointer ${usePoints ? 'bg-purple-300' : 'bg-gray-300'}`}></label>
+                                                        <label className={`toggle-label block overflow-hidden h-4 rounded-full cursor-pointer ${usePoints ? 'bg-emerald-300' : 'bg-gray-300'}`}></label>
                                                     </div>
                                                 </div>
-                                                <p className="text-[10px] text-purple-600 font-medium">Redeem points for a KES {Math.min(cartTotal, user?.loyaltyPoints || 0).toLocaleString()} discount!</p>
+                                                <p className="text-[10px] text-emerald-700 font-medium">
+                                                    1 point = KES 1. Redeem up to KES {Math.min(cartTotal, user?.loyaltyPoints || 0).toLocaleString()} on this order.
+                                                </p>
                                             </div>
                                         )}
 
+                                        {user && !user.isAnonymous ? (
+                                            <label className="mb-4 flex items-start gap-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-3 text-xs text-gray-700">
+                                                <input
+                                                    type="checkbox"
+                                                    className="mt-0.5 h-4 w-4 accent-emerald-600"
+                                                    checked={user.cartRecoveryConsent === true}
+                                                    onChange={(event) => {
+                                                        void updateProfile({ cartRecoveryConsent: event.target.checked });
+                                                    }}
+                                                />
+                                                <span>
+                                                    <span className="font-bold text-gray-900">Cart reminders</span>
+                                                    {' '}— allow Mel-Agri to send up to 3 WhatsApp reminders if you leave items (72 hours apart). Not general marketing.
+                                                </span>
+                                            </label>
+                                        ) : null}
                                         {cartItems.map(item => (
                                             <div key={item.selectedVariant ? `${item.id}-${item.selectedVariant.id}` : String(item.id)} className="flex gap-3">
                                                 <Image

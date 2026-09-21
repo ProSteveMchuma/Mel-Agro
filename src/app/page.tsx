@@ -4,6 +4,7 @@ import JsonLd from "@/components/JsonLd";
 import Link from "next/link";
 import FeaturedSlider from "@/components/FeaturedSlider";
 import HomeRecommendations from "@/components/HomeRecommendations";
+import RecentlyViewed from "@/components/RecentlyViewed";
 import SidebarCategories, { CATEGORY_ICONS } from "@/components/SidebarCategories";
 import Partners from "@/components/Partners";
 import Hero from "@/components/Hero";
@@ -87,6 +88,7 @@ export default async function Home() {
             <div className="hidden w-1/4 flex-shrink-0 lg:block"><SidebarCategories categories={categories} /></div>
             <div className="w-full flex-grow space-y-16 lg:w-3/4">
               <FeaturedSlider products={featuredProducts} />
+              <RecentlyViewed />
               <HomeRecommendations products={allProducts} />
             </div>
           </div>

@@ -65,7 +65,7 @@ export default function UserDashboard() {
 function UserDashboardInner() {
     const { user, isLoading, logout, updateProfile } = useAuth();
     const { orders, requestReturn, updateOrderStatus } = useOrders();
-    const { addToCart } = useCart();
+    const { addToCart, cartCount } = useCart();
     const { products } = useProducts();
     const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
     const { wishlist, removeFromWishlist } = useWishlist();
@@ -497,8 +497,7 @@ function UserDashboardInner() {
             </div>
 
             {/* Loyalty & Rewards Card */}
-            <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl p-10 text-white relative overflow-hidden shadow-2xl shadow-purple-900/20 group">
-                <div className="absolute -right-10 -bottom-10 p-20 opacity-10 transform scale-150 group-hover:rotate-12 transition-transform duration-700">⭐</div>
+            <div className="bg-gradient-to-br from-emerald-700 to-green-900 rounded-3xl p-10 text-white relative overflow-hidden shadow-2xl shadow-emerald-900/20 group">
                 <div className="relative z-10">
                     <div className="flex items-center gap-2 mb-6">
                         <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">Mel-Agri Rewards</span>
@@ -506,24 +505,32 @@ function UserDashboardInner() {
                     <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
                         <div>
                             <h3 className="text-4xl font-black mb-2 leading-tight">{user.loyaltyPoints || 0} Points</h3>
-                            <p className="text-white/80 text-sm font-medium max-w-md">
-                                You've earned points on every purchase! Redeem them for discounts on fertilizers, seeds, and equipment during your next checkout.
+                            <p className="text-white/85 text-sm font-medium max-w-lg">
+                                Earn 1 point for every KES 100 on paid orders after delivery or collection.
+                                Redeem 1 point = KES 1 off at checkout (up to your cart total).
                             </p>
                         </div>
-                        <Link href="/products" className="flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white text-purple-700 px-6 py-3 rounded-xl hover:bg-purple-50 transition-all w-fit">
-                            Redeem Points
+                        <Link
+                            href={cartCount > 0 ? '/checkout' : '/products'}
+                            className="flex items-center gap-2 text-xs font-black uppercase tracking-widest bg-white text-emerald-800 px-6 py-3 rounded-xl hover:bg-emerald-50 transition-all w-fit"
+                        >
+                            {cartCount > 0 ? 'Redeem at checkout' : 'Shop to earn points'}
                         </Link>
                     </div>
-                    {/* Points Progress */}
-                    <div className="mt-8 pt-6 border-t border-white/10">
-                        <div className="flex justify-between items-end mb-2">
-                            <p className="text-[10px] font-black uppercase tracking-widest text-white/60">Next Tier Progress</p>
-                            <p className="text-xs font-bold">{Math.min(100, Math.floor(((user.loyaltyPoints || 0) % 500) / 5))}%</p>
-                        </div>
-                        <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                            <div className="h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.5)] transition-all duration-1000" style={{ width: `${Math.min(100, Math.floor(((user.loyaltyPoints || 0) % 500) / 5))}%` }}></div>
-                        </div>
-                    </div>
+                    <ul className="mt-8 pt-6 border-t border-white/15 grid sm:grid-cols-3 gap-4 text-xs text-white/90">
+                        <li>
+                            <p className="font-black uppercase tracking-widest text-white/50 mb-1">Earn</p>
+                            1 pt / KES 100 spent
+                        </li>
+                        <li>
+                            <p className="font-black uppercase tracking-widest text-white/50 mb-1">When</p>
+                            After delivery or Machakos collection
+                        </li>
+                        <li>
+                            <p className="font-black uppercase tracking-widest text-white/50 mb-1">Redeem</p>
+                            Toggle points on the checkout summary
+                        </li>
+                    </ul>
                 </div>
             </div>
 

@@ -13,6 +13,7 @@ import {
   isPickupOrder,
   nextFulfillmentStatus,
 } from "@/lib/pickup";
+import { pointsEarnedForOrderTotal } from "@/lib/loyalty";
 
 const PAGE_SIZE = 20;
 type Cursor = { date: string; id: string };
@@ -202,7 +203,7 @@ export async function POST(request: Request) {
       if (input.status === "Collected") update.collectedAt = now;
 
       if (awardsLoyaltyOnStatus(input.status) && !order.loyaltyAwarded && userRef && userSnapshot?.exists) {
-        const points = Math.floor(Number(order.total || 0) / 100);
+        const points = pointsEarnedForOrderTotal(Number(order.total || 0));
         transaction.update(userRef, { loyaltyPoints: FieldValue.increment(points) });
         update.loyaltyAwarded = true;
         update.loyaltyAwardedAmount = points;
