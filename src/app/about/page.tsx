@@ -5,11 +5,11 @@ import { Metadata } from 'next';
 
 export const metadata: Metadata = {
     title: "About Our Premium Agritech & Agrovet Business in Kenya",
-    description: "Bringing quality agricultural inputs online in Kenya and beyond. Mel-Agri is the online retail arm of Makamithi Enterprises Ltd — distributors and retailers of animal feeds, seeds, fertilizers, crop protection, and veterinary products.",
+    description: "Bringing Quality Agricultural Inputs online in Kenya and Beyond. We are the online retail arm of Makamithi Enterprises Ltd, one of the largest distributors and retailers of Agricultural inputs (animal feeds, seeds, fertilizers, crop protection products and veterinary products) in Kenya.",
     alternates: { canonical: '/about' },
     openGraph: {
         title: 'About Mel-Agri | Online Retail Arm of Makamithi Enterprises Ltd',
-        description: 'Bringing quality agricultural inputs online in Kenya and beyond. Mel-Agri is the online retail arm of Makamithi Enterprises Ltd.',
+        description: 'Bringing Quality Agricultural Inputs online in Kenya and Beyond. The online retail arm of Makamithi Enterprises Ltd.',
         url: '/about',
     },
 };
@@ -31,13 +31,13 @@ export default function AboutPage() {
                             <span className="inline-block px-4 py-2 bg-melagri-primary/10 border border-melagri-primary/20 rounded-full text-melagri-primary text-xs font-black tracking-widest uppercase mb-6 animate-fade-in">
                                 Online Retail Arm of Makamithi
                             </span>
-                            <h1 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter leading-[0.95]">
+                            <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-8 tracking-tighter leading-[0.95]">
                                 Bringing Quality Agricultural Inputs{' '}
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-melagri-primary to-green-300">Online</span>{' '}
-                                in Kenya and Beyond
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-melagri-primary to-green-300">online</span>{' '}
+                                in Kenya and Beyond.
                             </h1>
                             <p className="text-xl md:text-2xl text-gray-400 font-medium leading-relaxed max-w-3xl">
-                                We are the online retail arm of Makamithi Enterprises Ltd, one of the largest distributors and retailers of agricultural inputs in Kenya.
+                                We are the online retail arm of Makamithi Enterprises Ltd, one of the largest distributors and retailers of Agricultural inputs (animal feeds, seeds, fertilizers, crop protection products and veterinary products) in Kenya
                             </p>
                         </div>
                     </div>
@@ -54,15 +54,11 @@ export default function AboutPage() {
                                         Who We Are
                                     </div>
                                     <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 tracking-tight">
-                                        The Online Retail Arm of{' '}
-                                        <span className="text-melagri-primary">Makamithi Enterprises Ltd</span>
+                                        Bringing Quality Agricultural Inputs online in Kenya and Beyond.
                                     </h2>
                                     <div className="space-y-6 text-gray-600 text-lg leading-relaxed">
                                         <p>
-                                            Mel-Agri brings quality agricultural inputs online in Kenya and beyond — making trusted farm supplies easier to find, order, and receive.
-                                        </p>
-                                        <p>
-                                            We are the online retail arm of <strong className="font-arizonia font-normal text-3xl text-gray-900">Makamithi Enterprises Ltd</strong>, one of the largest distributors and retailers of agricultural inputs in Kenya — including animal feeds, seeds, fertilizers, crop protection products, and veterinary products.
+                                            We are the online retail arm of <strong className="text-gray-900">Makamithi Enterprises Ltd</strong>, one of the largest distributors and retailers of Agricultural inputs (animal feeds, seeds, fertilizers, crop protection products and veterinary products) in Kenya
                                         </p>
                                     </div>
                                     <div className="mt-10 grid grid-cols-2 md:grid-cols-3 gap-8">
@@ -86,7 +82,7 @@ export default function AboutPage() {
                                         <div className="p-12 h-full flex flex-col justify-end text-white">
                                             <div className="text-6xl font-black mb-4">"</div>
                                             <p className="text-2xl font-bold leading-tight italic">
-                                                Bringing quality agricultural inputs online in Kenya and beyond.
+                                                Bringing Quality Agricultural Inputs online in Kenya and Beyond.
                                             </p>
                                         </div>
                                     </div>
