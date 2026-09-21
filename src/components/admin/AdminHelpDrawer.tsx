@@ -10,6 +10,7 @@ const checklist = [
   { id: 'catalogue', label: 'Resolve catalogue and stock alerts', href: '/dashboard/admin/products' },
   { id: 'automation', label: 'Review automation thresholds', href: '/dashboard/admin/automations' },
   { id: 'staff', label: 'Assign staff access profiles', href: '/dashboard/admin/users' },
+  { id: 'cms', label: 'Review homepage / About / Help drafts', href: '/dashboard/admin/cms' },
 ] as const;
 
 const guidance = [
@@ -19,7 +20,8 @@ const guidance = [
   { match: /\/payments|\/mpesa/, title: 'Payment operations', body: 'Match receipt, amount, and phone before manually linking or approving an M-Pesa payment.' },
   { match: /\/analytics|\/reports/, title: 'Analytics workspace', body: 'Save common time windows, set targets, and export the current filtered period for offline review.' },
   { match: /\/automations/, title: 'Automation safety', body: 'Start in alert-only mode. Review generated work in the Action Centre before enabling assisted workflows.' },
-  { match: /\/users/, title: 'People and permissions', body: 'Apply least privilege. Only super-admins should promote staff or change administrative profiles.' },
+  { match: /\/cms/, title: 'Website content', body: 'Edit drafts for homepage banners, About, and Help. Shoppers only see changes after you click Publish. Use Reset to live if you need to undo a draft.' },
+  { match: /\/users/, title: 'People and staff', body: 'Customers sign up on the shop first. Super-admins use “Make someone staff” (or the Role column) to promote them, then assign a staff profile for least privilege.' },
 ];
 
 export default function AdminHelpDrawer() {
