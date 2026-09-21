@@ -29,6 +29,7 @@ import { actionableReorders, buildReorderPredictions, ReorderPrediction } from '
 import { AnalyticsService } from '@/lib/analytics';
 import { whatsAppUrl } from '@/lib/site';
 import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
+import PhoneOrderReclaimCard from '@/components/dashboard/PhoneOrderReclaimCard';
 
 type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses' | 'payments';
 const TABS: Tab[] = ['dashboard', 'orders', 'returns', 'notifications', 'profile', 'support', 'wishlist', 'addresses', 'payments'];
@@ -307,17 +308,21 @@ function UserDashboardInner() {
                 <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-green-900/10">
                     <div className="absolute top-0 right-0 p-8 opacity-10 transform scale-150 rotate-12">🔐</div>
                     <div className="relative z-10">
-                        <h3 className="text-xl font-black mb-2 leading-tight">Secure Your Farmer Account 🌾</h3>
+                        <h3 className="text-xl font-black mb-2 leading-tight">Save this order to your phone</h3>
                         <p className="text-white/90 text-sm leading-relaxed max-w-2xl">
-                            You are logged in as a Guest. To permanently save your order history, delivery addresses, and earn Mel-Agri loyalty points, link this session to a permanent account now.
+                            You are browsing as a guest. Verify your M-Pesa phone to permanently keep order history, delivery addresses, and Mel-Agri loyalty points — even if you clear this browser.
                         </p>
                         <div className="mt-6">
                             <Link href="/auth/login?callbackUrl=/dashboard/user" className="inline-block bg-white text-green-700 hover:bg-green-50 px-6 py-3 rounded-xl text-xs font-black uppercase tracking-wider transition-all hover:scale-105">
-                                Sign In / Create Account
+                                Verify phone / create account
                             </Link>
                         </div>
                     </div>
                 </div>
+            )}
+
+            {!user.isAnonymous && user.phone && (
+                <PhoneOrderReclaimCard phone={user.phone} />
             )}
 
             <section className="rounded-2xl border border-gray-200 bg-white p-5" aria-labelledby="contact-preferences-heading">
