@@ -31,6 +31,7 @@ import { whatsAppUrl } from '@/lib/site';
 import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
 import { fulfillmentStepsFor, isPickupOrder, statusLabelForOrder } from '@/lib/pickup';
 import PhoneOrderReclaimCard from '@/components/dashboard/PhoneOrderReclaimCard';
+import AccountLinkPanel from '@/components/dashboard/AccountLinkPanel';
 
 type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses' | 'payments';
 const TABS: Tab[] = ['dashboard', 'orders', 'returns', 'notifications', 'profile', 'support', 'wishlist', 'addresses', 'payments'];
@@ -883,7 +884,8 @@ function UserDashboardInner() {
                         {activeTab === 'addresses' && <AddressBook />}
                         {activeTab === 'support' && renderSupport()}
                         {activeTab === 'profile' && (
-                            <div className="max-w-2xl bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm">
+                            <div className="max-w-2xl space-y-6">
+                                <div className="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-8">Profile Settings</h2>
                                 <form onSubmit={handleUpdateProfile} className="space-y-6">
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -915,6 +917,8 @@ function UserDashboardInner() {
                                         )}
                                     </div>
                                 </form>
+                                </div>
+                                <AccountLinkPanel highlightPhone={searchParams.get('linkPhone') === '1'} />
                             </div>
                         )}
                         {/* Fallback for other tabs if not implemented yet */}
