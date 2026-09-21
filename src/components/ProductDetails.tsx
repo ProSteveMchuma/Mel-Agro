@@ -18,7 +18,11 @@ import ProductFaqs from '@/components/ProductFaqs';
 import { useLiveProduct } from '@/context/ProductContext';
 import { slugifySeoValue } from '@/lib/seo';
 import { whatsAppUrl } from '@/lib/site';
+import BackInStockForm from '@/components/BackInStockForm';
+import RecentlyViewed from '@/components/RecentlyViewed';
 import { getDeliveryCost, KENYAN_COUNTIES, FREE_SHIPPING_THRESHOLD } from '@/lib/delivery';
+import { recordRecentlyViewed } from '@/lib/recently-viewed';
+import { useBehavior } from '@/context/BehaviorContext';
 
 interface ProductDetailsProps {
     id: string;
@@ -38,6 +42,7 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
     const { user } = useAuth();
     const router = useRouter();
     const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
+    const { trackAction } = useBehavior();
 
     const firstVariant = product.variants?.length === 1 ? product.variants[0] : null;
     const [selectedImage, setSelectedImage] = useState<string>(firstVariant?.image || product.image || "");
@@ -67,7 +72,9 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
         import('@/lib/analytics').then(({ AnalyticsService }) => {
             AnalyticsService.logView(id);
         });
-    }, [id]);
+        recordRecentlyViewed(id);
+        trackAction('product_view', { id, name: product.name, category: product.category });
+    }, [id, product.name, product.category, trackAction]);
 
     useEffect(() => {
         if (!product || !product.images || product.images.length <= 1) return;
@@ -362,6 +369,12 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                             </button>
                         </div>
 
+                        {!canPurchase && !requiresVariantSelection ? (
+                            <div className="mb-8">
+                                <BackInStockForm productId={String(product.id)} productName={product.name} />
+                            </div>
+                        ) : null}
+
                         <div className="flex flex-col gap-3 mb-8">
                             <button
                                 onClick={handleBuyNow}
@@ -535,6 +548,10 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                             <Link href="/bulk" className="text-sm font-bold text-yellow-800 underline">Request a Makamithi quote</Link>
                         </div>
                     </div>
+                </div>
+
+                <div className="mb-16">
+                    <RecentlyViewed excludeId={String(product.id)} />
                 </div>
 
                 {complementProducts.length > 0 && (

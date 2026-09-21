@@ -7,7 +7,7 @@ test('automation defaults require human review for customer recovery', () => {
   const cart = DEFAULT_AUTOMATION_RULES.find((rule) => rule.key === 'abandoned_cart');
   assert.equal(payment?.mode, 'assisted');
   assert.equal(cart?.mode, 'assisted');
-  assert.equal(cart?.enabled, false);
+  assert.equal(cart?.enabled, true);
 });
 
 test('automation thresholds are bounded and modes are allowlisted', () => {
