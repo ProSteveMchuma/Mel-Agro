@@ -4,8 +4,7 @@ import ProductsClient from "./ProductsClient";
 import { getProductsPage } from "@/lib/products";
 import { getUniqueBrandsCached, getUniqueCategoriesCached } from "@/lib/products-server";
 import { absoluteUrl } from '@/lib/site';
-import { permanentRedirect } from 'next/navigation';
-import { productSeoPath, slugifySeoValue } from '@/lib/seo';
+import { productSeoPath } from '@/lib/seo';
 
 type Props = {
     searchParams: Promise<{ category?: string; brand?: string; search?: string }>;
@@ -17,23 +16,22 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     let title = "Buy Agricultural Inputs, Seeds & Fertilizers Online Kenya";
     let description = "Order certified high-quality agricultural inputs online at Mel-Agri Kenya. Shop hybrid seeds, fertilizers, crop protection chemicals, and farm tools with fast farm delivery.";
     let keywords = ["buy agricultural inputs", "agrovet online Kenya", "certified seeds supplier", "fertilizer price Kenya", "farm tools online", "Mel-Agri"];
-    let canonical = '/products';
+    // Catalogue stays on /products for filter UX; SEO landings own category/brand URLs.
+    const canonical = '/products';
+    const isFiltered = Boolean(category || brand || search);
     
     if (category) {
         title = `Buy Premium ${category} Online Kenya - Fast Farm Delivery`;
         description = `Buy certified ${category} online at Mel-Agri. Select from premium brands with fast shipping to Nakuru, Eldoret, Nairobi, Kisumu, and all 47 counties in Kenya.`;
         keywords = [category, `buy ${category} online`, `${category} price Kenya`, `certified ${category} supplier`, "agrovet Kenya", "farm inputs"];
-        canonical = `/categories/${slugifySeoValue(category)}`;
     } else if (brand) {
         title = `Buy Original ${brand} Products Online Kenya - Best Prices`;
         description = `Shop certified crop protection and seed products from ${brand} online at Mel-Agri. Authorized dealer with fast farm delivery to Nakuru, Eldoret, Kisumu, and countrywide in Kenya.`;
         keywords = [brand, `original ${brand} products`, `${brand} distributor Kenya`, `buy ${brand} online`, "authorized agrovet"];
-        canonical = `/brands/${slugifySeoValue(brand)}`;
     } else if (search) {
         title = `Search Results for "${search}"`;
         description = `Find premium certified agricultural inputs matching "${search}" at Mel-Agri Kenya. Shop seeds, fertilizers, and farm equipment online with secure payment and fast delivery.`;
         keywords = [search, `buy ${search} Kenya`, `${search} price`, "online agrovet"];
-        canonical = '/products';
     }
 
     return {
@@ -41,7 +39,8 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         description,
         keywords: keywords.map(k => k.toLowerCase()),
         alternates: { canonical },
-        robots: search ? { index: false, follow: true } : { index: true, follow: true },
+        // Prefer /categories and /brands landings for indexation; filtered catalogue is a tool.
+        robots: isFiltered ? { index: false, follow: true } : { index: true, follow: true },
         openGraph: {
             title,
             description,
@@ -53,9 +52,9 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
 }
 
 export default async function ProductsPage({ searchParams }: Props) {
-    const params = await searchParams;
-    if (params?.category && !params.search && !params.brand) permanentRedirect(`/categories/${slugifySeoValue(params.category)}`);
-    if (params?.brand && !params.search && !params.category) permanentRedirect(`/brands/${slugifySeoValue(params.brand)}`);
+    // Keep category/brand/search on /products so mobile filters stay on the catalogue.
+    // SEO landings at /categories/[slug] and /brands/[slug] remain for discovery links.
+    await searchParams;
     // Fetch initial data on the server
     const [{ products: initialProducts }, brands, categories] = await Promise.all([
         getProductsPage(12), // Initial page size 12
