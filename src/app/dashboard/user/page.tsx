@@ -14,6 +14,8 @@ import { useMessages } from "@/context/MessageContext";
 import { useWishlist } from "@/context/WishlistContext";
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
+import { ReceiptPrintActions } from "@/components/documents/ReceiptPrintActions";
+import type { ThermalWidthMm } from "@/lib/thermal-receipt";
 import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplate";
 
 import { toast } from "react-hot-toast";
@@ -67,6 +69,7 @@ function UserDashboardInner() {
     });
     const [printMode, setPrintMode] = useState<'invoice' | 'receipt' | 'delivery' | null>(null);
     const [printOrder, setPrintOrder] = useState<Order | null>(null);
+    const [receiptWidthMm, setReceiptWidthMm] = useState<ThermalWidthMm>(80);
     const [showProfileModal, setShowProfileModal] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [returnReason, setReturnReason] = useState('');
@@ -1018,17 +1021,40 @@ function UserDashboardInner() {
                 )}
 
                 {printMode && printOrder && (
-                    <div className="fixed inset-0 z-[100] bg-white overflow-auto print:p-0">
+                    <div className="fixed inset-0 z-[100] bg-white overflow-auto print:p-0 thermal-print-root">
+                        {printMode === 'receipt' ? (
+                            <style>{`
+                                @media print {
+                                    @page { size: ${receiptWidthMm}mm auto; margin: 2mm; }
+                                    html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
+                                }
+                            `}</style>
+                        ) : null}
                         <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0 z-50">
-                            <span className="font-bold">Preview: {printMode.toUpperCase()}</span>
+                            <span className="font-bold">
+                                Preview: {printMode === 'receipt' ? `THERMAL RECEIPT (${receiptWidthMm}mm)` : printMode.toUpperCase()}
+                            </span>
                             <div className="flex gap-2">
-                                <button onClick={() => window.print()} className="bg-melagri-primary px-6 py-2 rounded-xl text-sm font-bold hover:bg-melagri-secondary transition-all">Print Document</button>
+                                {printMode !== 'receipt' ? (
+                                    <button onClick={() => window.print()} className="bg-melagri-primary px-6 py-2 rounded-xl text-sm font-bold hover:bg-melagri-secondary transition-all">Print Document</button>
+                                ) : null}
                                 <button onClick={() => { setPrintMode(null); setPrintOrder(null); }} className="bg-gray-700 px-6 py-2 rounded-xl text-sm font-bold hover:bg-gray-600 transition-all">Close</button>
                             </div>
                         </div>
-                        <div className="p-8 max-w-4xl mx-auto">
+                        <div className={`mx-auto ${printMode === 'receipt' ? 'p-4 w-fit max-w-full flex flex-col items-center' : 'p-8 max-w-4xl'}`}>
                             {printMode === 'invoice' && <InvoiceTemplate order={printOrder} />}
-                            {printMode === 'receipt' && <ReceiptTemplate order={printOrder} />}
+                            {printMode === 'receipt' && (
+                                <>
+                                    <ReceiptTemplate order={printOrder} variant="thermal" widthMm={receiptWidthMm} />
+                                    <div className="mt-4 w-full max-w-lg">
+                                        <ReceiptPrintActions
+                                            order={printOrder}
+                                            widthMm={receiptWidthMm}
+                                            onWidthMmChange={setReceiptWidthMm}
+                                        />
+                                    </div>
+                                </>
+                            )}
                             {printMode === 'delivery' && <DeliveryNoteTemplate order={printOrder} />}
                         </div>
                     </div>

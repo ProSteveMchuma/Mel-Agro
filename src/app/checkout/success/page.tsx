@@ -12,10 +12,12 @@ import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
 import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
+import { ReceiptPrintActions } from "@/components/documents/ReceiptPrintActions";
 import { format } from "date-fns";
 import AccountUpgradePrompt from '@/components/checkout/AccountUpgradePrompt';
 import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
 import { AnalyticsService } from '@/lib/analytics';
+import type { ThermalWidthMm } from '@/lib/thermal-receipt';
 
 function OrderSuccessContent() {
     const searchParams = useSearchParams();
@@ -24,6 +26,7 @@ function OrderSuccessContent() {
     const [order, setOrder] = useState<Order | null>(null);
     const [isNotFound, setIsNotFound] = useState(false);
     const [activeDocument, setActiveDocument] = useState<'invoice' | 'receipt' | null>(null);
+    const [receiptWidthMm, setReceiptWidthMm] = useState<ThermalWidthMm>(80);
 
     // Confetti on first paint of the order; no auto-redirect — let the user read at their pace.
     useEffect(() => {
@@ -119,26 +122,45 @@ function OrderSuccessContent() {
         <main className="flex-grow py-12 px-4">
             {/* Document Overlay (Invoice or Receipt) */}
             {activeDocument && (
-                <div className="fixed inset-0 z-[100] bg-white overflow-auto print:overflow-visible">
+                <div className="fixed inset-0 z-[100] bg-white overflow-auto print:overflow-visible thermal-print-root">
+                    {activeDocument === 'receipt' ? (
+                        <style>{`
+                            @media print {
+                                @page { size: ${receiptWidthMm}mm auto; margin: 2mm; }
+                                html, body { background: white !important; margin: 0 !important; padding: 0 !important; }
+                            }
+                        `}</style>
+                    ) : null}
                     <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0">
                         <div className="flex items-center gap-4">
                             <button onClick={() => setActiveDocument(null)} className="p-2 hover:bg-gray-800 rounded-full transition-colors">
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
                             </button>
                             <span className="font-bold">
-                                {activeDocument === 'invoice' ? 'Official Invoice' : 'Receipt'}: #{order.id.slice(0, 8)}
+                                {activeDocument === 'invoice' ? 'Official Invoice' : `Thermal receipt (${receiptWidthMm}mm)`}: #{order.id.slice(0, 8)}
                             </span>
                         </div>
                         <div className="flex gap-4">
-                            <button onClick={() => window.print()} className="bg-melagri-primary px-4 py-2 rounded-lg hover:bg-melagri-secondary text-sm font-bold">Print / Save PDF</button>
+                            {activeDocument === 'invoice' ? (
+                                <button onClick={() => window.print()} className="bg-melagri-primary px-4 py-2 rounded-lg hover:bg-melagri-secondary text-sm font-bold">Print / Save PDF</button>
+                            ) : null}
                             <button onClick={() => setActiveDocument(null)} className="bg-gray-700 px-4 py-2 rounded-lg hover:bg-gray-600 text-sm font-bold">Close</button>
                         </div>
                     </div>
-                    <div className="p-8 print:p-0">
+                    <div className={`print:p-0 ${activeDocument === 'receipt' ? 'p-4 flex flex-col items-center' : 'p-8'}`}>
                         {activeDocument === 'invoice' ? (
                             <InvoiceTemplate order={order} />
                         ) : (
-                            <ReceiptTemplate order={order} />
+                            <>
+                                <ReceiptTemplate order={order} variant="thermal" widthMm={receiptWidthMm} />
+                                <div className="mt-4 w-full max-w-lg">
+                                    <ReceiptPrintActions
+                                        order={order}
+                                        widthMm={receiptWidthMm}
+                                        onWidthMmChange={setReceiptWidthMm}
+                                    />
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>
