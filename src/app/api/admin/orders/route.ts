@@ -87,7 +87,7 @@ export async function POST(request: Request) {
     });
     if (outcome.kind === 'processing') {
       try {
-        const tpl = CommunicationTemplates.getStatusUpdate(withActionUrls(outcome.order as any), 'Processing');
+        const tpl = CommunicationTemplates.getStatusUpdate(await withActionUrls(outcome.order as any), 'Processing');
         await notifyCustomer({
           userId: outcome.order.userId,
           phone: outcome.order.mpesaPhoneNumber || outcome.order.phone,

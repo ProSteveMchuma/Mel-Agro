@@ -64,7 +64,7 @@ export async function POST(
             returnRequestedAt,
         };
 
-        const template = CommunicationTemplates.getReturnRequested(withActionUrls(updated as any));
+        const template = CommunicationTemplates.getReturnRequested(await withActionUrls(updated as any));
         void notifyCustomer({
             userId: order.userId,
             phone: order.phone,

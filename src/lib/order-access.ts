@@ -145,8 +145,29 @@ export function customerOrderUrl(
     }
 }
 
-/** Attach signed action URLs for CommunicationTemplates on the server. */
-export function withActionUrls<T extends { id?: string; phone?: string | null }>(order: T): T & {
+/**
+ * Prefer a same-origin short link (`/o/{code}`) for SMS; fall back to the full signed URL.
+ */
+export async function customerOrderUrlShort(
+    order: { id?: string; phone?: string | null },
+    action: Exclude<OrderAccessAction, 'rs'> = 'view',
+): Promise<string> {
+    const longUrl = customerOrderUrl(order, action);
+    try {
+        const { createShortOrderLink } = await import('./short-links');
+        const short = await createShortOrderLink({
+            orderId: String(order.id || ''),
+            phone: order.phone,
+            action,
+        });
+        return short?.url || longUrl;
+    } catch {
+        return longUrl;
+    }
+}
+
+/** Sync signed deep links — safe inside Firestore transactions (no extra writes). */
+export function withActionUrlsSync<T extends { id?: string; phone?: string | null }>(order: T): T & {
     __actionUrls: Record<Exclude<OrderAccessAction, 'rs'>, string>;
 } {
     return {
@@ -155,6 +176,25 @@ export function withActionUrls<T extends { id?: string; phone?: string | null }>
             view: customerOrderUrl(order, 'view'),
             pay: customerOrderUrl(order, 'pay'),
             return: customerOrderUrl(order, 'return'),
+        },
+    };
+}
+
+/** Attach preferably-short action URLs for outbound SMS (writes shortLinks docs). */
+export async function withActionUrls<T extends { id?: string; phone?: string | null }>(order: T): Promise<T & {
+    __actionUrls: Record<Exclude<OrderAccessAction, 'rs'>, string>;
+}> {
+    const [view, pay, ret] = await Promise.all([
+        customerOrderUrlShort(order, 'view'),
+        customerOrderUrlShort(order, 'pay'),
+        customerOrderUrlShort(order, 'return'),
+    ]);
+    return {
+        ...order,
+        __actionUrls: {
+            view,
+            pay,
+            return: ret,
         },
     };
 }

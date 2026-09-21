@@ -187,7 +187,7 @@ export async function POST(request: Request) {
     if (outcome.kind === "decide") {
       try {
         const tpl = CommunicationTemplates.getReturnUpdate(
-          withActionUrls(outcome.order as any),
+          await withActionUrls(outcome.order as any),
           outcome.status,
         );
         await notifyCustomer({
