@@ -33,11 +33,13 @@ test('payment received SMS includes amount and receipt', () => {
     assert.match(sms, /packing/i);
 });
 
-test('status SMS copy is specific for shipped and delivered', () => {
+test('status SMS copy is specific for shipped, delivered, and collection', () => {
     assert.match(CommunicationTemplates.getStatusUpdate(order, 'Shipped').smsBody, /on the way/);
     assert.match(CommunicationTemplates.getStatusUpdate(order, 'Delivered').smsBody, /has been delivered/);
     assert.match(CommunicationTemplates.getStatusUpdate(order, 'Processing').smsBody, /packing/);
     assert.match(CommunicationTemplates.getStatusUpdate(order, 'Cancelled').smsBody, /cancelled/);
+    assert.match(CommunicationTemplates.getStatusUpdate(order, 'Ready for Collection').smsBody, /ready for collection/i);
+    assert.match(CommunicationTemplates.getStatusUpdate(order, 'Collected').smsBody, /was collected/i);
 });
 
 test('customer SMS uses unsigned deep-link paths by default', () => {

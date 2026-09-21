@@ -10,7 +10,7 @@ import { withActionUrls } from '@/lib/order-access';
 import { notifyCustomer } from '@/lib/customer-notifications';
 
 const PAGE_SIZE = 20;
-const statusValues = new Set(['Pending Payment', 'Processing', 'Shipped', 'Delivered', 'Cancelled']);
+const statusValues = new Set(['Pending Payment', 'Processing', 'Shipped', 'Delivered', 'Ready for Collection', 'Collected', 'Cancelled']);
 const paymentValues = new Set(['Paid', 'Unpaid', 'Failed']);
 type Cursor = { value: string | number; id: string };
 const encode = (cursor: Cursor) => Buffer.from(JSON.stringify(cursor)).toString('base64url');
@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       const data = doc.data(); const value = field === 'total' ? Number(data.total || 0) : String(data.date || '');
       cursor = { value, id: doc.id };
       const paymentMatches = !payment || (payment === 'Unpaid' ? data.paymentStatus !== 'Paid' : data.paymentStatus === payment);
-      const viewMatches = view === 'all' || (view === 'attention' && (data.status === 'Pending Payment' || data.paymentStatus === 'Failed')) || (view === 'unfulfilled' && data.status === 'Processing') || (view === 'unpaid' && data.paymentStatus !== 'Paid') || (view === 'completed' && data.status === 'Delivered');
+      const viewMatches = view === 'all' || (view === 'attention' && (data.status === 'Pending Payment' || data.paymentStatus === 'Failed')) || (view === 'unfulfilled' && (data.status === 'Processing' || data.status === 'Ready for Collection' || data.status === 'Shipped')) || (view === 'unpaid' && data.paymentStatus !== 'Paid') || (view === 'completed' && (data.status === 'Delivered' || data.status === 'Collected'));
       if (viewMatches && (!status || data.status === status) && paymentMatches && (!search || includes(data, doc.id, search))) matches.push({ id: doc.id, ...data });
       if (matches.length > PAGE_SIZE) break;
     }

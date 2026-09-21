@@ -191,6 +191,7 @@ export function publicOrderSummary(order: Record<string, any>, orderId: string) 
         phoneMasked: maskPhone(order.phone),
         date: order.date || order.createdAt || null,
         deliveredAt: order.deliveredAt || null,
+        collectedAt: order.collectedAt || null,
         status: order.status || 'Pending Payment',
         paymentStatus: order.paymentStatus || 'Unpaid',
         paymentMethod: order.paymentMethod || null,

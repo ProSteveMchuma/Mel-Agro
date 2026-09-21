@@ -24,7 +24,7 @@ interface OrderContextType {
     orders: Order[];
     notifications: Notification[];
     addOrder: (order: Omit<Order, 'id' | 'date' | 'status'>, pointsToRedeem?: number) => Promise<Order>;
-    updateOrderStatus: (orderId: string, status: Order['status']) => Promise<void>;
+    updateOrderStatus: (orderId: string, status: Order['status'], extras?: { tracking?: { carrier: string; trackingNumber: string } }) => Promise<void>;
     updateOrderPaymentStatus: (orderId: string, paymentStatus: 'Paid' | 'Unpaid', transactionDetails?: any) => Promise<void>;
     requestReturn: (orderId: string, reason: string) => Promise<void>;
     updateReturnStatus: (orderId: string, status: 'Approved' | 'Rejected', note?: string) => Promise<void>;
@@ -328,7 +328,11 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         } as Order;
     };
 
-    const updateOrderStatus = async (orderId: string, status: Order['status']) => {
+    const updateOrderStatus = async (
+        orderId: string,
+        status: Order['status'],
+        extras?: { tracking?: { carrier: string; trackingNumber: string } },
+    ) => {
         if (status === 'Cancelled') {
             const token = await getAuth().currentUser?.getIdToken();
             if (!token) throw new Error('Your session expired. Please sign in again.');
@@ -347,11 +351,21 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             return;
         }
 
-        const token = await getAuth().currentUser?.getIdToken(); if (!token) throw new Error('Your session expired. Please sign in again.');
-        const endpoint = status === 'Shipped' || status === 'Delivered' ? '/api/admin/fulfillment' : '/api/admin/orders';
+        const token = await getAuth().currentUser?.getIdToken();
+        if (!token) throw new Error('Your session expired. Please sign in again.');
+        const fulfillmentStatuses = new Set(['Shipped', 'Delivered', 'Ready for Collection', 'Collected']);
+        const endpoint = fulfillmentStatuses.has(status) ? '/api/admin/fulfillment' : '/api/admin/orders';
         if (status === 'Pending Payment') throw new Error('Orders cannot be moved back to pending payment.');
-        const body = status === 'Processing' ? { action: 'start_processing', orderId } : { action: 'status', orderId, status };
-        const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) }); const result = await response.json(); if (!response.ok) throw new Error(result.message || 'Could not update order status.');
+        const body = status === 'Processing'
+            ? { action: 'start_processing', orderId }
+            : { action: 'status', orderId, status, ...(extras?.tracking ? { tracking: extras.tracking } : {}) };
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify(body),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Could not update order status.');
         return;
 
         /* Legacy client flow removed from execution after the server-authoritative migration.

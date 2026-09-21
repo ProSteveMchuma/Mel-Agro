@@ -95,13 +95,17 @@ export interface Order {
         method?: string;
     };
     paymentStatus?: 'Paid' | 'Unpaid' | 'Pending Verification' | 'Pending WhatsApp' | 'Failed';
-    status: 'Pending Payment' | 'Processing' | 'Shipped' | 'Delivered' | 'Cancelled';
+    status: 'Pending Payment' | 'Processing' | 'Shipped' | 'Delivered' | 'Ready for Collection' | 'Collected' | 'Cancelled';
+    shippingMethod?: 'standard' | 'pickup' | string;
+    tracking?: { carrier?: string; trackingNumber?: string } | null;
     items: OrderItem[];
     createdAt?: string; // Compat
     paidAt?: string;
     processingAt?: string;
     shippedAt?: string;
     deliveredAt?: string;
+    readyForCollectionAt?: string;
+    collectedAt?: string;
     statusHistory?: Array<{ status: string; at: string; by?: string }>;
     notificationPreferences?: string[];
     returnStatus?: 'Requested' | 'Approved' | 'Rejected';
