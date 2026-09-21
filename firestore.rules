@@ -47,15 +47,23 @@ service cloud.firestore {
       );
     }
 
-    // Users: Users can read/update their own profile (excluding sensitive fields),
-    // admins can manage all. Role / status / loyaltyPoints can ONLY be changed by an admin
+    // Users: shoppers update their own non-privilege fields. Staff with customers.manage
+    // may update customer profiles, but role / adminPermissions / staffProfile are Admin SDK only
+    // (super-admin promotion API). Blocks restricted staff from self-escalating privileges.
     match /users/{userId} {
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == userId);
       allow create: if request.auth != null && request.auth.uid == userId && request.resource.data.get('role', 'user') == 'user';
       allow update: if (
-        hasPermission('customers.manage') ||
-        (request.auth != null && request.auth.uid == userId &&
-         !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'status', 'loyaltyPoints']))
+        (
+          hasPermission('customers.manage') &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['role', 'adminPermissions', 'staffProfile'])
+        ) ||
+        (
+          request.auth != null && request.auth.uid == userId &&
+          !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['role', 'status', 'loyaltyPoints', 'adminPermissions', 'staffProfile'])
+        )
       );
       allow delete: if hasPermission('customers.manage');
     }

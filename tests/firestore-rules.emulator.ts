@@ -62,6 +62,32 @@ test('customers cannot create an elevated profile or change protected fields', a
     await assertFails(setDoc(doc(newUser, 'users', 'new-user'), { role: 'admin' }));
     await assertFails(updateDoc(doc(customer, 'users', 'regular-user'), { role: 'admin' }));
     await assertFails(updateDoc(doc(customer, 'users', 'regular-user'), { loyaltyPoints: 999999 }));
+    await assertFails(updateDoc(doc(customer, 'users', 'regular-user'), { adminPermissions: ['settings.manage'] }));
+    await assertFails(updateDoc(doc(customer, 'users', 'regular-user'), { staffProfile: 'full' }));
+});
+
+test('restricted staff cannot self-escalate or rewrite privilege fields via Firestore client', async () => {
+    await environment.withSecurityRulesDisabled(async (context) => {
+        const db = context.firestore();
+        await setDoc(doc(db, 'users', 'support-staff'), {
+            role: 'admin',
+            name: 'Support',
+            adminPermissions: ['orders.manage', 'customers.manage'],
+            staffProfile: 'support',
+        });
+    });
+
+    const support = environment.authenticatedContext('support-staff').firestore();
+    await assertFails(updateDoc(doc(support, 'users', 'support-staff'), {
+        adminPermissions: ['orders.manage', 'customers.manage', 'settings.manage', 'catalogue.manage'],
+    }));
+    await assertFails(updateDoc(doc(support, 'users', 'support-staff'), { staffProfile: 'full' }));
+    await assertFails(updateDoc(doc(support, 'users', 'support-staff'), { role: 'super-admin' }));
+    await assertFails(updateDoc(doc(support, 'users', 'regular-user'), {
+        adminPermissions: ['settings.manage'],
+        staffProfile: 'full',
+    }));
+    await assertSucceeds(updateDoc(doc(support, 'users', 'regular-user'), { name: 'Updated Customer' }));
 });
 
 test('customers can request their own return but cannot alter totals or payment state', async () => {

@@ -10,6 +10,7 @@ import {
     normalizeDisplayField,
     resolveProductBrand,
 } from '@/lib/catalog-normalize';
+import { requirePermissionToken } from '@/lib/auth-server';
 
 /**
  * Helper to get a value from a row using case-insensitive and trimmed keys
@@ -40,14 +41,24 @@ function toPlainExportValue(value: unknown): unknown {
     );
 }
 
+async function requireCatalogueActor(formData?: FormData, idToken?: string | null) {
+    const token = idToken ?? (typeof formData?.get('idToken') === 'string' ? String(formData.get('idToken')) : null);
+    return requirePermissionToken(token, 'catalogue.manage');
+}
+
 export async function uploadProductsFromExcel(formData: FormData) {
+    const auth = await requireCatalogueActor(formData);
+    if (!auth.ok) {
+        return { success: false, error: auth.message || 'Catalogue permission required' };
+    }
+
     const file = formData.get('file') as File;
     if (!file) {
         return { success: false, error: "No file provided" };
     }
 
     try {
-        console.log("Bulk upload action started");
+        console.log("Bulk upload action started", { uid: auth.uid });
         const arrayBuffer = await file.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         const workbook = new ExcelJS.Workbook();
@@ -316,7 +327,12 @@ export async function uploadProductsFromExcel(formData: FormData) {
     }
 }
 
-export async function getAllProducts() {
+export async function getAllProducts(idToken?: string | null) {
+    const auth = await requireCatalogueActor(undefined, idToken);
+    if (!auth.ok) {
+        return { success: false, error: auth.message || 'Catalogue permission required' };
+    }
+
     try {
         const snapshot = await adminDb.collection('products').get();
         const products = snapshot.docs.map((doc) =>

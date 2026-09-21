@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { uploadProductsFromExcel } from '@/app/actions/bulkActions';
 import { toast } from 'react-hot-toast';
+import { getAuth } from 'firebase/auth';
 
 export default function BulkUploadButton() {
     const [isUploading, setIsUploading] = useState(false);
@@ -15,8 +16,15 @@ export default function BulkUploadButton() {
         // Reset input so same file can be uploaded again if needed
         e.target.value = '';
 
+        const idToken = await getAuth().currentUser?.getIdToken().catch(() => null);
+        if (!idToken) {
+            toast.error('Sign in as catalogue staff to upload products.');
+            return;
+        }
+
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('idToken', idToken);
 
         setIsUploading(true);
         const loadingToast = toast.loading('Processing Excel file...');
