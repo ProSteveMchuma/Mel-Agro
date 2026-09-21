@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import type { Order } from '@/types';
-import { downloadThermalReceiptPdf, type ThermalWidthMm } from '@/lib/thermal-receipt';
+import { downloadThermalReceiptPdf, type ReceiptBranding, type ThermalWidthMm } from '@/lib/thermal-receipt';
 
 export function ReceiptPrintActions({
     order,
@@ -12,7 +12,7 @@ export function ReceiptPrintActions({
     onWidthMmChange,
 }: {
     order: Order;
-    branding?: { companyName?: string; address?: string; supportPhone?: string };
+    branding?: ReceiptBranding;
     widthMm: ThermalWidthMm;
     onWidthMmChange: (width: ThermalWidthMm) => void;
 }) {

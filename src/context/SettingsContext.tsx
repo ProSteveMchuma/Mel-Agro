@@ -5,6 +5,7 @@ import { db } from "@/lib/firebase";
 import { doc, onSnapshot } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { DELIVERY_ZONES, DeliveryZone } from "@/lib/delivery";
+import { DEFAULT_DOCUMENT_SETTINGS, type DocumentTemplateSettings } from "@/lib/document-branding";
 
 export interface GeneralSettings {
     companyName: string;
@@ -33,11 +34,14 @@ export interface ShippingSettings {
     zones: DeliveryZone[];
 }
 
+export type { DocumentTemplateSettings };
+
 interface SettingsContextType {
     general: GeneralSettings;
     tax: TaxSettings;
     notifications: NotificationSettings;
     shipping: ShippingSettings;
+    documents: DocumentTemplateSettings;
     loading: boolean;
     updateGeneralSettings: (settings: Partial<GeneralSettings>) => Promise<void>;
     updateTaxSettings: (settings: Partial<TaxSettings>) => Promise<void>;
@@ -88,23 +92,28 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     const [tax, setTax] = useState<TaxSettings>(defaultTax);
     const [notifications, setNotifications] = useState<NotificationSettings>(defaultNotifications);
     const [shipping, setShipping] = useState<ShippingSettings>(defaultShipping);
+    const [documents, setDocuments] = useState<DocumentTemplateSettings>(DEFAULT_DOCUMENT_SETTINGS);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubGeneral = onSnapshot(doc(db, "settings", "general"), (doc) => {
-            if (doc.exists()) setGeneral({ ...defaultGeneral, ...doc.data() } as GeneralSettings);
+        const unsubGeneral = onSnapshot(doc(db, "settings", "general"), (snap) => {
+            if (snap.exists()) setGeneral({ ...defaultGeneral, ...snap.data() } as GeneralSettings);
         });
 
-        const unsubTax = onSnapshot(doc(db, "settings", "tax"), (doc) => {
-            if (doc.exists()) setTax({ ...defaultTax, ...doc.data() } as TaxSettings);
+        const unsubTax = onSnapshot(doc(db, "settings", "tax"), (snap) => {
+            if (snap.exists()) setTax({ ...defaultTax, ...snap.data() } as TaxSettings);
         });
 
-        const unsubNotif = onSnapshot(doc(db, "settings", "notifications"), (doc) => {
-            if (doc.exists()) setNotifications({ ...defaultNotifications, ...doc.data() } as NotificationSettings);
+        const unsubNotif = onSnapshot(doc(db, "settings", "notifications"), (snap) => {
+            if (snap.exists()) setNotifications({ ...defaultNotifications, ...snap.data() } as NotificationSettings);
         });
 
-        const unsubShipping = onSnapshot(doc(db, "settings", "shipping"), (doc) => {
-            if (doc.exists()) setShipping({ ...defaultShipping, ...doc.data() } as ShippingSettings);
+        const unsubShipping = onSnapshot(doc(db, "settings", "shipping"), (snap) => {
+            if (snap.exists()) setShipping({ ...defaultShipping, ...snap.data() } as ShippingSettings);
+        });
+
+        const unsubDocuments = onSnapshot(doc(db, "settings", "documents"), (snap) => {
+            if (snap.exists()) setDocuments({ ...DEFAULT_DOCUMENT_SETTINGS, ...snap.data() } as DocumentTemplateSettings);
         });
 
         setLoading(false);
@@ -114,6 +123,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             unsubTax();
             unsubNotif();
             unsubShipping();
+            unsubDocuments();
         };
     }, []);
 
@@ -144,6 +154,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
             tax,
             notifications,
             shipping,
+            documents,
             loading,
             updateGeneralSettings,
             updateTaxSettings,

@@ -44,6 +44,7 @@ test('buildThermalReceiptLines includes brand, items, total, and M-Pesa code', (
     assert.match(text, /KES 3,?500/);
     assert.match(text, /TJK7H8K9L0/);
     assert.match(text, /0788 970757/);
+    assert.match(text, /melagri\.com/i);
 });
 
 test('long product names wrap on narrow 58mm rolls', () => {

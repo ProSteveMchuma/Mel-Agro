@@ -17,6 +17,8 @@ import { ReceiptTemplate } from "@/components/documents/ReceiptTemplate";
 import { ReceiptPrintActions } from "@/components/documents/ReceiptPrintActions";
 import type { ThermalWidthMm } from "@/lib/thermal-receipt";
 import { DeliveryNoteTemplate } from "@/components/documents/DeliveryNoteTemplate";
+import { useSettings } from "@/context/SettingsContext";
+import { resolveDocumentBranding } from "@/lib/document-branding";
 
 import { toast } from "react-hot-toast";
 import AddressBook from "@/components/dashboard/AddressBook";
@@ -60,7 +62,15 @@ function UserDashboardInner() {
     const { products } = useProducts();
     const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
     const { wishlist, removeFromWishlist } = useWishlist();
+    const { general, tax, documents } = useSettings();
     const router = useRouter();
+    const brand = resolveDocumentBranding({
+        companyName: general.companyName,
+        address: general.address,
+        supportPhone: general.supportPhone,
+        websiteUrl: general.websiteUrl,
+        taxId: tax.taxId,
+    });
 
     const [activeTab, setActiveTab] = useState<Tab>('dashboard');
     const [retryingPayment, setRetryingPayment] = useState<string | null>(null);
@@ -1068,6 +1078,14 @@ function UserDashboardInner() {
                                             order={printOrder}
                                             widthMm={receiptWidthMm}
                                             onWidthMmChange={setReceiptWidthMm}
+                                            branding={{
+                                                companyName: brand.companyName,
+                                                address: brand.address,
+                                                supportPhone: brand.supportPhone,
+                                                websiteUrl: brand.websiteUrl,
+                                                taxId: brand.taxId,
+                                                footerText: documents.footerText,
+                                            }}
                                         />
                                     </div>
                                 </>

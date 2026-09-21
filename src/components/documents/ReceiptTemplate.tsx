@@ -5,6 +5,7 @@ import { Order } from '@/context/OrderContext';
 import { useSettings } from '@/context/SettingsContext';
 import Logo from '../Logo';
 import { buildThermalReceiptLines, type ThermalWidthMm } from '@/lib/thermal-receipt';
+import { resolveDocumentBranding } from '@/lib/document-branding';
 
 interface ReceiptTemplateProps {
     order: Order;
@@ -18,11 +19,22 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
     variant = 'thermal',
     widthMm = 80,
 }) => {
-    const { general } = useSettings();
+    const { general, tax, documents } = useSettings();
+    const resolved = resolveDocumentBranding({
+        companyName: general.companyName,
+        address: general.address,
+        supportPhone: general.supportPhone,
+        websiteUrl: general.websiteUrl,
+        taxId: tax.taxId,
+    });
     const branding = {
-        companyName: general.companyName || 'Mel-Agri Kenya',
-        address: general.address || 'Nairobi, Kenya',
-        supportPhone: general.supportPhone || '0788 970757',
+        companyName: resolved.companyName,
+        address: resolved.address,
+        supportPhone: resolved.supportPhone,
+        websiteUrl: resolved.websiteUrl,
+        taxId: resolved.taxId,
+        footerText: documents.footerText || 'Thank you for shopping with us!',
+        tagline: 'Premium Agricultural Solutions',
     };
 
     if (variant === 'thermal') {
@@ -31,6 +43,8 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
                 ...order,
                 mpesaReceiptNumber: (order as any).mpesaReceiptNumber,
                 transactionId: (order as any).transactionId,
+                discountAmount: order.discountAmount,
+                subtotal: order.subtotal,
             },
             branding,
             widthMm,
@@ -73,13 +87,12 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
         );
     }
 
-    // Legacy screen-oriented layout (kept for rare non-thermal previews)
     return (
         <div className="bg-white p-6 max-w-md mx-auto font-mono text-sm text-gray-900 border border-gray-200" id="receipt-template">
             <div className="text-center mb-6">
                 <Logo iconOnly className="mx-auto mb-2" />
                 <h2 className="text-xl font-bold mb-1 uppercase tracking-tighter">{branding.companyName}</h2>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Premium Agricultural Solutions</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{branding.tagline}</p>
                 <p className="text-xs">{branding.address}</p>
                 <p className="text-xs font-bold">{branding.supportPhone}</p>
             </div>
@@ -116,9 +129,9 @@ export const ReceiptTemplate: React.FC<ReceiptTemplateProps> = ({
             </div>
 
             <div className="text-center text-xs text-gray-500">
-                <p className="mb-2">Thank you for shopping with us!</p>
+                <p className="mb-2">{branding.footerText}</p>
                 <p>Keep this receipt for your records.</p>
-                <p>www.Mel-Agri.com</p>
+                <p>{branding.websiteUrl}</p>
             </div>
         </div>
     );

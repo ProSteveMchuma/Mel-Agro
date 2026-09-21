@@ -3,21 +3,36 @@ import { Order } from '@/context/OrderContext';
 import { useSettings } from '@/context/SettingsContext';
 import Logo from '../Logo';
 import { PICKUP_STORE, isPickupOrder } from '@/lib/pickup';
+import { resolveDocumentBranding } from '@/lib/document-branding';
 
 interface DeliveryNoteTemplateProps {
     order: Order;
 }
 
 export const DeliveryNoteTemplate: React.FC<DeliveryNoteTemplateProps> = ({ order }) => {
-    const { general } = useSettings();
+    const { general, documents } = useSettings();
     const pickup = isPickupOrder(order);
     const title = pickup ? 'Collection Slip' : 'Delivery Note';
+    const brand = resolveDocumentBranding({
+        companyName: general.companyName,
+        address: general.address,
+        supportPhone: general.supportPhone,
+        supportEmail: general.supportEmail,
+        websiteUrl: general.websiteUrl,
+        logoUrl: general.logoUrl,
+    });
+    const showLogo = documents.showLogo !== false;
 
     return (
-        <div className="bg-white p-8 max-w-4xl mx-auto font-sans text-gray-900" id="delivery-note-template">
+        <div className="bg-white p-8 max-w-4xl mx-auto font-sans text-gray-900 print:max-w-none" id="delivery-note-template">
             <div className="flex flex-col md:flex-row justify-between items-start mb-12 border-b-4 border-gray-900 pb-8 gap-6">
                 <div>
-                    <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tighter uppercase">{title}</h1>
+                    <h1
+                        className="text-4xl font-black mb-2 tracking-tighter uppercase"
+                        style={{ color: documents.primaryColor || '#111827' }}
+                    >
+                        {title}
+                    </h1>
                     <p className="text-gray-400 font-mono text-xs">Order #{order.id}</p>
                     <p className="text-gray-900 font-bold mt-2">Date: {new Date(order.date).toLocaleDateString()}</p>
                     {pickup ? (
@@ -27,12 +42,20 @@ export const DeliveryNoteTemplate: React.FC<DeliveryNoteTemplateProps> = ({ orde
                     ) : null}
                 </div>
                 <div className="md:text-right flex flex-col items-end text-right">
-                    <Logo className="mb-4 scale-125 origin-right" />
-                    <div className="text-xl font-black text-gray-900 mb-1">{general.companyName || "Mel-Agri Kenya"}</div>
+                    {showLogo && (
+                        brand.logoUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={brand.logoUrl} alt={brand.companyName} className="h-12 w-auto mb-4 object-contain" />
+                        ) : (
+                            <Logo className="mb-4 scale-125 origin-right" />
+                        )
+                    )}
+                    <div className="text-xl font-black text-gray-900 mb-1">{brand.companyName}</div>
                     <p className="text-gray-500 text-xs uppercase tracking-widest font-black">
                         {pickup ? 'Collection Desk' : 'Logistics Department'}
                     </p>
-                    <p className="text-gray-500 text-xs max-w-[200px] mt-1">{general.address || "Premium Agricultural Hub"}</p>
+                    <p className="text-gray-500 text-xs max-w-[200px] mt-1">{brand.address}</p>
+                    <p className="text-gray-500 text-xs">{brand.supportPhone}</p>
                 </div>
             </div>
 
@@ -62,17 +85,17 @@ export const DeliveryNoteTemplate: React.FC<DeliveryNoteTemplateProps> = ({ orde
                     </h3>
                     {pickup ? (
                         <>
-                            <p className="text-gray-900 font-bold">Machakos store collection</p>
+                            <p className="text-gray-900 font-bold">Store collection</p>
                             <p className="text-gray-600">Customer collects in person</p>
                         </>
                     ) : (
                         <>
-                            <p className="text-gray-900">Standard Ground Shipping</p>
+                            <p className="text-gray-900">Standard delivery</p>
                             <p className="text-gray-600">
-                                Carrier: {(order as any).tracking?.carrier || 'Mel-Agri Logistics'}
+                                Carrier: {order.tracking?.carrier || `${brand.companyName} Logistics`}
                             </p>
-                            {(order as any).tracking?.trackingNumber ? (
-                                <p className="font-mono text-xs mt-1">#{(order as any).tracking.trackingNumber}</p>
+                            {order.tracking?.trackingNumber ? (
+                                <p className="font-mono text-xs mt-1">#{order.tracking.trackingNumber}</p>
                             ) : null}
                         </>
                     )}
@@ -122,8 +145,11 @@ export const DeliveryNoteTemplate: React.FC<DeliveryNoteTemplateProps> = ({ orde
             </div>
 
             <div className="mt-16 text-center text-[10px] text-gray-400 uppercase tracking-widest font-black">
-                Mel-Agri Kenya — {pickup ? 'Collection Confirmation' : 'Delivery Confirmation'} Document
+                {brand.companyName} — {pickup ? 'Collection Confirmation' : 'Delivery Confirmation'} Document
             </div>
+            {documents.footerText ? (
+                <p className="mt-3 text-center text-xs text-gray-400">{documents.footerText}</p>
+            ) : null}
         </div>
     );
 };
