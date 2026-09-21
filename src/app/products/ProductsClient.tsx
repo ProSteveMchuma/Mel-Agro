@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useProducts } from "@/context/ProductContext";
 import { SITE_URL } from '@/lib/site';
 import { productSeoPath } from '@/lib/seo';
-
+import { brandKeyFrom } from '@/lib/catalog-normalize';
 
 interface ProductsClientProps {
     initialProducts: Product[];
@@ -483,7 +483,11 @@ function ProductsGrid({ category, priceRange, selectedBrands, sortBy, initialPro
         }
 
         if (selectedBrands.length > 0) {
-            filtered = filtered.filter(p => p.brand && selectedBrands.includes(p.brand));
+            const selectedKeys = new Set(selectedBrands.map((b) => brandKeyFrom(b)).filter(Boolean));
+            filtered = filtered.filter((p) => {
+                const key = p.brandKey || brandKeyFrom(p.brand);
+                return key && selectedKeys.has(key);
+            });
         }
 
         // Apply category filter on client if searching globally

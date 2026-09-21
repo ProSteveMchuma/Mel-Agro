@@ -3,11 +3,13 @@ import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
 import { z } from "zod";
 import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
+import { collapseBrandDisplays, normalizeDisplayField, productBrandFields } from "@/lib/catalog-normalize";
 
 const PAGE_SIZE = 20;
 const SCAN_SIZE = 75;
 const MAX_SCANNED = 600;
 let categoryCache: { values: string[]; expiresAt: number } | null = null;
+let brandCache: { values: string[]; expiresAt: number } | null = null;
 
 const optionalText = (max: number) => z.string().trim().max(max).optional().default("");
 const variantSchema = z.object({ id: z.string().trim().min(1).max(100), sku: optionalText(100), name: z.string().trim().min(1).max(160), price: z.number().min(0).max(100_000_000).optional(), stockQuantity: z.number().int().min(0).max(100_000_000), weight: z.number().min(0).max(100_000).optional(), image: optionalText(1000) });
@@ -24,6 +26,18 @@ async function getCategories() {
   const snapshot = await adminDb.collection("products").select("category").limit(1500).get();
   const values = Array.from(new Set(snapshot.docs.map((document) => document.data().category).filter((value): value is string => typeof value === "string" && Boolean(value)))).sort();
   categoryCache = { values, expiresAt: Date.now() + 5 * 60 * 1000 };
+  return values;
+}
+
+async function getBrands() {
+  if (brandCache && brandCache.expiresAt > Date.now()) return brandCache.values;
+  const snapshot = await adminDb.collection("products").select("brand", "brandKey", "archived").limit(1500).get();
+  const values = collapseBrandDisplays(
+    snapshot.docs
+      .filter((document) => document.data().archived !== true)
+      .map((document) => ({ brand: document.data().brand, brandKey: document.data().brandKey }))
+  );
+  brandCache = { values, expiresAt: Date.now() + 5 * 60 * 1000 };
   return values;
 }
 
@@ -85,7 +99,7 @@ export async function GET(request: Request) {
     }
     exhausted = snapshot.size < SCAN_SIZE;
   }
-  return NextResponse.json({ success: true, products, categories: await getCategories(), nextCursor: !exhausted && lastScannedId ? encodeCursor(lastScannedId) : null, searchLimited: scanned >= MAX_SCANNED && !exhausted });
+  return NextResponse.json({ success: true, products, categories: await getCategories(), brands: await getBrands(), nextCursor: !exhausted && lastScannedId ? encodeCursor(lastScannedId) : null, searchLimited: scanned >= MAX_SCANNED && !exhausted });
 }
 
 export async function POST(request: Request) {
@@ -94,17 +108,46 @@ export async function POST(request: Request) {
   const parsed = mutationSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: parsed.error.issues[0]?.message || "Invalid product data." }, { status: 400 });
   const input = parsed.data; const productRef = input.action === "create" ? adminDb.collection("products").doc() : adminDb.collection("products").doc(input.productId);
+  const knownBrands = await getBrands();
+  const { brand, brandKey } = productBrandFields(input.data.brand, knownBrands);
+  const category = normalizeDisplayField(input.data.category) || input.data.category;
+  const subCategory = normalizeDisplayField(input.data.subCategory);
+  const productCode = normalizeDisplayField(input.data.productCode);
+  const name = normalizeDisplayField(input.data.name) || input.data.name;
+
+  if (productCode) {
+    const skuSnap = await adminDb.collection("products").where("productCode", "==", productCode).limit(5).get();
+    const conflict = skuSnap.docs.find((doc) => doc.id !== productRef.id);
+    if (conflict) return NextResponse.json({ success: false, message: "Another product already uses this product code (SKU)." }, { status: 409 });
+  }
+
   try {
     await adminDb.runTransaction(async (transaction) => {
       const existing = await transaction.get(productRef); if (input.action === "update" && !existing.exists) throw new Error("PRODUCT_NOT_FOUND");
       const before = existing.data() || {}; const now = new Date().toISOString(); const totalAvailable = input.data.stockQuantity + input.data.variants.reduce((sum, variant) => sum + variant.stockQuantity, 0);
-      const product = { ...input.data, inStock: totalAvailable > 0, ...(input.action === "create" ? { createdAt: now, archived: false } : {}), updatedAt: now, updatedBy: actor.uid };
+      const product = {
+        ...input.data,
+        name,
+        category,
+        subCategory,
+        productCode,
+        brand,
+        brandKey,
+        inStock: totalAvailable > 0,
+        ...(input.action === "create" ? { createdAt: now, archived: false } : {}),
+        updatedAt: now,
+        updatedBy: actor.uid,
+      };
       if (input.action === "update") transaction.set(productRef, product, { merge: true }); else transaction.set(productRef, product);
-      const previousStock = Number(before.stockQuantity || 0); if (input.action === "create" || previousStock !== input.data.stockQuantity) transaction.set(adminDb.collection("inventory_history").doc(), { productId: productRef.id, productName: input.data.name, previousStock: input.action === "create" ? 0 : previousStock, newStock: input.data.stockQuantity, change: input.data.stockQuantity - (input.action === "create" ? 0 : previousStock), type: input.action === "create" ? "initial" : "product_edit", updatedBy: actor.email || actor.uid, updatedAt: now, note: input.action === "create" ? "Product created" : "Stock changed through product editor" });
-      transaction.set(adminDb.collection("adminAuditLog").doc(), { action: input.action === "create" ? "product_created" : "product_updated", actorId: actor.uid, actorEmail: actor.email || null, targetId: productRef.id, before: input.action === "update" ? { name: before.name || null, price: before.price || null, stockQuantity: before.stockQuantity || 0 } : null, after: { name: input.data.name, price: input.data.price, stockQuantity: input.data.stockQuantity, variants: input.data.variants.length }, createdAt: now });
+      const previousStock = Number(before.stockQuantity || 0); if (input.action === "create" || previousStock !== input.data.stockQuantity) transaction.set(adminDb.collection("inventory_history").doc(), { productId: productRef.id, productName: name, previousStock: input.action === "create" ? 0 : previousStock, newStock: input.data.stockQuantity, change: input.data.stockQuantity - (input.action === "create" ? 0 : previousStock), type: input.action === "create" ? "initial" : "product_edit", updatedBy: actor.email || actor.uid, updatedAt: now, note: input.action === "create" ? "Product created" : "Stock changed through product editor" });
+      transaction.set(adminDb.collection("adminAuditLog").doc(), { action: input.action === "create" ? "product_created" : "product_updated", actorId: actor.uid, actorEmail: actor.email || null, targetId: productRef.id, before: input.action === "update" ? { name: before.name || null, price: before.price || null, stockQuantity: before.stockQuantity || 0, brand: before.brand || null } : null, after: { name, price: input.data.price, stockQuantity: input.data.stockQuantity, brand, brandKey, variants: input.data.variants.length }, createdAt: now });
     });
     categoryCache = null;
+    brandCache = null;
     revalidateStorefrontCatalogue();
     return NextResponse.json({ success: true, productId: productRef.id }, { status: input.action === "create" ? 201 : 200 });
-  } catch (error) { if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") return NextResponse.json({ success: false, message: "Product not found." }, { status: 404 }); throw error; }
+  } catch (error) {
+    if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") return NextResponse.json({ success: false, message: "Product not found." }, { status: 404 });
+    throw error;
+  }
 }

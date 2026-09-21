@@ -1,12 +1,15 @@
 import { unstable_cache } from 'next/cache';
 import { adminDb } from './firebase-admin';
 import type { Product } from '@/types';
+import { brandKeyFrom, collapseBrandDisplays } from '@/lib/catalog-normalize';
 
 function plainProduct(snapshot: FirebaseFirestore.DocumentSnapshot): Product {
     const data = snapshot.data() || {};
+    const brand = String(data.brand || '');
     return JSON.parse(JSON.stringify({
         id: snapshot.id,
         ...data,
+        brandKey: data.brandKey || brandKeyFrom(brand) || undefined,
         createdAt: (data.createdAt as { toDate?: () => Date } | undefined)?.toDate?.().toISOString(),
         updatedAt: (data.updatedAt as { toDate?: () => Date } | undefined)?.toDate?.().toISOString(),
     })) as Product;
@@ -23,7 +26,38 @@ export const getAllProductsServerCached = unstable_cache(
 
 export const getProductsByTaxonomyCached = unstable_cache(
     async (field: 'category' | 'brand', value: string, limitCount = 200): Promise<Product[]> => {
-        const snapshot = await adminDb.collection('products').where(field, '==', value).limit(Math.min(500, Math.max(1, limitCount))).get();
+        const cap = Math.min(500, Math.max(1, limitCount));
+        if (field === 'brand') {
+            const key = brandKeyFrom(value);
+            if (!key) return [];
+            const [byKey, byExact] = await Promise.all([
+                adminDb.collection('products').where('brandKey', '==', key).limit(cap).get(),
+                adminDb.collection('products').where('brand', '==', value).limit(cap).get(),
+            ]);
+            const merged = new Map<string, FirebaseFirestore.QueryDocumentSnapshot>();
+            for (const doc of [...byKey.docs, ...byExact.docs]) {
+                if (doc.data().archived === true) continue;
+                merged.set(doc.id, doc);
+            }
+            // Legacy spellings without brandKey: scan a bounded window
+            if (merged.size < cap) {
+                const scan = await adminDb.collection('products').select('brand', 'brandKey', 'archived').limit(1500).get();
+                const needFull = scan.docs.filter((doc) => {
+                    if (doc.data().archived === true || merged.has(doc.id)) return false;
+                    const data = doc.data();
+                    return brandKeyFrom(data.brandKey || data.brand) === key;
+                });
+                if (needFull.length) {
+                    const fullDocs = await adminDb.getAll(...needFull.slice(0, cap - merged.size).map((doc) => adminDb.collection('products').doc(doc.id)));
+                    for (const doc of fullDocs) {
+                        if (doc.exists) merged.set(doc.id, doc as FirebaseFirestore.QueryDocumentSnapshot);
+                    }
+                }
+            }
+            return [...merged.values()].slice(0, cap).map(plainProduct);
+        }
+
+        const snapshot = await adminDb.collection('products').where(field, '==', value).limit(cap).get();
         return snapshot.docs.filter(doc => doc.data().archived !== true).map(plainProduct);
     },
     ['products-by-taxonomy'],
@@ -41,13 +75,12 @@ export const getProductByIdServerCached = unstable_cache(
 
 export const getUniqueBrandsCached = unstable_cache(
     async () => {
-        const snapshot = await adminDb.collection('products').select('brand').limit(1000).get();
-        const counts = new Map<string, number>();
-        snapshot.docs.filter(doc => doc.data().archived !== true).forEach(doc => {
-            const brand = String(doc.data().brand || '').trim();
-            if (brand) counts.set(brand, (counts.get(brand) || 0) + 1);
-        });
-        return [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([brand]) => brand);
+        const snapshot = await adminDb.collection('products').select('brand', 'brandKey', 'archived').limit(1500).get();
+        return collapseBrandDisplays(
+            snapshot.docs
+                .filter(doc => doc.data().archived !== true)
+                .map(doc => ({ brand: doc.data().brand, brandKey: doc.data().brandKey }))
+        );
     },
     ['unique-brands'],
     { revalidate: 3600, tags: ['products'] }

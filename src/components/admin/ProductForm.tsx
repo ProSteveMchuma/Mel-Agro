@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Product } from "@/types";
 import { uploadImage } from "@/lib/storage";
-import { getUniqueCategories } from "@/lib/products";
+import { getUniqueBrands, getUniqueCategories } from "@/lib/products";
+import { findNearDuplicateBrand, normalizeDisplayField } from "@/lib/catalog-normalize";
 import Image from "next/image";
 
 interface ProductFormProps {
@@ -15,6 +16,10 @@ interface ProductFormProps {
 
 export default function ProductForm({ initialData, onSubmit, isSubmitting, title }: ProductFormProps) {
     const [dynamicCategories, setDynamicCategories] = useState<string[]>(['Animal Feeds', 'Fertilizers', 'Seeds', 'Crop Protection Products', 'Veterinary Products', 'Farm Tools']);
+    const [knownBrands, setKnownBrands] = useState<string[]>([]);
+    const [brandMode, setBrandMode] = useState<'pick' | 'new'>(initialData?.brand ? 'pick' : 'pick');
+    const [newBrandDraft, setNewBrandDraft] = useState('');
+    const [brandHint, setBrandHint] = useState<string | null>(null);
 
     useEffect(() => {
         getUniqueCategories()
@@ -27,7 +32,18 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
             .catch(err => {
                 console.warn('Failed to load product categories, using defaults:', err);
             });
-    }, []);
+        getUniqueBrands()
+            .then((brands) => {
+                setKnownBrands(brands);
+                if (initialData?.brand) {
+                    const match = brands.find((b) => b.toLowerCase() === initialData.brand!.toLowerCase());
+                    if (!match && initialData.brand) {
+                        setKnownBrands((prev) => Array.from(new Set([...prev, initialData.brand!])).sort((a, b) => a.localeCompare(b)));
+                    }
+                }
+            })
+            .catch((err) => console.warn('Failed to load brands:', err));
+    }, [initialData?.brand]);
 
     const [formData, setFormData] = useState({
         name: initialData?.name || '',
@@ -261,14 +277,91 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Brand</label>
-                            <input
-                                type="text"
-                                name="brand"
-                                value={formData.brand}
-                                onChange={handleChange}
-                                className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary"
-                                placeholder="e.g. Yara"
-                            />
+                            <div className="relative">
+                                <select
+                                    name="brand"
+                                    value={brandMode === 'new' ? '__new__' : (formData.brand || '')}
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+                                        if (value === '__new__') {
+                                            setBrandMode('new');
+                                            setFormData((prev) => ({ ...prev, brand: '' }));
+                                            setNewBrandDraft('');
+                                            setBrandHint(null);
+                                            return;
+                                        }
+                                        setBrandMode('pick');
+                                        setFormData((prev) => ({ ...prev, brand: value }));
+                                        setBrandHint(null);
+                                    }}
+                                    className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary pr-10"
+                                >
+                                    <option value="">No brand / unbranded</option>
+                                    {knownBrands.map((brand) => (
+                                        <option key={brand} value={brand}>{brand}</option>
+                                    ))}
+                                    <option value="__new__">+ Add New Brand</option>
+                                </select>
+                                {brandMode === 'new' && (
+                                    <div className="mt-2 space-y-2">
+                                        <input
+                                            type="text"
+                                            value={newBrandDraft}
+                                            placeholder="Enter manufacturer brand name"
+                                            className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary text-sm font-bold"
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                setNewBrandDraft(val);
+                                                const near = findNearDuplicateBrand(val, knownBrands);
+                                                setBrandHint(near);
+                                                setFormData((prev) => ({ ...prev, brand: normalizeDisplayField(val) }));
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    const val = normalizeDisplayField(newBrandDraft);
+                                                    if (!val) return;
+                                                    const near = findNearDuplicateBrand(val, knownBrands);
+                                                    if (near) {
+                                                        setBrandMode('pick');
+                                                        setFormData((prev) => ({ ...prev, brand: near }));
+                                                        setBrandHint(null);
+                                                        return;
+                                                    }
+                                                    setKnownBrands((prev) => Array.from(new Set([...prev, val])).sort((a, b) => a.localeCompare(b)));
+                                                    setBrandMode('pick');
+                                                    setFormData((prev) => ({ ...prev, brand: val }));
+                                                }
+                                            }}
+                                            onBlur={() => {
+                                                const val = normalizeDisplayField(newBrandDraft);
+                                                if (!val) {
+                                                    setBrandMode('pick');
+                                                    setFormData((prev) => ({ ...prev, brand: '' }));
+                                                    return;
+                                                }
+                                                const near = findNearDuplicateBrand(val, knownBrands);
+                                                if (near) setBrandHint(near);
+                                                else {
+                                                    setKnownBrands((prev) => Array.from(new Set([...prev, val])).sort((a, b) => a.localeCompare(b)));
+                                                    setBrandMode('pick');
+                                                    setFormData((prev) => ({ ...prev, brand: val }));
+                                                }
+                                            }}
+                                        />
+                                        {brandHint && (
+                                            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                                                Similar brand already exists: <button type="button" className="font-bold underline" onClick={() => {
+                                                    setBrandMode('pick');
+                                                    setFormData((prev) => ({ ...prev, brand: brandHint }));
+                                                    setBrandHint(null);
+                                                }}>{brandHint}</button>
+                                                . Use that spelling to avoid duplicates, or keep typing a clearly different name.
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Product Code (SKU)</label>

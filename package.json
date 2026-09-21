@@ -12,6 +12,8 @@
     "lint": "eslint",
     "check:env": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-env.ts",
     "check:env:production": "node --env-file-if-exists=.env.local --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-env.ts --production",
+    "normalize:brands": "node --env-file-if-exists=.env.local scripts/normalize-brands.js",
+    "normalize:brands:apply": "node --env-file-if-exists=.env.local scripts/normalize-brands.js --apply",
     "audit:production": "npm audit --omit=dev --audit-level=high",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/*.test.ts",
     "test:rules": "firebase emulators:exec --only firestore \"node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/firestore-rules.emulator.ts\""
