@@ -6,6 +6,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { mergeCartItems } from '@/lib/cart-merge';
 
 interface CartContextType {
     cartItems: CartItem[];
@@ -33,29 +34,33 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-    // 1. Initial Load: LocalStorage -> Firestore Merge
+    // Load + merge local guest cart with the signed-in account cart.
     useEffect(() => {
+        let cancelled = false;
+        setIsInitialLoad(true);
+
         const loadCart = async () => {
             const localCart = localStorage.getItem('Mel-Agri_cart');
-            let items: CartItem[] = [];
+            let localItems: CartItem[] = [];
 
             if (localCart) {
                 try {
-                    items = JSON.parse(localCart);
+                    const parsed = JSON.parse(localCart);
+                    localItems = Array.isArray(parsed) ? parsed : [];
                 } catch (e) {
                     console.error("Failed to parse local cart", e);
                 }
             }
+
+            let items = localItems;
 
             if (user) {
                 try {
                     const cartDoc = await getDoc(doc(db, 'carts', user.uid));
                     if (cartDoc.exists()) {
                         const cloudItems = (cartDoc.data().items || []) as CartItem[];
-                        // If local/guest cart has items, we do NOT merge with cloud items to prevent duplicate quantities.
-                        // We only load cloud items if the local cart is empty.
-                        if (items.length === 0) {
-                            items = cloudItems;
+                        if (Array.isArray(cloudItems) && cloudItems.length > 0) {
+                            items = mergeCartItems(localItems, cloudItems);
                         }
                     }
                 } catch (e) {
@@ -63,14 +68,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 }
             }
 
+            if (cancelled) return;
             setCartItems(items);
             setIsInitialLoad(false);
         };
 
-        loadCart();
+        void loadCart();
+        return () => {
+            cancelled = true;
+        };
     }, [user]);
 
-    // 2. Persist to LocalStorage and Cloud
+    // Persist to LocalStorage and Cloud after the load/merge settles.
     useEffect(() => {
         if (isInitialLoad) return;
 
@@ -95,7 +104,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                     console.error("Cloud cart sync failed", e);
                 }
             };
-            syncCart();
+            void syncCart();
         }
     }, [cartItems, user, isInitialLoad]);
 
@@ -107,7 +116,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         const requestedQuantity = Math.max(1, Math.floor(quantity));
-        // Log analytics
         import('@/lib/analytics').then(({ AnalyticsService }) => {
             AnalyticsService.logAddToCart(String(product.id));
         });
@@ -137,7 +145,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             ]);
             toast.success(`Added ${itemName} to cart`);
         }
-        setIsCartOpen(true); // Open drawer on add
+        setIsCartOpen(true);
         return true;
     };
 

@@ -46,8 +46,10 @@ export default function Footer() {
                     {/* Column 4: Payment & Newsletter */}
                     <div>
                         <h3 className="text-white font-bold uppercase tracking-wider text-xs mb-6">Payment Methods</h3>
-                        <div className="flex gap-2 mb-8">
-                            <span className="bg-white px-2 py-1 rounded text-[10px] font-bold text-gray-800">M-PESA</span>
+                        <div className="flex flex-wrap gap-2 mb-8">
+                            <span className="bg-white px-2 py-1 rounded text-[10px] font-bold text-gray-800">M-PESA EXPRESS</span>
+                            <span className="bg-white px-2 py-1 rounded text-[10px] font-bold text-gray-800">BUY GOODS</span>
+                            <span className="bg-white px-2 py-1 rounded text-[10px] font-bold text-gray-800">CASH ON DELIVERY</span>
                         </div>
 
                         <h3 className="text-white font-bold uppercase tracking-wider text-xs mb-4">Need Help?</h3>

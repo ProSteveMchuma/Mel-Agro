@@ -14,7 +14,6 @@ import { toast } from 'react-hot-toast';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 import { getAuth, updateProfile as updateAuthProfile, signInAnonymously } from 'firebase/auth';
 import { db, auth } from '@/lib/firebase';
-import { generateWhatsAppMessage, getWhatsAppUrl } from '@/lib/whatsapp';
 import { useBehavior } from '@/context/BehaviorContext';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { authenticatedJsonHeaders } from '@/lib/auth-headers';
@@ -264,8 +263,6 @@ export default function CheckoutPage() {
         if (method === 'mpesa') return 'M-Pesa Express';
         if (method === 'manual_mpesa') return 'Buy Goods (Till)';
         if (method === 'cod') return 'Cash on Delivery';
-        if (method === 'card') return 'Card';
-        if (method === 'whatsapp') return 'WhatsApp';
         return method;
     };
     const showQuickCheckout =
@@ -352,8 +349,7 @@ export default function CheckoutPage() {
         const primary = saved.find(a => a.isPrimary) || saved[saved.length - 1];
 
         const cleanName = user.name && user.name !== 'User' ? user.name : '';
-        // Card and WhatsApp checkout are temporarily unavailable to customers.
-        // Keep their processing code intact so existing orders remain supported.
+        // Storefront checkout only offers M-Pesa Express, Buy Goods (Till), and COD.
         const validPaymentMethods = ['mpesa', 'manual_mpesa', 'cod'] as const;
         const preferred = (user as any).preferredPaymentMethod;
         const initialPaymentMethod = (preferred && validPaymentMethods.includes(preferred)) ? preferred : 'mpesa';
@@ -543,30 +539,6 @@ export default function CheckoutPage() {
                 lastOrderId: newOrder.id
             }, { merge: true }).catch(() => { });
 
-            if (data.paymentMethod === 'whatsapp') {
-                const message = generateWhatsAppMessage({
-                    orderId: newOrder.id,
-                    items: newOrder.items.map(item => ({
-                        name: item.selectedVariant ? `${item.name} (${item.selectedVariant.name})` : item.name,
-                        quantity: item.quantity,
-                        price: item.price
-                    })),
-                    total: authoritativeTotal,
-                    userName: (activeUser?.name && activeUser.name !== 'User') ? activeUser.name : data.shipping.fullName,
-                    phone: data.shipping.phone,
-                    address: `${data.shipping.address}, ${data.shipping.town}, ${data.shipping.county}`
-                });
-
-                const whatsappUrl = getWhatsAppUrl(message);
-                clearCart();
-                toast.success("Order recorded! Redirecting to WhatsApp...");
-                setTimeout(() => {
-                    window.open(whatsappUrl, '_blank');
-                    router.push(`/checkout/success?orderId=${newOrder.id}`);
-                }, 2000);
-                return;
-            }
-
             if (data.paymentMethod === 'mpesa') {
 
                 const loadingToast = toast.loading("Initiating M-Pesa prompt...");
@@ -688,33 +660,7 @@ export default function CheckoutPage() {
                 return;
             }
 
-            if (data.paymentMethod === 'card') {
-                const loadingToast = toast.loading("Preparing secure checkout...");
-                const response = await fetch('/api/payment/paystack/initialize', {
-                    method: 'POST',
-                    headers: authenticatedJsonHeaders(checkoutIdToken),
-                    body: JSON.stringify({
-                        items: cartItems,
-                        orderId: newOrder.id,
-                        email: data.shipping.email,
-                        amount: authoritativeTotal
-                    })
-                });
-
-                const resData = await response.json();
-                if (resData.success && resData.url) {
-                    toast.success("Redirecting to secure payment...", { id: loadingToast });
-                    clearCart();
-                    window.location.href = resData.url;
-                    return;
-                } else {
-                    toast.error(resData.message || "Failed to initiate card payment.", { id: loadingToast });
-                    setIsProcessing(false);
-                    return;
-                }
-            }
-
-            // Normal flow for COD
+            // COD and Buy Goods (receipt already claimed during create) land here.
             trackAction('checkout_complete', { orderId: newOrder.id });
             clearCart();
             toast.success("Order placed successfully!");
@@ -1272,17 +1218,6 @@ export default function CheckoutPage() {
                                                     </div>
                                                 )}
 
-                                                {paymentMethod === 'card' && (
-                                                    <div className="bg-blue-50 p-6 rounded-2xl border border-blue-100">
-                                                        <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
-                                                            <span className="text-xl">🔒</span> Secure Redirect
-                                                        </h3>
-                                                        <p className="text-sm text-gray-600">
-                                                            You will be redirected to Paystack to complete your card transaction safely. We do not store your card details.
-                                                        </p>
-                                                    </div>
-                                                )}
-
                                                 {paymentMethod === 'cod' && (
                                                     <div className="bg-gray-100 p-6 rounded-2xl border border-gray-200">
                                                         <h3 className="font-bold text-gray-900 flex items-center gap-2 mb-2">
@@ -1389,9 +1324,7 @@ export default function CheckoutPage() {
                                                     <p className="text-gray-600 text-sm">
                                                         {paymentMethod === 'mpesa' && 'Paying via M-Pesa Express (Phone)'}
                                                         {paymentMethod === 'manual_mpesa' && 'Paying via Buy Goods (Till)'}
-                                                        {paymentMethod === 'card' && 'Paying via Secure Card (Paystack)'}
                                                         {paymentMethod === 'cod' && 'Pay on Delivery / Collection'}
-                                                        {paymentMethod === 'whatsapp' && 'Confirm and complete order on WhatsApp'}
                                                     </p>
                                                 </div>
 
@@ -1540,11 +1473,9 @@ export default function CheckoutPage() {
                                                             Processing...
                                                         </>
                                                     ) : (
-                                                        paymentMethod === 'whatsapp' ? 'Complete on WhatsApp' :
-                                                            paymentMethod === 'mpesa' ? 'Send M-Pesa Prompt' :
-                                                                paymentMethod === 'card' ? 'Continue to Secure Card Payment' :
-                                                                    paymentMethod === 'manual_mpesa' ? 'Submit Payment for Verification' :
-                                                                        'Place Cash-on-Delivery Order'
+                                                        paymentMethod === 'mpesa' ? 'Send M-Pesa Prompt' :
+                                                            paymentMethod === 'manual_mpesa' ? 'Submit Payment for Verification' :
+                                                                'Place Cash-on-Delivery Order'
                                                     )}
                                                 </button>
                                             </div>
