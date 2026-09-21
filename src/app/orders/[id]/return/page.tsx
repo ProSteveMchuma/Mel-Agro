@@ -181,7 +181,12 @@ function OrderReturnInner() {
             {!loading && error ? <OrderAccessError message={error} signInHref={signInHref} /> : null}
             {!loading && order ? (
                 <div className="space-y-4">
-                    <OrderSummaryCard order={order} accessToken={accessToken} highlight="return" />
+                    <OrderSummaryCard
+                        order={order}
+                        accessToken={accessToken}
+                        highlight="return"
+                        onCancelled={setOrder}
+                    />
 
                     {submitted || order.returnStatus ? (
                         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-950">
