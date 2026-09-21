@@ -9,9 +9,12 @@ export default function MobileNav() {
     const { cartItems } = useCart();
     const { user } = useAuth();
 
-    // Don't show on checkout as it has its own bottom bar
-    // Also hide on individual product pages (e.g., /products/123) to avoid conflict with sticky "Add to Cart"
-    if (pathname === '/checkout' || (pathname.startsWith('/products/') && pathname !== '/products')) return null;
+    // Don't show on checkout / cart (own bottom bars) or PDP sticky Add to Cart
+    if (
+        pathname === '/checkout'
+        || pathname === '/cart'
+        || (pathname.startsWith('/products/') && pathname !== '/products')
+    ) return null;
 
     const navItems = [
         {

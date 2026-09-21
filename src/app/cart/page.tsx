@@ -19,7 +19,7 @@ export default function CartPage() {
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
             <Header />
 
-            <main className="flex-grow py-12">
+            <main className="flex-grow py-12 pb-28 lg:pb-12">
                 <div className="container-custom">
                     <h1 className="text-3xl font-extrabold text-gray-900 mb-8">Shopping Cart</h1>
 

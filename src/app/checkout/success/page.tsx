@@ -116,7 +116,10 @@ function OrderSuccessContent() {
             ? 'We received your payment details and will begin processing after our team verifies the transaction.'
             : isPayOnDelivery
                 ? 'Your order has been received. Please prepare payment for delivery or collection.'
-                : 'Your order is awaiting payment confirmation. You can complete or retry payment from your dashboard.';
+                : 'Your order is awaiting payment. Tap Pay now to complete M-Pesa, or enter your transaction code below.';
+
+    const trackHref = `/orders/${order.id}`;
+    const payHref = `/orders/${order.id}/pay`;
 
     return (
         <main className="flex-grow py-12 px-4">
@@ -187,15 +190,32 @@ function OrderSuccessContent() {
                                 Thank you for your order <span className="font-black text-gray-900">#{order.id.slice(0, 8)}</span>.
                                 {' '}{confirmationMessage}
                             </p>
-                            <p className="text-xs text-gray-400 mb-4 italic">Save your receipt below — you can return to your dashboard anytime.</p>
+                            <p className="text-xs text-gray-400 mb-4">Keep this order number handy. You can track status or finish payment below.</p>
                             <div className="flex flex-col sm:flex-row gap-4">
-                                <Link href="/dashboard/user" className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-200 text-center print:hidden flex items-center justify-center gap-2">
-                                    <span>🏠</span> Go to Dashboard
-                                </Link>
-                                <Link href="/products" className="border-2 border-melagri-primary text-melagri-primary bg-white px-8 py-4 rounded-2xl font-black hover:bg-green-50 transition-all text-center print:hidden flex items-center justify-center gap-2">
-                                    Shop More
-                                </Link>
+                                {!isPaid && !isPayOnDelivery ? (
+                                    <Link href={payHref} className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-200 text-center print:hidden flex items-center justify-center gap-2">
+                                        Pay now
+                                    </Link>
+                                ) : (
+                                    <Link href={trackHref} className="bg-[#22c55e] hover:bg-green-600 text-white px-8 py-4 rounded-2xl font-black transition-all shadow-lg shadow-green-200 text-center print:hidden flex items-center justify-center gap-2">
+                                        Track this order
+                                    </Link>
+                                )}
+                                {!isPaid && !isPayOnDelivery ? (
+                                    <Link href={trackHref} className="border-2 border-melagri-primary text-melagri-primary bg-white px-8 py-4 rounded-2xl font-black hover:bg-green-50 transition-all text-center print:hidden flex items-center justify-center gap-2">
+                                        Track order
+                                    </Link>
+                                ) : (
+                                    <Link href="/products" className="border-2 border-melagri-primary text-melagri-primary bg-white px-8 py-4 rounded-2xl font-black hover:bg-green-50 transition-all text-center print:hidden flex items-center justify-center gap-2">
+                                        Shop more
+                                    </Link>
+                                )}
                             </div>
+                            <p className="mt-4 text-center sm:text-left">
+                                <Link href="/dashboard/user" className="text-sm font-bold text-gray-500 hover:text-melagri-primary underline-offset-2 hover:underline print:hidden">
+                                    Open my account
+                                </Link>
+                            </p>
                             {!isPaid && !isPayOnDelivery && (
                                 <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-2xl print:hidden">
                                     <p className="text-sm font-black text-amber-950">Already paid on your phone?</p>

@@ -67,7 +67,8 @@ export default function Header() {
       <div className="bg-[#f0f9f1] py-1.5 md:py-2 border-b border-gray-100 hidden sm:block">
         <div className="container-custom flex justify-center items-center">
           <p className="text-[10px] md:text-xs font-medium text-gray-700 uppercase tracking-widest">
-            FREE delivery on eligible orders over <span className="font-black text-green-700 underline decoration-green-300 decoration-2">KES {FREE_SHIPPING_THRESHOLD.toLocaleString()}!</span>
+            FREE delivery on orders over <span className="font-black text-green-700 underline decoration-green-300 decoration-2">KES {FREE_SHIPPING_THRESHOLD.toLocaleString()}</span>
+            <span className="hidden md:inline"> — county rates apply below that</span>
           </p>
         </div>
       </div>

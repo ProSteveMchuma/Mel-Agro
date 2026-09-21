@@ -60,12 +60,12 @@ export default function CartDrawer() {
                 <div className="bg-melagri-primary/5 p-4 border-b border-gray-100">
                     {cartTotal >= FREE_SHIPPING_THRESHOLD ? (
                         <div className="text-sm text-green-700 font-bold flex items-center justify-center gap-2 bg-green-50 p-2 rounded-lg border border-green-100">
-                            <span>🎉</span> Your order qualifies for <span className="uppercase">eligible free delivery</span>!
+                            Free delivery unlocked (orders KES {FREE_SHIPPING_THRESHOLD.toLocaleString()}+)
                         </div>
                     ) : (
                         <div>
                             <p className="text-xs text-gray-600 mb-1.5 text-center">
-                                Add <span className="font-bold text-melagri-primary">KES {(FREE_SHIPPING_THRESHOLD - cartTotal).toLocaleString()}</span> more for <span className="font-bold">eligible free delivery</span>
+                                Add <span className="font-bold text-melagri-primary">KES {(FREE_SHIPPING_THRESHOLD - cartTotal).toLocaleString()}</span> more for free delivery on orders of KES {FREE_SHIPPING_THRESHOLD.toLocaleString()}+
                             </p>
                             <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden">
                                 <div

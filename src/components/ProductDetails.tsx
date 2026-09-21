@@ -134,7 +134,15 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                     <div className="space-y-6">
                         <div className="relative bg-gray-100 rounded-xl overflow-hidden aspect-square mx-auto max-w-lg lg:max-w-none">
                             <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
-                                <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">In Stock</span>
+                                {canPurchase ? (
+                                    <span className="bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">
+                                        In Stock{availableStock <= 10 ? ` · ${availableStock} left` : ''}
+                                    </span>
+                                ) : (
+                                    <span className="bg-gray-800 text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wide">
+                                        {requiresVariantSelection ? 'Select option' : 'Out of Stock'}
+                                    </span>
+                                )}
                             </div>
 
                             {/* Watermark */}
