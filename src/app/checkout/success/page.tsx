@@ -154,18 +154,8 @@ function OrderSuccessContent() {
                     <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-bl-full -z-0 opacity-50"></div>
 
                     <div className="flex flex-col md:flex-row items-center gap-8 relative z-10">
-                        {/* Farmer Image */}
-                        <div className="md:w-1/3 relative h-64">
-                            <Image
-                                src="/assets/images/happy-farmer.png"
-                                alt="Happy Farmer"
-                                fill
-                                className="rounded-2xl object-cover shadow-lg"
-                            />
-                        </div>
-
                         {/* Success Message */}
-                        <div className="md:w-2/3">
+                        <div className="w-full">
                             <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full mb-6 ${isPaid ? 'bg-green-100' : 'bg-amber-100'}`}>
                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center text-white text-[10px] font-bold ${isPaid ? 'bg-green-600' : 'bg-amber-500'}`}>✓</div>
                                 <span className={`text-[10px] font-black uppercase tracking-widest ${isPaid ? 'text-green-700' : 'text-amber-800'}`}>{confirmationLabel}</span>
