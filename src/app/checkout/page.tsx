@@ -69,7 +69,8 @@ export default function CheckoutPage() {
     const [couponInput, setCouponInput] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<{ id: string; code: string; type: string; value: number; amount: number } | null>(null);
     const [couponLoading, setCouponLoading] = useState(false);
-    const [showMap, setShowMap] = useState(true);
+    const [showMap, setShowMap] = useState(false);
+    const [showOtherPayments, setShowOtherPayments] = useState(false);
     const [quickCheckoutDismissed, setQuickCheckoutDismissed] = useState(false);
     const [paymentFailure, setPaymentFailure] = useState<{ orderId: string; message: string } | null>(null);
     const [showValidationErrors, setShowValidationErrors] = useState(false);
@@ -240,12 +241,41 @@ export default function CheckoutPage() {
     // One-tap reorder — show a shortcut for returning customers when their cart is OK and
     // their last order is paid. Pre-fill is already done by the user-sync useEffect.
     const lastPaidOrder = userOrders.find(o => (o as any).paymentStatus === 'Paid');
+    const primarySavedAddress = (() => {
+        const saved = (user?.savedAddresses || []) as Array<{ id: string; label: string; county: string; city: string; details: string; isPrimary?: boolean }>;
+        return saved.find(a => a.isPrimary) || saved[saved.length - 1] || null;
+    })();
+    const quickAddressPreview = primarySavedAddress
+        ? `${primarySavedAddress.label}: ${primarySavedAddress.details}${primarySavedAddress.city ? `, ${primarySavedAddress.city}` : ''}${primarySavedAddress.county ? `, ${primarySavedAddress.county}` : ''}`
+        : (lastPaidOrder as any)?.shippingAddress?.details
+            ? `${(lastPaidOrder as any).shippingAddress.details}${(lastPaidOrder as any).shippingAddress?.county ? `, ${(lastPaidOrder as any).shippingAddress.county}` : ''}`
+            : [shippingData.address, shippingData.town, shippingData.county].filter(Boolean).join(', ') || 'Saved delivery details';
+    const quickPaymentMethod = (() => {
+        const valid = ['mpesa', 'manual_mpesa', 'cod'] as const;
+        const preferred = (user as any)?.preferredPaymentMethod;
+        if (preferred && (valid as readonly string[]).includes(preferred)) return preferred;
+        const fromOrder = String((lastPaidOrder as any)?.paymentMethod || '').toLowerCase();
+        if (fromOrder.includes('express') || fromOrder === 'mpesa') return 'mpesa';
+        if (fromOrder.includes('till') || fromOrder.includes('manual') || fromOrder.includes('buy goods')) return 'manual_mpesa';
+        if (fromOrder.includes('cod') || fromOrder.includes('cash')) return 'cod';
+        return paymentMethod || 'mpesa';
+    })();
+    const paymentMethodLabel = (method: string) => {
+        if (method === 'mpesa') return 'M-Pesa Express';
+        if (method === 'manual_mpesa') return 'Buy Goods (Till)';
+        if (method === 'cod') return 'Cash on Delivery';
+        if (method === 'card') return 'Card';
+        if (method === 'whatsapp') return 'WhatsApp';
+        return method;
+    };
     const showQuickCheckout =
         currentStep === 1 &&
         !quickCheckoutDismissed &&
+        !isGuest &&
         !!lastPaidOrder &&
         !!user?.name && user.name !== 'User' &&
-        stockIssues.length === 0;
+        stockIssues.length === 0 &&
+        (!!primarySavedAddress || !!(lastPaidOrder as any)?.shippingAddress?.details || !!shippingData.address);
 
     const handleQuickCheckout = async () => {
         const ok = await trigger('shipping', { shouldFocus: false });
@@ -254,8 +284,9 @@ export default function CheckoutPage() {
             toast.error("Please correct the highlighted delivery details.");
             return;
         }
+        setValue('paymentMethod', quickPaymentMethod as 'mpesa' | 'manual_mpesa' | 'cod');
         setShowValidationErrors(false);
-        trackAction('quick_checkout_used', { lastOrderId: lastPaidOrder?.id });
+        trackAction('quick_checkout_used', { lastOrderId: lastPaidOrder?.id, paymentMethod: quickPaymentMethod });
         setCurrentStep(3);
     };
 
@@ -291,6 +322,7 @@ export default function CheckoutPage() {
 
     const handleFailureSwitchToTill = () => {
         setValue('paymentMethod', 'manual_mpesa');
+        setShowOtherPayments(true);
         setPaymentFailure(null);
         setCurrentStep(2);
         toast("Switched to manual Buy Goods. Pay via your M-Pesa menu, then enter the receipt code.", { duration: 6000 });
@@ -298,6 +330,7 @@ export default function CheckoutPage() {
 
     const handleFailureSwitchToCod = () => {
         setValue('paymentMethod', 'cod');
+        setShowOtherPayments(true);
         setPaymentFailure(null);
         setCurrentStep(3);
         toast.success("Switched to Cash on Delivery. Confirm to place the order.", { duration: 5000 });
@@ -695,7 +728,7 @@ export default function CheckoutPage() {
     };
 
     const steps = [
-        { id: 1, label: 'Fulfilment', icon: '📦' },
+        { id: 1, label: 'Delivery', icon: '📦' },
         { id: 2, label: 'Payment', icon: '💳' },
         { id: 3, label: 'Review', icon: '✓' }
     ];
@@ -783,9 +816,9 @@ export default function CheckoutPage() {
                                         </div>
                                         <p className="font-black text-lg leading-tight">Same address & payment as last time?</p>
                                         <p className="text-xs text-white/80 mt-1 truncate">
-                                            {(lastPaidOrder as any)?.shippingAddress?.details || ''}
+                                            {quickAddressPreview}
                                             {' · '}
-                                            {(lastPaidOrder as any)?.paymentMethod || ''}
+                                            {paymentMethodLabel(quickPaymentMethod)}
                                         </p>
                                     </div>
                                     <div className="flex flex-col sm:flex-row gap-2 shrink-0">
@@ -849,7 +882,7 @@ export default function CheckoutPage() {
                                             exit={{ opacity: 0, x: -20 }}
                                             className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm"
                                         >
-                                            <h2 className="text-2xl font-bold mb-2 text-gray-900">How should we fulfil this order?</h2>
+                                            <h2 className="text-2xl font-bold mb-2 text-gray-900">How should we get this to you?</h2>
                                             <p className="mb-8 text-sm text-gray-500">Choose delivery or collection first — we only ask for the details that apply.</p>
 
                                             {validationErrors.length > 0 && (
@@ -880,7 +913,7 @@ export default function CheckoutPage() {
                                                 </div>
                                             )}
 
-                                            {/* Fulfilment method — asked first */}
+                                            {/* Delivery or collection — asked first */}
                                             <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
                                                 <button
                                                     type="button"
@@ -911,20 +944,15 @@ export default function CheckoutPage() {
                                             </div>
 
                                             {isGuest && (
-                                                <div className="mb-8 p-6 bg-gradient-to-r from-emerald-50/50 to-green-50/20 rounded-2xl border border-green-100 flex items-center justify-between gap-4 flex-wrap">
-                                                    <div className="flex items-start gap-3 flex-1 min-w-[240px]">
-                                                        <span className="text-xl mt-0.5">💡</span>
-                                                        <div>
-                                                            <p className="text-sm font-black text-gray-900 tracking-tight">Checking out as a Guest</p>
-                                                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">Sign in or create an account to instantly retrieve saved addresses and earn loyalty points on this purchase.</p>
-                                                        </div>
-                                                    </div>
-                                                    <Link
-                                                        href="/auth/login?callbackUrl=/checkout"
-                                                        className="px-5 py-2.5 bg-white border border-gray-200 hover:border-melagri-primary text-gray-700 hover:text-melagri-primary text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-sm shrink-0"
-                                                    >
-                                                        Log In / Register
-                                                    </Link>
+                                                <div className="mb-6 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+                                                    <p>
+                                                        Checking out as a guest — no account needed.
+                                                        {' '}
+                                                        <Link href="/auth/login?callbackUrl=/checkout" className="font-bold text-melagri-primary hover:underline">
+                                                            Sign in
+                                                        </Link>
+                                                        {' '}for saved addresses &amp; points after you order.
+                                                    </p>
                                                 </div>
                                             )}
 
@@ -1082,10 +1110,11 @@ export default function CheckoutPage() {
                                             exit={{ opacity: 0, x: -20 }}
                                             className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm"
                                         >
-                                            <h2 className="text-2xl font-bold mb-8 text-gray-900">Payment Method</h2>
+                                            <h2 className="text-2xl font-bold mb-2 text-gray-900">Payment</h2>
+                                            <p className="mb-8 text-sm text-gray-500">Most farmers pay with M-Pesa Express — a prompt on your phone.</p>
 
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                {/* M-Pesa Option */}
+                                            <div className="space-y-4">
+                                                {/* M-Pesa Express — primary */}
                                                 <div
                                                     onClick={() => setValue('paymentMethod', 'mpesa')}
                                                     className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'mpesa'
@@ -1098,7 +1127,7 @@ export default function CheckoutPage() {
                                                             <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
                                                         </div>
                                                     )}
-                                                    <div className="mb-4">
+                                                    <div className="mb-3">
                                                         <span className="bg-[#22c55e] text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wide">Recommended</span>
                                                     </div>
                                                     <div className="flex items-center gap-3 mb-2">
@@ -1107,84 +1136,77 @@ export default function CheckoutPage() {
                                                         </div>
                                                         <span className="font-bold text-gray-900">M-Pesa Express</span>
                                                     </div>
-                                                    <p className="text-sm text-gray-500 font-medium">Instant payment directly from your phone.</p>
+                                                    <p className="text-sm text-gray-500 font-medium">We send a prompt to your phone — enter your PIN to pay.</p>
                                                 </div>
 
-                                                {/* M-Pesa Manual (Paybill) */}
-                                                <div
-                                                    onClick={() => setValue('paymentMethod', 'manual_mpesa')}
-                                                    className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'manual_mpesa'
-                                                        ? 'border-[#22c55e] bg-green-50/50 shadow-sm ring-2 ring-[#22c55e]/20'
-                                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                                        }`}
-                                                >
-                                                    {paymentMethod === 'manual_mpesa' && (
-                                                        <div className="absolute top-3 right-3 text-[#22c55e]">
-                                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                                                        </div>
-                                                    )}
-                                                    <div className="mb-4 h-[22px]"></div>
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center p-1 border border-gray-100 shadow-sm text-green-600 font-black text-xs">
-                                                            P
-                                                        </div>
-                                                        <span className="font-bold text-gray-900">Buy Goods (Till)</span>
-                                                    </div>
-                                                    <p className="text-sm text-gray-500 font-medium">Pay manually via M-Pesa Menu.</p>
-                                                </div>
+                                                {(showOtherPayments || paymentMethod === 'manual_mpesa' || paymentMethod === 'cod') ? (
+                                                    <div className="space-y-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowOtherPayments(false)}
+                                                            className="text-xs font-bold text-gray-400 hover:text-gray-700"
+                                                        >
+                                                            Hide other ways to pay
+                                                        </button>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            {/* Buy Goods (Till) */}
+                                                            <div
+                                                                onClick={() => setValue('paymentMethod', 'manual_mpesa')}
+                                                                className={`relative cursor-pointer rounded-2xl border-2 p-5 transition-all duration-200 ${paymentMethod === 'manual_mpesa'
+                                                                    ? 'border-[#22c55e] bg-green-50/50 shadow-sm ring-2 ring-[#22c55e]/20'
+                                                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                                    }`}
+                                                            >
+                                                                {paymentMethod === 'manual_mpesa' && (
+                                                                    <div className="absolute top-3 right-3 text-[#22c55e]">
+                                                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex items-center gap-3 mb-2">
+                                                                    <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-gray-100 text-green-600 font-black text-xs">
+                                                                        P
+                                                                    </div>
+                                                                    <span className="font-bold text-gray-900 text-sm">Buy Goods (Till)</span>
+                                                                </div>
+                                                                <p className="text-xs text-gray-500 font-medium">Pay manually via M-Pesa menu.</p>
+                                                            </div>
 
-                                                {/* Card Payment (Paystack) — temporarily hidden until Paystack credentials are configured.
-                                                    Re-enable by uncommenting this block AND setting PAYSTACK_SECRET_KEY +
-                                                    NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY in .env.local / Vercel.
-                                                <div
-                                                    onClick={() => setValue('paymentMethod', 'card')}
-                                                    className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'card'
-                                                        ? 'border-melagri-primary bg-blue-50/50 shadow-sm ring-2 ring-melagri-primary/20'
-                                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                                        }`}
-                                                >
-                                                    {paymentMethod === 'card' && (
-                                                        <div className="absolute top-3 right-3 text-melagri-primary">
-                                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                                            {/* Cash on Delivery */}
+                                                            <div
+                                                                onClick={() => setValue('paymentMethod', 'cod')}
+                                                                className={`relative cursor-pointer rounded-2xl border-2 p-5 transition-all duration-200 ${paymentMethod === 'cod'
+                                                                    ? 'border-gray-800 bg-gray-100 shadow-sm ring-2 ring-gray-800/20'
+                                                                    : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                                    }`}
+                                                            >
+                                                                {paymentMethod === 'cod' && (
+                                                                    <div className="absolute top-3 right-3 text-gray-800">
+                                                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                                                    </div>
+                                                                )}
+                                                                <div className="flex items-center gap-3 mb-2">
+                                                                    <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center border border-gray-100 text-gray-600">
+                                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                                                    </div>
+                                                                    <span className="font-bold text-gray-900 text-sm">Cash on Delivery</span>
+                                                                </div>
+                                                                <p className="text-xs text-gray-500 font-medium">
+                                                                    {shippingMethod === 'pickup'
+                                                                        ? 'Pay when you collect.'
+                                                                        : 'Pay when we deliver.'}
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                    )}
-                                                    <div className="mb-4 h-[22px]"></div>
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-100 shadow-sm text-gray-600">
-                                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
-                                                        </div>
-                                                        <span className="font-bold text-gray-900">Card Payment</span>
                                                     </div>
-                                                    <p className="text-sm text-gray-500 font-medium">Visa, Mastercard processed securely via Paystack.</p>
-                                                </div>
-                                                */}
-
-                                                {/* Cash on Delivery Option */}
-                                                <div
-                                                    onClick={() => setValue('paymentMethod', 'cod')}
-                                                    className={`relative cursor-pointer rounded-2xl border-2 p-6 transition-all duration-200 ${paymentMethod === 'cod'
-                                                        ? 'border-gray-800 bg-gray-100 shadow-sm ring-2 ring-gray-800/20'
-                                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                                        }`}
-                                                >
-                                                    {paymentMethod === 'cod' && (
-                                                        <div className="absolute top-3 right-3 text-gray-800">
-                                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
-                                                        </div>
-                                                    )}
-                                                    <div className="mb-4 h-[22px]"></div>
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-gray-100 shadow-sm text-gray-600">
-                                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                                                        </div>
-                                                        <span className="font-bold text-gray-900">Cash on Delivery</span>
-                                                    </div>
-                                                    <p className="text-sm text-gray-500 font-medium">
-                                                        {shippingMethod === 'pickup'
-                                                            ? 'Pay with cash or M-Pesa when you collect.'
-                                                            : 'Pay with cash or M-Pesa upon delivery.'}
-                                                    </p>
-                                                </div>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowOtherPayments(true)}
+                                                        className="w-full rounded-2xl border border-dashed border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
+                                                    >
+                                                        Other ways to pay → Buy Goods (Till) or Cash on Delivery
+                                                    </button>
+                                                )}
                                             </div>
 
                                             {/* Selected Payment Details */}
@@ -1304,7 +1326,7 @@ export default function CheckoutPage() {
                                             <h2 className="text-2xl font-bold mb-8 text-gray-900">Review Your Order</h2>
 
                                             <div className="space-y-8">
-                                                {/* Fulfilment details */}
+                                                {/* Contact & address */}
                                                 <div className="pb-8 border-b">
                                                     <div className="flex items-start justify-between mb-4">
                                                         <h3 className="font-bold text-gray-900">
@@ -1334,10 +1356,10 @@ export default function CheckoutPage() {
                                                     )}
                                                 </div>
 
-                                                {/* Fulfilment method */}
+                                                {/* Delivery method */}
                                                 <div className="pb-8 border-b">
                                                     <div className="flex items-start justify-between mb-4">
-                                                        <h3 className="font-bold text-gray-900">Fulfilment method</h3>
+                                                        <h3 className="font-bold text-gray-900">Delivery method</h3>
                                                         <button
                                                             type="button"
                                                             className="text-melagri-primary hover:underline text-sm font-semibold"
@@ -1361,12 +1383,12 @@ export default function CheckoutPage() {
                                                             Edit
                                                         </button>
                                                     </div>
-                                                    <p className="text-gray-900 font-semibold uppercase">
-                                                        {paymentMethod === 'cod' ? 'Cash on Delivery' :
-                                                            paymentMethod === 'whatsapp' ? 'WhatsApp Order' : paymentMethod}
+                                                    <p className="text-gray-900 font-semibold">
+                                                        {paymentMethodLabel(paymentMethod)}
                                                     </p>
                                                     <p className="text-gray-600 text-sm">
                                                         {paymentMethod === 'mpesa' && 'Paying via M-Pesa Express (Phone)'}
+                                                        {paymentMethod === 'manual_mpesa' && 'Paying via Buy Goods (Till)'}
                                                         {paymentMethod === 'card' && 'Paying via Secure Card (Paystack)'}
                                                         {paymentMethod === 'cod' && 'Pay on Delivery / Collection'}
                                                         {paymentMethod === 'whatsapp' && 'Confirm and complete order on WhatsApp'}
