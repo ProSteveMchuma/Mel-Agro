@@ -6,6 +6,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
 import { CommunicationTemplates } from '@/lib/communication-templates';
+import { withActionUrls } from '@/lib/order-access';
 import { notifyCustomer } from '@/lib/customer-notifications';
 
 const PAGE_SIZE = 20;
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
     });
     if (outcome.kind === 'processing') {
       try {
-        const tpl = CommunicationTemplates.getStatusUpdate(outcome.order as any, 'Processing');
+        const tpl = CommunicationTemplates.getStatusUpdate(withActionUrls(outcome.order as any), 'Processing');
         await notifyCustomer({
           userId: outcome.order.userId,
           phone: outcome.order.mpesaPhoneNumber || outcome.order.phone,

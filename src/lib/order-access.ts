@@ -145,6 +145,20 @@ export function customerOrderUrl(
     }
 }
 
+/** Attach signed action URLs for CommunicationTemplates on the server. */
+export function withActionUrls<T extends { id?: string; phone?: string | null }>(order: T): T & {
+    __actionUrls: Record<Exclude<OrderAccessAction, 'rs'>, string>;
+} {
+    return {
+        ...order,
+        __actionUrls: {
+            view: customerOrderUrl(order, 'view'),
+            pay: customerOrderUrl(order, 'pay'),
+            return: customerOrderUrl(order, 'return'),
+        },
+    };
+}
+
 export function isReturnEligible(order: {
     status?: string | null;
     returnStatus?: string | null;

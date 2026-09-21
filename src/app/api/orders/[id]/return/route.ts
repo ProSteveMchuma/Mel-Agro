@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { enforceRateLimit } from '@/lib/request-guard';
 import { authorizeOrderAction } from '@/lib/order-access-server';
-import { isReturnEligible, publicOrderSummary } from '@/lib/order-access';
+import { isReturnEligible, publicOrderSummary, withActionUrls } from '@/lib/order-access';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { adminDb } from '@/lib/firebase-admin';
@@ -64,7 +64,7 @@ export async function POST(
             returnRequestedAt,
         };
 
-        const template = CommunicationTemplates.getReturnRequested(updated as any);
+        const template = CommunicationTemplates.getReturnRequested(withActionUrls(updated as any));
         void notifyCustomer({
             userId: order.userId,
             phone: order.phone,

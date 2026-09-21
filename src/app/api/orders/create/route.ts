@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth-server';
 import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
 import { getZonesServer } from '@/lib/delivery-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
+import { withActionUrls } from '@/lib/order-access';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { enforceRateLimit } from '@/lib/request-guard';
 import { revalidateStorefrontCatalogue } from '@/lib/revalidate-catalogue';
@@ -295,8 +296,8 @@ export async function POST(request: Request) {
 
             transaction.set(orderRef, createdOrder);
             const placedTemplate = payment.status === 'Pending Payment'
-                ? CommunicationTemplates.getAwaitingPayment(createdOrder as any)
-                : CommunicationTemplates.getOrderConfirmation(createdOrder as any);
+                ? CommunicationTemplates.getAwaitingPayment(withActionUrls({ ...createdOrder, id: orderRef.id } as any))
+                : CommunicationTemplates.getOrderConfirmation(withActionUrls({ ...createdOrder, id: orderRef.id } as any));
             transaction.set(adminDb.collection('notifications').doc(), {
                 userId: uid,
                 message: placedTemplate.smsBody,
@@ -386,8 +387,8 @@ export async function POST(request: Request) {
         try {
             const awaitingPayment = order.status === 'Pending Payment';
             const confirmation = awaitingPayment
-                ? CommunicationTemplates.getAwaitingPayment(order as any)
-                : CommunicationTemplates.getOrderConfirmation(order as any);
+                ? CommunicationTemplates.getAwaitingPayment(withActionUrls(order as any))
+                : CommunicationTemplates.getOrderConfirmation(withActionUrls(order as any));
             await notifyCustomer({
                 userId: order.userId,
                 phone: order.phone,

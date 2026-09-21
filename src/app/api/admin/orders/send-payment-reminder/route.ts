@@ -3,6 +3,7 @@ import * as admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase-admin';
 import { requirePermission } from '@/lib/auth-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
+import { withActionUrls } from '@/lib/order-access';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { sendServerEmail } from '@/lib/server-notifications';
 
@@ -42,7 +43,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'Order has been refunded' }, { status: 409 });
         }
 
-        const tpl = CommunicationTemplates.getPaymentReminder(order);
+        const tpl = CommunicationTemplates.getPaymentReminder(withActionUrls(order));
 
         const results: Record<Channel, { ok: boolean; reason?: string }> = {} as any;
 

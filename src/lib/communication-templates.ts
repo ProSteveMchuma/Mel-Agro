@@ -1,16 +1,37 @@
 import type { Order } from "../types/index.ts";
 import { SITE_URL } from './site.ts';
-import { customerOrderUrl } from './order-access.ts';
 
 function shortOrderId(order: { id?: string }): string {
     return String(order.id || '').slice(0, 5).toUpperCase();
 }
 
-/** @deprecated Prefer customerOrderUrl for action-specific deep links. */
+export type OrderAction = 'view' | 'pay' | 'return';
+
+/** Dashboard fallback — used when a signed deep link is unavailable (e.g. client-side). */
 export function customerDashboardUrl(orderId?: string, tab: 'orders' | 'returns' = 'orders') {
     const params = new URLSearchParams({ tab });
     if (orderId) params.set('orderId', orderId);
     return `${SITE_URL}/dashboard/user?${params.toString()}`;
+}
+
+/**
+ * Unsigned deep-link path. Works for signed-in owners; guests need a server-signed
+ * `?t=` token (attach via `withActionUrls` / `customerOrderUrl` on the server).
+ */
+export function unsignedCustomerOrderUrl(
+    order: { id?: string },
+    action: OrderAction = 'view',
+): string {
+    const orderId = String(order.id || '').trim();
+    if (!orderId) return `${SITE_URL}/dashboard/user`;
+    const path = action === 'view' ? `/orders/${orderId}` : `/orders/${orderId}/${action}`;
+    return `${SITE_URL}${path}`;
+}
+
+type OrderWithActionUrls = { id?: string; __actionUrls?: Partial<Record<OrderAction, string>> };
+
+function actionUrl(order: OrderWithActionUrls, action: OrderAction): string {
+    return order.__actionUrls?.[action] || unsignedCustomerOrderUrl(order, action);
 }
 
 export const CommunicationTemplates = {
@@ -18,7 +39,7 @@ export const CommunicationTemplates = {
         const id = shortOrderId(order);
         const userName = order.userName || "Farmer";
         const amount = Number(order.total) || 0;
-        const link = customerOrderUrl(order, 'pay');
+        const link = actionUrl(order, 'pay');
         const smsBody = `Habari ${userName}, your Mel-Agri order #${id} (KES ${amount.toLocaleString()}) is awaiting payment. Pay here: ${link}`;
         return {
             subject: `Order Awaiting Payment - Mel-Agri #${id}`,
@@ -30,7 +51,7 @@ export const CommunicationTemplates = {
     getOrderConfirmation: (order: Order) => {
         const orderIdShort = shortOrderId(order);
         const userName = order.userName || "Farmer";
-        const link = customerOrderUrl(order, 'view');
+        const link = actionUrl(order, 'view');
 
         const smsBody = `Habari ${userName}, your Mel-Agri order #${orderIdShort} has been received. Total: KES ${order.total.toLocaleString()}. Track: ${link}`;
 
@@ -93,7 +114,7 @@ export const CommunicationTemplates = {
         const method = opts.method || (order as any).paymentMethod || 'M-Pesa';
         const amount = (order as any).amountPaid || order.total;
 
-        const link = customerOrderUrl(order, 'view');
+        const link = actionUrl(order, 'view');
         const smsBody = `Habari ${userName}! Payment of KES ${Number(amount).toLocaleString()} received for order #${orderIdShort}${receipt ? ` (Receipt: ${receipt})` : ''}. We're packing it. Track: ${link}`;
 
         const emailSubject = `Payment Received - Mel-Agri #${orderIdShort}`;
@@ -129,8 +150,8 @@ export const CommunicationTemplates = {
     getStatusUpdate: (order: Order, status: string) => {
         const id = shortOrderId(order);
         const userName = order.userName || 'Farmer';
-        const payLink = customerOrderUrl(order, 'pay');
-        const viewLink = customerOrderUrl(order, 'view');
+        const payLink = actionUrl(order, 'pay');
+        const viewLink = actionUrl(order, 'view');
         const statusCopy: Record<string, string> = {
             'Pending Payment': `Habari ${userName}, your Mel-Agri order #${id} is awaiting payment. Pay here: ${payLink}`,
             Processing: `Habari ${userName}, we're packing your Mel-Agri order #${id}. You'll get another SMS when it ships. Track: ${viewLink}`,
@@ -150,7 +171,7 @@ export const CommunicationTemplates = {
     getReturnRequested: (order: Order) => {
         const id = shortOrderId(order);
         const userName = order.userName || 'Farmer';
-        const link = customerOrderUrl(order, 'return');
+        const link = actionUrl(order, 'return');
         const smsBody = `Habari ${userName}, we received your return request for Mel-Agri order #${id}. We'll review it. View: ${link}`;
         return {
             subject: `Return requested - Mel-Agri #${id}`,
@@ -162,7 +183,7 @@ export const CommunicationTemplates = {
     getReturnUpdate: (order: Order, status: 'Approved' | 'Rejected') => {
         const id = shortOrderId(order);
         const userName = order.userName || 'Farmer';
-        const link = customerOrderUrl(order, 'return');
+        const link = actionUrl(order, 'return');
         const smsBody = `Habari ${userName}, your return request for Mel-Agri order #${id} has been ${status.toLowerCase()}. View: ${link}`;
         return {
             subject: `Return ${status} - Mel-Agri #${id}`,
@@ -176,7 +197,7 @@ export const CommunicationTemplates = {
         const userName = order.userName || "Farmer";
         const amount = Number(order.total) || 0;
         const tillNumber = opts.tillNumber || process.env.MPESA_TILL_NUMBER || '3130847';
-        const payUrl = customerOrderUrl(order, 'pay');
+        const payUrl = actionUrl(order, 'pay');
         const smsBody = `Habari ${userName}! Your Mel-Agri order #${orderIdShort} (KES ${amount.toLocaleString()}) is awaiting payment. Pay here: ${payUrl} or M-Pesa Till ${tillNumber}.`;
 
         const emailSubject = `Payment Reminder - Mel-Agri #${orderIdShort}`;
