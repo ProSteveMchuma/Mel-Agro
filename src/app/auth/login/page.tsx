@@ -1,11 +1,20 @@
 "use client";
 
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Logo from '@/components/Logo';
-import { sendSignInLinkToEmail, GoogleAuthProvider, signInWithPopup, signInWithCustomToken, updateProfile } from 'firebase/auth';
+import {
+    sendSignInLinkToEmail,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult,
+    linkWithPopup,
+    signInWithCustomToken,
+    updateProfile,
+} from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 
@@ -15,7 +24,7 @@ import { doc, setDoc } from 'firebase/firestore';
 // merge-update from this page must skip those.
 
 const getErrorMessage = (error: any) => {
-    const code = error.code as string;
+    const code = error?.code as string;
     switch (code) {
         case 'auth/invalid-phone-number':
             return 'The phone number is invalid. Please check the format.';
@@ -28,7 +37,19 @@ const getErrorMessage = (error: any) => {
         case 'auth/user-disabled':
             return 'This account has been disabled. Contact support.';
         case 'auth/operation-not-allowed':
-            return 'Phone authentication is not enabled in the system.';
+            return 'This sign-in method is not enabled. Enable Google in Firebase Authentication → Sign-in method, then try again.';
+        case 'auth/unauthorized-domain':
+            return 'This website domain is not authorized for Google sign-in. Add it under Firebase Authentication → Settings → Authorized domains.';
+        case 'auth/popup-blocked':
+            return 'Your browser blocked the Google sign-in window. Allow popups for Mel-Agri, or we will try a full-page redirect.';
+        case 'auth/popup-closed-by-user':
+            return 'Google sign-in was closed before finishing. Please try again.';
+        case 'auth/cancelled-popup-request':
+            return 'Another sign-in window was already open. Please try Google again.';
+        case 'auth/account-exists-with-different-credential':
+            return 'An account already exists with this email using a different sign-in method. Try phone or email magic link, or use the same Google account you used before.';
+        case 'auth/network-request-failed':
+            return 'Network error during Google sign-in. Check your connection and try again.';
         case 'auth/captcha-check-failed':
             return 'ReCAPTCHA check failed. Please refresh and try again.';
         case 'auth/invalid-verification-code':
@@ -36,9 +57,23 @@ const getErrorMessage = (error: any) => {
         case 'auth/code-expired':
             return 'The OTP code has expired. Please request a new one.';
         default:
-            return error.message || 'An unexpected error occurred. Please try again.';
+            return error?.message || 'An unexpected error occurred. Please try again.';
     }
 };
+
+function shouldFallbackToRedirect(code: string | undefined) {
+    return code === 'auth/popup-blocked'
+        || code === 'auth/cancelled-popup-request';
+}
+
+async function mergeGoogleProfile(uid: string, displayName: string | null, email: string | null) {
+    const trimmedEmail = (email || '').trim().toLowerCase();
+    await setDoc(doc(db, 'users', uid), {
+        name: displayName || (trimmedEmail ? trimmedEmail.split('@')[0] : 'User'),
+        email: trimmedEmail || null,
+        updatedAt: new Date().toISOString(),
+    }, { merge: true });
+}
 
 function LoginForm() {
     const [loginMethod, setLoginMethod] = useState<'phone' | 'email'>('phone');
@@ -52,10 +87,39 @@ function LoginForm() {
     const [otpSent, setOtpSent] = useState(false);
     const [needsName, setNeedsName] = useState(false);
     const [nameInput, setNameInput] = useState('');
+    const [googleBusy, setGoogleBusy] = useState(false);
 
     const router = useRouter();
     const searchParams = useSearchParams();
     const callbackUrl = searchParams.get('callbackUrl') || '/';
+
+    // Complete Google redirect flow (mobile / popup-blocked fallback)
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const result = await getRedirectResult(auth);
+                if (cancelled || !result?.user) return;
+                setGoogleBusy(true);
+                try {
+                    await mergeGoogleProfile(result.user.uid, result.user.displayName, result.user.email);
+                } catch (profileErr) {
+                    console.warn('Google profile merge after redirect failed (non-fatal):', profileErr);
+                }
+                const stored = window.localStorage.getItem('postLoginRedirect');
+                if (stored) window.localStorage.removeItem('postLoginRedirect');
+                router.push(stored || callbackUrl);
+            } catch (err: any) {
+                if (!cancelled) {
+                    console.error('Google redirect result error:', err);
+                    setError(getErrorMessage(err));
+                }
+            } finally {
+                if (!cancelled) setGoogleBusy(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [callbackUrl, router]);
 
     const handleSendOtp = async (e?: React.FormEvent) => {
         e?.preventDefault();
@@ -144,14 +208,8 @@ function LoginForm() {
         setIsLoading(true);
         setError('');
         try {
-            // Update Firebase Auth displayName so future onAuthStateChanged callbacks (and any
-            // server route that reads request.auth.token.name) see the correct value.
             await updateProfile(fbUser, { displayName: trimmed });
 
-            // Write only the fields the user is allowed to update on their own profile.
-            // Firestore rules forbid non-admins from changing role / status / loyaltyPoints
-            // (firestore.rules:60). Those are already set correctly during the initial CREATE
-            // inside AuthContext.onAuthStateChanged, so we don't touch them here.
             await setDoc(doc(db, 'users', fbUser.uid), {
                 name: trimmed,
                 phone: fbUser.phoneNumber || phone || null,
@@ -168,7 +226,6 @@ function LoginForm() {
     };
 
     const handleSkipName = () => {
-        // Edge case: user really wants to skip. We allow it but the checkout guard will catch it later.
         router.push(callbackUrl);
     };
 
@@ -198,26 +255,63 @@ function LoginForm() {
     };
 
     const handleGoogleLogin = async () => {
-        try {
-            const provider = new GoogleAuthProvider();
-            const cred = await signInWithPopup(auth, provider);
-            const fbUser = cred.user;
+        setError('');
+        setGoogleBusy(true);
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
 
-            // Pre-write the Firestore doc so the dashboard greets new Google users by name
-            // immediately, instead of "User" until the next sign-in. Skip role/loyaltyPoints
-            // here — those are owned by AuthContext's CREATE path (Firestore rules don't
-            // let non-admins update them after the doc exists).
-            const trimmedEmail = (fbUser.email || '').trim().toLowerCase();
-            await setDoc(doc(db, 'users', fbUser.uid), {
-                name: fbUser.displayName || (trimmedEmail ? trimmedEmail.split('@')[0] : 'User'),
-                email: trimmedEmail || null,
-                updatedAt: new Date().toISOString(),
-            }, { merge: true });
-
+        const finish = async (uid: string, displayName: string | null, email: string | null) => {
+            // Profile merge is best-effort — Auth already succeeded; AuthContext creates the user doc.
+            try {
+                await mergeGoogleProfile(uid, displayName, email);
+            } catch (profileErr) {
+                console.warn('Google profile merge failed (non-fatal):', profileErr);
+            }
             router.push(callbackUrl);
+        };
+
+        try {
+            const current = auth.currentUser;
+
+            // Preserve guest cart/orders: cache anonymous token, then try linking Google to the same UID.
+            if (current?.isAnonymous) {
+                try {
+                    const guestToken = await current.getIdToken();
+                    sessionStorage.setItem('melagri_guest_id_token', guestToken);
+                    const linked = await linkWithPopup(current, provider);
+                    await finish(linked.user.uid, linked.user.displayName, linked.user.email);
+                    return;
+                } catch (linkErr: any) {
+                    const linkCode = linkErr?.code as string | undefined;
+                    if (linkCode === 'auth/credential-already-in-use' || linkCode === 'auth/email-already-in-use') {
+                        const cred = await signInWithPopup(auth, provider);
+                        await finish(cred.user.uid, cred.user.displayName, cred.user.email);
+                        return;
+                    }
+                    if (shouldFallbackToRedirect(linkCode)) {
+                        window.localStorage.setItem('postLoginRedirect', callbackUrl);
+                        await signInWithRedirect(auth, provider);
+                        return;
+                    }
+                    throw linkErr;
+                }
+            }
+
+            try {
+                const cred = await signInWithPopup(auth, provider);
+                await finish(cred.user.uid, cred.user.displayName, cred.user.email);
+            } catch (popupErr: any) {
+                if (shouldFallbackToRedirect(popupErr?.code)) {
+                    window.localStorage.setItem('postLoginRedirect', callbackUrl);
+                    await signInWithRedirect(auth, provider);
+                    return;
+                }
+                throw popupErr;
+            }
         } catch (err: any) {
             console.error("Google login error:", err);
             setError(getErrorMessage(err));
+            setGoogleBusy(false);
         }
     };
 
@@ -238,7 +332,6 @@ function LoginForm() {
                         </p>
                     </div>
 
-                    {/* Method Switcher (hidden during the post-OTP name capture step) */}
                     {!needsName && (
                         <div className="flex border-b border-gray-200">
                             <button
@@ -264,7 +357,6 @@ function LoginForm() {
                         </div>
                     )}
 
-                    {/* Name Capture (after successful OTP for phone-only signups) */}
                     {needsName ? (
                         <form onSubmit={handleSaveName} className="mt-6 space-y-6">
                             <div className="text-center">
@@ -306,7 +398,6 @@ function LoginForm() {
                         </form>
                     ) : null}
 
-                    {/* Phone Login Form */}
                     {!needsName && loginMethod === 'phone' && (
                         <div className="mt-6 space-y-6">
                             {!otpSent ? (
@@ -374,7 +465,6 @@ function LoginForm() {
                         </div>
                     )}
 
-                    {/* Email Login Form */}
                     {!needsName && loginMethod === 'email' && (
                         <>
                             {linkSent ? (
@@ -404,17 +494,31 @@ function LoginForm() {
                                     </button>
                                 </form>
                             )}
-                            <div className="relative mt-6">
+                        </>
+                    )}
+
+                    {/* Google — always visible on phone and email tabs */}
+                    {!needsName && (
+                        <div className="mt-6 space-y-4">
+                            <div className="relative">
                                 <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300"></div></div>
                                 <div className="relative flex justify-center text-sm"><span className="px-2 bg-white text-gray-500 uppercase tracking-wider text-xs font-semibold">Or continue with</span></div>
                             </div>
-                            <div className="mt-6 grid grid-cols-1 gap-3">
-                                <button onClick={handleGoogleLogin} className="w-full inline-flex justify-center items-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                                    <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" /></svg>
-                                    Continue with Google
-                                </button>
-                            </div>
-                        </>
+                            <button
+                                type="button"
+                                onClick={() => void handleGoogleLogin()}
+                                disabled={googleBusy || isLoading}
+                                className="w-full inline-flex justify-center items-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-70"
+                            >
+                                <svg className="h-5 w-5 mr-2" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z" fill="#FBBC05" />
+                                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                                </svg>
+                                {googleBusy ? 'Connecting to Google…' : 'Continue with Google'}
+                            </button>
+                        </div>
                     )}
 
                     <div className="mt-6 text-center text-xs text-gray-500">
