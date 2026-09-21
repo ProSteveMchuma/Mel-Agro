@@ -21,13 +21,34 @@ test('rejects unknown counties and out-of-country coordinates', () => {
     assert.equal(addressSchema.safeParse({ ...validAddress, lat: 40, lng: -74 }).success, false);
 });
 
-test('rejects unsupported checkout payment methods', () => {
-    const result = checkoutSchema.safeParse({
-        shipping: validAddress,
-        shippingMethod: 'standard',
-        paymentMethod: 'crypto',
+test('pickup checkout skips delivery address requirements', () => {
+    const pickup = checkoutSchema.safeParse({
+        shipping: {
+            fullName: 'Jane Wanjiku',
+            email: '',
+            phone: '0712345678',
+            county: '',
+            town: '',
+            address: '',
+        },
+        shippingMethod: 'pickup',
+        paymentMethod: 'mpesa',
     });
-    assert.equal(result.success, false);
+    assert.equal(pickup.success, true);
+
+    const deliveryMissingTown = checkoutSchema.safeParse({
+        shipping: {
+            fullName: 'Jane Wanjiku',
+            email: '',
+            phone: '0712345678',
+            county: 'Nairobi',
+            town: '',
+            address: 'Ngong Road landmark',
+        },
+        shippingMethod: 'standard',
+        paymentMethod: 'mpesa',
+    });
+    assert.equal(deliveryMissingTown.success, false);
 });
 
 test('enforces signup password strength and confirmation', () => {

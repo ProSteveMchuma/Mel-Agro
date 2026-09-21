@@ -26,6 +26,7 @@ import { get, useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { checkoutSchema, CheckoutFormData } from '@/lib/schemas';
 import { MPESA_TILL_DISPLAY } from '@/lib/site';
+import { PICKUP_STORE } from '@/lib/pickup';
 import { Input } from '@/components/ui/form/Input';
 import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
 import { Select } from '@/components/ui/form/Select';
@@ -41,10 +42,13 @@ const LocationPicker = dynamic(() => import('../../components/checkout/LocationP
 
 const KENYA_COUNTIES = KENYAN_COUNTIES.map(c => ({ value: c, label: c }));
 
-const SHIPPING_FIELDS = [
+const CONTACT_FIELDS = [
     { name: 'shipping.phone', label: 'Phone number' },
     { name: 'shipping.email', label: 'Email address' },
     { name: 'shipping.fullName', label: 'Full name' },
+] as const;
+
+const DELIVERY_FIELDS = [
     { name: 'shipping.county', label: 'County' },
     { name: 'shipping.town', label: 'Town, estate, or area' },
     { name: 'shipping.address', label: 'Street address or landmark' },
@@ -162,15 +166,19 @@ export default function CheckoutPage() {
         });
     };
 
+    const stepFields = shippingMethod === 'pickup'
+        ? CONTACT_FIELDS
+        : [...CONTACT_FIELDS, ...DELIVERY_FIELDS];
+
     const validationErrors = showValidationErrors
-        ? SHIPPING_FIELDS.flatMap(field => {
+        ? stepFields.flatMap(field => {
             const error = get(methods.formState.errors, field.name);
             return error ? [{ ...field, message: error.message || `${field.label} is required` }] : [];
         })
         : [];
 
     const revealShippingErrors = () => {
-        const invalidFields = SHIPPING_FIELDS.flatMap(field => {
+        const invalidFields = stepFields.flatMap(field => {
             const error = methods.getFieldState(field.name).error;
             return error ? [{ ...field, message: error.message || `${field.label} is required` }] : [];
         });
@@ -335,7 +343,7 @@ export default function CheckoutPage() {
 
     // Calculate dynamic shipping using live admin-managed zones
     const { zones: liveZones } = useShippingZones();
-    const deliveryInfo = getDeliveryCost(shippingData.county, cartTotal, liveZones);
+    const deliveryInfo = getDeliveryCost(shippingData.county || 'Nairobi', cartTotal, liveZones);
     const shippingCost = shippingMethod === 'standard' ? deliveryInfo.cost : 0;
 
     const discountFromPoints = usePoints ? Math.min(cartTotal, user?.loyaltyPoints || 0) : 0;
@@ -377,10 +385,13 @@ export default function CheckoutPage() {
 
     const handleNextStep = async () => {
         if (currentStep === 1) {
-            const isValid = await trigger('shipping', { shouldFocus: false });
+            // Validate contact always; address only for delivery (schema superRefine).
+            const isValid = await trigger(['shipping', 'shippingMethod'], { shouldFocus: false });
             if (!isValid) {
                 revealShippingErrors();
-                toast.error("Please correct the highlighted delivery details.");
+                toast.error(shippingMethod === 'pickup'
+                    ? 'Please complete your contact details for collection.'
+                    : 'Please correct the highlighted delivery details.');
                 trackAction('checkout_validation_frustration', { errors: ['missing_fields'] });
                 return;
             }
@@ -684,7 +695,7 @@ export default function CheckoutPage() {
     };
 
     const steps = [
-        { id: 1, label: 'Shipping', icon: '📦' },
+        { id: 1, label: 'Fulfilment', icon: '📦' },
         { id: 2, label: 'Payment', icon: '💳' },
         { id: 3, label: 'Review', icon: '✓' }
     ];
@@ -838,7 +849,8 @@ export default function CheckoutPage() {
                                             exit={{ opacity: 0, x: -20 }}
                                             className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm"
                                         >
-                                            <h2 className="text-2xl font-bold mb-8 text-gray-900">Contact Information</h2>
+                                            <h2 className="text-2xl font-bold mb-2 text-gray-900">How should we fulfil this order?</h2>
+                                            <p className="mb-8 text-sm text-gray-500">Choose delivery or collection first — we only ask for the details that apply.</p>
 
                                             {validationErrors.length > 0 && (
                                                 <div role="alert" aria-live="assertive" className="mb-8 rounded-2xl border-2 border-red-300 bg-red-50 p-5 text-red-900 shadow-sm">
@@ -868,6 +880,36 @@ export default function CheckoutPage() {
                                                 </div>
                                             )}
 
+                                            {/* Fulfilment method — asked first */}
+                                            <div className="mb-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setValue('shippingMethod', 'standard', { shouldValidate: true, shouldDirty: true })}
+                                                    className={`rounded-2xl border-2 p-5 text-left transition-all ${shippingMethod === 'standard'
+                                                        ? 'border-melagri-primary bg-melagri-primary/5 shadow-sm ring-2 ring-melagri-primary/20'
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                        }`}
+                                                >
+                                                    <p className="font-black text-gray-900">Deliver to me</p>
+                                                    <p className="mt-1 text-sm text-gray-500">{deliveryInfo.etaText} — {deliveryInfo.zoneName}</p>
+                                                    <p className="mt-3 text-sm font-bold text-melagri-primary">
+                                                        {deliveryInfo.cost === 0 ? 'FREE shipping' : `From KES ${deliveryInfo.cost.toLocaleString()}`}
+                                                    </p>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setValue('shippingMethod', 'pickup', { shouldValidate: true, shouldDirty: true })}
+                                                    className={`rounded-2xl border-2 p-5 text-left transition-all ${shippingMethod === 'pickup'
+                                                        ? 'border-melagri-primary bg-melagri-primary/5 shadow-sm ring-2 ring-melagri-primary/20'
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                        }`}
+                                                >
+                                                    <p className="font-black text-gray-900">Collect / Pickup</p>
+                                                    <p className="mt-1 text-sm text-gray-500">{PICKUP_STORE.etaText}</p>
+                                                    <p className="mt-3 text-sm font-bold text-melagri-primary">FREE</p>
+                                                </button>
+                                            </div>
+
                                             {isGuest && (
                                                 <div className="mb-8 p-6 bg-gradient-to-r from-emerald-50/50 to-green-50/20 rounded-2xl border border-green-100 flex items-center justify-between gap-4 flex-wrap">
                                                     <div className="flex items-start gap-3 flex-1 min-w-[240px]">
@@ -877,7 +919,7 @@ export default function CheckoutPage() {
                                                             <p className="text-xs text-gray-500 mt-1 leading-relaxed">Sign in or create an account to instantly retrieve saved addresses and earn loyalty points on this purchase.</p>
                                                         </div>
                                                     </div>
-                                                    <Link 
+                                                    <Link
                                                         href="/auth/login?callbackUrl=/checkout"
                                                         className="px-5 py-2.5 bg-white border border-gray-200 hover:border-melagri-primary text-gray-700 hover:text-melagri-primary text-xs font-black uppercase tracking-widest rounded-xl transition-all shadow-sm shrink-0"
                                                     >
@@ -886,36 +928,13 @@ export default function CheckoutPage() {
                                                 </div>
                                             )}
 
-                                            {user?.savedAddresses && user.savedAddresses.length > 0 && (
-                                                <div className="mb-8 p-6 bg-gray-50 rounded-2xl border border-gray-100">
-                                                    <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Quick Select: Saved Addresses</p>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                        {user.savedAddresses.map(addr => (
-                                                            <button
-                                                                type="button"
-                                                                key={addr.id}
-                                                                onClick={() => {
-                                                                    setValue('shipping.county', addr.county, { shouldValidate: true });
-                                                                    setValue('shipping.town', addr.city, { shouldValidate: true });
-                                                                    setValue('shipping.address', addr.details, { shouldValidate: true });
-                                                                    toast.success(`Loaded "${addr.label}"`);
-                                                                }}
-                                                                className="text-left p-3 bg-white rounded-xl border border-gray-100 hover:border-melagri-primary hover:shadow-md transition-all group"
-                                                            >
-                                                                <p className="font-bold text-gray-900 text-sm group-hover:text-melagri-primary">{addr.label}</p>
-                                                                <p className="text-[10px] text-gray-400 line-clamp-1">{addr.details}</p>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-
                                             <div className="space-y-6">
+                                                <h3 className="text-lg font-bold text-gray-900">Contact details</h3>
                                                 <Input
-                                                    name="shipping.email"
-                                                    type="email"
-                                                    label="Email Address (Optional)"
-                                                    placeholder="john@example.com"
+                                                    name="shipping.fullName"
+                                                    label="Full Name"
+                                                    placeholder="e.g. Wanjiku Mwangi"
+                                                    required
                                                 />
                                                 <Input
                                                     name="shipping.phone"
@@ -925,140 +944,120 @@ export default function CheckoutPage() {
                                                     format="phone"
                                                     required
                                                 />
-
-                                                <hr />
-
-                                                <h3 className="text-lg font-bold text-gray-900">Shipping Address</h3>
-
                                                 <Input
-                                                    name="shipping.fullName"
-                                                    label="Full Name"
-                                                    placeholder="e.g. Wanjiku Mwangi"
-                                                    required
+                                                    name="shipping.email"
+                                                    type="email"
+                                                    label="Email Address (Optional)"
+                                                    placeholder="john@example.com"
                                                 />
+                                            </div>
 
-                                                <Select
-                                                    name="shipping.county"
-                                                    label="County"
-                                                    options={KENYA_COUNTIES}
-                                                    required
-                                                />
+                                            {shippingMethod === 'pickup' ? (
+                                                <div className="mt-8 rounded-2xl border border-green-100 bg-green-50/60 p-6">
+                                                    <p className="text-xs font-black uppercase tracking-widest text-green-700">Collection point</p>
+                                                    <h3 className="mt-2 text-lg font-black text-gray-900">{PICKUP_STORE.name}</h3>
+                                                    <p className="mt-1 text-sm font-semibold text-gray-800">{PICKUP_STORE.label}</p>
+                                                    <p className="mt-3 text-sm text-gray-600">{PICKUP_STORE.etaText}. We will SMS you when your order is ready.</p>
+                                                </div>
+                                            ) : (
+                                                <div className="mt-8 space-y-6 border-t border-gray-100 pt-8">
+                                                    <h3 className="text-lg font-bold text-gray-900">Delivery address</h3>
 
-                                                <AddressSearchField
-                                                    name="shipping.town"
-                                                    label="Town / Estate / Area"
-                                                    placeholder="Start typing e.g. Westlands, Nakuru, Eldoret..."
-                                                    required
-                                                    helperText="Suggestions search the online map. Pick one to pin your delivery location."
-                                                    onPlaceSelect={(place) => applyMapPlace(place)}
-                                                />
-
-                                                <Textarea
-                                                    name="shipping.address"
-                                                    label="Street Address / Nearest Landmark"
-                                                    placeholder="e.g. Apartment, Building, Floor"
-                                                    rows={3}
-                                                    required
-                                                />
-
-                                                {/* Map stays linked to address search — pin moves when a suggestion is chosen */}
-                                                <div className="mt-6">
-                                                    {!showMap ? (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setShowMap(true)}
-                                                            className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 hover:border-melagri-primary hover:bg-green-50/50 rounded-2xl text-sm font-bold text-gray-500 hover:text-melagri-primary transition-all"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                            <span>Show delivery map</span>
-                                                        </button>
-                                                    ) : (
-                                                        <>
-                                                            <div className="flex items-center justify-between mb-4">
-                                                                <label className="block text-sm font-semibold text-gray-900">Delivery location on map</label>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setShowMap(false)}
-                                                                    className="text-xs font-bold text-gray-400 hover:text-gray-700 underline"
-                                                                >
-                                                                    Hide map
-                                                                </button>
+                                                    {user?.savedAddresses && user.savedAddresses.length > 0 && (
+                                                        <div className="p-6 bg-gray-50 rounded-2xl border border-gray-100">
+                                                            <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-4">Quick Select: Saved Addresses</p>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                                {user.savedAddresses.map(addr => (
+                                                                    <button
+                                                                        type="button"
+                                                                        key={addr.id}
+                                                                        onClick={() => {
+                                                                            setValue('shipping.county', addr.county, { shouldValidate: true });
+                                                                            setValue('shipping.town', addr.city, { shouldValidate: true });
+                                                                            setValue('shipping.address', addr.details, { shouldValidate: true });
+                                                                            toast.success(`Loaded "${addr.label}"`);
+                                                                        }}
+                                                                        className="text-left p-3 bg-white rounded-xl border border-gray-100 hover:border-melagri-primary hover:shadow-md transition-all group"
+                                                                    >
+                                                                        <p className="font-bold text-gray-900 text-sm group-hover:text-melagri-primary">{addr.label}</p>
+                                                                        <p className="text-[10px] text-gray-400 line-clamp-1">{addr.details}</p>
+                                                                    </button>
+                                                                ))}
                                                             </div>
-                                                            <LocationPicker
-                                                                lat={shippingData.lat}
-                                                                lng={shippingData.lng}
-                                                                onLocationSelect={(lat, lng, address) => {
-                                                                    setValue('shipping.lat', lat);
-                                                                    setValue('shipping.lng', lng);
-                                                                    const county = matchKenyanCounty(address?.county) || address?.county;
-                                                                    if (county) setValue('shipping.county', county, { shouldValidate: true });
-                                                                    if (address?.town) setValue('shipping.town', address.town, { shouldValidate: true });
-
-                                                                    if (county) {
-                                                                        toast.success(`Location detected: ${county}`, { id: 'map-toast' });
-                                                                    } else {
-                                                                        toast.success('Location pinned!', { id: 'map-toast' });
-                                                                    }
-                                                                }}
-                                                                initialLat={shippingData.lat}
-                                                                initialLng={shippingData.lng}
-                                                            />
-                                                            <p className="text-[10px] text-gray-400 mt-2 italic">Search above to move the pin, or drag the marker to your exact delivery point.</p>
-                                                        </>
+                                                        </div>
                                                     )}
-                                                </div>
-                                            </div>
 
-                                            {/* Shipping Method */}
-                                            <div className="mt-8 pt-8 border-t">
-                                                <h3 className="text-lg font-bold text-gray-900 mb-4">Shipping Method</h3>
-                                                <div className="space-y-3">
-                                                    <label className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${shippingMethod === 'standard'
-                                                        ? 'border-melagri-primary bg-melagri-primary/5'
-                                                        : 'border-gray-200 hover:border-gray-300'
-                                                        }`}>
-                                                        <div className="flex items-center gap-3">
-                                                            <input
-                                                                type="radio"
-                                                                {...methods.register('shippingMethod')}
-                                                                value="standard"
-                                                                className="w-4 h-4 accent-melagri-primary"
-                                                            />
-                                                            <div className="flex-1">
-                                                                <p className="font-semibold text-gray-900">Standard Delivery</p>
-                                                                <p className="text-sm text-gray-500">{deliveryInfo.etaText} — {deliveryInfo.zoneName}</p>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <p className="font-bold text-melagri-primary">
-                                                                    {deliveryInfo.cost === 0 ? "FREE" : `KES ${deliveryInfo.cost.toLocaleString()}`}
-                                                                </p>
-                                                                {shippingMethod === 'standard' && (
-                                                                    <p className="text-[10px] text-gray-400 font-medium">({deliveryInfo.reason})</p>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </label>
+                                                    <Select
+                                                        name="shipping.county"
+                                                        label="County"
+                                                        options={KENYA_COUNTIES}
+                                                        required
+                                                    />
 
-                                                    <label className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${shippingMethod === 'pickup'
-                                                        ? 'border-melagri-primary bg-melagri-primary/5'
-                                                        : 'border-gray-200 hover:border-gray-300'
-                                                        }`}>
-                                                        <div className="flex items-center gap-3">
-                                                            <input
-                                                                type="radio"
-                                                                {...methods.register('shippingMethod')}
-                                                                value="pickup"
-                                                                className="w-4 h-4 accent-melagri-primary"
-                                                            />
-                                                            <div className="flex-1">
-                                                                <p className="font-semibold text-gray-900">Pick-up Station</p>
-                                                                <p className="text-sm text-gray-500">Collect at our store — ready in 1–2 hours</p>
-                                                            </div>
-                                                            <p className="font-bold text-melagri-primary">FREE</p>
-                                                        </div>
-                                                    </label>
+                                                    <AddressSearchField
+                                                        name="shipping.town"
+                                                        label="Town / Estate / Area"
+                                                        placeholder="Start typing e.g. Westlands, Nakuru, Eldoret..."
+                                                        required
+                                                        helperText="Suggestions search the online map. Pick one to pin your delivery location."
+                                                        onPlaceSelect={(place) => applyMapPlace(place)}
+                                                    />
+
+                                                    <Textarea
+                                                        name="shipping.address"
+                                                        label="Street Address / Nearest Landmark"
+                                                        placeholder="e.g. Apartment, Building, Floor"
+                                                        rows={3}
+                                                        required
+                                                    />
+
+                                                    <div className="mt-2">
+                                                        {!showMap ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setShowMap(true)}
+                                                                className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 hover:border-melagri-primary hover:bg-green-50/50 rounded-2xl text-sm font-bold text-gray-500 hover:text-melagri-primary transition-all"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                                                <span>Show delivery map</span>
+                                                            </button>
+                                                        ) : (
+                                                            <>
+                                                                <div className="flex items-center justify-between mb-4">
+                                                                    <label className="block text-sm font-semibold text-gray-900">Delivery location on map</label>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setShowMap(false)}
+                                                                        className="text-xs font-bold text-gray-400 hover:text-gray-700 underline"
+                                                                    >
+                                                                        Hide map
+                                                                    </button>
+                                                                </div>
+                                                                <LocationPicker
+                                                                    lat={shippingData.lat}
+                                                                    lng={shippingData.lng}
+                                                                    onLocationSelect={(lat, lng, address) => {
+                                                                        setValue('shipping.lat', lat);
+                                                                        setValue('shipping.lng', lng);
+                                                                        const county = matchKenyanCounty(address?.county) || address?.county;
+                                                                        if (county) setValue('shipping.county', county, { shouldValidate: true });
+                                                                        if (address?.town) setValue('shipping.town', address.town, { shouldValidate: true });
+
+                                                                        if (county) {
+                                                                            toast.success(`Location detected: ${county}`, { id: 'map-toast' });
+                                                                        } else {
+                                                                            toast.success('Location pinned!', { id: 'map-toast' });
+                                                                        }
+                                                                    }}
+                                                                    initialLat={shippingData.lat}
+                                                                    initialLng={shippingData.lng}
+                                                                />
+                                                                <p className="text-[10px] text-gray-400 mt-2 italic">Search above to move the pin, or drag the marker to your exact delivery point.</p>
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            )}
 
                                             {/* Navigation */}
                                             <div className="mt-8 flex justify-end">
@@ -1300,10 +1299,12 @@ export default function CheckoutPage() {
                                             <h2 className="text-2xl font-bold mb-8 text-gray-900">Review Your Order</h2>
 
                                             <div className="space-y-8">
-                                                {/* Shipping Address */}
+                                                {/* Fulfilment details */}
                                                 <div className="pb-8 border-b">
                                                     <div className="flex items-start justify-between mb-4">
-                                                        <h3 className="font-bold text-gray-900">Shipping Address</h3>
+                                                        <h3 className="font-bold text-gray-900">
+                                                            {shippingMethod === 'pickup' ? 'Collection details' : 'Delivery address'}
+                                                        </h3>
                                                         <button
                                                             type="button"
                                                             className="text-melagri-primary hover:underline text-sm font-semibold"
@@ -1313,15 +1314,24 @@ export default function CheckoutPage() {
                                                         </button>
                                                     </div>
                                                     <p className="text-gray-900 font-semibold">{shippingData.fullName}</p>
-                                                    <p className="text-gray-600">{shippingData.address}</p>
-                                                    <p className="text-gray-600">{shippingData.town}, {shippingData.county}</p>
                                                     <p className="text-gray-600">{shippingData.phone}</p>
+                                                    {shippingMethod === 'pickup' ? (
+                                                        <>
+                                                            <p className="mt-3 text-gray-900 font-semibold">{PICKUP_STORE.label}</p>
+                                                            <p className="text-gray-600 text-sm">{PICKUP_STORE.etaText}</p>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <p className="text-gray-600">{shippingData.address}</p>
+                                                            <p className="text-gray-600">{shippingData.town}, {shippingData.county}</p>
+                                                        </>
+                                                    )}
                                                 </div>
 
-                                                {/* Shipping Method */}
+                                                {/* Fulfilment method */}
                                                 <div className="pb-8 border-b">
                                                     <div className="flex items-start justify-between mb-4">
-                                                        <h3 className="font-bold text-gray-900">Shipping Method</h3>
+                                                        <h3 className="font-bold text-gray-900">Fulfilment method</h3>
                                                         <button
                                                             type="button"
                                                             className="text-melagri-primary hover:underline text-sm font-semibold"
@@ -1330,7 +1340,7 @@ export default function CheckoutPage() {
                                                             Edit
                                                         </button>
                                                     </div>
-                                                    <p className="text-gray-900 font-semibold">{shippingMethod === 'standard' ? `Standard Delivery — ${deliveryInfo.etaText}` : 'Pick-up from Store'}</p>
+                                                    <p className="text-gray-900 font-semibold">{shippingMethod === 'standard' ? `Delivery — ${deliveryInfo.etaText}` : 'Collect / Pickup'}</p>
                                                 </div>
 
                                                 {/* Payment Method */}

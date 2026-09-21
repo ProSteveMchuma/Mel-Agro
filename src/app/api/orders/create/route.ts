@@ -4,6 +4,7 @@ import * as admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireUser } from '@/lib/auth-server';
 import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
+import { PICKUP_STORE } from '@/lib/pickup';
 import { getZonesServer } from '@/lib/delivery-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { notifyCustomer } from '@/lib/customer-notifications';
@@ -24,9 +25,9 @@ const createOrderSchema = z.object({
         phone: z.string().trim()
             .transform(value => value.replace(/[\s()-]/g, ''))
             .pipe(z.string().regex(/^(?:\+254|0)[17]\d{8}$/, 'Use a valid Kenyan phone number')),
-        county: z.string().trim().refine(value => KENYAN_COUNTIES.includes(value), 'Select a valid county'),
-        town: z.string().trim().min(2).max(100),
-        address: z.string().trim().min(5).max(300),
+        county: z.string().trim().optional(),
+        town: z.string().trim().optional(),
+        address: z.string().trim().optional(),
         lat: z.number().min(-5).max(6).optional(),
         lng: z.number().min(33).max(43).optional(),
     }),
@@ -44,6 +45,18 @@ const createOrderSchema = z.object({
             break;
         }
         uniqueLines.add(key);
+    }
+
+    if (value.shippingMethod === 'standard') {
+        if (!value.shipping.county || !KENYAN_COUNTIES.includes(value.shipping.county)) {
+            ctx.addIssue({ code: 'custom', path: ['shipping', 'county'], message: 'Select a valid county' });
+        }
+        if (!value.shipping.town || value.shipping.town.length < 2) {
+            ctx.addIssue({ code: 'custom', path: ['shipping', 'town'], message: 'Town is required' });
+        }
+        if (!value.shipping.address || value.shipping.address.length < 5) {
+            ctx.addIssue({ code: 'custom', path: ['shipping', 'address'], message: 'Please provide a valid address' });
+        }
     }
 });
 
@@ -204,7 +217,7 @@ export async function POST(request: Request) {
             const subtotal = Math.round(orderItems.reduce((sum, item) => sum + item.price * item.quantity, 0));
             const shippingInfo = input.shippingMethod === 'pickup'
                 ? { cost: 0, zoneName: 'Store Pickup', etaText: 'Ready for collection', etaMinDays: 0, etaMaxDays: 0 }
-                : getDeliveryCost(input.shipping.county, subtotal, zones);
+                : getDeliveryCost(input.shipping.county || '', subtotal, zones);
 
             const userData: any = userSnap.exists ? userSnap.data() : {};
             const availablePoints = Math.max(0, Math.floor(numberOrZero(userData.loyaltyPoints)));
@@ -254,12 +267,27 @@ export async function POST(request: Request) {
             }
 
             const payment = paymentDetails(input.paymentMethod, input.transactionCode);
+            const shipping = input.shippingMethod === 'pickup'
+                ? {
+                    ...input.shipping,
+                    county: PICKUP_STORE.county,
+                    town: PICKUP_STORE.town,
+                    address: PICKUP_STORE.address,
+                    lat: undefined,
+                    lng: undefined,
+                }
+                : {
+                    ...input.shipping,
+                    county: input.shipping.county || '',
+                    town: input.shipping.town || '',
+                    address: input.shipping.address || '',
+                };
             const shippingAddress = {
-                county: input.shipping.county,
-                details: `${input.shipping.address}, ${input.shipping.town}`,
+                county: shipping.county,
+                details: `${shipping.address}, ${shipping.town}`,
                 method: input.shippingMethod,
-                ...(input.shipping.lat != null ? { lat: input.shipping.lat } : {}),
-                ...(input.shipping.lng != null ? { lng: input.shipping.lng } : {}),
+                ...(shipping.lat != null ? { lat: shipping.lat } : {}),
+                ...(shipping.lng != null ? { lng: shipping.lng } : {}),
             };
             const reservationMinutes = ['mpesa', 'card'].includes(input.paymentMethod) ? 30 : 24 * 60;
             const inventoryCommitted = input.paymentMethod === 'cod';
@@ -349,18 +377,19 @@ export async function POST(request: Request) {
             }
 
             const existingAddresses = Array.isArray(userData.savedAddresses) ? userData.savedAddresses : [];
-            const addressKey = `${input.shipping.county.toLowerCase()}|${shippingAddress.details.toLowerCase()}`;
+            const shouldSaveAddress = input.shippingMethod === 'standard';
+            const addressKey = `${shipping.county.toLowerCase()}|${shippingAddress.details.toLowerCase()}`;
             const addressExists = existingAddresses.some((address: any) =>
                 `${String(address.county || '').toLowerCase()}|${String(address.details || '').toLowerCase()}` === addressKey
             );
-            const savedAddresses = addressExists ? existingAddresses : [...existingAddresses, {
+            const savedAddresses = (!shouldSaveAddress || addressExists) ? existingAddresses : [...existingAddresses, {
                 id: `addr_${orderRef.id}`,
-                label: input.shippingMethod === 'pickup' ? 'Pickup' : existingAddresses.length === 0 ? 'Default' : `Address ${existingAddresses.length + 1}`,
-                county: input.shipping.county,
-                city: input.shipping.town,
+                label: existingAddresses.length === 0 ? 'Default' : `Address ${existingAddresses.length + 1}`,
+                county: shipping.county,
+                city: shipping.town,
                 details: shippingAddress.details,
-                ...(input.shipping.lat != null ? { lat: input.shipping.lat } : {}),
-                ...(input.shipping.lng != null ? { lng: input.shipping.lng } : {}),
+                ...(shipping.lat != null ? { lat: shipping.lat } : {}),
+                ...(shipping.lng != null ? { lng: shipping.lng } : {}),
                 isPrimary: existingAddresses.length === 0,
                 savedAt: date,
             }];
@@ -368,9 +397,11 @@ export async function POST(request: Request) {
                 name: userData.name || input.shipping.fullName,
                 email: userData.email || input.shipping.email || authenticated.email || '',
                 phone: input.shipping.phone,
-                address: input.shipping.address,
-                city: input.shipping.town,
-                county: input.shipping.county,
+                ...(input.shippingMethod === 'standard' ? {
+                    address: shipping.address,
+                    city: shipping.town,
+                    county: shipping.county,
+                } : {}),
                 role: userData.role || 'user',
                 loyaltyPoints: availablePoints - pointsRedeemed,
                 savedAddresses,
