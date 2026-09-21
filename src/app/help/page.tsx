@@ -33,7 +33,7 @@ const faqCategories = [
         faqs: [
             {
                 question: "What shipping methods are available?",
-                answer: "Choose home delivery (priced by zone at checkout) or free pickup from our Nairobi store, usually ready in 1–2 hours."
+                answer: "Choose home delivery (priced by zone at checkout) or free pickup from our Machakos collection point only, usually ready in 1–2 hours."
             },
             {
                 question: "How do I track my delivery?",
