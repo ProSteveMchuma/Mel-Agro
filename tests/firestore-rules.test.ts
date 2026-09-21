@@ -25,7 +25,7 @@ test('prevents clients from writing payment-system collections', () => {
 });
 
 test('keeps intelligence aggregates server-authoritative', () => {
-    for (const collection of ['analytics_purchases', 'analytics_recommendations', 'analytics_visit_dedup', 'intelligence_alerts', 'aiInsights']) {
+    for (const collection of ['analytics_purchases', 'analytics_recommendations', 'analytics_visit_dedup', 'intelligence_alerts']) {
         const block = rules.match(new RegExp(`match /${collection}/\\{id\\} \\{([\\s\\S]*?)\\n    \\}`));
         assert.ok(block, `Missing rules block for ${collection}`);
         assert.match(block[1], /allow write: if false;/, `${collection} must remain server-write-only`);

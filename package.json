@@ -19,7 +19,6 @@
     "test:rules": "firebase emulators:exec --only firestore \"node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/firestore-rules.emulator.ts\""
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.92.0",
     "@hookform/resolvers": "^5.2.2",
     "@react-leaflet/core": "^3.0.0",
     "@types/canvas-confetti": "^1.9.0",

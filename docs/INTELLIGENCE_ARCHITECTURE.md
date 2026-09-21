@@ -19,16 +19,15 @@ The intelligence layer turns consented first-party commerce data into explainabl
 - **Product Intelligence:** combines paid demand, search gaps, lead time, safety stock, MOQ, and incoming stock. Co-purchase suggestions exclude unavailable and safety-sensitive categories.
 - **Customer Intelligence:** unifies guest and account orders using normalized phone first, then email and UID. It explains segments, reorder opportunities, and consent state.
 - **Fulfillment:** distinguishes likely provider incidents, customer friction, and callback delays, and compares actual delivery time with the configured county ETA.
-- **AI briefing:** receives a bounded aggregate snapshot, must cite snapshot field names, displays limitations, and never performs operational actions.
 - **Intelligence Health:** reports recommendation outcomes, paid-order/purchase reconciliation, schema coverage, product-data gaps, alert freshness, and retention backlog.
 
 ## Trust boundaries
 
-- Browser code sends events through authenticated/rate-limited API routes. It cannot write server-authoritative analytics, payments, alerts, or AI cache collections.
+- Browser code sends events through authenticated/rate-limited API routes. It cannot write server-authoritative analytics, payments, or alerts collections.
 - Admin APIs verify Firebase ID tokens and the stored admin role.
 - Firestore Admin SDK writes bypass rules only on trusted server routes.
 - Payment state comes from verified provider callbacks/status checks, never from customer-supplied success flags.
-- AI text is advisory. Refunds, substitutions, customer messages, and operational state changes require explicit staff actions.
+- Storefront traffic is anonymous (hashed IP + user-agent per calendar day). Named customers appear only via signed-in sessions and orders — never from the visit counter alone.
 
 ## Data minimization and retention
 

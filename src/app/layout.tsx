@@ -141,8 +141,8 @@ export default function RootLayout({
                             <WishlistProvider>
                               {children}
                               {/* <PWAInstallPrompt /> - Disabled by user request */}
+                              {/* ChatWidget disabled — WhatsAppButton is the live support entry point */}
                               <MobileNav />
-                              {/* <ChatWidget /> - Replacing basic widget with AI Bot */}
                               <WhatsAppButton />
                               <Analytics />
                               <SpeedInsights />

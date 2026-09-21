@@ -12,32 +12,7 @@ import {
     XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
 import { getAuth } from "firebase/auth";
-import { toast } from "react-hot-toast";
-import Link from 'next/link';
 import AnalyticsWorkspaceControls from '@/components/admin/AnalyticsWorkspaceControls';
-
-function InsightsContent({ markdown }: { markdown: string }) {
-    return <div className="space-y-3">{markdown.split('\n').map((raw, index) => {
-        const line = raw.trim();
-        if (!line) return null;
-        if (line.startsWith('### ')) return <h4 key={index} className="pt-3 text-base font-black text-gray-900">{line.slice(4)}</h4>;
-        if (line.startsWith('## ')) return <h3 key={index} className="pt-4 text-lg font-black text-gray-900">{line.slice(3)}</h3>;
-        if (line.startsWith('# ')) return <h2 key={index} className="pt-4 text-xl font-black text-gray-900">{line.slice(2)}</h2>;
-        if (/^[-*]\s+/.test(line)) return <div key={index} className="flex gap-2 pl-2 text-gray-700"><span aria-hidden="true">•</span><p>{line.replace(/^[-*]\s+/, '')}</p></div>;
-        return <p key={index} className="leading-relaxed text-gray-700">{line.replace(/\*\*|`|\*/g, '')}</p>;
-    })}</div>;
-}
-
-interface InsightsState {
-    loading: boolean;
-    insights: string | null;
-    generatedAt: string | null;
-    cached: boolean;
-    configurationRequired: boolean;
-    error: string | null;
-    evidenceLinks: Array<{ label: string; href: string }>;
-    limitations: string[];
-}
 
 const RANGES: Array<{ value: DateRange; label: string }> = [
     { value: '7d', label: 'Last 7 days' },
@@ -87,52 +62,6 @@ export default function AnalyticsPage() {
     const [dataTruncated, setDataTruncated] = useState(false);
     const [range, setRange] = useState<DateRange>('30d');
     const [granularity, setGranularity] = useState<Granularity>('day');
-    const [aiState, setAiState] = useState<InsightsState>({
-        loading: false, insights: null, generatedAt: null, cached: false, configurationRequired: false, error: null, evidenceLinks: [], limitations: [],
-    });
-
-    const loadInsights = async (force: boolean) => {
-        setAiState(s => ({ ...s, loading: true, error: null }));
-        try {
-            const token = await getAuth().currentUser?.getIdToken();
-            const headers: Record<string, string> = {
-                'Content-Type': 'application/json',
-                ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            };
-            const res = force
-                ? await fetch('/api/admin/ai-insights', { method: 'POST', headers, body: JSON.stringify({ range, force: true }) })
-                : await fetch(`/api/admin/ai-insights?range=${range}`, { headers });
-            const data = await res.json();
-            if (!res.ok || !data.success) {
-                if (data.configurationRequired) {
-                    setAiState({ loading: false, insights: null, generatedAt: null, cached: false, configurationRequired: true, error: data.message || 'Not configured', evidenceLinks: [], limitations: [] });
-                } else {
-                    setAiState(s => ({ ...s, loading: false, error: data.message || 'Failed to load insights' }));
-                    if (force) toast.error(data.message || 'Failed to generate insights');
-                }
-                return;
-            }
-            setAiState({
-                loading: false,
-                insights: data.insights || null,
-                generatedAt: data.generatedAt || null,
-                cached: !!data.cached,
-                configurationRequired: false,
-                error: null,
-                evidenceLinks: data.evidenceLinks || [],
-                limitations: data.limitations || [],
-            });
-            if (force) toast.success('Fresh insights generated');
-        } catch (e: any) {
-            setAiState(s => ({ ...s, loading: false, error: e?.message || 'Network error' }));
-        }
-    };
-
-    // On mount and when range changes — fetch any cached insight (no LLM call)
-    useEffect(() => {
-        loadInsights(false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [range]);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -172,7 +101,7 @@ export default function AnalyticsPage() {
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Revenue Analytics</h1>
-                    <p className="text-gray-500 text-sm mt-1">Live numbers across orders, storefront traffic, searches, and checkout sessions.</p>
+                    <p className="text-gray-500 text-sm mt-1">Live numbers from Firestore: paid orders, anonymous storefront visits, searches, and signed-in checkout sessions.</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <select
@@ -215,81 +144,12 @@ export default function AnalyticsPage() {
                 </div>
             )}
 
-            {/* AI Insights — Claude-powered weekly briefing */}
-            <div className="bg-gradient-to-br from-purple-50 via-white to-blue-50 rounded-3xl p-6 md:p-8 border-2 border-purple-100 shadow-sm relative overflow-hidden">
-                <div className="absolute -top-12 -right-12 w-48 h-48 bg-purple-200/30 rounded-full blur-3xl" />
-                <div className="relative z-10">
-                    <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-lg shadow-lg shadow-purple-300/30">✨</div>
-                            <div>
-                                <h2 className="text-lg md:text-xl font-black text-gray-900 tracking-tight">AI Market Briefing</h2>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                    Claude Opus 4.7 reads your live data and surfaces the actions that matter this {range === 'all' ? 'period' : range}.
-                                    {aiState.generatedAt && (
-                                        <span className="text-gray-400"> · Last generated {new Date(aiState.generatedAt).toLocaleString('en-KE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}{aiState.cached ? ' (cached)' : ''}</span>
-                                    )}
-                                </p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => loadInsights(true)}
-                            disabled={aiState.loading || aiState.configurationRequired}
-                            className="px-5 py-2.5 bg-gradient-to-br from-purple-600 to-blue-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-purple-300/40 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center gap-2"
-                        >
-                            {aiState.loading ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white/30 border-t-white" />
-                                    Generating...
-                                </>
-                            ) : aiState.insights ? (
-                                <>↻ Refresh</>
-                            ) : (
-                                <>Generate Insights →</>
-                            )}
-                        </button>
-                    </div>
-
-                    {aiState.configurationRequired && (
-                        <div className="bg-white border border-purple-200 rounded-2xl p-5 text-sm text-gray-700">
-                            <p className="font-bold text-gray-900 mb-2">⚙️ AI Insights are not configured</p>
-                            <p className="text-xs text-gray-600 leading-relaxed mb-2">{aiState.error}</p>
-                            <p className="text-xs text-gray-500">Add <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-[11px]">ANTHROPIC_API_KEY</code> to your environment (and Vercel) to enable. Cost is ~$0.05 per fresh briefing; cached for 1 hour.</p>
-                        </div>
-                    )}
-
-                    {!aiState.configurationRequired && !aiState.insights && !aiState.loading && (
-                        <div className="bg-white border border-purple-100 rounded-2xl p-6 text-center">
-                            <p className="text-sm text-gray-600">Click <strong>Generate Insights</strong> to get a Claude-written briefing of this period&apos;s data: top actions, what&apos;s working, what needs attention.</p>
-                        </div>
-                    )}
-
-                    {aiState.loading && !aiState.insights && (
-                        <div className="bg-white border border-purple-100 rounded-2xl p-8 text-center">
-                            <div className="inline-flex items-center gap-3">
-                                <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-200 border-t-purple-600" />
-                                <span className="text-sm text-gray-600">Claude is reading your data...</span>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-3">This usually takes 10–20 seconds.</p>
-                        </div>
-                    )}
-
-                    {aiState.insights && (
-                        <div className="space-y-3">
-                            <div className="bg-white border border-purple-100 rounded-2xl p-6 md:p-8 prose-sm max-w-none"><InsightsContent markdown={aiState.insights} /></div>
-                            <div className="rounded-2xl border border-purple-100 bg-white p-5">
-                                <div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-purple-100 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-purple-700">AI-generated · review required</span>{aiState.evidenceLinks.map(link => <Link key={link.href} href={link.href} className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:border-purple-300 hover:text-purple-700">{link.label} ↗</Link>)}</div>
-                                {aiState.limitations.map(item => <p key={item} className="mt-2 text-[10px] text-gray-500">• {item}</p>)}
-                            </div>
-                        </div>
-                    )}
-
-                    {aiState.error && !aiState.configurationRequired && !aiState.insights && (
-                        <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-700 mt-3">
-                            {aiState.error}
-                        </div>
-                    )}
-                </div>
+            <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5 text-sm text-emerald-950">
+                <p className="font-black text-xs uppercase tracking-widest text-emerald-800 mb-1">What visitor data means</p>
+                <p className="text-xs leading-relaxed text-emerald-900/90">
+                    <strong>Visits</strong> and <strong>uniques</strong> are anonymous daily counts (IP + browser fingerprint, hashed — we do not store names, phones, or IPs).
+                    You cannot open a roster of “who browsed the site.” Named people appear only after they sign in or place an order (Customers KPI, Orders, checkout funnel).
+                </p>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -303,7 +163,7 @@ export default function AnalyticsPage() {
 
             {storefront && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <Card title="Storefront Traffic" subtitle="UTC calendar days from analytics_traffic">
+                    <Card title="Storefront Traffic" subtitle="Anonymous daily page loads — not named visitors">
                         {storefront.traffic.length === 0 ? <p className="text-gray-400 text-sm">No visit events yet.</p> : (
                             <div className="h-64">
                                 <ResponsiveContainer width="100%" height="100%">
@@ -314,7 +174,7 @@ export default function AnalyticsPage() {
                                         <Tooltip />
                                         <Legend wrapperStyle={{ fontSize: 11 }} />
                                         <Bar dataKey="totalVisits" name="Visits" fill="#3b82f6" radius={[6, 6, 0, 0]} />
-                                        <Bar dataKey="uniqueVisitors" name="Uniques" fill="#22c55e" radius={[6, 6, 0, 0]} />
+                                        <Bar dataKey="uniqueVisitors" name="Anon. devices" fill="#22c55e" radius={[6, 6, 0, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
                             </div>
