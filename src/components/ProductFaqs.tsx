@@ -30,7 +30,7 @@ export default function ProductFaqs({ product }: ProductFaqsProps) {
         },
         {
             question: `How does Mel-Agri deliver ${name} to Nakuru, Eldoret, and other counties?`,
-            answer: `We offer fast nationwide delivery across all 47 counties in Kenya, including Nakuru, Eldoret, Kisumu, Mombasa, Nyeri, and Meru. Orders above KES 10,000 qualify for free delivery. For orders under KES 10,000, we charge a flat delivery fee of KES 300. Orders are dispatched within 24 hours and delivered within 1 to 3 business days.`
+            answer: `We deliver across Kenya. Orders of KES 10,000 or more get free delivery. Below that, the fee depends on your county (about KES 200 in Nairobi up to KES 750 upcountry). You see the exact amount at checkout. Machakos pickup is free.`
         }
     ];
 

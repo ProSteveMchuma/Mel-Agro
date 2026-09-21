@@ -11,7 +11,7 @@ export default function AnnouncementBar() {
         <div className="bg-Mel-Agri-dark text-white text-sm py-2 px-4 relative z-50">
             <div className="container-custom flex justify-between items-center">
                 <p className="w-full text-center font-medium">
-                    🌱 Free delivery on eligible orders over KES {FREE_SHIPPING_THRESHOLD.toLocaleString()}
+                    🌱 Free delivery on orders over KES {FREE_SHIPPING_THRESHOLD.toLocaleString()} — county rates apply below that
                 </p>
                 <button
                     onClick={() => setIsVisible(false)}

@@ -154,26 +154,41 @@ function UserDashboardInner() {
 
     const handleReorder = async (order: Order) => {
         try {
+            let added = 0;
+            let skipped = 0;
             for (const item of order.items) {
-                await addToCart({
-                    id: String(item.id),
-                    name: item.name,
-                    price: item.price,
-                    image: item.image || '',
-                    category: 'Reorder',
-                    rating: 5,
-                    reviews: 0,
-                    inStock: true,
-                    description: '',
-                    stockQuantity: 100,
-                    lowStockThreshold: 10
-                }, item.quantity);
+                const product = products.find((p) => String(p.id) === String(item.id));
+                if (!product) {
+                    skipped += 1;
+                    continue;
+                }
+                const ok = addToCart(product, item.quantity, item.selectedVariant);
+                if (ok) added += 1;
+                else skipped += 1;
             }
-            toast.success("All items added to cart!");
+            if (added === 0) {
+                toast.error(skipped > 0 ? 'Those items are out of stock or no longer listed.' : 'Could not add items to cart');
+                return;
+            }
+            if (skipped > 0) {
+                toast.success(`${added} item${added === 1 ? '' : 's'} added. ${skipped} unavailable.`);
+            } else {
+                toast.success('All items added to cart!');
+            }
         } catch (error) {
             console.error(error);
-            toast.error("Failed to reorder items");
+            toast.error('Failed to reorder items');
         }
+    };
+
+    const handleFrequentAdd = (item: { id: string | number; name: string; quantity?: number; selectedVariant?: any }) => {
+        const product = products.find((p) => String(p.id) === String(item.id));
+        if (!product) {
+            toast.error(`${item.name} is no longer in the catalogue.`);
+            return;
+        }
+        const ok = addToCart(product, 1, item.selectedVariant);
+        if (!ok) return;
     };
 
     const handlePredictedReorder = (prediction: ReorderPrediction) => {
@@ -537,19 +552,7 @@ function UserDashboardInner() {
                         {Array.from(new Map(orders.flatMap(o => o.items).map(item => [item.id, item])).values())
                             .slice(0, 6)
                             .map((item: any, i: number) => (
-                                <div key={i} className="group cursor-pointer" onClick={() => addToCart({
-                                    id: String(item.id),
-                                    name: item.name,
-                                    price: item.price,
-                                    image: item.image || '',
-                                    category: 'Reorder',
-                                    rating: 5,
-                                    reviews: 0,
-                                    inStock: true,
-                                    description: '',
-                                    stockQuantity: 100,
-                                    lowStockThreshold: 10
-                                }, 1)}>
+                                <div key={i} className="group cursor-pointer" onClick={() => handleFrequentAdd(item)}>
                                     <div className="aspect-square bg-gray-50 rounded-xl relative overflow-hidden mb-2 border border-gray-100 group-hover:border-melagri-primary transition-colors">
                                         {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
