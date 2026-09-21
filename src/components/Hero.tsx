@@ -43,6 +43,9 @@ export default function Hero() {
     return (
         <section className="bg-white py-4 md:py-6">
             <div className="container-custom">
+                <p className="mb-3 px-1 text-[10px] font-black uppercase tracking-[0.25em] text-green-700 md:px-2">
+                    Mel-Agri · Online retail arm of Makamithi
+                </p>
                 <div className="relative rounded-[3rem] overflow-hidden group shadow-2xl h-[400px] md:h-[500px]">
                     <AnimatePresence mode="wait">
                         <motion.div
