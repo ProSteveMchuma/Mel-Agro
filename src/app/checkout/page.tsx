@@ -1178,7 +1178,11 @@ export default function CheckoutPage() {
                                                         </div>
                                                         <span className="font-bold text-gray-900">Cash on Delivery</span>
                                                     </div>
-                                                    <p className="text-sm text-gray-500 font-medium">Pay with cash or M-Pesa upon delivery/pickup.</p>
+                                                    <p className="text-sm text-gray-500 font-medium">
+                                                        {shippingMethod === 'pickup'
+                                                            ? 'Pay with cash or M-Pesa when you collect.'
+                                                            : 'Pay with cash or M-Pesa upon delivery.'}
+                                                    </p>
                                                 </div>
                                             </div>
 
