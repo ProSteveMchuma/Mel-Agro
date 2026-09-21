@@ -28,7 +28,7 @@ export function profileForPermissions(permissions: string[] | undefined): StaffP
 }
 
 export function permissionForAdminPath(path: string): AdminPermission | null {
-  if (/\/admin\/(orders|fulfillment|operations|logistics|action-centre)(\/|$)/.test(path)) return "orders.manage";
+  if (/\/admin\/(orders|fulfillment|returns|operations|logistics|action-centre)(\/|$)/.test(path)) return "orders.manage";
   if (/\/admin\/(payments)(\/|$)|\/admin\/settings\/mpesa/.test(path)) return "payments.manage";
   if (/\/admin\/(products|inventory|discounts|reviews|product-intelligence)(\/|$)/.test(path)) return "catalogue.manage";
   if (/\/admin\/(newsletter|cms)(\/|$)/.test(path)) return "marketing.manage";

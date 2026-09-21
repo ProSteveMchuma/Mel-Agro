@@ -29,6 +29,8 @@ test('staff profiles are deterministically recognized', () => {
 
 test('admin routes map to their required capability', () => {
   assert.equal(permissionForAdminPath('/dashboard/admin/orders/abc'), 'orders.manage');
+  assert.equal(permissionForAdminPath('/dashboard/admin/returns'), 'orders.manage');
+  assert.equal(permissionForAdminPath('/dashboard/admin/fulfillment'), 'orders.manage');
   assert.equal(permissionForAdminPath('/dashboard/admin/settings/mpesa'), 'payments.manage');
   assert.equal(permissionForAdminPath('/dashboard/admin/products/edit/abc'), 'catalogue.manage');
   assert.equal(permissionForAdminPath('/dashboard/admin/users/abc'), 'customers.manage');

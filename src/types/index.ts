@@ -106,6 +106,10 @@ export interface Order {
     notificationPreferences?: string[];
     returnStatus?: 'Requested' | 'Approved' | 'Rejected';
     returnReason?: string;
+    returnRequestedAt?: string;
+    returnReviewedAt?: string;
+    returnReviewedBy?: string;
+    returnReviewNote?: string;
     internalNotes?: string;
     internalHistory?: {
         date: string;

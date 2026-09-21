@@ -69,10 +69,12 @@ test('customerOrderUrl builds action deep links with signed tokens', () => {
     assert.equal(pay.includes('dashboard/user'), false);
 });
 
-test('isReturnEligible enforces delivered + 7-day window', () => {
+test('isReturnEligible enforces delivered/collected + 7-day window', () => {
     assert.equal(isReturnEligible({ status: 'Delivered' }).ok, true);
+    assert.equal(isReturnEligible({ status: 'Collected' }).ok, true);
     assert.equal(isReturnEligible({ status: 'Shipped' }).ok, false);
     assert.equal(isReturnEligible({ status: 'Delivered', returnStatus: 'Requested' }).ok, false);
     const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString();
     assert.equal(isReturnEligible({ status: 'Delivered', deliveredAt: eightDaysAgo }).ok, false);
+    assert.equal(isReturnEligible({ status: 'Collected', collectedAt: eightDaysAgo }).ok, false);
 });
