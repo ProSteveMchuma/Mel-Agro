@@ -21,8 +21,8 @@ export async function GET(
         request,
         orderId,
         action: 'view',
-        // Pay links also prove phone ownership — allow printable docs from either SMS action.
-        acceptActions: ['view', 'pay'],
+        // Any valid SMS action token proves phone ownership for printable docs.
+        acceptActions: ['view', 'pay', 'return'],
         accessToken,
     });
 
