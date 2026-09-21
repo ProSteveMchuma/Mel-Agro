@@ -2,6 +2,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import Link from "next/link";
 import { Metadata } from 'next';
+import { getLiveCmsPage } from "@/lib/cms-pages-server";
+import type { AboutPageContent } from "@/lib/cms-pages";
 
 export const metadata: Metadata = {
     title: "About Our Premium Agritech & Agrovet Business in Kenya",
@@ -14,13 +16,15 @@ export const metadata: Metadata = {
     },
 };
 
-export default function AboutPage() {
+export default async function AboutPage() {
+    const { content } = await getLiveCmsPage('about');
+    const page = content as AboutPageContent;
+
     return (
         <div className="min-h-screen flex flex-col font-sans">
             <Header />
 
             <main className="flex-grow">
-                {/* Hero Section */}
                 <section className="relative py-32 lg:py-48 bg-gray-900 overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-tr from-melagri-primary/40 via-transparent to-melagri-secondary/20 z-0"></div>
                     <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-melagri-primary/20 rounded-full blur-[120px] -mr-48 -mt-48 animate-pulse"></div>
@@ -29,21 +33,24 @@ export default function AboutPage() {
                     <div className="container-custom relative z-10">
                         <div className="max-w-4xl">
                             <span className="inline-block px-4 py-2 bg-melagri-primary/10 border border-melagri-primary/20 rounded-full text-melagri-primary text-xs font-black tracking-widest uppercase mb-6 animate-fade-in">
-                                Online Retail Arm of Makamithi
+                                {page.heroEyebrow}
                             </span>
                             <h1 className="text-4xl md:text-6xl lg:text-7xl font-black text-white mb-8 tracking-tighter leading-[0.95]">
-                                Bringing Quality Agricultural Inputs{' '}
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-melagri-primary to-green-300">online</span>{' '}
-                                in Kenya and Beyond.
+                                {page.heroTitle}{' '}
+                                {page.heroTitleAccent ? (
+                                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-melagri-primary to-green-300">
+                                        {page.heroTitleAccent}
+                                    </span>
+                                ) : null}
+                                {page.heroTitleSuffix ? ` ${page.heroTitleSuffix}` : ''}
                             </h1>
                             <p className="text-xl md:text-2xl text-gray-400 font-medium leading-relaxed max-w-3xl">
-                                We are the online retail arm of Makamithi Enterprises Ltd, one of the largest distributors and retailers of Agricultural inputs (animal feeds, seeds, fertilizers, crop protection products and veterinary products) in Kenya
+                                {page.heroSubtitle}
                             </p>
                         </div>
                     </div>
                 </section>
 
-                {/* Heritage Section (The Mel-Agri Legacy) */}
                 <section className="relative z-20 -mt-16">
                     <div className="container-custom">
                         <div className="bg-white/80 backdrop-blur-2xl rounded-[40px] shadow-2xl shadow-black/5 border border-white p-8 md:p-16 lg:p-20">
@@ -54,35 +61,27 @@ export default function AboutPage() {
                                         Who We Are
                                     </div>
                                     <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-8 tracking-tight">
-                                        Bringing Quality Agricultural Inputs online in Kenya and Beyond.
+                                        {page.whoTitle}
                                     </h2>
                                     <div className="space-y-6 text-gray-600 text-lg leading-relaxed">
-                                        <p>
-                                            We are the online retail arm of <strong className="text-gray-900">Makamithi Enterprises Ltd</strong>, one of the largest distributors and retailers of Agricultural inputs (animal feeds, seeds, fertilizers, crop protection products and veterinary products) in Kenya
-                                        </p>
+                                        <p>{page.whoBody}</p>
                                     </div>
                                     <div className="mt-10 grid grid-cols-2 md:grid-cols-3 gap-8">
-                                        <div>
-                                            <div className="text-3xl font-black text-melagri-primary">20+</div>
-                                            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Years Experience</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-3xl font-black text-melagri-primary">50k+</div>
-                                            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Farmers Served</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-3xl font-black text-melagri-primary">100%</div>
-                                            <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">Quality Assurance</div>
-                                        </div>
+                                        {page.stats.map((stat) => (
+                                            <div key={stat.label}>
+                                                <div className="text-3xl font-black text-melagri-primary">{stat.value}</div>
+                                                <div className="text-xs font-bold text-gray-400 uppercase tracking-widest">{stat.label}</div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                                 <div className="lg:w-1/2 relative">
                                     <div className="aspect-square bg-gradient-to-br from-melagri-primary to-green-200 rounded-[3rem] overflow-hidden shadow-2xl transform lg:rotate-3 hover:rotate-0 transition-transform duration-700">
                                         <div className="absolute inset-0 bg-black/10"></div>
                                         <div className="p-12 h-full flex flex-col justify-end text-white">
-                                            <div className="text-6xl font-black mb-4">"</div>
+                                            <div className="text-6xl font-black mb-4">&quot;</div>
                                             <p className="text-2xl font-bold leading-tight italic">
-                                                Bringing Quality Agricultural Inputs online in Kenya and Beyond.
+                                                {page.quote}
                                             </p>
                                         </div>
                                     </div>
@@ -92,7 +91,6 @@ export default function AboutPage() {
                     </div>
                 </section>
 
-                {/* Mission & Vision */}
                 <section className="py-32 bg-gray-50/50">
                     <div className="container-custom">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -105,7 +103,7 @@ export default function AboutPage() {
                                 </div>
                                 <h3 className="text-3xl font-black text-gray-900 mb-6">Our Mission</h3>
                                 <p className="text-lg text-gray-500 leading-relaxed font-medium">
-                                    To empower farmers by providing frictionless access to high-quality agricultural inputs and sustainable solutions that maximize productivity and legacy.
+                                    {page.mission}
                                 </p>
                             </div>
 
@@ -119,14 +117,13 @@ export default function AboutPage() {
                                 </div>
                                 <h3 className="text-3xl font-black text-gray-900 mb-6">Our Vision</h3>
                                 <p className="text-lg text-gray-500 leading-relaxed font-medium">
-                                    To be Africa's definitive digital agribusiness partner, setting the benchmark for innovation, transparency, and impact across the entire value chain.
+                                    {page.vision}
                                 </p>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                {/* Core Values */}
                 <section className="py-32 bg-white">
                     <div className="container-custom">
                         <div className="text-center mb-20">
@@ -134,13 +131,8 @@ export default function AboutPage() {
                             <h2 className="text-4xl md:text-6xl font-black text-gray-900 tracking-tighter">Our Core Values</h2>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                            {[
-                                { title: "Integrity", desc: "Honesty in every seed we sell and every advice we give.", color: "bg-green-500" },
-                                { title: "Innovation", desc: "Constant pursuit of digital solutions for simple problems.", color: "bg-melagri-primary" },
-                                { title: "Resilience", desc: "Standing by our farmers through every season and storm.", color: "bg-orange-500" },
-                                { title: "Excellence", desc: "Uncompromising quality in products and customer service.", color: "bg-blue-600" }
-                            ].map((val, i) => (
-                                <div key={i} className="p-8 rounded-[2rem] bg-gray-50 border border-gray-100 hover:bg-white hover:border-melagri-primary/20 hover:shadow-2xl transition-all group">
+                            {page.values.map((val) => (
+                                <div key={val.title} className="p-8 rounded-[2rem] bg-gray-50 border border-gray-100 hover:bg-white hover:border-melagri-primary/20 hover:shadow-2xl transition-all group">
                                     <div className={`w-3 h-3 rounded-full mb-6 ${val.color}`}></div>
                                     <h4 className="text-2xl font-black text-gray-900 mb-4 tracking-tight">{val.title}</h4>
                                     <p className="text-sm text-gray-500 font-medium leading-relaxed">{val.desc}</p>
@@ -150,19 +142,18 @@ export default function AboutPage() {
                     </div>
                 </section>
 
-                {/* Call to Action */}
                 <section className="py-24 bg-gray-900 relative overflow-hidden text-center">
                     <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
                     <div className="container-custom relative z-10">
-                        <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter">Shop Quality Inputs Online</h2>
+                        <h2 className="text-5xl md:text-7xl font-black text-white mb-8 tracking-tighter">{page.ctaTitle}</h2>
                         <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto font-medium">
-                            Explore animal feeds, seeds, fertilizers, crop protection, and veterinary products — backed by Makamithi Enterprises Ltd.
+                            {page.ctaBody}
                         </p>
                         <Link
-                            href="/products"
+                            href={page.ctaHref}
                             className="inline-flex items-center gap-3 bg-melagri-primary text-white px-12 py-5 rounded-2xl font-black text-lg hover:bg-melagri-secondary transition-all shadow-2xl shadow-melagri-primary/40 active:scale-95"
                         >
-                            Explore Marketplace
+                            {page.ctaLabel}
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                             </svg>
