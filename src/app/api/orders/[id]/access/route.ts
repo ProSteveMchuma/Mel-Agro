@@ -43,5 +43,6 @@ export async function GET(
         access: auth.via,
         otpRequired: actionParam === 'return' && auth.via === 'token',
         canPay: summary.paymentStatus !== 'Paid' && summary.status !== 'Cancelled',
+        canCancel: summary.canCancel === true,
     });
 }

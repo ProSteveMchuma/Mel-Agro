@@ -17,6 +17,8 @@ export async function authorizeOrderAction(args: {
     request: Request;
     orderId: string;
     action: Exclude<OrderAccessAction, 'rs'>;
+    /** When set, any of these actions may authorize the SMS token (e.g. view|pay for docs/cancel). */
+    acceptActions?: Array<Exclude<OrderAccessAction, 'rs'>>;
     accessToken?: string | null;
     returnSessionToken?: string | null;
     requireReturnSession?: boolean;
@@ -40,13 +42,25 @@ export async function authorizeOrderAction(args: {
         return { ok: false as const, status: 401, message: 'Sign in or use a valid order link from your SMS' };
     }
 
-    const verified = verifyOrderAccessToken(token, {
-        orderId: args.orderId,
-        phone: order.data.phone,
-        action: args.action,
-    });
-    if (!verified.ok) {
-        return { ok: false as const, status: 401, message: verified.message };
+    const actionsToTry = args.acceptActions?.length
+        ? args.acceptActions
+        : [args.action];
+    let lastMessage = 'Access link is invalid or tampered';
+    let verifiedOk = false;
+    for (const action of actionsToTry) {
+        const verified = verifyOrderAccessToken(token, {
+            orderId: args.orderId,
+            phone: order.data.phone,
+            action,
+        });
+        if (verified.ok) {
+            verifiedOk = true;
+            break;
+        }
+        lastMessage = verified.message;
+    }
+    if (!verifiedOk) {
+        return { ok: false as const, status: 401, message: lastMessage };
     }
 
     if (args.requireReturnSession) {

@@ -4,8 +4,10 @@ import {
     createOrderAccessToken,
     createReturnSessionToken,
     customerOrderUrl,
+    isCustomerCancellable,
     isReturnEligible,
     phoneAccessKey,
+    publicOrderSummary,
     verifyOrderAccessToken,
     verifyReturnSessionToken,
 } from '../src/lib/order-access.ts';
@@ -80,4 +82,28 @@ test('isReturnEligible enforces delivered/collected + 7-day window', () => {
     assert.equal(isReturnEligible({ status: 'Collected', collectedAt: eightDaysAgo }).ok, false);
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     assert.equal(isReturnEligible({ status: 'Collected', collectedAt: yesterday }).ok, true);
+});
+
+test('isCustomerCancellable allows unpaid early orders only', () => {
+    assert.equal(isCustomerCancellable({ status: 'Pending Payment', paymentStatus: 'Unpaid' }).ok, true);
+    assert.equal(isCustomerCancellable({ status: 'Processing', paymentStatus: 'Failed' }).ok, true);
+    assert.equal(isCustomerCancellable({ status: 'Pending Payment', paymentStatus: 'Paid' }).ok, false);
+    assert.equal(isCustomerCancellable({ status: 'Shipped', paymentStatus: 'Unpaid' }).ok, false);
+    assert.equal(isCustomerCancellable({ status: 'Cancelled', paymentStatus: 'Unpaid' }).ok, false);
+});
+
+test('publicOrderSummary exposes tracking and canCancel', () => {
+    const summary = publicOrderSummary({
+        userName: 'Ann',
+        phone: '0712345678',
+        status: 'Shipped',
+        paymentStatus: 'Paid',
+        shippingMethod: 'standard',
+        tracking: { carrier: 'G4S', trackingNumber: 'TRK-99' },
+        items: [{ id: '1', name: 'Seed', quantity: 2, price: 100 }],
+        total: 200,
+    }, 'orderxyz1');
+    assert.equal(summary.canCancel, false);
+    assert.deepEqual(summary.tracking, { carrier: 'G4S', trackingNumber: 'TRK-99' });
+    assert.equal(summary.shortId, 'ORDERXYZ');
 });

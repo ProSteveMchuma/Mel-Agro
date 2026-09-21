@@ -47,6 +47,13 @@ function isReturnEligible(order: Order) {
     return Number.isFinite(elapsed) && elapsed <= 7 * 24 * 60 * 60 * 1000;
 }
 
+function canCancelOrder(order: Order) {
+    if (order.status === 'Cancelled') return false;
+    if (!['Pending Payment', 'Processing'].includes(order.status)) return false;
+    if (order.paymentStatus === 'Paid') return false;
+    return true;
+}
+
 export default function UserDashboard() {
     return (
         <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-melagri-primary"></div></div>}>
@@ -57,7 +64,7 @@ export default function UserDashboard() {
 
 function UserDashboardInner() {
     const { user, isLoading, logout, updateProfile } = useAuth();
-    const { orders, requestReturn } = useOrders();
+    const { orders, requestReturn, updateOrderStatus } = useOrders();
     const { addToCart } = useCart();
     const { products } = useProducts();
     const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
@@ -88,6 +95,7 @@ function UserDashboardInner() {
     const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
     const [returnReason, setReturnReason] = useState('');
     const [returningId, setReturningId] = useState<string | null>(null);
+    const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
     const searchParams = useSearchParams();
 
     useEffect(() => {
@@ -227,6 +235,25 @@ function UserDashboardInner() {
             setSelectedOrder({ ...order, returnStatus: 'Requested', returnReason: reason });
         } catch (error: any) {
             toast.error(error?.message || 'Could not submit the return', { id: notice });
+        }
+    };
+
+    const handleCancelOrder = async (order: Order) => {
+        if (!canCancelOrder(order) || cancellingOrderId) return;
+        const ok = window.confirm(
+            'Cancel this unpaid order? Stock will be released and you can place a new order anytime.',
+        );
+        if (!ok) return;
+        setCancellingOrderId(order.id);
+        const notice = toast.loading('Cancelling order…');
+        try {
+            await updateOrderStatus(order.id, 'Cancelled');
+            toast.success('Order cancelled.', { id: notice });
+            setSelectedOrder({ ...order, status: 'Cancelled' });
+        } catch (error: any) {
+            toast.error(error?.message || 'Could not cancel this order', { id: notice });
+        } finally {
+            setCancellingOrderId(null);
         }
     };
 
@@ -539,7 +566,7 @@ function UserDashboardInner() {
                                             <p className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
                                                 {order.paymentStatus || 'Unpaid'}
                                             </p>
-                                            <p className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>{order.status}</p>
+                                            <p className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${order.status === 'Delivered' || order.status === 'Collected' ? 'bg-green-100 text-green-700' : order.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{statusLabelForOrder(order.status, order)}</p>
                                         </div>
                                         <p className="text-sm font-bold text-melagri-primary mt-1">KES {order.total.toLocaleString()}</p>
                                     </div>
@@ -596,11 +623,12 @@ function UserDashboardInner() {
                                     <div>
                                         <div className="flex items-center gap-3 mb-1">
                                             <h3 className="font-bold text-lg text-gray-900">Order #{order.id.slice(0, 8)}</h3>
-                                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                                                order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
+                                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${order.status === 'Delivered' || order.status === 'Collected' ? 'bg-green-100 text-green-700' :
+                                                order.status === 'Shipped' || order.status === 'Ready for Collection' ? 'bg-blue-100 text-blue-700' :
+                                                order.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
                                                     'bg-yellow-100 text-yellow-700'
                                                 }`}>
-                                                {order.status}
+                                                {statusLabelForOrder(order.status, order)}
                                             </span>
                                             <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
                                                 {order.paymentStatus || 'Unpaid'}
@@ -610,6 +638,15 @@ function UserDashboardInner() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button onClick={() => setSelectedOrder(order)} className="px-3 py-1.5 text-xs font-bold text-gray-500 hover:text-melagri-primary transition-colors">Details</button>
+                                        {canCancelOrder(order) && (
+                                            <button
+                                                onClick={() => void handleCancelOrder(order)}
+                                                disabled={cancellingOrderId === order.id}
+                                                className="px-3 py-1.5 text-xs font-bold text-red-700 hover:text-red-900 disabled:opacity-60"
+                                            >
+                                                {cancellingOrderId === order.id ? 'Cancelling…' : 'Cancel'}
+                                            </button>
+                                        )}
                                         {isReturnEligible(order) && (
                                             <button onClick={() => { setSelectedOrder(order); setReturningId(order.id); }} className="px-3 py-1.5 text-xs font-bold text-amber-700 hover:text-amber-900">Request Return</button>
                                         )}
@@ -950,13 +987,24 @@ function UserDashboardInner() {
                             <div className="flex gap-4 mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm">
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase">Status</p>
-                                    <p className="font-black text-melagri-primary uppercase">{selectedOrder.status}</p>
+                                    <p className="font-black text-melagri-primary uppercase">{statusLabelForOrder(selectedOrder.status, selectedOrder)}</p>
                                 </div>
                                 <div className="ml-auto text-right">
                                     <p className="text-[10px] font-bold text-gray-400 uppercase">Total Amount</p>
                                     <p className="font-black text-gray-900">KES {selectedOrder.total.toLocaleString()}</p>
                                 </div>
                             </div>
+                            {(selectedOrder.tracking?.carrier || selectedOrder.tracking?.trackingNumber) ? (
+                                <div className="mb-6 rounded-2xl border border-emerald-100 bg-emerald-50/80 p-4">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-800 mb-1">Shipment tracking</p>
+                                    {selectedOrder.tracking?.carrier ? (
+                                        <p className="text-sm font-bold text-gray-900">{selectedOrder.tracking.carrier}</p>
+                                    ) : null}
+                                    {selectedOrder.tracking?.trackingNumber ? (
+                                        <p className="mt-1 font-mono text-sm text-emerald-800">#{selectedOrder.tracking.trackingNumber}</p>
+                                    ) : null}
+                                </div>
+                            ) : null}
                             <div className="space-y-4 mb-8">
                                 {selectedOrder.items.map((item: any, i: number) => (
                                     <div key={i} className="flex gap-4 items-center">
@@ -1015,6 +1063,16 @@ function UserDashboardInner() {
                                 <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('receipt'); }} className="py-2.5 md:py-3 px-2 md:px-4 bg-gray-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:scale-[1.02] transition-all">Receipt</button>
                                 <button onClick={() => { setPrintOrder(selectedOrder); setPrintMode('delivery'); }} className="py-2.5 md:py-3 px-2 md:px-4 bg-gray-900 text-white rounded-xl text-[10px] md:text-xs font-bold hover:scale-[1.02] transition-all">Ship Doc</button>
                             </div>
+                            {canCancelOrder(selectedOrder) ? (
+                                <button
+                                    type="button"
+                                    onClick={() => void handleCancelOrder(selectedOrder)}
+                                    disabled={cancellingOrderId === selectedOrder.id}
+                                    className="mt-3 w-full py-3 rounded-xl border border-red-200 text-red-800 text-xs font-black uppercase tracking-widest hover:bg-red-50 disabled:opacity-60"
+                                >
+                                    {cancellingOrderId === selectedOrder.id ? 'Cancelling…' : 'Cancel unpaid order'}
+                                </button>
+                            ) : null}
                             {selectedOrder.returnStatus && (
                                 <p className="mt-4 text-sm font-bold text-amber-800">Return status: {selectedOrder.returnStatus}</p>
                             )}

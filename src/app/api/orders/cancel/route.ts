@@ -3,11 +3,16 @@ import { z } from 'zod';
 import { adminDb } from '@/lib/firebase-admin';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
-import { withActionUrls } from '@/lib/order-access';
+import { isCustomerCancellable, withActionUrls } from '@/lib/order-access';
+import { authorizeOrderAction } from '@/lib/order-access-server';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { revalidateStorefrontCatalogue } from '@/lib/revalidate-catalogue';
+import { enforceRateLimit } from '@/lib/request-guard';
 
-const cancelSchema = z.object({ orderId: z.string().trim().min(1).max(200) });
+const cancelSchema = z.object({
+    orderId: z.string().trim().min(1).max(200),
+    accessToken: z.string().trim().min(1).max(500).optional(),
+});
 
 function numberOrZero(value: unknown): number {
     const result = Number(value);
@@ -15,17 +20,40 @@ function numberOrZero(value: unknown): number {
 }
 
 export async function POST(request: Request) {
+    const limited = enforceRateLimit(request, 'order-cancel', 20, 60_000);
+    if (limited) return limited;
+
     try {
         const parsed = cancelSchema.safeParse(await request.json());
         if (!parsed.success) {
             return NextResponse.json({ success: false, message: 'A valid order ID is required' }, { status: 400 });
         }
 
-        const { orderId } = parsed.data;
-        const authorized = await requireOrderOwnerOrAdmin(request, orderId);
-        if (!authorized.ok || !authorized.uid) {
-            const status = authorized.message === 'Order not found' ? 404 : 403;
-            return NextResponse.json({ success: false, message: authorized.message || 'Forbidden' }, { status });
+        const { orderId, accessToken } = parsed.data;
+
+        const owner = await requireOrderOwnerOrAdmin(request, orderId);
+        let actorId: string | null = owner.ok && owner.uid ? owner.uid : null;
+        let isAdmin = Boolean(owner.ok && owner.isAdmin);
+
+        if (!actorId) {
+            const linkAuth = await authorizeOrderAction({
+                request,
+                orderId,
+                action: 'view',
+                acceptActions: ['view', 'pay'],
+                accessToken,
+            });
+            if (!linkAuth.ok) {
+                const status = linkAuth.status === 404 ? 404 : 403;
+                return NextResponse.json(
+                    { success: false, message: linkAuth.message || 'Sign in or use a valid order link from your SMS' },
+                    { status },
+                );
+            }
+            actorId = linkAuth.via === 'auth' && 'uid' in linkAuth && linkAuth.uid
+                ? String(linkAuth.uid)
+                : 'customer-link';
+            isAdmin = false;
         }
 
         const orderRef = adminDb.collection('orders').doc(orderId);
@@ -34,10 +62,16 @@ export async function POST(request: Request) {
             if (!initialOrderSnap.exists) throw new Error('ORDER_NOT_FOUND');
             const order: any = initialOrderSnap.data();
 
-            if (!authorized.isAdmin && order.userId !== authorized.uid) throw new Error('FORBIDDEN');
+            if (!isAdmin && actorId !== 'customer-link' && order.userId !== actorId) {
+                throw new Error('FORBIDDEN');
+            }
             if (order.status === 'Cancelled' && order.stockRestored) return { alreadyCancelled: true, order: null };
-            if (!['Pending Payment', 'Processing'].includes(order.status)) throw new Error('STATUS_NOT_CANCELLABLE');
-            if (order.paymentStatus === 'Paid') throw new Error('PAID_ORDER');
+
+            const cancellable = isCustomerCancellable(order);
+            if (!cancellable.ok) {
+                if (order.paymentStatus === 'Paid') throw new Error('PAID_ORDER');
+                throw new Error('STATUS_NOT_CANCELLABLE');
+            }
 
             const items = Array.isArray(order.items) ? order.items : [];
             const productIds: string[] = [...new Set<string>(items.map((item: any) => String(item.id)))];
@@ -83,7 +117,7 @@ export async function POST(request: Request) {
                     previousStock,
                     newStock: nextStock,
                     change: quantity,
-                    updatedBy: `System (Cancellation by ${authorized.uid})`,
+                    updatedBy: `System (Cancellation by ${actorId})`,
                     updatedAt: now,
                     orderId,
                 });
@@ -107,7 +141,7 @@ export async function POST(request: Request) {
                 stockRestoredAt: now,
                 stockReservationStatus: 'released',
                 cancelledAt: now,
-                cancelledBy: authorized.uid,
+                cancelledBy: actorId,
             });
 
             return { alreadyCancelled: false, order: { id: orderId, ...order, status: 'Cancelled' } };

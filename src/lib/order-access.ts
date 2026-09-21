@@ -222,8 +222,32 @@ export function isReturnEligible(order: {
     return { ok: true };
 }
 
+/** Unpaid orders still in early fulfillment can be cancelled by the customer online. */
+export function isCustomerCancellable(order: {
+    status?: string | null;
+    paymentStatus?: string | null;
+}): { ok: true } | { ok: false; message: string } {
+    if (order.status === 'Cancelled') {
+        return { ok: false, message: 'This order is already cancelled' };
+    }
+    if (!['Pending Payment', 'Processing'].includes(String(order.status || ''))) {
+        return { ok: false, message: 'This order can no longer be cancelled online' };
+    }
+    if (order.paymentStatus === 'Paid') {
+        return { ok: false, message: 'Paid orders require support assistance for cancellation and refund' };
+    }
+    return { ok: true };
+}
+
 export function publicOrderSummary(order: Record<string, any>, orderId: string) {
     const eligibility = isReturnEligible(order);
+    const cancellable = isCustomerCancellable(order);
+    const tracking = order.tracking && (order.tracking.carrier || order.tracking.trackingNumber)
+        ? {
+            carrier: String(order.tracking.carrier || '').trim() || null,
+            trackingNumber: String(order.tracking.trackingNumber || '').trim() || null,
+        }
+        : null;
     return {
         id: orderId,
         shortId: orderId.slice(0, 8).toUpperCase(),
@@ -245,6 +269,7 @@ export function publicOrderSummary(order: Record<string, any>, orderId: string) 
                 method: order.shippingAddress.method || null,
             }
             : null,
+        tracking,
         items: Array.isArray(order.items)
             ? order.items.map((item: any) => ({
                 id: String(item.id || ''),
@@ -257,6 +282,8 @@ export function publicOrderSummary(order: Record<string, any>, orderId: string) 
         returnReason: order.returnReason || null,
         returnEligible: eligibility.ok,
         returnBlockedReason: eligibility.ok ? null : eligibility.message,
+        canCancel: cancellable.ok,
+        cancelBlockedReason: cancellable.ok ? null : cancellable.message,
         mpesaReceiptNumber: order.mpesaReceiptNumber || order.transactionId || null,
     };
 }

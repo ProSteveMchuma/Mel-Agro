@@ -60,7 +60,14 @@ function OrderTrackInner() {
         >
             {loading ? <OrderAccessLoading /> : null}
             {!loading && error ? <OrderAccessError message={error} signInHref={signInHref} /> : null}
-            {!loading && order ? <OrderSummaryCard order={order} accessToken={accessToken} highlight="view" /> : null}
+            {!loading && order ? (
+                <OrderSummaryCard
+                    order={order}
+                    accessToken={accessToken}
+                    highlight="view"
+                    onCancelled={setOrder}
+                />
+            ) : null}
         </OrderAccessFrame>
     );
 }

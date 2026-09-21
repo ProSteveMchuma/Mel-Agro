@@ -123,7 +123,15 @@ function OrderPayInner() {
             {!loading && error ? <OrderAccessError message={error} signInHref={signInHref} /> : null}
             {!loading && order ? (
                 <div className="space-y-4">
-                    <OrderSummaryCard order={order} accessToken={accessToken} highlight="pay" />
+                    <OrderSummaryCard
+                        order={order}
+                        accessToken={accessToken}
+                        highlight="pay"
+                        onCancelled={(next) => {
+                            setOrder(next);
+                            setCanPay(false);
+                        }}
+                    />
 
                     {canPay ? (
                         <section className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 md:p-6">

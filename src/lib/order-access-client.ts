@@ -10,6 +10,7 @@ export type PublicOrder = {
     phoneMasked: string;
     date: string | null;
     deliveredAt?: string | null;
+    collectedAt?: string | null;
     status: string;
     paymentStatus: string;
     paymentMethod: string | null;
@@ -17,11 +18,14 @@ export type PublicOrder = {
     shippingCost: number;
     shippingMethod: string | null;
     shippingAddress: { county: string; details: string; method: string | null } | null;
+    tracking?: { carrier: string | null; trackingNumber: string | null } | null;
     items: Array<{ id: string; name: string; quantity: number; price: number }>;
     returnStatus: string | null;
     returnReason: string | null;
     returnEligible?: boolean;
     returnBlockedReason?: string | null;
+    canCancel?: boolean;
+    cancelBlockedReason?: string | null;
     mpesaReceiptNumber: string | null;
 };
 
@@ -33,6 +37,7 @@ export type OrderAccessResponse = {
     access?: 'auth' | 'token';
     otpRequired?: boolean;
     canPay?: boolean;
+    canCancel?: boolean;
 };
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -100,4 +105,14 @@ export async function postOrderJson<T extends Record<string, unknown> = Record<s
     });
     const data = await res.json().catch(() => ({}));
     return { ...data, success: Boolean(data.success) && res.ok, status: res.status };
+}
+
+export async function cancelOrderRequest(args: {
+    orderId: string;
+    accessToken?: string | null;
+}): Promise<{ success: boolean; message?: string; alreadyCancelled?: boolean; status: number }> {
+    return postOrderJson('/api/orders/cancel', {
+        orderId: args.orderId,
+        ...(args.accessToken ? { accessToken: args.accessToken } : {}),
+    });
 }

@@ -1,9 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import type { PublicOrder } from '@/lib/order-access-client';
+import { cancelOrderRequest } from '@/lib/order-access-client';
 import { statusLabelForOrder } from '@/lib/pickup';
 import { SUPPORT_PHONE_DISPLAY, whatsAppUrl } from '@/lib/site';
 
@@ -27,6 +29,10 @@ function paymentStatusLabel(status: string) {
     if (status === 'Pending WhatsApp') return 'Complete on WhatsApp';
     if (status === 'Failed') return 'Payment failed';
     return status;
+}
+
+function tokenQuery(accessToken?: string) {
+    return accessToken ? `?t=${encodeURIComponent(accessToken)}` : '';
 }
 
 export function OrderAccessFrame({
@@ -67,12 +73,40 @@ export function OrderSummaryCard({
     order,
     accessToken,
     highlight,
+    onCancelled,
 }: {
     order: PublicOrder;
     accessToken?: string;
     highlight?: 'pay' | 'return' | 'view';
+    onCancelled?: (order: PublicOrder) => void;
 }) {
-    const tokenQuery = accessToken ? `?t=${encodeURIComponent(accessToken)}` : '';
+    const q = tokenQuery(accessToken);
+    const [cancelling, setCancelling] = useState(false);
+    const [cancelError, setCancelError] = useState('');
+    const canCancel = order.canCancel === true && order.status !== 'Cancelled';
+
+    const handleCancel = async () => {
+        if (cancelling) return;
+        const ok = window.confirm(
+            'Cancel this unpaid order? Stock will be released and you can place a new order anytime.',
+        );
+        if (!ok) return;
+        setCancelling(true);
+        setCancelError('');
+        const result = await cancelOrderRequest({ orderId: order.id, accessToken });
+        setCancelling(false);
+        if (!result.success) {
+            setCancelError(result.message || 'Could not cancel this order');
+            return;
+        }
+        onCancelled?.({
+            ...order,
+            status: 'Cancelled',
+            canCancel: false,
+            cancelBlockedReason: 'This order is already cancelled',
+        });
+    };
+
     return (
         <section className="rounded-2xl border border-slate-200 bg-white p-5 md:p-6 shadow-sm">
             <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
@@ -116,6 +150,18 @@ export function OrderSummaryCard({
                 </p>
             ) : null}
 
+            {order.tracking?.carrier || order.tracking?.trackingNumber ? (
+                <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/80 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-emerald-800 mb-1">Shipment tracking</p>
+                    {order.tracking.carrier ? (
+                        <p className="text-sm font-bold text-slate-900">{order.tracking.carrier}</p>
+                    ) : null}
+                    {order.tracking.trackingNumber ? (
+                        <p className="mt-1 font-mono text-sm text-emerald-800">#{order.tracking.trackingNumber}</p>
+                    ) : null}
+                </div>
+            ) : null}
+
             {order.returnStatus ? (
                 <p className="mt-4 text-sm font-bold text-amber-800">
                     Return: {order.returnStatus}
@@ -126,7 +172,7 @@ export function OrderSummaryCard({
             <div className="mt-5 flex flex-wrap gap-2">
                 {highlight !== 'view' ? (
                     <Link
-                        href={`/orders/${order.id}${tokenQuery}`}
+                        href={`/orders/${order.id}${q}`}
                         className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50"
                     >
                         Track order
@@ -134,7 +180,7 @@ export function OrderSummaryCard({
                 ) : null}
                 {order.paymentStatus !== 'Paid' && order.status !== 'Cancelled' && highlight !== 'pay' ? (
                     <Link
-                        href={`/orders/${order.id}/pay${tokenQuery}`}
+                        href={`/orders/${order.id}/pay${q}`}
                         className="px-4 py-2.5 rounded-xl text-xs font-bold bg-melagri-primary text-white hover:bg-melagri-secondary"
                     >
                         Pay now
@@ -142,13 +188,51 @@ export function OrderSummaryCard({
                 ) : null}
                 {order.returnEligible && highlight !== 'return' ? (
                     <Link
-                        href={`/orders/${order.id}/return${tokenQuery}`}
+                        href={`/orders/${order.id}/return${q}`}
                         className="px-4 py-2.5 rounded-xl text-xs font-bold border border-amber-300 text-amber-950 hover:bg-amber-50"
                     >
                         Request return
                     </Link>
                 ) : null}
+                <Link
+                    href={`/orders/${order.id}/invoice${q}`}
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    target="_blank"
+                    rel="noreferrer"
+                >
+                    Invoice
+                </Link>
+                <Link
+                    href={`/orders/${order.id}/receipt${q}`}
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    target="_blank"
+                    rel="noreferrer"
+                >
+                    Receipt
+                </Link>
+                <Link
+                    href={`/orders/${order.id}/delivery-note${q}`}
+                    className="px-4 py-2.5 rounded-xl text-xs font-bold border border-slate-200 text-slate-700 hover:bg-slate-50"
+                    target="_blank"
+                    rel="noreferrer"
+                >
+                    Delivery note
+                </Link>
             </div>
+
+            {canCancel ? (
+                <div className="mt-5 pt-4 border-t border-slate-100">
+                    <button
+                        type="button"
+                        onClick={() => void handleCancel()}
+                        disabled={cancelling}
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold border border-red-200 text-red-800 hover:bg-red-50 disabled:opacity-60"
+                    >
+                        {cancelling ? 'Cancelling…' : 'Cancel unpaid order'}
+                    </button>
+                    {cancelError ? <p className="mt-2 text-xs font-semibold text-red-700">{cancelError}</p> : null}
+                </div>
+            ) : null}
         </section>
     );
 }
