@@ -74,7 +74,9 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
         });
         recordRecentlyViewed(id);
         trackAction('product_view', { id, name: product.name, category: product.category });
-    }, [id, product.name, product.category, trackAction]);
+        // Only re-record when the product page id changes.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id]);
 
     useEffect(() => {
         if (!product || !product.images || product.images.length <= 1) return;
