@@ -66,7 +66,9 @@ export default function DocumentSettingsPage() {
             <div className="flex justify-between items-center">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900">Document Templates</h1>
-                    <p className="text-gray-500 text-sm">Customize your invoices and receipts.</p>
+                    <p className="text-gray-500 text-sm">
+                        These settings apply live to invoices, receipts, and delivery notes across the store.
+                    </p>
                 </div>
                 <button
                     onClick={handleSave}
@@ -142,8 +144,6 @@ export default function DocumentSettingsPage() {
                 {/* Preview Panel */}
                 <div className="lg:col-span-2 bg-gray-50 rounded-2xl border border-gray-200 p-8 overflow-y-auto flex items-start justify-center">
                     <div className="w-full max-w-2xl bg-white shadow-lg min-h-[800px] transform scale-90 origin-top">
-                        {/* We pass the settings as a prop to the template (we need to update the template to accept this) */}
-                        {/* For now, we are just rendering the component, but we will update it next to use these props */}
                         <InvoiceTemplate order={mockOrder} settings={templateSettings} />
                     </div>
                 </div>

@@ -6,6 +6,10 @@ export type ReceiptBranding = {
     companyName?: string;
     address?: string;
     supportPhone?: string;
+    websiteUrl?: string;
+    tagline?: string;
+    footerText?: string;
+    taxId?: string;
 };
 
 export type ThermalReceiptLine =
@@ -18,6 +22,10 @@ const DEFAULT_BRANDING: Required<ReceiptBranding> = {
     companyName: 'Mel-Agri Kenya',
     address: 'Nairobi, Kenya',
     supportPhone: '0788 970757',
+    websiteUrl: 'melagri.com',
+    tagline: 'Premium Agricultural Solutions',
+    footerText: 'Thank you for shopping with us!',
+    taxId: '',
 };
 
 function money(n: number) {
@@ -63,6 +71,8 @@ export function buildThermalReceiptLines(
     order: Pick<Order, 'id' | 'date' | 'items' | 'total' | 'shippingCost' | 'paymentMethod' | 'paymentStatus'> & {
         mpesaReceiptNumber?: string | null;
         transactionId?: string | null;
+        discountAmount?: number | null;
+        subtotal?: number | null;
     },
     branding: ReceiptBranding = {},
     widthMm: ThermalWidthMm = 80,
@@ -72,11 +82,16 @@ export function buildThermalReceiptLines(
     const lines: ThermalReceiptLine[] = [];
 
     lines.push({ type: 'center', text: brand.companyName.toUpperCase(), bold: true, size: 'lg' });
-    lines.push({ type: 'center', text: 'Premium Agricultural Solutions', size: 'sm' });
+    if (brand.tagline) {
+        lines.push({ type: 'center', text: brand.tagline, size: 'sm' });
+    }
     for (const part of wrapText(brand.address, max)) {
         lines.push({ type: 'center', text: part, size: 'sm' });
     }
     lines.push({ type: 'center', text: brand.supportPhone, bold: true, size: 'sm' });
+    if (brand.taxId) {
+        lines.push({ type: 'center', text: `PIN ${brand.taxId}`, size: 'sm' });
+    }
     lines.push({ type: 'rule' });
     lines.push({
         type: 'row',
@@ -109,6 +124,13 @@ export function buildThermalReceiptLines(
     }
 
     lines.push({ type: 'rule' });
+    if (Number(order.discountAmount) > 0) {
+        lines.push({
+            type: 'row',
+            left: 'Discount',
+            right: `-${Number(order.discountAmount).toLocaleString('en-KE')}`,
+        });
+    }
     if (Number(order.shippingCost) > 0) {
         lines.push({
             type: 'row',
@@ -127,9 +149,9 @@ export function buildThermalReceiptLines(
         lines.push({ type: 'row', left: 'M-Pesa', right: String(receipt) });
     }
     lines.push({ type: 'blank' });
-    lines.push({ type: 'center', text: 'Thank you for shopping with us!', size: 'sm' });
+    lines.push({ type: 'center', text: brand.footerText || 'Thank you for shopping with us!', size: 'sm' });
     lines.push({ type: 'center', text: 'Keep this receipt for your records.', size: 'sm' });
-    lines.push({ type: 'center', text: 'www.melagri.com', bold: true, size: 'sm' });
+    lines.push({ type: 'center', text: brand.websiteUrl.replace(/^https?:\/\//i, ''), bold: true, size: 'sm' });
 
     return lines;
 }
