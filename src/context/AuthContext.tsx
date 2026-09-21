@@ -18,21 +18,27 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-async function claimGuestOrders(guestToken: string, firebaseUser: any) {
+async function claimGuestOrders(firebaseUser: any, guestToken?: string | null) {
     try {
         const idToken = await firebaseUser.getIdToken();
+        const hasPhone = Boolean(firebaseUser.phoneNumber);
+        if (!guestToken && !hasPhone) return;
+
         const res = await fetch('/api/orders/claim', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${idToken}`
             },
-            body: JSON.stringify({ guestToken })
+            body: JSON.stringify({
+                ...(guestToken ? { guestToken } : {}),
+                byPhone: hasPhone,
+            })
         });
         const data = await res.json();
         if (data.success) {
-            console.log("Guest orders and loyalty points claimed successfully");
-            sessionStorage.removeItem('melagri_guest_id_token');
+            console.log("Guest orders and loyalty points claimed successfully", data.message);
+            if (guestToken) sessionStorage.removeItem('melagri_guest_id_token');
         } else {
             console.warn("Failed to claim guest orders:", data.message);
         }
@@ -92,9 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
             } else {
                 const guestToken = sessionStorage.getItem('melagri_guest_id_token');
-                if (guestToken) {
-                    claimGuestOrders(guestToken, firebaseUser);
-                }
+                void claimGuestOrders(firebaseUser, guestToken);
             }
 
             const userDocRef = doc(db, 'users', firebaseUser.uid);

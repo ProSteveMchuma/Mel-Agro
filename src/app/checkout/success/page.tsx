@@ -204,13 +204,11 @@ function OrderSuccessContent() {
                     </div>
                 </motion.div>
 
-                {isPaid && (
-                    <AccountUpgradePrompt
-                        orderId={order.id}
-                        phone={String((order as any).phone || '')}
-                        name={String((order as any).userName || 'Farmer')}
-                    />
-                )}
+                <AccountUpgradePrompt
+                    orderId={order.id}
+                    phone={String((order as any).phone || '')}
+                    name={String((order as any).userName || 'Farmer')}
+                />
 
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}

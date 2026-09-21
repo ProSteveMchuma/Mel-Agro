@@ -8,6 +8,7 @@ import { PICKUP_STORE } from '@/lib/pickup';
 import { getZonesServer } from '@/lib/delivery-server';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { withActionUrls } from '@/lib/order-access';
+import { orderPhoneKey } from '@/lib/phone-match';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { enforceRateLimit } from '@/lib/request-guard';
 import { revalidateStorefrontCatalogue } from '@/lib/revalidate-catalogue';
@@ -300,6 +301,7 @@ export async function POST(request: Request) {
                 userName: input.shipping.fullName,
                 userEmail: input.shipping.email || authenticated.email || '',
                 phone: input.shipping.phone,
+                phoneKey: orderPhoneKey(input.shipping.phone) || null,
                 items: orderItems,
                 subtotal,
                 shippingCost: shippingInfo.cost,
