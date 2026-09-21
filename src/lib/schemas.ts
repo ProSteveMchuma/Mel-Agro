@@ -22,14 +22,17 @@ export const signupSchema = z.object({
 
 // --- Checkout Schemas ---
 
+const phoneSchema = z.string().refine((val) => {
+    const normalized = val.replace(/[\s()-]/g, '');
+    const phoneRegex = /^(?:\+254|0)[17]\d{8}$/;
+    return phoneRegex.test(normalized);
+}, { message: "Invalid phone number try format: +254 7XX XXX XXX or 07XX XXX XXX" });
+
+/** Full delivery address — still used for address book and delivery checkout. */
 export const addressSchema = z.object({
     fullName: z.string().min(2, { message: "Full name is required" }).max(80, { message: "Name is too long" }),
     email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal('')),
-    phone: z.string().refine((val) => {
-        const normalized = val.replace(/[\s()-]/g, '');
-        const phoneRegex = /^(?:\+254|0)[17]\d{8}$/;
-        return phoneRegex.test(normalized);
-    }, { message: "Invalid phone number try format: +254 7XX XXX XXX or 07XX XXX XXX" }),
+    phone: phoneSchema,
     county: z.string().refine((county) => KENYAN_COUNTIES.includes(county), { message: "Please select a valid Kenyan county" }),
     town: z.string().min(2, { message: "Town is required" }),
     address: z.string().min(5, { message: "Please provide a valid address/landmark" }),
@@ -37,11 +40,47 @@ export const addressSchema = z.object({
     lng: z.number().min(33).max(43).optional(),
 });
 
+/** Checkout shipping block: contact always required; address only when delivering. */
+const checkoutShippingSchema = z.object({
+    fullName: z.string().min(2, { message: "Full name is required" }).max(80, { message: "Name is too long" }),
+    email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal('')),
+    phone: phoneSchema,
+    county: z.string().optional(),
+    town: z.string().optional(),
+    address: z.string().optional(),
+    lat: z.number().min(-5).max(6).optional(),
+    lng: z.number().min(33).max(43).optional(),
+});
+
 export const checkoutSchema = z.object({
-    shipping: addressSchema,
+    shipping: checkoutShippingSchema,
     shippingMethod: z.enum(['standard', 'pickup']),
     paymentMethod: z.enum(['mpesa', 'manual_mpesa', 'card', 'cod', 'whatsapp']),
     transactionCode: z.string().optional(),
+}).superRefine((data, ctx) => {
+    if (data.shippingMethod !== 'standard') return;
+
+    if (!data.shipping.county || !KENYAN_COUNTIES.includes(data.shipping.county)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['shipping', 'county'],
+            message: 'Please select a valid Kenyan county',
+        });
+    }
+    if (!data.shipping.town || data.shipping.town.trim().length < 2) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['shipping', 'town'],
+            message: 'Town is required',
+        });
+    }
+    if (!data.shipping.address || data.shipping.address.trim().length < 5) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['shipping', 'address'],
+            message: 'Please provide a valid address/landmark',
+        });
+    }
 });
 
 // --- Product/Admin Schemas ---

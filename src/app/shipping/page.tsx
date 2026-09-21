@@ -78,8 +78,8 @@ export default function ShippingPage() {
                                         <p className="text-sm text-gray-600">On all orders above KSh {FREE_SHIPPING_THRESHOLD.toLocaleString()}, country-wide.</p>
                                     </div>
                                     <div className="p-6 rounded-2xl border-2 border-gray-100">
-                                        <h4 className="font-bold text-gray-900 mb-2">Free Pickup</h4>
-                                        <p className="text-sm text-gray-600">Collect at our store at no cost — ready in 1–2 hours.</p>
+                                        <h4 className="font-bold text-gray-900 mb-2">Free Pickup (Machakos only)</h4>
+                                        <p className="text-sm text-gray-600">Collect at our Machakos collection point at no cost — ready in 1–2 hours.</p>
                                     </div>
                                 </div>
 
