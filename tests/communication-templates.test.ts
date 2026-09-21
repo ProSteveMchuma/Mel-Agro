@@ -37,14 +37,13 @@ test('status SMS copy is specific for shipped and delivered', () => {
     assert.match(CommunicationTemplates.getStatusUpdate(order, 'Cancelled').smsBody, /cancelled/);
 });
 
-test('customer SMS includes a dashboard link for the order', () => {
-    const link = 'https://www.melagri.com/dashboard/user?tab=orders&orderId=abcde12345';
+test('customer SMS includes action deep links for the order', () => {
     assert.match(CommunicationTemplates.getAwaitingPayment(order).smsBody, /Pay here: /);
-    assert.ok(CommunicationTemplates.getAwaitingPayment(order).smsBody.includes(link));
-    assert.ok(CommunicationTemplates.getPaymentReceived(order, { receipt: 'TJK7H8K9L0' }).smsBody.includes(link));
-    assert.ok(CommunicationTemplates.getStatusUpdate(order, 'Shipped').smsBody.includes(link));
-    assert.ok(CommunicationTemplates.getOrderConfirmation(order).smsBody.includes(link));
-    assert.ok(CommunicationTemplates.getPaymentReminder(order).smsBody.includes(link));
-    assert.match(CommunicationTemplates.getReturnUpdate(order, 'Approved').smsBody, /tab=returns/);
-    assert.match(CommunicationTemplates.getReturnRequested(order).smsBody, /tab=returns/);
+    assert.match(CommunicationTemplates.getAwaitingPayment(order).smsBody, /\/orders\/abcde12345\/pay\?t=/);
+    assert.match(CommunicationTemplates.getPaymentReceived(order, { receipt: 'TJK7H8K9L0' }).smsBody, /\/orders\/abcde12345\?t=/);
+    assert.match(CommunicationTemplates.getStatusUpdate(order, 'Shipped').smsBody, /\/orders\/abcde12345\?t=/);
+    assert.match(CommunicationTemplates.getOrderConfirmation(order).smsBody, /\/orders\/abcde12345\?t=/);
+    assert.match(CommunicationTemplates.getPaymentReminder(order).smsBody, /\/orders\/abcde12345\/pay\?t=/);
+    assert.match(CommunicationTemplates.getReturnUpdate(order, 'Approved').smsBody, /\/orders\/abcde12345\/return\?t=/);
+    assert.match(CommunicationTemplates.getReturnRequested(order).smsBody, /\/orders\/abcde12345\/return\?t=/);
 });

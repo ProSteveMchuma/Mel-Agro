@@ -1,10 +1,12 @@
 import type { Order } from "../types/index.ts";
 import { SITE_URL } from './site.ts';
+import { customerOrderUrl } from './order-access.ts';
 
 function shortOrderId(order: { id?: string }): string {
     return String(order.id || '').slice(0, 5).toUpperCase();
 }
 
+/** @deprecated Prefer customerOrderUrl for action-specific deep links. */
 export function customerDashboardUrl(orderId?: string, tab: 'orders' | 'returns' = 'orders') {
     const params = new URLSearchParams({ tab });
     if (orderId) params.set('orderId', orderId);
@@ -16,11 +18,11 @@ export const CommunicationTemplates = {
         const id = shortOrderId(order);
         const userName = order.userName || "Farmer";
         const amount = Number(order.total) || 0;
-        const link = customerDashboardUrl(order.id);
+        const link = customerOrderUrl(order, 'pay');
         const smsBody = `Habari ${userName}, your Mel-Agri order #${id} (KES ${amount.toLocaleString()}) is awaiting payment. Pay here: ${link}`;
         return {
             subject: `Order Awaiting Payment - Mel-Agri #${id}`,
-            emailBody: `<p>Your order #${id} is awaiting payment.</p>`,
+            emailBody: `<p>Your order #${id} is awaiting payment.</p><p><a href="${link}">Complete payment</a></p>`,
             smsBody,
         };
     },
@@ -28,9 +30,9 @@ export const CommunicationTemplates = {
     getOrderConfirmation: (order: Order) => {
         const orderIdShort = shortOrderId(order);
         const userName = order.userName || "Farmer";
-        const link = customerDashboardUrl(order.id);
+        const link = customerOrderUrl(order, 'view');
 
-        const smsBody = `Habari ${userName}, your Mel-Agri order #${orderIdShort} has been received. Total: KES ${order.total.toLocaleString()}. View: ${link}`;
+        const smsBody = `Habari ${userName}, your Mel-Agri order #${orderIdShort} has been received. Total: KES ${order.total.toLocaleString()}. Track: ${link}`;
 
         const emailSubject = `Order Confirmed - Mel-Agri #${orderIdShort}`;
         const emailHtml = `
@@ -91,8 +93,8 @@ export const CommunicationTemplates = {
         const method = opts.method || (order as any).paymentMethod || 'M-Pesa';
         const amount = (order as any).amountPaid || order.total;
 
-        const link = customerDashboardUrl(order.id);
-        const smsBody = `Habari ${userName}! Payment of KES ${Number(amount).toLocaleString()} received for order #${orderIdShort}${receipt ? ` (Receipt: ${receipt})` : ''}. We're packing it. View: ${link}`;
+        const link = customerOrderUrl(order, 'view');
+        const smsBody = `Habari ${userName}! Payment of KES ${Number(amount).toLocaleString()} received for order #${orderIdShort}${receipt ? ` (Receipt: ${receipt})` : ''}. We're packing it. Track: ${link}`;
 
         const emailSubject = `Payment Received - Mel-Agri #${orderIdShort}`;
         const emailHtml = `
@@ -127,42 +129,45 @@ export const CommunicationTemplates = {
     getStatusUpdate: (order: Order, status: string) => {
         const id = shortOrderId(order);
         const userName = order.userName || 'Farmer';
-        const link = customerDashboardUrl(order.id);
+        const payLink = customerOrderUrl(order, 'pay');
+        const viewLink = customerOrderUrl(order, 'view');
         const statusCopy: Record<string, string> = {
-            'Pending Payment': `Habari ${userName}, your Mel-Agri order #${id} is awaiting payment. Pay here: ${link}`,
-            Processing: `Habari ${userName}, we're packing your Mel-Agri order #${id}. You'll get another SMS when it ships. View: ${link}`,
-            Shipped: `Habari ${userName}, your Mel-Agri order #${id} is on the way. Track it: ${link}`,
-            Delivered: `Habari ${userName}, your Mel-Agri order #${id} has been delivered. Asante! View: ${link}`,
-            Cancelled: `Habari ${userName}, your Mel-Agri order #${id} has been cancelled. If you paid, contact support. View: ${link}`,
+            'Pending Payment': `Habari ${userName}, your Mel-Agri order #${id} is awaiting payment. Pay here: ${payLink}`,
+            Processing: `Habari ${userName}, we're packing your Mel-Agri order #${id}. You'll get another SMS when it ships. Track: ${viewLink}`,
+            Shipped: `Habari ${userName}, your Mel-Agri order #${id} is on the way. Track it: ${viewLink}`,
+            Delivered: `Habari ${userName}, your Mel-Agri order #${id} has been delivered. Asante! View: ${viewLink}`,
+            Cancelled: `Habari ${userName}, your Mel-Agri order #${id} has been cancelled. If you paid, contact support. View: ${viewLink}`,
         };
         const smsBody = statusCopy[status]
-            || `Habari ${userName}, your Mel-Agri order #${id} status is now: ${status}. View: ${link}`;
+            || `Habari ${userName}, your Mel-Agri order #${id} status is now: ${status}. View: ${viewLink}`;
         return {
             subject: `Order Update - Mel-Agri #${id}`,
             smsBody,
-            emailBody: `<h1>Order Update</h1><p>Your order #${id} is now <strong>${status}</strong>.</p>`,
+            emailBody: `<h1>Order Update</h1><p>Your order #${id} is now <strong>${status}</strong>.</p><p><a href="${status === 'Pending Payment' ? payLink : viewLink}">Open order</a></p>`,
         };
     },
 
     getReturnRequested: (order: Order) => {
         const id = shortOrderId(order);
         const userName = order.userName || 'Farmer';
-        const smsBody = `Habari ${userName}, we received your return request for Mel-Agri order #${id}. We'll review it. View: ${customerDashboardUrl(order.id, 'returns')}`;
+        const link = customerOrderUrl(order, 'return');
+        const smsBody = `Habari ${userName}, we received your return request for Mel-Agri order #${id}. We'll review it. View: ${link}`;
         return {
             subject: `Return requested - Mel-Agri #${id}`,
             smsBody,
-            emailBody: `<p>We received your return request for order #${id}.</p>`,
+            emailBody: `<p>We received your return request for order #${id}.</p><p><a href="${link}">View return</a></p>`,
         };
     },
 
     getReturnUpdate: (order: Order, status: 'Approved' | 'Rejected') => {
         const id = shortOrderId(order);
         const userName = order.userName || 'Farmer';
-        const smsBody = `Habari ${userName}, your return request for Mel-Agri order #${id} has been ${status.toLowerCase()}. View: ${customerDashboardUrl(order.id, 'returns')}`;
+        const link = customerOrderUrl(order, 'return');
+        const smsBody = `Habari ${userName}, your return request for Mel-Agri order #${id} has been ${status.toLowerCase()}. View: ${link}`;
         return {
             subject: `Return ${status} - Mel-Agri #${id}`,
             smsBody,
-            emailBody: `<p>Your return request for order #${id} has been ${status.toLowerCase()}.</p>`,
+            emailBody: `<p>Your return request for order #${id} has been ${status.toLowerCase()}.</p><p><a href="${link}">View return</a></p>`,
         };
     },
 
@@ -171,8 +176,8 @@ export const CommunicationTemplates = {
         const userName = order.userName || "Farmer";
         const amount = Number(order.total) || 0;
         const tillNumber = opts.tillNumber || process.env.MPESA_TILL_NUMBER || '3130847';
-        const dashboardUrl = customerDashboardUrl(order.id);
-        const smsBody = `Habari ${userName}! Your Mel-Agri order #${orderIdShort} (KES ${amount.toLocaleString()}) is awaiting payment. Pay here: ${dashboardUrl} or M-Pesa Till ${tillNumber}.`;
+        const payUrl = customerOrderUrl(order, 'pay');
+        const smsBody = `Habari ${userName}! Your Mel-Agri order #${orderIdShort} (KES ${amount.toLocaleString()}) is awaiting payment. Pay here: ${payUrl} or M-Pesa Till ${tillNumber}.`;
 
         const emailSubject = `Payment Reminder - Mel-Agri #${orderIdShort}`;
         const emailHtml = `
@@ -193,7 +198,7 @@ export const CommunicationTemplates = {
                     </div>
 
                     <div style="text-align: center; margin: 32px 0;">
-                        <a href="${dashboardUrl}" style="background: #22c55e; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; margin: 4px;">Complete Payment</a>
+                        <a href="${payUrl}" style="background: #22c55e; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: bold; display: inline-block; margin: 4px;">Complete Payment</a>
                     </div>
 
                     <div style="background: #f0fdf4; padding: 16px; border-radius: 12px; border: 1px solid #bbf7d0; font-size: 13px; color: #166534;">
