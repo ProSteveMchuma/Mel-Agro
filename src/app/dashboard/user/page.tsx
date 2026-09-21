@@ -27,15 +27,18 @@ import { actionableReorders, buildReorderPredictions, ReorderPrediction } from '
 import { AnalyticsService } from '@/lib/analytics';
 import { whatsAppUrl } from '@/lib/site';
 import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
+import { fulfillmentStepsFor, isPickupOrder, statusLabelForOrder } from '@/lib/pickup';
 
 type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses' | 'payments';
 const TABS: Tab[] = ['dashboard', 'orders', 'returns', 'notifications', 'profile', 'support', 'wishlist', 'addresses', 'payments'];
 
 function isReturnEligible(order: Order) {
-    if (order.status !== 'Delivered' || order.returnStatus) return false;
-    const deliveredAt = (order as { deliveredAt?: string }).deliveredAt;
-    if (!deliveredAt) return true;
-    const elapsed = Date.now() - new Date(deliveredAt).getTime();
+    if (order.returnStatus) return false;
+    if (order.status !== 'Delivered' && order.status !== 'Collected') return false;
+    const completedAt = (order as { deliveredAt?: string; collectedAt?: string }).deliveredAt
+        || (order as { collectedAt?: string }).collectedAt;
+    if (!completedAt) return true;
+    const elapsed = Date.now() - new Date(completedAt).getTime();
     return Number.isFinite(elapsed) && elapsed <= 7 * 24 * 60 * 60 * 1000;
 }
 
@@ -402,7 +405,7 @@ function UserDashboardInner() {
                         </div>
                         <Link href="/dashboard/user" onClick={() => { setSelectedOrder(activeOrder); }} className="text-xs font-bold bg-gray-900 text-white px-4 py-2 rounded-xl hover:scale-105 transition-all">Full Tracking</Link>
                     </div>
-                    <OrderTimeline status={activeOrder.status} />
+                    <OrderTimeline order={activeOrder} />
                 </div>
             ))}
 
@@ -704,8 +707,14 @@ function UserDashboardInner() {
         </div>
     );
 
-    const OrderTimeline = ({ status }: { status: string }) => {
-        const steps = ['Processing', 'Shipped', 'Delivered'];
+    const OrderTimeline = ({ order }: { order: Order }) => {
+        const steps = [...fulfillmentStepsFor(order)];
+        let status = order.status;
+        // Map legacy delivery statuses onto pickup steps when needed
+        if (isPickupOrder(order)) {
+            if (status === 'Shipped') status = 'Ready for Collection';
+            if (status === 'Delivered') status = 'Collected';
+        }
         const currentStepIndex = steps.indexOf(status);
         if (currentStepIndex === -1 && status !== 'Cancelled') return null;
         if (status === 'Cancelled') return <div className="text-red-600 font-bold bg-red-50 p-4 rounded-2xl text-center border border-red-100 mb-6">Order Cancelled</div>;
@@ -730,7 +739,7 @@ function UserDashboardInner() {
                                 )}
                             </div>
                             <span className={`mt-3 text-[10px] font-black uppercase tracking-wider ${index <= currentStepIndex ? 'text-gray-900' : 'text-gray-400'}`}>
-                                {step}
+                                {statusLabelForOrder(step, order)}
                             </span>
                         </div>
                     ))}
@@ -916,7 +925,7 @@ function UserDashboardInner() {
                                 <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                             <h2 className="text-xl md:text-2xl font-black text-gray-900 mb-6">Order Details</h2>
-                            <OrderTimeline status={selectedOrder.status} />
+                            <OrderTimeline order={selectedOrder} />
                             <div className="flex gap-4 mb-8 p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm">
                                 <div>
                                     <p className="text-[10px] font-bold text-gray-400 uppercase">Status</p>

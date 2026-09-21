@@ -119,7 +119,7 @@ export default function ContactPage() {
                             {[
                                 {
                                     question: "What are your delivery options?",
-                                    answer: "Delivery is zone-based from about KES 200 in Nairobi to KES 750 upcountry. Pickup at our Nairobi store is free. You'll see the exact cost at checkout."
+                                    answer: "Delivery is zone-based from about KES 200 in Nairobi to KES 750 upcountry. Free pickup is available at our Machakos collection point only. You'll see the exact cost at checkout."
                                 },
                                 {
                                     question: "How do I track my order?",

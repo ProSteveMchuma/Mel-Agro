@@ -163,16 +163,19 @@ export function isReturnEligible(order: {
     status?: string | null;
     returnStatus?: string | null;
     deliveredAt?: string | null;
+    collectedAt?: string | null;
 }): { ok: true } | { ok: false; message: string } {
     if (order.returnStatus) {
         return { ok: false, message: `A return is already ${String(order.returnStatus).toLowerCase()}` };
     }
-    if (order.status !== 'Delivered') {
-        return { ok: false, message: 'Returns are only available after delivery' };
+    const completed =
+        order.status === 'Delivered' || order.status === 'Collected';
+    if (!completed) {
+        return { ok: false, message: 'Returns are only available after delivery or collection' };
     }
-    const deliveredAt = order.deliveredAt;
-    if (deliveredAt) {
-        const elapsed = Date.now() - new Date(deliveredAt).getTime();
+    const completedAt = order.deliveredAt || order.collectedAt;
+    if (completedAt) {
+        const elapsed = Date.now() - new Date(completedAt).getTime();
         if (!Number.isFinite(elapsed) || elapsed > 7 * 24 * 60 * 60 * 1000) {
             return { ok: false, message: 'The 7-day return window has closed' };
         }
@@ -189,6 +192,7 @@ export function publicOrderSummary(order: Record<string, any>, orderId: string) 
         phoneMasked: maskPhone(order.phone),
         date: order.date || order.createdAt || null,
         deliveredAt: order.deliveredAt || null,
+        collectedAt: order.collectedAt || null,
         status: order.status || 'Pending Payment',
         paymentStatus: order.paymentStatus || 'Unpaid',
         paymentMethod: order.paymentMethod || null,

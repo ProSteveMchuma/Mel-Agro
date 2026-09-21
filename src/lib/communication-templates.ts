@@ -152,11 +152,16 @@ export const CommunicationTemplates = {
         const userName = order.userName || 'Farmer';
         const payLink = actionUrl(order, 'pay');
         const viewLink = actionUrl(order, 'view');
+        const isPickup = String((order as any).shippingMethod || order.shippingAddress?.method || '').toLowerCase() === 'pickup';
         const statusCopy: Record<string, string> = {
             'Pending Payment': `Habari ${userName}, your Mel-Agri order #${id} is awaiting payment. Pay here: ${payLink}`,
-            Processing: `Habari ${userName}, we're packing your Mel-Agri order #${id}. You'll get another SMS when it ships. Track: ${viewLink}`,
+            Processing: isPickup
+                ? `Habari ${userName}, we're packing your Mel-Agri order #${id} for Machakos collection. Track: ${viewLink}`
+                : `Habari ${userName}, we're packing your Mel-Agri order #${id}. You'll get another SMS when it ships. Track: ${viewLink}`,
             Shipped: `Habari ${userName}, your Mel-Agri order #${id} is on the way. Track it: ${viewLink}`,
+            'Ready for Collection': `Habari ${userName}, your Mel-Agri order #${id} is ready for collection in Machakos Town. Bring your phone/ID. View: ${viewLink}`,
             Delivered: `Habari ${userName}, your Mel-Agri order #${id} has been delivered. Asante! View: ${viewLink}`,
+            Collected: `Habari ${userName}, your Mel-Agri order #${id} was collected. Asante! View: ${viewLink}`,
             Cancelled: `Habari ${userName}, your Mel-Agri order #${id} has been cancelled. If you paid, contact support. View: ${viewLink}`,
         };
         const smsBody = statusCopy[status]

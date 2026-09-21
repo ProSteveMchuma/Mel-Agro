@@ -12,7 +12,7 @@ type OrderStatus = Order["status"];
 type ViewId = "all" | "attention" | "unfulfilled" | "unpaid" | "completed";
 type SortOption = "newest" | "oldest" | "highest" | "lowest";
 
-const statuses: OrderStatus[] = ["Pending Payment", "Processing", "Shipped", "Delivered", "Cancelled"];
+const statuses: OrderStatus[] = ["Pending Payment", "Processing", "Shipped", "Delivered", "Ready for Collection", "Collected", "Cancelled"];
 const views: Array<{ id: ViewId; label: string }> = [
   { id: "all", label: "All orders" }, { id: "attention", label: "Needs attention" }, { id: "unfulfilled", label: "Unfulfilled" }, { id: "unpaid", label: "Unpaid" }, { id: "completed", label: "Completed" },
 ];
@@ -22,6 +22,8 @@ const statusStyle: Record<OrderStatus, string> = {
   Processing: "bg-blue-50 text-blue-700 ring-blue-600/20",
   Shipped: "bg-indigo-50 text-indigo-700 ring-indigo-600/20",
   Delivered: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
+  "Ready for Collection": "bg-sky-50 text-sky-700 ring-sky-600/20",
+  Collected: "bg-emerald-50 text-emerald-700 ring-emerald-600/20",
   Cancelled: "bg-red-50 text-red-700 ring-red-600/20",
 };
 

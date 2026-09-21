@@ -5,6 +5,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { getAuth } from "firebase/auth";
+import {
+    fulfillmentStepsFor,
+    isPickupOrder,
+    nextFulfillmentStatus,
+    PICKUP_STORE,
+} from "@/lib/pickup";
 
 async function authedFetch(url: string, body: any) {
     const token = await getAuth().currentUser?.getIdToken();
@@ -215,16 +221,32 @@ export default function AdminOrderDetailsPage() {
 
     const handleDispatch = async () => {
         if (!order) return;
-        if (!trackingInfo.carrier || !trackingInfo.trackingNumber) {
-            toast.error("Please enter carrier and tracking number.");
-            return;
+        const pickup = isPickupOrder(order);
+        const next = nextFulfillmentStatus(order) || (pickup ? 'Ready for Collection' : 'Shipped');
+
+        if (!pickup && next === 'Shipped') {
+            if (!trackingInfo.carrier || !trackingInfo.trackingNumber) {
+                toast.error("Please enter carrier and tracking number.");
+                return;
+            }
         }
-        const t = toast.loading('Marking as shipped…');
+
+        const t = toast.loading(pickup ? 'Marking ready for collection…' : 'Marking as shipped…');
         try {
-            await updateOrderStatus(order.id, 'Shipped');
-            setOrder({ ...order, status: 'Shipped', tracking: trackingInfo });
+            await updateOrderStatus(
+                order.id,
+                next as any,
+                !pickup && next === 'Shipped'
+                    ? { tracking: { carrier: trackingInfo.carrier, trackingNumber: trackingInfo.trackingNumber } }
+                    : undefined,
+            );
+            setOrder({
+                ...order,
+                status: next,
+                ...(!pickup ? { tracking: trackingInfo } : {}),
+            });
             setIsDispatchModalOpen(false);
-            toast.success('Order marked as shipped', { id: t });
+            toast.success(pickup ? 'Ready for Machakos collection' : 'Order marked as shipped', { id: t });
         } catch (err: any) {
             toast.error(err?.message || 'Could not update order', { id: t });
         }
@@ -234,9 +256,11 @@ export default function AdminOrderDetailsPage() {
         return <div className="p-8 text-center text-gray-500">Loading order details...</div>;
     }
 
-    const steps = ['Processing', 'Shipped', 'Delivered'];
-    const currentStepIndex = steps.indexOf(order.status) === -1 ? 0 : steps.indexOf(order.status);
+    const pickup = isPickupOrder(order);
+    const steps = [...fulfillmentStepsFor(order)];
+    const currentStepIndex = Math.max(0, steps.indexOf(order.status));
     const isCancelled = order.status === 'Cancelled';
+    const nextStep = nextFulfillmentStatus(order);
 
     return (
         <div className="relative space-y-6 pb-28 md:pb-20">
@@ -273,7 +297,7 @@ export default function AdminOrderDetailsPage() {
                         target="_blank"
                         className="px-6 py-3 bg-white border border-gray-200 text-gray-900 rounded-xl hover:bg-gray-50 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 flex items-center gap-2 shadow-sm"
                     >
-                        <span>🚚</span> Delivery Note
+                        <span>{pickup ? '🏪' : '🚚'}</span> {pickup ? 'Collection Slip' : 'Delivery Note'}
                     </Link>
                 </div>
             </div>
@@ -281,10 +305,57 @@ export default function AdminOrderDetailsPage() {
             <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,.12)] backdrop-blur md:hidden">
                 <div className="mx-auto flex max-w-lg items-center gap-2">
                     <Link href={`tel:${order.phone || ''}`} aria-disabled={!order.phone} className={`flex min-h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-lg ${order.phone ? 'text-gray-700' : 'pointer-events-none opacity-40'}`} aria-label="Call customer">☎</Link>
-                    {order.status === 'Processing' && <button type="button" onClick={() => setIsDispatchModalOpen(true)} className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white">Dispatch order</button>}
-                    {order.status === 'Shipped' && <button type="button" onClick={async () => { if (!window.confirm('Confirm this order was delivered?')) return; try { await updateOrderStatus(order.id, 'Delivered'); toast.success('Order delivered'); } catch { toast.error('Could not update order'); } }} className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white">Confirm delivered</button>}
-                    {(order.status === 'Pending Payment' || order.paymentStatus !== 'Paid') && <button type="button" onClick={() => setIsReminderModalOpen(true)} className="min-h-12 flex-1 rounded-xl bg-amber-600 px-4 text-sm font-black text-white">Payment reminder</button>}
-                    {order.status === 'Delivered' && order.paymentStatus === 'Paid' && <Link href={`/orders/${order.id}/receipt`} className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-gray-950 px-4 text-sm font-black text-white">Open receipt</Link>}
+                    {order.status === 'Processing' && (
+                        <button type="button" onClick={() => setIsDispatchModalOpen(true)} className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white">
+                            {pickup ? 'Ready for collection' : 'Dispatch order'}
+                        </button>
+                    )}
+                    {(order.status === 'Ready for Collection' || (pickup && order.status === 'Shipped')) && (
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                if (!window.confirm('Confirm the customer collected this order?')) return;
+                                try {
+                                    await updateOrderStatus(order.id, 'Collected');
+                                    setOrder({ ...order, status: 'Collected' });
+                                    toast.success('Order collected');
+                                } catch {
+                                    toast.error('Could not update order');
+                                }
+                            }}
+                            className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white"
+                        >
+                            Confirm collected
+                        </button>
+                    )}
+                    {!pickup && order.status === 'Shipped' && (
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                if (!window.confirm('Confirm this order was delivered?')) return;
+                                try {
+                                    await updateOrderStatus(order.id, 'Delivered');
+                                    setOrder({ ...order, status: 'Delivered' });
+                                    toast.success('Order delivered');
+                                } catch {
+                                    toast.error('Could not update order');
+                                }
+                            }}
+                            className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white"
+                        >
+                            Confirm delivered
+                        </button>
+                    )}
+                    {(order.status === 'Pending Payment' || order.paymentStatus !== 'Paid') && (
+                        <button type="button" onClick={() => setIsReminderModalOpen(true)} className="min-h-12 flex-1 rounded-xl bg-amber-600 px-4 text-sm font-black text-white">
+                            Payment reminder
+                        </button>
+                    )}
+                    {(order.status === 'Delivered' || order.status === 'Collected') && order.paymentStatus === 'Paid' && (
+                        <Link href={`/orders/${order.id}/receipt`} className="flex min-h-12 flex-1 items-center justify-center rounded-xl bg-gray-950 px-4 text-sm font-black text-white">
+                            Open receipt
+                        </Link>
+                    )}
                 </div>
             </div>
 
@@ -369,13 +440,19 @@ export default function AdminOrderDetailsPage() {
                     <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
                         <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Execution Status</h2>
                         <div className="mb-8">
-                            <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${order.status === 'Delivered' ? 'bg-green-100 text-green-700' :
-                                order.status === 'Shipped' ? 'bg-blue-100 text-blue-700' :
-                                    order.status === 'Processing' ? 'bg-yellow-100 text-yellow-700' :
-                                        'bg-red-100 text-red-700'
-                                }`}>
+                            <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${
+                                order.status === 'Delivered' || order.status === 'Collected' ? 'bg-green-100 text-green-700' :
+                                order.status === 'Shipped' || order.status === 'Ready for Collection' ? 'bg-blue-100 text-blue-700' :
+                                order.status === 'Processing' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-red-100 text-red-700'
+                            }`}>
                                 {order.status}
                             </span>
+                            {pickup && (
+                                <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                    Machakos collection · {PICKUP_STORE.label}
+                                </p>
+                            )}
                         </div>
 
                         <div className="space-y-3">
@@ -384,13 +461,39 @@ export default function AdminOrderDetailsPage() {
                                     onClick={() => setIsDispatchModalOpen(true)}
                                     className="w-full bg-melagri-primary text-white py-4 rounded-2xl hover:bg-melagri-secondary transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-500/10 active:scale-95"
                                 >
-                                    Dispatch Order
+                                    {pickup ? 'Mark Ready for Collection' : 'Dispatch Order'}
                                 </button>
                             )}
 
-                            {order.status === 'Shipped' && (
+                            {(order.status === 'Ready for Collection' || (pickup && order.status === 'Shipped')) && (
                                 <button
-                                    onClick={() => updateOrderStatus(order.id, 'Delivered')}
+                                    onClick={async () => {
+                                        if (!window.confirm('Confirm the customer collected this order?')) return;
+                                        try {
+                                            await updateOrderStatus(order.id, 'Collected');
+                                            setOrder({ ...order, status: 'Collected' });
+                                            toast.success('Order collected');
+                                        } catch {
+                                            toast.error('Could not update order');
+                                        }
+                                    }}
+                                    className="w-full bg-green-600 text-white py-4 rounded-2xl hover:bg-green-700 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-600/10 active:scale-95"
+                                >
+                                    Mark as Collected
+                                </button>
+                            )}
+
+                            {!pickup && order.status === 'Shipped' && (
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await updateOrderStatus(order.id, 'Delivered');
+                                            setOrder({ ...order, status: 'Delivered' });
+                                            toast.success('Order delivered');
+                                        } catch {
+                                            toast.error('Could not update order');
+                                        }
+                                    }}
                                     className="w-full bg-green-600 text-white py-4 rounded-2xl hover:bg-green-700 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-600/10 active:scale-95"
                                 >
                                     Mark as Delivered
@@ -401,12 +504,29 @@ export default function AdminOrderDetailsPage() {
                                 <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-3 block">Override Status</label>
                                 <select
                                     value={order.status}
-                                    onChange={(e) => updateOrderStatus(order.id, e.target.value as any)}
+                                    onChange={async (e) => {
+                                        const next = e.target.value;
+                                        try {
+                                            await updateOrderStatus(order.id, next as any);
+                                            setOrder({ ...order, status: next });
+                                        } catch {
+                                            toast.error('Could not update order');
+                                        }
+                                    }}
                                     className="w-full p-4 rounded-xl bg-gray-50 border border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-600 focus:bg-white focus:border-melagri-primary outline-none transition-all"
                                 >
                                     <option value="Processing">Processing</option>
-                                    <option value="Shipped">Shipped</option>
-                                    <option value="Delivered">Delivered</option>
+                                    {pickup ? (
+                                        <>
+                                            <option value="Ready for Collection">Ready for Collection</option>
+                                            <option value="Collected">Collected</option>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <option value="Shipped">Shipped</option>
+                                            <option value="Delivered">Delivered</option>
+                                        </>
+                                    )}
                                     <option value="Cancelled">Cancelled</option>
                                 </select>
                             </div>
@@ -436,22 +556,51 @@ export default function AdminOrderDetailsPage() {
                     {/* Logistics Intelligence */}
                     <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 relative overflow-hidden">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Logistics</h2>
-                            <button
-                                onClick={() => setIsDispatchModalOpen(true)}
-                                className="text-[10px] font-black text-melagri-primary uppercase hover:underline"
-                            >
-                                {order.tracking ? 'Edit' : 'Add'}
-                            </button>
+                            <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                                {pickup ? 'Collection' : 'Logistics'}
+                            </h2>
+                            {!pickup && (
+                                <button
+                                    onClick={() => setIsDispatchModalOpen(true)}
+                                    className="text-[10px] font-black text-melagri-primary uppercase hover:underline"
+                                >
+                                    {order.tracking ? 'Edit' : 'Add'}
+                                </button>
+                            )}
                         </div>
                         <div className="space-y-6">
                             <div>
-                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-2">Destination</p>
-                                <p className="text-gray-900 font-bold leading-snug">{order.shippingAddress?.details || 'N/A'}</p>
-                                <p className="text-gray-400 text-[10px] font-black uppercase mt-1">{order.shippingAddress?.county || 'N/A'}</p>
+                                <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-2">
+                                    {pickup ? 'Collection Point' : 'Destination'}
+                                </p>
+                                {pickup ? (
+                                    <>
+                                        <p className="text-gray-900 font-bold leading-snug">{PICKUP_STORE.name}</p>
+                                        <p className="text-gray-400 text-[10px] font-black uppercase mt-1">{PICKUP_STORE.label}</p>
+                                        <p className="text-gray-400 text-[10px] font-bold mt-2">{PICKUP_STORE.etaText}</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-gray-900 font-bold leading-snug">{order.shippingAddress?.details || 'N/A'}</p>
+                                        <p className="text-gray-400 text-[10px] font-black uppercase mt-1">{order.shippingAddress?.county || 'N/A'}</p>
+                                    </>
+                                )}
                             </div>
 
-                            {order.tracking ? (
+                            {pickup ? (
+                                <div className="mt-6 pt-6 border-t border-gray-50 p-4 rounded-2xl bg-green-50/50">
+                                    <p className="text-[10px] font-black text-green-700 uppercase tracking-widest mb-1">
+                                        {order.status === 'Collected'
+                                            ? 'Collected'
+                                            : order.status === 'Ready for Collection' || order.status === 'Shipped'
+                                                ? 'Awaiting customer'
+                                                : 'Packing for collection'}
+                                    </p>
+                                    <p className="text-[10px] text-gray-500 font-bold leading-relaxed">
+                                        Customer should bring phone or ID matching the order.
+                                    </p>
+                                </div>
+                            ) : order.tracking ? (
                                 <div className="mt-6 pt-6 border-t border-gray-50 p-4 rounded-2xl bg-green-50/50">
                                     <div className="flex items-center gap-2 mb-3">
                                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -935,41 +1084,59 @@ export default function AdminOrderDetailsPage() {
                 </div>
             )}
 
-            {/* Dispatch Modal (already styled similarly) */}
+            {/* Dispatch / Ready-for-collection modal */}
             {isDispatchModalOpen && (
                 <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
                     <div className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl sm:p-10">
                         <div className="flex items-center gap-4 mb-8">
                             <div className="w-12 h-12 bg-melagri-primary/10 rounded-2xl flex items-center justify-center text-melagri-primary">
-                                <span className="text-2xl">🚚</span>
+                                <span className="text-2xl">{pickup ? '🏪' : '🚚'}</span>
                             </div>
-                            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">Dispatch Order</h2>
+                            <h2 className="text-xl font-black text-gray-900 uppercase tracking-tight">
+                                {pickup ? 'Ready for Collection' : 'Dispatch Order'}
+                            </h2>
                         </div>
 
-                        <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-10 leading-relaxed">Enter logistics payload to synchronize shipment tracking for the customer.</p>
-
-                        <div className="space-y-6 mb-10">
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Carrier Protocol</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. G4S, Wells Fargo, Pickup"
-                                    className="w-full p-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-4 focus:ring-melagri-primary/10 focus:bg-white focus:border-melagri-primary outline-none transition-all font-black uppercase text-[10px] tracking-widest"
-                                    value={trackingInfo.carrier}
-                                    onChange={(e) => setTrackingInfo({ ...trackingInfo, carrier: e.target.value })}
-                                />
+                        {pickup ? (
+                            <div className="mb-10 space-y-4">
+                                <p className="text-gray-500 text-xs font-bold uppercase tracking-widest leading-relaxed">
+                                    Confirm this order is packed and waiting at the Machakos collection point. The customer will get an SMS.
+                                </p>
+                                <div className="rounded-2xl border border-green-100 bg-green-50/60 p-4">
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-green-700 mb-1">Collection point</p>
+                                    <p className="text-sm font-bold text-gray-900">{PICKUP_STORE.name}</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mt-1">{PICKUP_STORE.label}</p>
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Tracking / Reference ID</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. TRK-99023441"
-                                    className="w-full p-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-4 focus:ring-melagri-primary/10 focus:bg-white focus:border-melagri-primary outline-none transition-all font-mono text-[10px] tracking-[0.2em]"
-                                    value={trackingInfo.trackingNumber}
-                                    onChange={(e) => setTrackingInfo({ ...trackingInfo, trackingNumber: e.target.value })}
-                                />
-                            </div>
-                        </div>
+                        ) : (
+                            <>
+                                <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mb-10 leading-relaxed">
+                                    Enter logistics payload to synchronize shipment tracking for the customer.
+                                </p>
+                                <div className="space-y-6 mb-10">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Carrier Protocol</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. G4S, Wells Fargo"
+                                            className="w-full p-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-4 focus:ring-melagri-primary/10 focus:bg-white focus:border-melagri-primary outline-none transition-all font-black uppercase text-[10px] tracking-widest"
+                                            value={trackingInfo.carrier}
+                                            onChange={(e) => setTrackingInfo({ ...trackingInfo, carrier: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Tracking / Reference ID</label>
+                                        <input
+                                            type="text"
+                                            placeholder="e.g. TRK-99023441"
+                                            className="w-full p-4 rounded-2xl bg-gray-50 border border-gray-100 focus:ring-4 focus:ring-melagri-primary/10 focus:bg-white focus:border-melagri-primary outline-none transition-all font-mono text-[10px] tracking-[0.2em]"
+                                            value={trackingInfo.trackingNumber}
+                                            onChange={(e) => setTrackingInfo({ ...trackingInfo, trackingNumber: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
                         <div className="flex gap-4">
                             <button
@@ -982,7 +1149,7 @@ export default function AdminOrderDetailsPage() {
                                 onClick={handleDispatch}
                                 className="flex-1 py-5 text-[10px] font-black text-white bg-melagri-primary hover:bg-melagri-secondary rounded-[1.5rem] transition-all shadow-xl shadow-melagri-primary/20 uppercase tracking-[0.2em] active:scale-95"
                             >
-                                Execute Dispatch
+                                {pickup ? 'Mark Ready' : 'Execute Dispatch'}
                             </button>
                         </div>
                     </div>

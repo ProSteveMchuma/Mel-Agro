@@ -18,7 +18,7 @@ const faqCategories = [
             },
             {
                 question: "Do you deliver to upcountry locations?",
-                answer: "Yes, we deliver countrywide. Delivery cost depends on your county (about KES 200 in Nairobi up to KES 750 upcountry). Pickup at our Nairobi store is free. You see the exact fee at checkout."
+                answer: "Yes, we deliver countrywide. Delivery cost depends on your county (about KES 200 in Nairobi up to KES 750 upcountry). Free pickup is available at our Machakos collection point only. You see the exact fee at checkout."
             },
             {
                 question: "Can I return items if I bought the wrong variety?",
