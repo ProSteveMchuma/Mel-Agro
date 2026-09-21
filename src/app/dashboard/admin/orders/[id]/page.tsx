@@ -260,7 +260,6 @@ export default function AdminOrderDetailsPage() {
     const steps = [...fulfillmentStepsFor(order)];
     const currentStepIndex = Math.max(0, steps.indexOf(order.status));
     const isCancelled = order.status === 'Cancelled';
-    const nextStep = nextFulfillmentStatus(order);
 
     return (
         <div className="relative space-y-6 pb-28 md:pb-20">
