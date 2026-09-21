@@ -36,7 +36,14 @@ export function statusLabelForOrder(
     if (order && isPickupOrder(order)) {
         if (status === 'Shipped' || status === 'Ready for Collection') return 'Ready for collection';
         if (status === 'Delivered' || status === 'Collected') return 'Collected';
+        if (status === 'Processing') return 'Preparing for collection';
+        if (status === 'Pending Payment') return 'Awaiting payment';
     }
+    if (status === 'Pending Payment') return 'Awaiting payment';
+    if (status === 'Processing') return 'Preparing your order';
+    if (status === 'Shipped') return 'Out for delivery';
+    if (status === 'Delivered') return 'Delivered';
+    if (status === 'Cancelled') return 'Cancelled';
     return status;
 }
 

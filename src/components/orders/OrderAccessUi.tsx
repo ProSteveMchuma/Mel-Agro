@@ -4,19 +4,29 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import type { PublicOrder } from '@/lib/order-access-client';
+import { statusLabelForOrder } from '@/lib/pickup';
 import { SUPPORT_PHONE_DISPLAY, whatsAppUrl } from '@/lib/site';
 
 export function statusTone(status: string) {
-    if (status === 'Delivered' || status === 'Paid' || status === 'Approved') {
+    if (status === 'Delivered' || status === 'Collected' || status === 'Paid' || status === 'Approved') {
         return 'bg-green-100 text-green-800';
     }
-    if (status === 'Shipped' || status === 'Processing' || status === 'Requested') {
+    if (status === 'Shipped' || status === 'Ready for Collection' || status === 'Processing' || status === 'Requested') {
         return 'bg-amber-100 text-amber-900';
     }
     if (status === 'Cancelled' || status === 'Rejected') {
         return 'bg-red-100 text-red-800';
     }
     return 'bg-slate-100 text-slate-700';
+}
+
+function paymentStatusLabel(status: string) {
+    if (status === 'Paid') return 'Paid';
+    if (status === 'Unpaid') return 'Unpaid';
+    if (status === 'Pending Verification') return 'Payment under review';
+    if (status === 'Pending WhatsApp') return 'Complete on WhatsApp';
+    if (status === 'Failed') return 'Payment failed';
+    return status;
 }
 
 export function OrderAccessFrame({
@@ -73,10 +83,10 @@ export function OrderSummaryCard({
                 </div>
                 <div className="flex flex-col items-end gap-2">
                     <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${statusTone(order.status)}`}>
-                        {order.status}
+                        {statusLabelForOrder(order.status, order)}
                     </span>
                     <span className={`px-3 py-1 rounded-full text-[11px] font-bold ${statusTone(order.paymentStatus)}`}>
-                        {order.paymentStatus}
+                        {paymentStatusLabel(order.paymentStatus)}
                     </span>
                 </div>
             </div>

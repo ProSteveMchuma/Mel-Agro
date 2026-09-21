@@ -45,6 +45,10 @@ test('status labels and loyalty helpers treat collection as complete', () => {
     assert.equal(statusLabelForOrder('Ready for Collection', pickup), 'Ready for collection');
     assert.equal(statusLabelForOrder('Collected', pickup), 'Collected');
     assert.equal(statusLabelForOrder('Shipped', pickup), 'Ready for collection');
+    assert.equal(statusLabelForOrder('Processing', pickup), 'Preparing for collection');
+    assert.equal(statusLabelForOrder('Processing'), 'Preparing your order');
+    assert.equal(statusLabelForOrder('Shipped'), 'Out for delivery');
+    assert.equal(statusLabelForOrder('Pending Payment'), 'Awaiting payment');
     assert.equal(awardsLoyaltyOnStatus('Collected'), true);
     assert.equal(awardsLoyaltyOnStatus('Delivered'), true);
     assert.equal(isActiveFulfillmentStatus('Ready for Collection'), true);
