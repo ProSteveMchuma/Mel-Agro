@@ -1,5 +1,6 @@
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
+import Link from 'next/link';
 
 export default function BillingPolicy() {
     return (
@@ -13,13 +14,23 @@ export default function BillingPolicy() {
 
                         <h2 className="text-xl font-bold text-gray-800 mt-6 mb-3">Accepted Payment Methods</h2>
                         <ul className="list-disc pl-5 space-y-2 mb-4">
-                            <li>M-Pesa (Safaricom)</li>
-                            <li>Cash on Delivery, where offered at checkout</li>
-                            <li>Bank Transfer (for bulk orders only)</li>
+                            <li>M-Pesa Express (STK Push to your phone)</li>
+                            <li>Buy Goods (Till) — pay via M-Pesa and enter your receipt code</li>
+                            <li>Cash on Delivery or collection, where offered at checkout</li>
+                            <li>
+                                Bank transfer for{' '}
+                                <Link href="/bulk" className="text-melagri-primary font-semibold hover:underline">
+                                    bulk / wholesale orders
+                                </Link>{' '}
+                                only
+                            </li>
                         </ul>
 
                         <h2 className="text-xl font-bold text-gray-800 mt-6 mb-3">Payment Security</h2>
-                        <p className="mb-4">All transactions are encrypted using SSL technology. We do not store your credit card information on our servers.</p>
+                        <p className="mb-4">
+                            Checkout uses encrypted HTTPS. M-Pesa payments are processed through Safaricom.
+                            We never ask you to share your M-Pesa PIN with Mel-Agri staff or on this website.
+                        </p>
 
                         <h2 className="text-xl font-bold text-gray-800 mt-6 mb-3">Currency</h2>
                         <p className="mb-4">All prices are listed in Kenyan Shillings (KES) and are inclusive of VAT where applicable.</p>
