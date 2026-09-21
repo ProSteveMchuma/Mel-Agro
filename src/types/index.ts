@@ -40,6 +40,8 @@ export interface Product {
     subCategory?: string;
     productCode?: string;
     brand?: string;
+    /** Stable slug key for brand matching (case/spacing/hyphen insensitive). */
+    brandKey?: string;
     image: string;
     images?: string[]; // Multiple images support
     rating: number;

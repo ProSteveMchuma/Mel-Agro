@@ -49,7 +49,7 @@ export default function ExportProductsButton() {
                             'PRODUCT PRICE': variantStr,
                             'CATEGORY': p.category,
                             'SUB CATEGORY': p.subCategory || "",
-                            'BRAND': p.brand || "MEL-AGRI",
+                            'BRAND': p.brand || "",
                             'PHOTO': p.image
                         };
                     });

@@ -4,6 +4,12 @@ import ExcelJS from 'exceljs';
 import { adminDb } from '@/lib/firebase-admin';
 import * as admin from 'firebase-admin';
 import { ProductVariant } from '@/types';
+import {
+    brandKeyFrom,
+    collapseBrandDisplays,
+    normalizeDisplayField,
+    resolveProductBrand,
+} from '@/lib/catalog-normalize';
 
 /**
  * Helper to get a value from a row using case-insensitive and trimmed keys
@@ -20,15 +26,18 @@ function getRowValue(row: any, ...keys: string[]): any {
     return undefined;
 }
 
-/**
- * Intelligent string normalization to prevent duplicates from spacing/punctuation
- */
-function normalizeProductField(val: any): string {
-    if (!val) return "";
-    return String(val)
-        .trim()
-        .replace(/[.,;:]+$/, "") // Remove trailing punctuation
-        .trim();
+function toPlainExportValue(value: unknown): unknown {
+    if (value === null || value === undefined) return value;
+    if (typeof value !== 'object') return value;
+    if (value instanceof Date) return value.toISOString();
+    if ('toDate' in value && typeof (value as { toDate?: unknown }).toDate === 'function') {
+        return (value as { toDate: () => Date }).toDate().toISOString();
+    }
+    if (Array.isArray(value)) return value.map(toPlainExportValue);
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) return undefined;
+    return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, toPlainExportValue(entry)])
+    );
 }
 
 export async function uploadProductsFromExcel(formData: FormData) {
@@ -76,14 +85,20 @@ export async function uploadProductsFromExcel(formData: FormData) {
         const existingSnapshot = await adminDb.collection('products').get();
         const skuMap = new Map<string, { id: string, data: any }>();
         const nameMap = new Map<string, { id: string, data: any }>();
+        const knownBrands = collapseBrandDisplays(
+            existingSnapshot.docs.map((doc) => {
+                const pData = doc.data();
+                return { brand: pData.brand, brandKey: pData.brandKey };
+            })
+        );
 
         existingSnapshot.forEach(doc => {
             const pData = doc.data();
             if (pData.productCode) {
-                skuMap.set(normalizeProductField(pData.productCode).toLowerCase(), { id: doc.id, data: pData });
+                skuMap.set(normalizeDisplayField(pData.productCode).toLowerCase(), { id: doc.id, data: pData });
             }
             if (pData.name) {
-                nameMap.set(normalizeProductField(pData.name).toLowerCase(), { id: doc.id, data: pData });
+                nameMap.set(normalizeDisplayField(pData.name).toLowerCase(), { id: doc.id, data: pData });
             }
         });
 
@@ -95,12 +110,14 @@ export async function uploadProductsFromExcel(formData: FormData) {
         let updatedCount = 0;
         let skippedCount = 0;
         const reportLogs: any[] = [];
+        const seenSkusInFile = new Set<string>();
+        const seenNamesInFile = new Set<string>();
 
         for (const row of allSheetData as any[]) {
             const name = getRowValue(row, 'PRODUCT NAME', 'NAME', 'Product Name');
             if (!name) continue;
 
-            const trimmedName = String(name).trim();
+            const trimmedName = normalizeDisplayField(name) || String(name).trim();
             // 2. Parsing Price & Variants
             const rawPrice = getRowValue(row, 'PRODUCT PRICE', 'PRICE', 'Base Price (KES)') || "";
             const priceStr = String(rawPrice);
@@ -134,11 +151,35 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 variants.push({ id: `v-${Date.now()}-0`, name: "Standard", price: basePrice, stockQuantity: 100 });
             }
 
-            // 3. Metadata Extraction & Normalization
-            const category = normalizeProductField(getRowValue(row, 'CATEGORY') || "Uncategorized");
-            const subCategory = normalizeProductField(getRowValue(row, 'SUB CATEGORY', 'SUB-CATEGORY') || "");
-            const brand = normalizeProductField(getRowValue(row, 'BRAND', 'MANUFACTURER', 'Brand') || "MEL-AGRI");
-            const productCode = normalizeProductField(getRowValue(row, 'PRODUCT CODE', 'SKU', 'CODE') || "");
+            // 3. Metadata Extraction & Normalization — never invent a brand
+            const category = normalizeDisplayField(getRowValue(row, 'CATEGORY') || "Uncategorized") || "Uncategorized";
+            const subCategory = normalizeDisplayField(getRowValue(row, 'SUB CATEGORY', 'SUB-CATEGORY') || "");
+            const rawBrand = getRowValue(row, 'BRAND', 'MANUFACTURER', 'Brand');
+            const brandResolved = resolveProductBrand(rawBrand ?? "", knownBrands, { forceNewBrand: false });
+            // Bulk: exact keys remap; fuzzy typos fold to the suggested existing brand
+            const brand = brandResolved.ok ? brandResolved.brand : brandResolved.suggestedBrand;
+            const brandKey = brandKeyFrom(brand);
+            const productCode = normalizeDisplayField(getRowValue(row, 'PRODUCT CODE', 'SKU', 'CODE') || "");
+
+            const nameKey = normalizeDisplayField(trimmedName).toLowerCase();
+            const skuKey = productCode ? productCode.toLowerCase() : "";
+
+            if (skuKey && seenSkusInFile.has(skuKey)) {
+                skippedCount++;
+                reportLogs.push({ name: trimmedName, action: 'Skipped', details: `Duplicate SKU in file: ${productCode}` });
+                totalProcessed++;
+                if (totalProcessed >= 490) break;
+                continue;
+            }
+            if (!skuKey && nameKey && seenNamesInFile.has(nameKey)) {
+                skippedCount++;
+                reportLogs.push({ name: trimmedName, action: 'Skipped', details: 'Duplicate product name in file' });
+                totalProcessed++;
+                if (totalProcessed >= 490) break;
+                continue;
+            }
+            if (skuKey) seenSkusInFile.add(skuKey);
+            if (nameKey) seenNamesInFile.add(nameKey);
 
             // Image protection: Never extract image from Excel to avoid overwriting manual uploads
             let photo = "";
@@ -168,6 +209,7 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 category: category,
                 subCategory: subCategory,
                 brand: brand,
+                brandKey: brandKey,
                 productCode: productCode,
                 image: (photo && (String(photo).startsWith('http') || String(photo).startsWith('/')))
                     ? photo
@@ -177,19 +219,19 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 lowStockThreshold: 10,
                 variants: variants.length > 1 ? variants : [],
                 weight: parseFloat(getRowValue(row, 'WEIGHT', 'ITEM WEIGHT', 'KG') || "0") || 0,
-                tags: [category, subCategory, productCode].filter(Boolean).map(t => String(t)),
+                tags: [category, subCategory, productCode, brand].filter(Boolean).map(t => String(t)),
                 lastUpdated: admin.firestore.FieldValue.serverTimestamp()
             };
 
             // 4. Multi-Stage Intelligent Deduplication (SKU First, then Normalized Name)
             let existing: { id: string, data: any } | undefined = undefined;
 
-            if (productCode) {
-                existing = skuMap.get(productCode.toLowerCase());
+            if (skuKey) {
+                existing = skuMap.get(skuKey);
             }
 
             if (!existing) {
-                existing = nameMap.get(normalizeProductField(trimmedName).toLowerCase());
+                existing = nameMap.get(nameKey);
             }
 
             if (existing) {
@@ -203,11 +245,15 @@ export async function uploadProductsFromExcel(formData: FormData) {
                     newProductData.image = `https://placehold.co/600x600?text=${encodeURIComponent(trimmedName)}`;
                 }
 
-                // Deep Compare (Simplified for key fields)
                 const hasChanged =
                     existingData.price !== newProductData.price ||
                     existingData.description !== newProductData.description ||
                     existingData.category !== newProductData.category ||
+                    existingData.subCategory !== newProductData.subCategory ||
+                    existingData.brand !== newProductData.brand ||
+                    (existingData.brandKey || brandKeyFrom(existingData.brand)) !== newProductData.brandKey ||
+                    existingData.productCode !== newProductData.productCode ||
+                    existingData.specification !== newProductData.specification ||
                     existingData.howToUse !== newProductData.howToUse ||
                     JSON.stringify(existingData.features) !== JSON.stringify(newProductData.features) ||
                     JSON.stringify(existingData.variants) !== JSON.stringify(newProductData.variants);
@@ -216,7 +262,10 @@ export async function uploadProductsFromExcel(formData: FormData) {
                     const docRef = productsRef.doc(existing.id);
                     batch.update(docRef, newProductData);
                     updatedCount++;
-                    reportLogs.push({ name: trimmedName, action: 'Updated', details: 'Changes detected in pricing or specs' });
+                    reportLogs.push({ name: trimmedName, action: 'Updated', details: 'Changes detected in pricing, brand, or specs' });
+                    const updatedRecord = { id: existing.id, data: { ...existingData, ...newProductData } };
+                    if (skuKey) skuMap.set(skuKey, updatedRecord);
+                    nameMap.set(nameKey, updatedRecord);
                 } else {
                     skippedCount++;
                     reportLogs.push({ name: trimmedName, action: 'Skipped', details: 'Data is already up to date' });
@@ -232,7 +281,13 @@ export async function uploadProductsFromExcel(formData: FormData) {
                 newProductData.reviews = 0;
                 batch.set(docRef, newProductData);
                 createdCount++;
-                reportLogs.push({ name: trimmedName, action: 'Created', details: 'New product added to catalog' });
+                reportLogs.push({ name: trimmedName, action: 'Created', details: brand ? `New product (${brand})` : 'New product added to catalog' });
+                const createdRecord = { id: docRef.id, data: newProductData };
+                if (skuKey) skuMap.set(skuKey, createdRecord);
+                nameMap.set(nameKey, createdRecord);
+                if (brand && !knownBrands.some((b) => brandKeyFrom(b) === brandKey)) {
+                    knownBrands.push(brand);
+                }
             }
 
             totalProcessed++;
@@ -264,10 +319,9 @@ export async function uploadProductsFromExcel(formData: FormData) {
 export async function getAllProducts() {
     try {
         const snapshot = await adminDb.collection('products').get();
-        const products = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
+        const products = snapshot.docs.map((doc) =>
+            toPlainExportValue({ id: doc.id, ...doc.data() })
+        );
         return { success: true, products };
     } catch (error: any) {
         console.error("Error fetching products for export:", error);

@@ -2,6 +2,7 @@ import { db } from './firebase';
 import { Product } from '@/types';
 export type { Product };
 import { collection, getDocs, doc, getDoc, query, where, limit, orderBy, startAfter, QueryConstraint } from 'firebase/firestore';
+import { brandKeyFrom, collapseBrandDisplays } from '@/lib/catalog-normalize';
 
 function toPlainValue(value: unknown): unknown {
     if (value === null || value === undefined) return value;
@@ -19,7 +20,13 @@ function toPlainValue(value: unknown): unknown {
 }
 
 function productFromSnapshot(snapshot: { id: string; data: () => Record<string, unknown> }): Product {
-    return toPlainValue({ id: snapshot.id, ...snapshot.data() }) as Product;
+    const data = snapshot.data();
+    const brand = String(data.brand || '');
+    return toPlainValue({
+        id: snapshot.id,
+        ...data,
+        brandKey: data.brandKey || brandKeyFrom(brand) || undefined,
+    }) as Product;
 }
 
 function isActiveProduct(snapshot: { data: () => Record<string, unknown> }) {
@@ -62,42 +69,59 @@ export async function getProductsPage(
     brands?: string[]
 ): Promise<{ products: Product[], lastVisible: any }> {
     try {
-        const constraints: QueryConstraint[] = [];
+        const brandKeys = brands && brands.length > 0
+            ? [...new Set(brands.map((brand) => brandKeyFrom(brand)).filter(Boolean))].slice(0, 10)
+            : [];
+        const brandDisplays = brands && brands.length > 0
+            ? [...new Set(brands.map((brand) => String(brand || '').trim()).filter(Boolean))].slice(0, 10)
+            : [];
 
-        if (category && category !== 'All') {
-            constraints.push(where("category", "==", category));
+        const buildConstraints = (brandMode: 'key' | 'display' | 'none'): QueryConstraint[] => {
+            const constraints: QueryConstraint[] = [];
+            if (category && category !== 'All') {
+                constraints.push(where("category", "==", category));
+            }
+            if (brandMode === 'key' && brandKeys.length > 0) {
+                constraints.push(where("brandKey", "in", brandKeys));
+            } else if (brandMode === 'display' && brandDisplays.length > 0) {
+                constraints.push(where("brand", "in", brandDisplays));
+            }
+            if (sortBy === 'price-low') {
+                constraints.push(orderBy("price", "asc"));
+            } else if (sortBy === 'price-high') {
+                constraints.push(orderBy("price", "desc"));
+            } else if (sortBy === 'newest' && !category && brandKeys.length === 0) {
+                constraints.push(orderBy("createdAt", "desc"));
+            } else if (sortBy !== 'newest' && sortBy !== 'default') {
+                constraints.push(orderBy("name", "asc"));
+            }
+            constraints.push(limit(pageSize));
+            if (lastVisible) {
+                constraints.push(startAfter(lastVisible));
+            }
+            return constraints;
+        };
+
+        if (brandKeys.length > 0) {
+            const [byKeySnap, byDisplaySnap] = await Promise.all([
+                getDocs(query(collection(db, "products"), ...buildConstraints('key'))),
+                getDocs(query(collection(db, "products"), ...buildConstraints('display'))),
+            ]);
+            const merged = new Map<string, Product>();
+            let lastDoc: any = null;
+            for (const docSnap of [...byKeySnap.docs, ...byDisplaySnap.docs]) {
+                if (!isActiveProduct(docSnap)) continue;
+                if (!merged.has(docSnap.id)) {
+                    merged.set(docSnap.id, productFromSnapshot(docSnap));
+                    lastDoc = docSnap;
+                }
+            }
+            return { products: [...merged.values()].slice(0, pageSize), lastVisible: lastDoc };
         }
 
-        if (brands && brands.length > 0) {
-            constraints.push(where("brand", "in", brands));
-        }
-
-        // Sorting Logic - Only add if explicitly requested to avoid index requirements for simple filters
-        if (sortBy === 'price-low') {
-            constraints.push(orderBy("price", "asc"));
-        } else if (sortBy === 'price-high') {
-            constraints.push(orderBy("price", "desc"));
-        } else if (sortBy === 'newest' && !category && (!brands || brands.length === 0)) {
-            // Only force newest if no other filters are present to avoid index issues
-            // Unless the user explicitly selected 'newest'? 
-            // For now, let's be more lenient to ensure products actually show up.
-            constraints.push(orderBy("createdAt", "desc"));
-        } else if (sortBy !== 'newest' && sortBy !== 'default') {
-            constraints.push(orderBy("name", "asc"));
-        }
-
-        constraints.push(limit(pageSize));
-
-        if (lastVisible) {
-            constraints.push(startAfter(lastVisible));
-        }
-
-        const q = query(collection(db, "products"), ...constraints);
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await getDocs(query(collection(db, "products"), ...buildConstraints('none')));
         const lastDoc = querySnapshot.docs[querySnapshot.docs.length - 1];
-
         const products = querySnapshot.docs.filter(isActiveProduct).map(productFromSnapshot);
-
         return { products, lastVisible: lastDoc };
     } catch (error) {
         console.error("Error fetching products page:", error);
@@ -108,20 +132,14 @@ export async function getProductsPage(
 export async function getUniqueBrands(): Promise<string[]> {
     try {
         const snapshot = await getDocs(collection(db, "products"));
-        const brandCounts: Record<string, number> = {};
-        
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.archived !== true && data.brand && typeof data.brand === 'string') {
-                brandCounts[data.brand] = (brandCounts[data.brand] || 0) + 1;
-            }
-        });
-
-        // Sort by frequency descending, then alphabetically
-        return Object.keys(brandCounts).sort((a, b) => {
-            const diff = brandCounts[b] - brandCounts[a];
-            return diff !== 0 ? diff : a.localeCompare(b);
-        });
+        return collapseBrandDisplays(
+            snapshot.docs
+                .filter((docSnap) => docSnap.data().archived !== true)
+                .map((docSnap) => {
+                    const data = docSnap.data();
+                    return { brand: data.brand, brandKey: data.brandKey };
+                })
+        );
     } catch (error) {
         console.error("Error fetching unique brands:", error);
         return [];
