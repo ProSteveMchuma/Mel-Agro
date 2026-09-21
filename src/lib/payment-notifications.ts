@@ -30,7 +30,7 @@ export async function notifyCustomerPaymentReceived(args: {
     const receipt = args.receipt || order.mpesaReceiptNumber || order.transactionId || '';
     const method = args.method || order.paymentMethod || 'M-Pesa';
     const tpl = CommunicationTemplates.getPaymentReceived(
-        withActionUrls({
+        await withActionUrls({
             ...order,
             id: args.orderId,
             paymentMethod: method,

@@ -43,7 +43,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: false, message: 'Order has been refunded' }, { status: 409 });
         }
 
-        const tpl = CommunicationTemplates.getPaymentReminder(withActionUrls(order));
+        const tpl = CommunicationTemplates.getPaymentReminder(await withActionUrls(order));
 
         const results: Record<Channel, { ok: boolean; reason?: string }> = {} as any;
 

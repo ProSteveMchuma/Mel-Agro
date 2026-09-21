@@ -116,7 +116,7 @@ export async function POST(request: Request) {
         if (!outcome.alreadyCancelled && outcome.order) {
             revalidateStorefrontCatalogue();
             try {
-                const tpl = CommunicationTemplates.getStatusUpdate(withActionUrls(outcome.order as any), 'Cancelled');
+                const tpl = CommunicationTemplates.getStatusUpdate(await withActionUrls(outcome.order as any), 'Cancelled');
                 await notifyCustomer({
                     userId: outcome.order.userId,
                     phone: outcome.order.mpesaPhoneNumber || outcome.order.phone,

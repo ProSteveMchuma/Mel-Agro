@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CommunicationTemplates } from '../src/lib/communication-templates.ts';
-import { withActionUrls } from '../src/lib/order-access.ts';
+import { customerOrderUrl, withActionUrlsSync } from '../src/lib/order-access.ts';
 
 const order = {
     id: 'abcde12345',
@@ -17,7 +17,15 @@ const order = {
     shippingAddress: { county: 'Nairobi', details: 'Westlands' },
 } as any;
 
-const signed = withActionUrls(order);
+const signed = withActionUrlsSync(order);
+const shortStyle = {
+    ...order,
+    __actionUrls: {
+        view: 'https://www.melagri.com/o/ab12cd34',
+        pay: 'https://www.melagri.com/o/pay12xyz',
+        return: 'https://www.melagri.com/o/ret99abc',
+    },
+};
 
 test('awaiting-payment SMS is for unpaid orders, not dispatch', () => {
     const sms = CommunicationTemplates.getAwaitingPayment(order).smsBody;
@@ -53,7 +61,7 @@ test('customer SMS uses unsigned deep-link paths by default', () => {
     assert.match(CommunicationTemplates.getReturnRequested(order).smsBody, /\/orders\/abcde12345\/return(?!\?)/);
 });
 
-test('server-signed action URLs appear in SMS when withActionUrls is used', () => {
+test('server-signed action URLs appear in SMS when withActionUrlsSync is used', () => {
     assert.match(CommunicationTemplates.getAwaitingPayment(signed).smsBody, /\/orders\/abcde12345\/pay\?t=/);
     assert.match(CommunicationTemplates.getPaymentReceived(signed, { receipt: 'TJK7H8K9L0' }).smsBody, /\/orders\/abcde12345\?t=/);
     assert.match(CommunicationTemplates.getStatusUpdate(signed, 'Shipped').smsBody, /\/orders\/abcde12345\?t=/);
@@ -61,4 +69,11 @@ test('server-signed action URLs appear in SMS when withActionUrls is used', () =
     assert.match(CommunicationTemplates.getPaymentReminder(signed).smsBody, /\/orders\/abcde12345\/pay\?t=/);
     assert.match(CommunicationTemplates.getReturnUpdate(signed, 'Approved').smsBody, /\/orders\/abcde12345\/return\?t=/);
     assert.match(CommunicationTemplates.getReturnRequested(signed).smsBody, /\/orders\/abcde12345\/return\?t=/);
+});
+
+test('short /o/{code} action URLs appear in SMS when provided', () => {
+    assert.match(CommunicationTemplates.getAwaitingPayment(shortStyle).smsBody, /\/o\/pay12xyz/);
+    assert.match(CommunicationTemplates.getOrderConfirmation(shortStyle).smsBody, /\/o\/ab12cd34/);
+    assert.match(CommunicationTemplates.getReturnRequested(shortStyle).smsBody, /\/o\/ret99abc/);
+    assert.ok(CommunicationTemplates.getAwaitingPayment(shortStyle).smsBody.length < customerOrderUrl(order, 'pay').length + 80);
 });

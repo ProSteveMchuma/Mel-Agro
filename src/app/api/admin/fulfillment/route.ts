@@ -229,7 +229,7 @@ export async function POST(request: Request) {
 
     if (outcome.kind === "status") {
       try {
-        const tpl = CommunicationTemplates.getStatusUpdate(withActionUrls(outcome.order as any), outcome.status);
+        const tpl = CommunicationTemplates.getStatusUpdate(await withActionUrls(outcome.order as any), outcome.status);
         await notifyCustomer({
           userId: String(outcome.order.userId || ""),
           phone: String(outcome.order.mpesaPhoneNumber || outcome.order.phone || ""),

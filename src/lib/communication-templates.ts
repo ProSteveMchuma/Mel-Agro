@@ -17,6 +17,7 @@ export function customerDashboardUrl(orderId?: string, tab: 'orders' | 'returns'
 /**
  * Unsigned deep-link path. Works for signed-in owners; guests need a server-signed
  * `?t=` token (attach via `withActionUrls` / `customerOrderUrl` on the server).
+ * Outbound SMS prefers short `/o/{code}` links from `withActionUrls`.
  */
 export function unsignedCustomerOrderUrl(
     order: { id?: string },
