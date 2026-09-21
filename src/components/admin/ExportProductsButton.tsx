@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { getAllProducts } from '@/app/actions/bulkActions';
 import { toast } from 'react-hot-toast';
 import { Product } from '@/types';
+import { getAuth } from 'firebase/auth';
 
 export default function ExportProductsButton() {
     const [isExporting, setIsExporting] = useState(false);
@@ -27,7 +28,13 @@ export default function ExportProductsButton() {
         const loadingToast = toast.loading(`Generating ${type === 'excel' ? 'Excel catalog' : 'JSON backup'}...`);
 
         try {
-            const result = await getAllProducts();
+            const idToken = await getAuth().currentUser?.getIdToken().catch(() => null);
+            if (!idToken) {
+                toast.error('Sign in as catalogue staff to export products.', { id: loadingToast });
+                return;
+            }
+
+            const result = await getAllProducts(idToken);
 
             if (result.success && result.products) {
                 const products = result.products as Product[];

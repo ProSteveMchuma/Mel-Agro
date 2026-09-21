@@ -16,6 +16,23 @@ test('enforces granular capabilities while preserving legacy administrators', ()
     assert.match(rules, /match \/users\/\{userId\}[\s\S]*?hasPermission\('customers\.manage'\)/);
 });
 
+test('blocks client escalation of staff privilege fields on users', () => {
+    const block = rules.match(/match \/users\/\{userId\} \{([\s\S]*?)\n    \}/);
+    assert.ok(block, 'Missing users rules block');
+    assert.match(block[1], /adminPermissions/);
+    assert.match(block[1], /staffProfile/);
+    assert.match(
+        block[1],
+        /hasAny\(\['role',\s*'adminPermissions',\s*'staffProfile'\]\)/,
+        'customers.manage updates must not change privilege fields',
+    );
+    assert.match(
+        block[1],
+        /hasAny\(\['role',\s*'status',\s*'loyaltyPoints',\s*'adminPermissions',\s*'staffProfile'\]\)/,
+        'self-updates must not change privilege fields',
+    );
+});
+
 test('prevents clients from writing payment-system collections', () => {
     for (const collection of ['c2bPayments', 'refunds', 'mpesaConfig', 'paystackWebhookEvents', 'discountUsage']) {
         const block = rules.match(new RegExp(`match /${collection}/\\{id\\} \\{([\\s\\S]*?)\\n    \\}`));

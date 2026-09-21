@@ -11,27 +11,45 @@ export interface AdminAuthResult {
     message?: string;
 }
 
-export async function requireAdmin(request: Request): Promise<AdminAuthResult> {
-    const authHeader = request.headers.get('authorization') || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) return { ok: false, message: 'Missing Authorization header' };
+async function verifyAdminFromIdToken(token: string | null | undefined): Promise<AdminAuthResult> {
+    if (!token) return { ok: false, message: 'Missing Authorization token' };
 
     try {
         const decoded = await admin.auth().verifyIdToken(token);
         const userSnap = await adminDb.collection('users').doc(decoded.uid).get();
         const userData = userSnap.data();
-        const role = userData?.role || (decoded as any).role;
+        const role = userData?.role || (decoded as { role?: string }).role;
         if (role !== 'admin' && role !== 'super-admin') {
             return { ok: false, message: 'Admin access required' };
         }
         return { ok: true, uid: decoded.uid, email: decoded.email, role, permissions: userData?.adminPermissions };
-    } catch (e: any) {
-        return { ok: false, message: e?.message || 'Invalid token' };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Invalid token';
+        return { ok: false, message };
     }
+}
+
+export async function requireAdmin(request: Request): Promise<AdminAuthResult> {
+    const authHeader = request.headers.get('authorization') || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    return verifyAdminFromIdToken(token);
 }
 
 export async function requirePermission(request: Request, permission: AdminPermission): Promise<AdminAuthResult> {
     const result = await requireAdmin(request);
+    if (!result.ok) return result;
+    if (!hasAdminPermission(result.role, result.permissions, permission)) {
+        return { ...result, ok: false, message: `Missing required permission: ${permission}` };
+    }
+    return result;
+}
+
+/** Same checks as requirePermission, for server actions that pass a Firebase ID token. */
+export async function requirePermissionToken(
+    token: string | null | undefined,
+    permission: AdminPermission,
+): Promise<AdminAuthResult> {
+    const result = await verifyAdminFromIdToken(token);
     if (!result.ok) return result;
     if (!hasAdminPermission(result.role, result.permissions, permission)) {
         return { ...result, ok: false, message: `Missing required permission: ${permission}` };
