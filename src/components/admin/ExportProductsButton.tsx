@@ -33,6 +33,11 @@ export default function ExportProductsButton() {
                 const products = result.products as Product[];
                 const dateStr = new Date().toISOString().split('T')[0];
 
+                if (products.length === 0) {
+                    toast.error('No products found to export', { id: loadingToast });
+                    return;
+                }
+
                 if (type === 'excel') {
                     // Excel Export Logic
                     const exportData = products.map(p => {
@@ -57,7 +62,7 @@ export default function ExportProductsButton() {
                     const ExcelJS = (await import('exceljs')).default;
                     const workbook = new ExcelJS.Workbook();
                     const worksheet = workbook.addWorksheet('Products');
-                    const headers = Object.keys(exportData[0] || {});
+                    const headers = Object.keys(exportData[0]);
                     worksheet.columns = headers.map((header) => ({ header, key: header, width: Math.max(14, Math.min(45, header.length + 4)) }));
                     worksheet.addRows(exportData);
                     worksheet.getRow(1).font = { bold: true };

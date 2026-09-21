@@ -261,13 +261,32 @@ export async function uploadProductsFromExcel(formData: FormData) {
     }
 }
 
+/**
+ * Firestore Timestamp / DocumentReference / other class instances cannot cross the
+ * Server Action boundary (Next.js rejects non-plain objects and anything with toJSON).
+ * Mirror the admin products API serializer so Export / Backup can return safely.
+ */
+function toPlainExportValue(value: unknown): unknown {
+    if (value === null || value === undefined) return value;
+    if (typeof value !== 'object') return value;
+    if (value instanceof Date) return value.toISOString();
+    if ('toDate' in value && typeof (value as { toDate?: unknown }).toDate === 'function') {
+        return (value as { toDate: () => Date }).toDate().toISOString();
+    }
+    if (Array.isArray(value)) return value.map(toPlainExportValue);
+    // Drop Buffer / GeoPoint-like binary payloads that break Flight serialization
+    if (typeof Buffer !== 'undefined' && Buffer.isBuffer(value)) return undefined;
+    return Object.fromEntries(
+        Object.entries(value as Record<string, unknown>).map(([key, entry]) => [key, toPlainExportValue(entry)])
+    );
+}
+
 export async function getAllProducts() {
     try {
         const snapshot = await adminDb.collection('products').get();
-        const products = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        }));
+        const products = snapshot.docs.map((doc) =>
+            toPlainExportValue({ id: doc.id, ...doc.data() })
+        );
         return { success: true, products };
     } catch (error: any) {
         console.error("Error fetching products for export:", error);
