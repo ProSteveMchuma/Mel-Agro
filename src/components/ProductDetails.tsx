@@ -10,6 +10,7 @@ import Image from 'next/image';
 import type { Product } from '@/lib/products';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
+import { useWishlist } from '@/context/WishlistContext';
 import { toast } from "react-hot-toast";
 import Logo from '@/components/Logo';
 import IntelligentDescription from '@/components/IntelligentDescription';
@@ -17,6 +18,7 @@ import ProductFaqs from '@/components/ProductFaqs';
 import { useLiveProduct } from '@/context/ProductContext';
 import { slugifySeoValue } from '@/lib/seo';
 import { whatsAppUrl } from '@/lib/site';
+import { getDeliveryCost, KENYAN_COUNTIES, FREE_SHIPPING_THRESHOLD } from '@/lib/delivery';
 
 interface ProductDetailsProps {
     id: string;
@@ -35,12 +37,15 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
     const [activeTab, setActiveTab] = useState<'description' | 'specifications' | 'usage'>('description');
     const { user } = useAuth();
     const router = useRouter();
+    const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
     const firstVariant = product.variants?.length === 1 ? product.variants[0] : null;
     const [selectedImage, setSelectedImage] = useState<string>(firstVariant?.image || product.image || "");
     const [selectedVariantId, setSelectedVariantId] = useState<string | null>(firstVariant ? String(firstVariant.id) : null);
+    const [estimateCounty, setEstimateCounty] = useState<string>(() => user?.county || user?.city || 'Nairobi');
 
     const userCity = user?.city || user?.county;
+    const inWishlist = isInWishlist(product.id);
     const hasVariants = Boolean(product.variants?.length);
     const selectedVariant = product.variants?.find(variant => String(variant.id) === selectedVariantId)
         || (product.variants?.length === 1 ? product.variants[0] : undefined);
@@ -52,6 +57,11 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
     useEffect(() => {
         if (availableStock > 0 && quantity > availableStock) setQuantity(availableStock);
     }, [availableStock, quantity]);
+
+    useEffect(() => {
+        const fromProfile = user?.county || user?.city;
+        if (fromProfile) setEstimateCounty(fromProfile);
+    }, [user?.county, user?.city]);
 
     useEffect(() => {
         import('@/lib/analytics').then(({ AnalyticsService }) => {
@@ -74,6 +84,33 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
     }, [product]);
 
     const { addToCart } = useCart();
+
+    const lineTotal = selectedPrice * quantity;
+    const deliveryEstimate = getDeliveryCost(estimateCounty || 'Nairobi', lineTotal);
+
+    const toggleWishlist = () => {
+        if (inWishlist) {
+            removeFromWishlist(product.id);
+            return;
+        }
+        addToWishlist({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            image: product.image,
+            images: product.images,
+            category: product.category,
+            description: product.description,
+            brand: product.brand,
+            productCode: product.productCode,
+            variants: product.variants,
+            inStock: product.inStock,
+            rating: product.rating,
+            reviews: product.reviews,
+            stockQuantity: product.stockQuantity,
+            lowStockThreshold: product.lowStockThreshold,
+        });
+    };
 
     const handleAddToCart = (e?: React.MouseEvent) => {
         if (e) {
@@ -197,8 +234,13 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
 
                         <div className="flex justify-between items-start">
                             <h1 className="text-3xl font-bold text-gray-900 mb-2 leading-tight">{product.name}</h1>
-                            <button className="text-gray-400 hover:text-red-500 transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <button
+                                type="button"
+                                onClick={toggleWishlist}
+                                aria-label={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+                                className={`transition-colors ${inWishlist ? 'text-red-500' : 'text-gray-400 hover:text-red-500'}`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill={inWishlist ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                                 </svg>
                             </button>
@@ -237,19 +279,23 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                             </div>
                         )}
 
-                        {/* Rating */}
-                        <div className="flex items-center gap-2 mb-6">
-                            <div className="flex text-green-500">
-                                {[...Array(5)].map((_, i) => (
-                                    <svg key={i} className={`h-4 w-4 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-gray-200'}`} viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                    </svg>
-                                ))}
+                        {/* Rating — only show stars when there are real reviews */}
+                        {(Number(product.reviews) > 0 && Number(product.rating) > 0) ? (
+                            <div className="flex items-center gap-2 mb-6">
+                                <div className="flex text-green-500" aria-label={`${product.rating} out of 5 stars`}>
+                                    {[...Array(5)].map((_, i) => (
+                                        <svg key={i} className={`h-4 w-4 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-gray-200'}`} viewBox="0 0 20 20" fill="currentColor">
+                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                        </svg>
+                                    ))}
+                                </div>
+                                <span className="text-xs text-gray-500 font-medium">
+                                    {product.reviews} Review{product.reviews === 1 ? '' : 's'}
+                                </span>
                             </div>
-                            <span className="text-xs text-gray-500 font-medium">
-                                {product.reviews > 0 ? `${product.reviews} Reviews` : 'New product'}
-                            </span>
-                        </div>
+                        ) : (
+                            <p className="mb-6 text-xs font-medium text-gray-400">No reviews yet — be the first after purchase</p>
+                        )}
 
                         {/* Price & Stock Urgency */}
                         <div className="flex flex-col gap-2 mb-6">
@@ -340,40 +386,47 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                         {/* Delivery Info & Trust */}
                         <div className="space-y-4 mb-8">
                             <div className="bg-green-50 rounded-xl p-4 border border-green-100">
-                                <div className="flex justify-between items-start mb-2">
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3">
                                     <div className="flex items-center gap-2">
                                         <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg>
-                                        <span className="text-sm font-bold text-gray-900">Delivery to {userCity || 'Your Location'}</span>
+                                        <span className="text-sm font-bold text-gray-900">Delivery estimate</span>
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            const newCounty = prompt("Enter your county (e.g., Nairobi, Machakos):", userCity || "Nairobi");
-                                            if (newCounty) {
-                                                // Normally update user profile, but for now just local feedback
-                                                toast.success(`Delivery location updated to ${newCounty}`);
-                                                // Logic depends on how user city is synced (profile update needed)
-                                            }
-                                        }}
-                                        className="text-xs font-bold text-green-600 hover:underline"
-                                    >
-                                        Change
-                                    </button>
+                                    <label className="flex items-center gap-2 text-xs font-bold text-gray-600">
+                                        <span className="sr-only">County</span>
+                                        <select
+                                            value={KENYAN_COUNTIES.includes(estimateCounty) ? estimateCounty : 'Nairobi'}
+                                            onChange={(e) => setEstimateCounty(e.target.value)}
+                                            className="rounded-lg border border-green-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-800"
+                                        >
+                                            {KENYAN_COUNTIES.map((county) => (
+                                                <option key={county} value={county}>{county}</option>
+                                            ))}
+                                        </select>
+                                    </label>
                                 </div>
-                                <p className="text-xs text-gray-600 leading-normal">
-                                    Delivery timing and cost are calculated for your county at checkout. Your final estimate is shown before you place the order.
+                                <p className="text-sm font-black text-gray-900">
+                                    {deliveryEstimate.cost === 0
+                                        ? `Free delivery to ${estimateCounty}`
+                                        : `KES ${deliveryEstimate.cost.toLocaleString()} to ${estimateCounty}`}
+                                    <span className="ml-2 text-xs font-medium text-gray-500">· {deliveryEstimate.etaText}</span>
+                                </p>
+                                <p className="mt-1 text-xs text-gray-600 leading-normal">
+                                    {deliveryEstimate.cost === 0
+                                        ? (deliveryEstimate.reason || 'Qualifies for free shipping on this line.')
+                                        : `Free delivery on orders over KES ${FREE_SHIPPING_THRESHOLD.toLocaleString()}. Final total confirmed at checkout.`}
                                 </p>
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="flex items-center gap-2 p-3 border border-gray-100 rounded-xl">
-                                    <span className="text-xl">🛡️</span>
+                                    <span className="text-xl" aria-hidden="true">🛡️</span>
                                     <div>
                                         <p className="text-[10px] font-black text-gray-900 uppercase">Verified Quality</p>
                                         <p className="text-[9px] text-gray-500">Certified Agri-Inputs</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-2 p-3 border border-gray-100 rounded-xl">
-                                    <span className="text-xl">🔒</span>
+                                    <span className="text-xl" aria-hidden="true">🔒</span>
                                     <div>
                                         <p className="text-[10px] font-black text-gray-900 uppercase">Secure Payment</p>
                                         <p className="text-[9px] text-gray-500">M-Pesa secure checkout</p>

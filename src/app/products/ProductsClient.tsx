@@ -52,9 +52,41 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
 
     const [priceRange, setPriceRange] = useState<[number, number]>([0, 1000000]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-    
+    const [sortBy, setSortBy] = useState<'newest' | 'price-low' | 'price-high'>(() => {
+        const sort = searchParams.get("sort");
+        if (sort === 'price-low' || sort === 'price-high') return sort;
+        return 'newest';
+    });
+
     // Real-time search state
     const [localSearch, setLocalSearch] = useState(searchParams.get("search") || "");
+
+    // Dynamic discovery chips from live brands + categories (skip empty catalogue)
+    const discoveryChips = useMemo(() => {
+        const brands = availableBrands.slice(0, 4);
+        const cats = availableCategories
+            .filter((c) => !brands.some((b) => b.toLowerCase() === c.toLowerCase()))
+            .slice(0, 3);
+        return [...brands, ...cats].slice(0, 6);
+    }, [availableBrands, availableCategories]);
+
+    const handleSortChange = (next: 'newest' | 'price-low' | 'price-high') => {
+        setSortBy(next);
+        const params = new URLSearchParams(searchParams.toString());
+        if (next === 'newest') {
+            params.delete("sort");
+        } else {
+            params.set("sort", next);
+        }
+        router.push(`/products?${params.toString()}`, { scroll: false });
+    };
+
+    // Keep sort in sync with URL (back/forward, shared links)
+    useEffect(() => {
+        const sort = searchParams.get("sort");
+        const next = sort === 'price-low' || sort === 'price-high' ? sort : 'newest';
+        setSortBy(prev => (prev === next ? prev : next));
+    }, [searchParams]);
 
     // Keep the quick-filter input in sync when the URL `search` changes from
     // elsewhere (suggestion pills, header search, back/forward navigation) so
@@ -180,13 +212,13 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                                     {/* Page Title */}
                                     <div className="flex items-center mb-3">
                                         <h1 className="text-2xl md:text-4xl font-black text-gray-900 tracking-tighter uppercase">
-                                            {currentCategory || "Global Catalogue"}
+                                            {currentCategory || "Shop farm inputs"}
                                         </h1>
                                     </div>
 
                                     {/* Description hidden on mobile */}
                                     <p className="hidden md:block text-gray-500 mb-8 font-medium max-w-2xl leading-relaxed">
-                                        Curating the finest agricultural inputs for the modern farmer. Certified quality, delivered to your farm.
+                                        Certified seeds, fertilizers, and crop protection — priced for Kenyan farms, delivered to your county.
                                     </p>
 
                                     <div className="md:hidden">
@@ -214,21 +246,37 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                                             ))}
                                         </div>
                                         
-                                        {/* Mobile Smart Pills */}
-                                        <div className="flex items-center gap-2 overflow-x-auto pb-6 scrollbar-hide -mx-4 px-4">
-                                            {["Bayer", "Syngenta", "Maize Seeds", "Dog Feed", "NPK", "Sprayers"].map(pill => (
-                                                <button
-                                                    key={pill}
-                                                    onClick={() => {
-                                                        const params = new URLSearchParams(searchParams.toString());
-                                                        params.set("search", pill);
-                                                        router.push(`/products?${params.toString()}`);
-                                                    }}
-                                                    className="flex-shrink-0 px-4 py-2 bg-gray-50 border border-gray-100 rounded-full text-[10px] font-bold text-gray-500 shadow-sm uppercase tracking-wider active:bg-melagri-primary active:text-white transition-colors"
-                                                >
-                                                    {pill}
-                                                </button>
-                                            ))}
+                                        {/* Mobile discovery chips from live catalogue */}
+                                        {discoveryChips.length > 0 && (
+                                            <div className="flex items-center gap-2 overflow-x-auto pb-6 scrollbar-hide -mx-4 px-4">
+                                                {discoveryChips.map(pill => (
+                                                    <button
+                                                        key={pill}
+                                                        onClick={() => {
+                                                            const params = new URLSearchParams(searchParams.toString());
+                                                            params.set("search", pill);
+                                                            router.push(`/products?${params.toString()}`);
+                                                        }}
+                                                        className="flex-shrink-0 px-4 py-2 bg-gray-50 border border-gray-100 rounded-full text-[10px] font-bold text-gray-500 shadow-sm uppercase tracking-wider active:bg-melagri-primary active:text-white transition-colors"
+                                                    >
+                                                        {pill}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        <div className="mb-4">
+                                            <label htmlFor="sort-mobile" className="sr-only">Sort products</label>
+                                            <select
+                                                id="sort-mobile"
+                                                value={sortBy}
+                                                onChange={(e) => handleSortChange(e.target.value as 'newest' | 'price-low' | 'price-high')}
+                                                className="w-full rounded-xl border border-gray-100 bg-white px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-gray-700"
+                                            >
+                                                <option value="newest">Newest</option>
+                                                <option value="price-low">Price: low to high</option>
+                                                <option value="price-high">Price: high to low</option>
+                                            </select>
                                         </div>
                                     </div>
 
@@ -252,34 +300,46 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                                                     </p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-4 w-full sm:w-auto">
+                                            <div className="flex items-center gap-3 w-full sm:w-auto">
+                                                <label htmlFor="sort-desktop" className="sr-only">Sort products</label>
+                                                <select
+                                                    id="sort-desktop"
+                                                    value={sortBy}
+                                                    onChange={(e) => handleSortChange(e.target.value as 'newest' | 'price-low' | 'price-high')}
+                                                    className="rounded-2xl border border-gray-100 bg-gray-50/50 px-4 py-2.5 text-[10px] font-bold uppercase tracking-widest text-gray-600"
+                                                >
+                                                    <option value="newest">Newest</option>
+                                                    <option value="price-low">Price: low → high</option>
+                                                    <option value="price-high">Price: high → low</option>
+                                                </select>
                                                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest bg-gray-50/50 px-4 py-2.5 rounded-2xl border border-gray-100 italic">
                                                     {searchParams.get("search")
                                                         ? `Results for "${searchParams.get("search")}"`
                                                         : currentCategory
                                                             ? `Collection: ${currentCategory}`
-                                                            : "Full Catalogue"}
+                                                            : "All farm inputs"}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        {/* Smart Pills for Discovery */}
-                                        <div className="flex items-center gap-2 overflow-x-auto pb-2 pl-2">
-                                            <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest pr-2">Suggestions:</span>
-                                            {["Bayer", "Syngenta", "Maize Seeds", "Dog Feed", "NPK", "Sprayers"].map(pill => (
-                                                <button
-                                                    key={pill}
-                                                    onClick={() => {
-                                                        const params = new URLSearchParams(searchParams.toString());
-                                                        params.set("search", pill);
-                                                        router.push(`/products?${params.toString()}`);
-                                                    }}
-                                                    className="flex-shrink-0 px-4 py-1.5 bg-white border border-gray-100 rounded-full text-[10px] font-bold text-gray-500 hover:bg-melagri-primary hover:text-white hover:border-melagri-primary transition-all shadow-sm uppercase tracking-wider"
-                                                >
-                                                    {pill}
-                                                </button>
-                                            ))}
-                                        </div>
+                                        {discoveryChips.length > 0 && (
+                                            <div className="flex items-center gap-2 overflow-x-auto pb-2 pl-2">
+                                                <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest pr-2">Browse:</span>
+                                                {discoveryChips.map(pill => (
+                                                    <button
+                                                        key={pill}
+                                                        onClick={() => {
+                                                            const params = new URLSearchParams(searchParams.toString());
+                                                            params.set("search", pill);
+                                                            router.push(`/products?${params.toString()}`);
+                                                        }}
+                                                        className="flex-shrink-0 px-4 py-1.5 bg-white border border-gray-100 rounded-full text-[10px] font-bold text-gray-500 hover:bg-melagri-primary hover:text-white hover:border-melagri-primary transition-all shadow-sm uppercase tracking-wider"
+                                                    >
+                                                        {pill}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
@@ -295,6 +355,7 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
                                 category={currentCategory}
                                 priceRange={priceRange}
                                 selectedBrands={selectedBrands}
+                                sortBy={sortBy}
                                 initialProducts={initialProducts}
                             />
                         </Suspense>
@@ -307,7 +368,7 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
     );
 }
 
-function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }: { category: string, priceRange: [number, number], selectedBrands: string[], initialProducts: Product[] }) {
+function ProductsGrid({ category, priceRange, selectedBrands, sortBy, initialProducts }: { category: string, priceRange: [number, number], selectedBrands: string[], sortBy: 'newest' | 'price-low' | 'price-high', initialProducts: Product[] }) {
     const { products: allProducts } = useProducts();
     // Only use initialProducts if they match the current category filter (simple check)
     // Actually, on mount, category should match what page.tsx used. 
@@ -352,7 +413,7 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
                 12,
                 isInitial ? null : lastVisible,
                 categoryFilter,
-                "newest",
+                sortBy,
                 selectedBrands
             );
 
@@ -382,7 +443,7 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
                     12,
                     null,
                     categoryFilter,
-                    "newest",
+                    sortBy,
                     selectedBrands,
                 );
                 if (!cancelled) {
@@ -400,13 +461,13 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
 
         void refreshProducts();
         return () => { cancelled = true; };
-    }, [category, selectedBrands]);
+    }, [category, selectedBrands, sortBy]);
 
     const searchQuery = searchParams.get("search");
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
-    }, [searchQuery, category, selectedBrands]);
+    }, [searchQuery, category, selectedBrands, sortBy]);
 
     const filteredProducts = useMemo(() => {
         const searchQuery = searchParams.get("search");
@@ -430,8 +491,15 @@ function ProductsGrid({ category, priceRange, selectedBrands, initialProducts }:
             filtered = filtered.filter(p => p.category === category);
         }
 
+        // Client sort for search / mixed sets (server already sorts paginated fetches)
+        if (sortBy === 'price-low') {
+            filtered.sort((a, b) => a.price - b.price);
+        } else if (sortBy === 'price-high') {
+            filtered.sort((a, b) => b.price - a.price);
+        }
+
         return filtered;
-    }, [products, allProducts, searchParams, priceRange, selectedBrands, category]);
+    }, [products, allProducts, searchParams, priceRange, selectedBrands, category, sortBy]);
 
     if (isLoading && products.length === 0) return (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
