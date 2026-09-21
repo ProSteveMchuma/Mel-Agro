@@ -82,7 +82,10 @@ export default function MobileNav() {
         <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md shadow-[0_-5px_20px_rgba(0,0,0,0.03)] lg:hidden z-50 safe-area-bottom pb-safe">
             <div className="flex items-center justify-around">
                 {navItems.map((item) => {
-                    const isActive = pathname === item.href;
+                    const isActive =
+                        item.href === '/products'
+                            ? pathname === '/products' || pathname.startsWith('/categories/') || pathname.startsWith('/brands/')
+                            : pathname === item.href;
                     return (
                         <Link
                             key={item.name}

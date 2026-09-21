@@ -12,12 +12,23 @@ type Props = {
     guidance: string[];
     faq: Array<{ question: string; answer: string }>;
     relatedLinks: Array<{ label: string; href: string }>;
+    /** Deep-link into /products with category or brand preselected. */
+    filtersHref?: string;
 };
 
-export default function CatalogLandingPage({ eyebrow, title, summary, products, guidance, faq, relatedLinks }: Props) {
+export default function CatalogLandingPage({
+    eyebrow,
+    title,
+    summary,
+    products,
+    guidance,
+    faq,
+    relatedLinks,
+    filtersHref = '/products',
+}: Props) {
     return <div className="min-h-screen bg-[#f7f8f3] text-gray-950">
         <Header />
-        <main id="main-content">
+        <main id="main-content" className="pb-mobile-nav lg:pb-0">
             {/* Compact heading — keeps the H1/summary for SEO but lets the
                 products appear immediately instead of behind a large hero. */}
             <section className="container-custom pt-6 pb-2 md:pt-8" aria-labelledby="catalog-heading">
@@ -31,7 +42,7 @@ export default function CatalogLandingPage({ eyebrow, title, summary, products, 
                     </div>
                     <div className="flex items-center gap-4">
                         <span className="text-xs font-bold text-gray-500">{products.length} {products.length === 1 ? 'product' : 'products'}</span>
-                        <Link href="/products" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-[11px] font-black uppercase tracking-wider text-gray-800 hover:border-emerald-700 hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">All filters</Link>
+                        <Link href={filtersHref} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-[11px] font-black uppercase tracking-wider text-gray-800 hover:border-emerald-700 hover:text-emerald-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">All filters</Link>
                     </div>
                 </div>
                 {summary && <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-500">{summary}</p>}

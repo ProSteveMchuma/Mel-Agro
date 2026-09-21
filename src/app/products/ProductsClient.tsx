@@ -88,6 +88,15 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
         setSortBy(prev => (prev === next ? prev : next));
     }, [searchParams]);
 
+    // Keep brand checkboxes in sync with URL (landing "All filters", back/forward)
+    useEffect(() => {
+        const brands = searchParams.getAll("brand");
+        setSelectedBrands((prev) => {
+            if (prev.length === brands.length && prev.every((b, i) => b === brands[i])) return prev;
+            return brands;
+        });
+    }, [searchParams]);
+
     // Keep the quick-filter input in sync when the URL `search` changes from
     // elsewhere (suggestion pills, header search, back/forward navigation) so
     // external selections aren't lost.
@@ -145,30 +154,35 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
 
 
     return (
-        <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
+        <div className="min-h-screen flex flex-col bg-gray-50 font-sans pb-mobile-nav lg:pb-0">
             <Header />
 
             <main className="flex-grow">
-                {/* Breadcrumb & Mobile Filter Toggle */}
-                <div className="bg-white border-b border-gray-100 sticky top-[124px] sm:top-[152px] md:top-[104px] z-30 shadow-sm">
-                    <div className="container-custom px-4 md:px-8 py-3 flex items-center justify-between">
-                        <nav className="flex items-center gap-2 text-[10px] md:text-sm">
+                {/* Breadcrumb scrolls away — only Header stays sticky so the grid keeps viewport */}
+                <div className="bg-white border-b border-gray-100">
+                    <div className="container-custom px-4 md:px-8 py-3 flex items-center justify-between gap-3">
+                        <nav className="flex items-center gap-2 text-[10px] md:text-sm min-w-0">
                             <Link href="/" className="text-gray-400 hover:text-melagri-primary transition-colors font-bold uppercase tracking-widest">Home</Link>
-                            <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                            <svg className="w-3 h-3 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
                             <Link href="/products" className="text-gray-400 hover:text-melagri-primary transition-colors font-bold uppercase tracking-widest">Shop</Link>
-                            <svg className="w-3 h-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
-                            <span className="text-melagri-primary font-black uppercase tracking-widest">
+                            <svg className="w-3 h-3 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" /></svg>
+                            <span className="text-melagri-primary font-black uppercase tracking-widest truncate">
                                 {currentCategory || "Catalogue"}
                             </span>
                         </nav>
 
-                        {/* Mobile Filter Toggle */}
                         <button
+                            type="button"
                             onClick={() => setIsSidebarOpen(true)}
-                            className="lg:hidden flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-gray-600 border border-gray-100"
+                            className="lg:hidden flex shrink-0 items-center gap-2 bg-gray-50 min-h-11 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest text-gray-600 border border-gray-100"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                             Filters
+                            {(selectedBrands.length > 0 || currentCategory || priceRange[0] > 0 || priceRange[1] < 1000000) ? (
+                                <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-melagri-primary px-1.5 text-[10px] font-black text-white">
+                                    {(selectedBrands.length || 0) + (currentCategory ? 1 : 0)}
+                                </span>
+                            ) : null}
                         </button>
                     </div>
                 </div>
@@ -575,7 +589,7 @@ function ProductsGrid({ category, priceRange, selectedBrands, sortBy, initialPro
             </div>
 
             {hasMore && !searchParams.get("search") && (
-                <div className="flex justify-center pt-8">
+                <div className="flex justify-center pt-8 pb-4">
                     <button
                         onClick={() => loadProducts(false)}
                         disabled={isLoading}
