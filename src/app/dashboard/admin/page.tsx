@@ -182,7 +182,7 @@ export default function AdminDashboard() {
                     </div>
                     <div>
                         <h2 className="text-xl font-black text-gray-900 tracking-tight">Live Market Intelligence</h2>
-                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Search demand, traffic, and checkout funnel from Firestore</p>
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Anonymous traffic counts, search demand, and signed-in checkout funnel</p>
                     </div>
                 </div>
 
@@ -262,11 +262,11 @@ export default function AdminDashboard() {
                                             <p className="text-lg font-black tracking-tight">Today&apos;s Traffic Pulse</p>
                                             <div className="mt-2 flex flex-wrap gap-6">
                                                 <div>
-                                                    <p className="text-[10px] font-black text-gray-400 uppercase">Live Visits</p>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase">Page visits</p>
                                                     <p className="text-xl font-black text-white">{overview?.traffic.today.totalVisits ?? traffic.totalVisits ?? 0}</p>
                                                 </div>
                                                 <div>
-                                                    <p className="text-[10px] font-black text-gray-400 uppercase">Unique Users</p>
+                                                    <p className="text-[10px] font-black text-gray-400 uppercase" title="Anonymous devices today (hashed IP + browser). Not named customers.">Anon. devices</p>
                                                     <p className="text-xl font-black text-melagri-primary">{overview?.traffic.today.uniqueVisitors ?? traffic.uniqueVisitors ?? 0}</p>
                                                 </div>
                                                 <div>
