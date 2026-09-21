@@ -197,15 +197,16 @@ export default function ProductCard(props: ProductCardProps) {
                     </div>
 
 
-                    {/* Wishlist Button */}
+                    {/* Wishlist Button — 44px tap target on touch devices */}
                     <button
                         onClick={toggleWishlist}
-                        className={`absolute top-2 right-2 md:top-4 md:right-4 p-2 md:p-2.5 rounded-full z-10 transition-all duration-300 backdrop-blur-md ${inWishlist
+                        aria-label={inWishlist ? "Remove from wishlist" : "Add to wishlist"}
+                        className={`absolute top-1.5 right-1.5 md:top-4 md:right-4 min-h-11 min-w-11 md:min-h-0 md:min-w-0 p-2.5 md:p-2.5 rounded-full z-10 flex items-center justify-center transition-all duration-300 backdrop-blur-md ${inWishlist
                             ? "bg-red-500 text-white shadow-lg scale-110"
                             : "bg-white/90 text-gray-300 hover:text-red-500 border border-gray-100 opacity-100 md:opacity-0 md:group-hover:opacity-100"
                             }`}
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 md:h-4 md:w-4" fill={inWishlist ? "currentColor" : "none"} viewBox="0 0 20 20" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill={inWishlist ? "currentColor" : "none"} viewBox="0 0 20 20" stroke="currentColor">
                             <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                         </svg>
                     </button>

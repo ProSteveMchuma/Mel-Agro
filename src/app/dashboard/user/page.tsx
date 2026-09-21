@@ -354,8 +354,8 @@ function UserDashboardInner() {
 
     const renderDashboard = () => (
         <div className="space-y-8">
-            <div className="bg-white rounded-2xl p-8 border border-gray-200">
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">Jambo, {user.name?.split(' ')[0]}! 👋</h1>
+            <div className="bg-white rounded-2xl p-5 sm:p-8 border border-gray-200">
+                <h1 className="text-2xl sm:text-4xl font-bold text-gray-900 mb-2">Jambo, {user.name?.split(' ')[0]}! 👋</h1>
                 <p className="text-gray-600">Here's what's happening with your farm inputs today.</p>
             </div>
 
@@ -457,7 +457,7 @@ function UserDashboardInner() {
 
             {/* Active Order Progress - Difference Maker */}
             {orders.filter(o => o.status === 'Processing' || o.status === 'Shipped').slice(0, 1).map(activeOrder => (
-                <div key={activeOrder.id} className="bg-white rounded-3xl p-8 border border-melagri-primary/20 shadow-xl shadow-melagri-primary/5 animate-in slide-in-from-bottom-4 duration-700">
+                <div key={activeOrder.id} className="bg-white rounded-3xl p-5 sm:p-8 border border-melagri-primary/20 shadow-xl shadow-melagri-primary/5 animate-in slide-in-from-bottom-4 duration-700">
                     <div className="flex justify-between items-center mb-6">
                         <div>
                             <h3 className="text-sm font-black uppercase tracking-widest text-melagri-primary mb-1">Active Tracking</h3>
@@ -785,25 +785,26 @@ function UserDashboardInner() {
         if (status === 'Cancelled') return <div className="text-red-600 font-bold bg-red-50 p-4 rounded-2xl text-center border border-red-100 mb-6">Order Cancelled</div>;
 
         return (
-            <div className="w-full py-8">
-                <div className="relative flex items-center justify-between">
-                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1.5 bg-gray-100 -z-10 rounded-full"></div>
+            <div className="w-full py-4 sm:py-8 overflow-hidden">
+                <div className="relative flex items-start justify-between gap-1">
+                    <div className="absolute left-[12%] right-[12%] top-4 h-1.5 bg-gray-100 -z-10 rounded-full" aria-hidden="true" />
                     <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 h-1.5 bg-melagri-primary -z-10 transition-all duration-700 ease-out rounded-full"
-                        style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
-                    ></div>
+                        className="absolute left-[12%] top-4 h-1.5 bg-melagri-primary -z-10 transition-all duration-700 ease-out rounded-full max-w-[76%]"
+                        style={{ width: currentStepIndex <= 0 ? '0%' : `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                        aria-hidden="true"
+                    />
 
                     {steps.map((step, index) => (
-                        <div key={step} className="flex flex-col items-center bg-transparent px-2 group">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs transition-all duration-300 shadow-lg ${index <= currentStepIndex ? 'bg-melagri-primary text-white scale-110 shadow-melagri-primary/30' : 'bg-white text-gray-400 border-2 border-gray-100'
+                        <div key={step} className="flex flex-col items-center bg-transparent px-0.5 sm:px-2 group flex-1 min-w-0">
+                            <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-xs transition-all duration-300 shadow-lg shrink-0 ${index <= currentStepIndex ? 'bg-melagri-primary text-white scale-105 sm:scale-110 shadow-melagri-primary/30' : 'bg-white text-gray-400 border-2 border-gray-100'
                                 }`}>
                                 {index < currentStepIndex ? (
-                                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                                    <svg className="h-4 w-4 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
                                 ) : (
                                     index + 1
                                 )}
                             </div>
-                            <span className={`mt-3 text-[10px] font-black uppercase tracking-wider ${index <= currentStepIndex ? 'text-gray-900' : 'text-gray-400'}`}>
+                            <span className={`mt-2 sm:mt-3 text-[8px] sm:text-[10px] font-black uppercase tracking-wide sm:tracking-wider text-center leading-tight max-w-full break-words ${index <= currentStepIndex ? 'text-gray-900' : 'text-gray-400'}`}>
                                 {statusLabelForOrder(step, order)}
                             </span>
                         </div>

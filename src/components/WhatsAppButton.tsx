@@ -1,29 +1,43 @@
 "use client";
 
 import { motion } from "framer-motion";
+import { usePathname } from "next/navigation";
 import { SUPPORT_WHATSAPP } from "@/lib/site";
+import { hidesMobileNav } from "@/components/MobileNav";
 
 export default function WhatsAppButton() {
+    const pathname = usePathname();
     const phoneNumber = SUPPORT_WHATSAPP;
     const message = encodeURIComponent("Hello Mel-Agri! I'm interested in your products.");
+
+    const hasStickyCta =
+        pathname === "/cart"
+        || (pathname.startsWith("/products/") && pathname !== "/products");
+    const navHidden = hidesMobileNav(pathname);
+
+    // Sit above sticky ATC / cart checkout, or above MobileNav, or near the corner when neither applies.
+    const bottomClass = hasStickyCta
+        ? "bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] lg:bottom-8"
+        : navHidden
+            ? "bottom-[max(1.5rem,env(safe-area-inset-bottom,0px))] lg:bottom-8"
+            : "bottom-[calc(6rem+env(safe-area-inset-bottom,0px))] lg:bottom-8";
 
     return (
         <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 1, type: "spring", stiffness: 260, damping: 20 }}
-            className="fixed bottom-24 right-4 z-50 md:bottom-8 md:right-8"
+            className={`fixed ${bottomClass} right-4 z-40 lg:right-8`}
         >
             <a
                 href={`https://wa.me/${phoneNumber}?text=${message}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="relative group flex items-center gap-3 bg-[#22c55e] hover:bg-[#16a34a] text-white p-3.5 md:px-5 md:py-3 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-green-500/30"
+                className="relative group flex items-center gap-3 bg-[#22c55e] hover:bg-[#16a34a] text-white p-3.5 lg:px-5 lg:py-3 rounded-full shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-green-500/30 min-h-12 min-w-12"
                 aria-label="Chat with Mel-Agri on WhatsApp"
             >
-                {/* Icon with notification dot */}
                 <div className="relative">
-                    <svg className="w-7 h-7 md:w-8 md:h-8" fill="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-7 h-7 lg:w-8 lg:h-8" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.038 3.284l-.54 1.964 2.009-.528c.954.524 1.942.85 3.037.852 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.586-5.772-5.744-5.772zm3.374 8.086c-.1.272-.58.513-.801.551-.237.042-.46.079-.769-.015-.297-.091-.676-.239-1.144-.442-1.99-.861-3.284-2.885-3.383-3.018-.099-.134-.736-.979-.736-1.959 0-.979.512-1.46.694-1.658.183-.198.396-.247.53-.247.13 0 .26.012.37.012.11 0 .26-.041.408.321.148.36.512 1.25.56 1.348.049.099.083.214.016.347-.066.13-.1.214-.2.33-.1.115-.208.261-.297.35-.099.099-.198.198-.083.396.115.198.512.845 1.099 1.366.759.673 1.398.882 1.596.981.198.099.313.082.43-.049.115-.132.512-.596.644-.793.132-.198.26-.165.43-.099.172.066 1.09.514 1.277.613.183.1.312.148.363.23.049.082.049.479-.05.751z" />
                     </svg>
                     <span className="absolute -top-1 -right-1 flex h-3 w-3">
@@ -32,7 +46,7 @@ export default function WhatsAppButton() {
                     </span>
                 </div>
 
-                <div className="hidden md:flex flex-col text-left">
+                <div className="hidden lg:flex flex-col text-left">
                     <span className="text-[10px] uppercase font-black tracking-widest opacity-90 leading-none mb-0.5">Support</span>
                     <span className="text-sm font-bold leading-none">Need help contact us</span>
                 </div>

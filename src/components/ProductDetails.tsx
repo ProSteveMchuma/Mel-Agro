@@ -165,7 +165,7 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
         <div className="min-h-screen flex flex-col bg-white font-sans text-gray-900">
             <Header />
 
-            <main className="flex-grow container-custom py-8">
+            <main className="flex-grow container-custom py-8 pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] lg:pb-8">
                 {/* Breadcrumbs */}
                 <nav className="flex items-center gap-2 text-xs text-gray-500 mb-8 font-medium">
                     <Link href="/" className="hover:text-green-600">Home</Link>
@@ -611,17 +611,17 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
             <Footer />
 
             {/* Sticky Mobile Add to Cart */}
-            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 z-40 flex items-center justify-between gap-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-                <div>
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] z-40 flex items-center justify-between gap-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
+                <div className="min-w-0">
                     <p className="text-[10px] font-black text-gray-400 uppercase">Total Price</p>
-                    <p className="text-xl font-black text-[#22c55e]">KES {(selectedPrice * quantity).toLocaleString()}</p>
+                    <p className="text-xl font-black text-[#22c55e] truncate">KES {(selectedPrice * quantity).toLocaleString()}</p>
                 </div>
                 <button
                     onClick={handleAddToCart}
                     disabled={!canPurchase}
-                    className="flex-grow h-12 bg-[#22c55e] text-white font-black rounded-xl shadow-lg shadow-green-200 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed"
+                    className="flex-grow max-w-[55%] h-12 bg-[#22c55e] text-white font-black rounded-xl shadow-lg shadow-green-200 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none disabled:cursor-not-allowed"
                 >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                     {requiresVariantSelection ? 'Select Option' : canPurchase ? 'Add' : 'Out of Stock'}
                 </button>
             </div>

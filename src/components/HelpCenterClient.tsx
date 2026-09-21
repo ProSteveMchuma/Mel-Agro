@@ -29,17 +29,18 @@ export default function HelpCenterClient({ content }: { content: HelpPageContent
                 <p className="text-lg text-gray-600 mb-8">{content.subtitle}</p>
 
                 <div className="max-w-2xl mx-auto mb-12">
-                    <div className="relative">
+                    <div className="flex flex-col gap-2 sm:relative">
                         <input
                             type="search"
                             value={query}
                             onChange={(event) => setQuery(event.target.value)}
-                            placeholder="Search for answers (e.g., 'Delivery fees', 'M-PESA')"
-                            className="w-full px-6 py-4 border-2 border-gray-300 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-melagri-primary focus:border-transparent"
+                            placeholder="Search (e.g. Delivery, M-PESA)"
+                            className="w-full px-5 sm:px-6 py-3.5 sm:py-4 border-2 border-gray-300 rounded-2xl text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-melagri-primary focus:border-transparent sm:pr-28"
+                            aria-label="Search help articles"
                         />
                         <button
                             type="button"
-                            className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-melagri-primary text-white px-6 py-2 rounded-xl font-bold hover:bg-melagri-secondary transition-colors"
+                            className="sm:absolute sm:right-2 sm:top-1/2 sm:-translate-y-1/2 w-full sm:w-auto min-h-11 bg-melagri-primary text-white px-6 py-2.5 rounded-xl font-bold hover:bg-melagri-secondary transition-colors"
                         >
                             Search
                         </button>

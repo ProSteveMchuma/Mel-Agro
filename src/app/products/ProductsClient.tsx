@@ -154,7 +154,7 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
 
 
     return (
-        <div className="min-h-screen flex flex-col bg-gray-50 font-sans pb-mobile-nav lg:pb-0">
+        <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
             <Header />
 
             <main className="flex-grow">

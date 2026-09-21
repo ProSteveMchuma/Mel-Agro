@@ -49,8 +49,8 @@ export default function FeaturedSlider({ products: initialProducts }: { products
 
     if (loading) {
         return (
-            <div className="w-full h-[500px] bg-gray-50 animate-pulse rounded-[2.5rem] flex items-center justify-center">
-                <div className="text-gray-300 font-bold uppercase tracking-widest">Loading Featured...</div>
+            <div className="w-full h-[min(70vw,380px)] sm:h-[500px] min-h-[300px] bg-gray-50 animate-pulse rounded-2xl md:rounded-[2.5rem] flex items-center justify-center">
+                <div className="text-gray-300 font-bold uppercase tracking-widest text-xs sm:text-sm">Loading Featured...</div>
             </div>
         );
     }
@@ -63,7 +63,7 @@ export default function FeaturedSlider({ products: initialProducts }: { products
     const isAvailable = currentProduct.inStock !== false && featuredStock > 0;
 
     return (
-        <div className="relative w-full h-[500px] overflow-hidden rounded-[2rem] md:rounded-[2.5rem] bg-gray-900 shadow-2xl group border border-gray-800/50">
+        <div className="relative w-full h-[min(75vw,420px)] sm:h-[500px] min-h-[320px] overflow-hidden rounded-2xl md:rounded-[2.5rem] bg-gray-900 shadow-2xl group border border-gray-800/50">
             <AnimatePresence mode='wait'>
                 <motion.div
                     key={currentProduct.id}
@@ -86,32 +86,32 @@ export default function FeaturedSlider({ products: initialProducts }: { products
                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent md:bg-gradient-to-r" />
                     </div>
 
-                    {/* Content */}
-                    <div className="relative h-full flex flex-col justify-end md:justify-center px-6 md:px-20 pb-10 md:pb-0 z-10">
+                    {/* Content — extra bottom pad so CTAs clear the dots */}
+                    <div className="relative h-full flex flex-col justify-end md:justify-center px-4 sm:px-6 md:px-20 pb-14 sm:pb-16 md:pb-0 z-10 pr-24 sm:pr-6 md:pr-20">
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2, duration: 0.6 }}
-                            className="flex flex-col items-start"
+                            className="flex flex-col items-start max-w-full"
                         >
-                            <span className="bg-green-500 text-white text-[10px] md:text-sm font-black uppercase tracking-[0.2em] px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-full mb-3 md:mb-6 shadow-lg shadow-green-900/20 backdrop-blur-sm">
+                            <span className="bg-green-500 text-white text-[10px] md:text-sm font-black uppercase tracking-[0.2em] px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-full mb-2 sm:mb-3 md:mb-6 shadow-lg shadow-green-900/20 backdrop-blur-sm">
                                 Featured Pick
                             </span>
-                            <h2 className="text-2xl md:text-5xl font-black text-white mb-6 md:mb-10 leading-[1.1] tracking-tighter uppercase max-w-2xl drop-shadow-lg filter">
+                            <h2 className="text-xl sm:text-2xl md:text-5xl font-black text-white mb-4 sm:mb-6 md:mb-10 leading-[1.15] tracking-tighter uppercase max-w-2xl drop-shadow-lg line-clamp-2">
                                 {currentProduct.name}
                             </h2>
 
-                            <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 md:gap-4 w-full md:w-auto">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 md:gap-4 w-full sm:w-auto">
                                 <Link
                                     href={productSeoPath(currentProduct)}
-                                    className="bg-white text-gray-900 px-6 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-50 transition-all text-center shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-95"
+                                    className="bg-white text-gray-900 px-5 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-50 transition-all text-center shadow-xl hover:shadow-2xl hover:-translate-y-1 active:scale-95 min-h-11 flex items-center justify-center"
                                 >
                                     View Details
                                 </Link>
                                 {requiresOptions ? (
                                     <Link
                                         href={productSeoPath(currentProduct)}
-                                        className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-6 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-500 transition-all shadow-xl shadow-green-900/20 hover:-translate-y-1 active:scale-95 flex justify-center"
+                                        className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-5 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-500 transition-all shadow-xl shadow-green-900/20 hover:-translate-y-1 active:scale-95 flex justify-center items-center min-h-11"
                                     >
                                         Choose Options
                                     </Link>
@@ -119,7 +119,7 @@ export default function FeaturedSlider({ products: initialProducts }: { products
                                     <button
                                         onClick={() => addToCart(currentProduct, 1, featuredVariant)}
                                         disabled={!isAvailable}
-                                        className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-6 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-500 transition-all shadow-xl shadow-green-900/20 hover:-translate-y-1 active:scale-95 flex justify-center disabled:bg-gray-500 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                                        className="bg-green-600/90 backdrop-blur-md border border-white/10 text-white px-5 py-3 md:px-8 md:py-3.5 rounded-xl md:rounded-2xl font-black uppercase tracking-widest text-xs md:text-sm hover:bg-green-500 transition-all shadow-xl shadow-green-900/20 hover:-translate-y-1 active:scale-95 flex justify-center items-center min-h-11 disabled:bg-gray-500 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                                     >
                                         {isAvailable ? 'Add To Cart' : 'Out of Stock'}
                                     </button>
@@ -131,31 +131,34 @@ export default function FeaturedSlider({ products: initialProducts }: { products
             </AnimatePresence>
 
             {/* Slider Dots */}
-            <div className="absolute bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+            <div className="absolute bottom-3 sm:bottom-4 md:bottom-10 left-1/2 -translate-x-1/2 flex gap-1 z-20">
                 {products.map((_, idx) => (
                     <button
                         key={idx}
                         onClick={() => setActiveIndex(idx)}
-                        className={`transition-all duration-500 rounded-full h-1.5 md:h-2 ${idx === activeIndex
+                        aria-label={`Show featured product ${idx + 1}`}
+                        className="min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 flex items-center justify-center"
+                    >
+                        <span className={`transition-all duration-500 rounded-full h-1.5 md:h-2 block ${idx === activeIndex
                             ? 'w-6 md:w-10 bg-green-500'
                             : 'w-1.5 md:w-2 bg-white/30 hover:bg-white/50'
-                            }`}
-                    />
+                            }`} />
+                    </button>
                 ))}
             </div>
 
             {/* Price Tag */}
-            <div className="absolute top-4 right-4 md:top-10 md:right-10 z-20">
+            <div className="absolute top-3 right-3 sm:top-4 sm:right-4 md:top-10 md:right-10 z-20">
                 <motion.div
                     key={currentProduct.price}
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    className="bg-black/30 backdrop-blur-xl border border-white/10 p-4 md:p-6 rounded-2xl md:rounded-3xl shadow-xl"
+                    className="bg-black/30 backdrop-blur-xl border border-white/10 px-3 py-2.5 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl md:rounded-3xl shadow-xl"
                 >
-                    <p className="text-[10px] md:text-xs font-black text-green-400 uppercase tracking-widest mb-1 text-right">Price</p>
+                    <p className="text-[9px] sm:text-[10px] md:text-xs font-black text-green-400 uppercase tracking-widest mb-0.5 sm:mb-1 text-right">Price</p>
                     <div className="flex items-baseline gap-1 justify-end">
-                        <span className="text-xs md:text-sm font-bold text-green-400">KES</span>
-                        <span className="text-xl md:text-3xl font-black text-white leading-none tracking-tight">
+                        <span className="text-[10px] sm:text-xs md:text-sm font-bold text-green-400">KES</span>
+                        <span className="text-base sm:text-xl md:text-3xl font-black text-white leading-none tracking-tight">
                             {currentProduct.price.toLocaleString()}
                         </span>
                     </div>

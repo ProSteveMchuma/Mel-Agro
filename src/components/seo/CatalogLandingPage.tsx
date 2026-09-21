@@ -28,7 +28,7 @@ export default function CatalogLandingPage({
 }: Props) {
     return <div className="min-h-screen bg-[#f7f8f3] text-gray-950">
         <Header />
-        <main id="main-content" className="pb-mobile-nav lg:pb-0">
+        <main id="main-content">
             {/* Compact heading — keeps the H1/summary for SEO but lets the
                 products appear immediately instead of behind a large hero. */}
             <section className="container-custom pt-6 pb-2 md:pt-8" aria-labelledby="catalog-heading">

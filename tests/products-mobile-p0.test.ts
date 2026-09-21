@@ -22,5 +22,11 @@ test('products client does not pin breadcrumb under header with magic sticky off
     const source = readFileSync(join(root, 'src/app/products/ProductsClient.tsx'), 'utf8');
     assert.equal(source.includes('top-[124px]'), false);
     assert.equal(source.includes('sticky top-['), false);
-    assert.match(source, /pb-mobile-nav/);
+});
+
+test('MobileNav in-flow spacer replaces per-page pb-mobile-nav on catalogue', () => {
+    const nav = readFileSync(join(root, 'src/components/MobileNav.tsx'), 'utf8');
+    const products = readFileSync(join(root, 'src/app/products/ProductsClient.tsx'), 'utf8');
+    assert.match(nav, /h-\[calc\(5\.75rem\+env\(safe-area-inset-bottom/);
+    assert.equal(products.includes('pb-mobile-nav'), false);
 });

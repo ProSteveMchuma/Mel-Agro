@@ -4,9 +4,9 @@ import { whatsAppUrl, SUPPORT_PHONE_DISPLAY } from "@/lib/site";
 
 export default function Footer() {
     return (
-        <footer className="bg-[#1f2937] text-gray-300 py-16 font-sans">
+        <footer className="bg-[#1f2937] text-gray-300 py-10 sm:py-16 font-sans">
             <div className="container-custom">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12 mb-10 sm:mb-16">
                     {/* Column 1: Brand */}
                     <div className="space-y-6">
                         <Link href="/">

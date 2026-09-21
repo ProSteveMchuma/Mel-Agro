@@ -75,9 +75,9 @@ export default function Header() {
 
       {/* Main Header */}
       <div className="container-custom py-3 md:py-4 shadow-sm">
-        <div className="flex items-center gap-8 justify-between">
+        <div className="flex items-center gap-3 sm:gap-6 md:gap-8 justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-2 md:gap-4 w-full md:w-auto">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0 md:w-auto">
             <Link href="/" className="group flex-shrink-0 origin-left transform scale-75 md:scale-100">
               <Logo />
             </Link>
@@ -89,7 +89,7 @@ export default function Header() {
           </div>
 
           {/* Action Icons */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 sm:gap-4 md:gap-6 shrink-0">
             {/* Account Dropdown */}
             <div className="relative" ref={accountRef}>
               <button

@@ -439,7 +439,7 @@ function LoginForm() {
                                             autoComplete="one-time-code"
                                             required
                                             maxLength={6}
-                                            className="text-center tracking-[1em] font-mono text-xl appearance-none rounded-lg block w-full px-4 py-3 border border-gray-300 placeholder-gray-400 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary"
+                                            className="text-center tracking-[0.35em] sm:tracking-[1em] font-mono text-lg sm:text-xl appearance-none rounded-lg block w-full px-3 sm:px-4 py-3 border border-gray-300 placeholder-gray-400 focus:outline-none focus:ring-melagri-primary focus:border-melagri-primary"
                                             placeholder="000000"
                                             value={otp}
                                             onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
