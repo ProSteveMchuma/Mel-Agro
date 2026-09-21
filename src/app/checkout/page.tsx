@@ -905,7 +905,7 @@ export default function CheckoutPage() {
                                                         }`}
                                                 >
                                                     <p className="font-black text-gray-900">Collect / Pickup</p>
-                                                    <p className="mt-1 text-sm text-gray-500">{PICKUP_STORE.etaText}</p>
+                                                    <p className="mt-1 text-sm text-gray-500">Machakos only · {PICKUP_STORE.etaText}</p>
                                                     <p className="mt-3 text-sm font-bold text-melagri-primary">FREE</p>
                                                 </button>
                                             </div>
@@ -954,10 +954,11 @@ export default function CheckoutPage() {
 
                                             {shippingMethod === 'pickup' ? (
                                                 <div className="mt-8 rounded-2xl border border-green-100 bg-green-50/60 p-6">
-                                                    <p className="text-xs font-black uppercase tracking-widest text-green-700">Collection point</p>
+                                                    <p className="text-xs font-black uppercase tracking-widest text-green-700">Collection point · Machakos only</p>
                                                     <h3 className="mt-2 text-lg font-black text-gray-900">{PICKUP_STORE.name}</h3>
                                                     <p className="mt-1 text-sm font-semibold text-gray-800">{PICKUP_STORE.label}</p>
                                                     <p className="mt-3 text-sm text-gray-600">{PICKUP_STORE.etaText}. We will SMS you when your order is ready.</p>
+                                                    <p className="mt-2 text-xs font-semibold text-green-800">{PICKUP_STORE.availabilityNote}.</p>
                                                 </div>
                                             ) : (
                                                 <div className="mt-8 space-y-6 border-t border-gray-100 pt-8">
@@ -1322,6 +1323,7 @@ export default function CheckoutPage() {
                                                     {shippingMethod === 'pickup' ? (
                                                         <>
                                                             <p className="mt-3 text-gray-900 font-semibold">{PICKUP_STORE.label}</p>
+                                                            <p className="text-gray-600 text-sm">{PICKUP_STORE.availabilityNote}</p>
                                                             <p className="text-gray-600 text-sm">{PICKUP_STORE.etaText}</p>
                                                         </>
                                                     ) : (
@@ -1344,7 +1346,7 @@ export default function CheckoutPage() {
                                                             Edit
                                                         </button>
                                                     </div>
-                                                    <p className="text-gray-900 font-semibold">{shippingMethod === 'standard' ? `Delivery — ${deliveryInfo.etaText}` : 'Collect / Pickup'}</p>
+                                                    <p className="text-gray-900 font-semibold">{shippingMethod === 'standard' ? `Delivery — ${deliveryInfo.etaText}` : 'Collect in Machakos'}</p>
                                                 </div>
 
                                                 {/* Payment Method */}
