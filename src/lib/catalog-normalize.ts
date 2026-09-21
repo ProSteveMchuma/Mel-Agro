@@ -140,8 +140,52 @@ export function findNearDuplicateBrand(input: unknown, knownDisplays: string[]):
     return best;
 }
 
-export function productBrandFields(brandInput: unknown, knownDisplays: string[] = []) {
-    const brand = resolveCanonicalBrand(brandInput, knownDisplays);
-    const brandKey = brandKeyFrom(brand);
-    return { brand, brandKey: brandKey || '' };
+export type BrandResolution =
+    | { ok: true; brand: string; brandKey: string; remappedFrom?: string }
+    | { ok: false; reason: 'near_duplicate'; input: string; suggestedBrand: string };
+
+/**
+ * Resolve a brand for product save.
+ * - Exact brandKey match → rewrite to canonical display (silent).
+ * - Fuzzy near-duplicate → reject unless forceNewBrand is true.
+ */
+export function resolveProductBrand(
+    brandInput: unknown,
+    knownDisplays: string[],
+    options: { forceNewBrand?: boolean } = {}
+): BrandResolution {
+    const cleaned = normalizeDisplayField(brandInput);
+    if (!cleaned) return { ok: true, brand: '', brandKey: '' };
+
+    const key = brandKeyFrom(cleaned);
+    const exact = knownDisplays.find((b) => brandKeyFrom(b) === key);
+    if (exact) {
+        return {
+            ok: true,
+            brand: exact,
+            brandKey: key,
+            ...(exact !== cleaned ? { remappedFrom: cleaned } : {}),
+        };
+    }
+
+    const near = findNearDuplicateBrand(cleaned, knownDisplays);
+    // findNearDuplicateBrand also returns exact-key diffs; those are handled above.
+    // Remaining hits are fuzzy typos with a different key.
+    if (near && brandKeyFrom(near) !== key && !options.forceNewBrand) {
+        return { ok: false, reason: 'near_duplicate', input: cleaned, suggestedBrand: near };
+    }
+
+    return { ok: true, brand: cleaned, brandKey: key };
+}
+
+export function productBrandFields(
+    brandInput: unknown,
+    knownDisplays: string[] = [],
+    options: { forceNewBrand?: boolean } = {}
+) {
+    const resolved = resolveProductBrand(brandInput, knownDisplays, options);
+    if (!resolved.ok) {
+        return { brand: resolved.input, brandKey: brandKeyFrom(resolved.input), conflict: resolved };
+    }
+    return { brand: resolved.brand, brandKey: resolved.brandKey, conflict: null as null };
 }

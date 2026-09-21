@@ -8,7 +8,7 @@ import {
     brandKeyFrom,
     collapseBrandDisplays,
     normalizeDisplayField,
-    productBrandFields,
+    resolveProductBrand,
 } from '@/lib/catalog-normalize';
 
 /**
@@ -155,7 +155,10 @@ export async function uploadProductsFromExcel(formData: FormData) {
             const category = normalizeDisplayField(getRowValue(row, 'CATEGORY') || "Uncategorized") || "Uncategorized";
             const subCategory = normalizeDisplayField(getRowValue(row, 'SUB CATEGORY', 'SUB-CATEGORY') || "");
             const rawBrand = getRowValue(row, 'BRAND', 'MANUFACTURER', 'Brand');
-            const { brand, brandKey } = productBrandFields(rawBrand ?? "", knownBrands);
+            const brandResolved = resolveProductBrand(rawBrand ?? "", knownBrands, { forceNewBrand: false });
+            // Bulk: exact keys remap; fuzzy typos fold to the suggested existing brand
+            const brand = brandResolved.ok ? brandResolved.brand : brandResolved.suggestedBrand;
+            const brandKey = brandKeyFrom(brand);
             const productCode = normalizeDisplayField(getRowValue(row, 'PRODUCT CODE', 'SKU', 'CODE') || "");
 
             const nameKey = normalizeDisplayField(trimmedName).toLowerCase();

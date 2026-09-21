@@ -3,7 +3,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
 import { z } from "zod";
 import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
-import { collapseBrandDisplays, normalizeDisplayField, productBrandFields } from "@/lib/catalog-normalize";
+import { collapseBrandDisplays, normalizeDisplayField, resolveProductBrand } from "@/lib/catalog-normalize";
 
 const PAGE_SIZE = 20;
 const SCAN_SIZE = 75;
@@ -19,7 +19,10 @@ const productSchema = z.object({
   stockQuantity: z.number().int().min(0).max(100_000_000), lowStockThreshold: z.number().int().min(0).max(1_000_000), inStock: z.boolean().optional(), description: optionalText(10_000), tags: z.array(z.string().trim().min(1).max(80)).max(30).optional().default([]), features: z.array(z.string().trim().min(1).max(300)).max(30).optional().default([]), specification: optionalText(10_000), howToUse: optionalText(10_000), variants: z.array(variantSchema).max(100).optional().default([]),
   weight: z.number().min(0).max(100_000).optional(), weightUnit: z.enum(["kg", "g", "lb", "l", "ml"]).optional(), featured: z.boolean().optional().default(false), supplierLeadTimeDays: z.number().int().min(1).max(365).optional().default(14), incomingStock: z.number().int().min(0).max(100_000_000).optional().default(0), safetyStock: z.number().int().min(0).max(1_000_000).optional().default(0), minimumOrderQuantity: z.number().int().min(1).max(1_000_000).optional().default(1),
 }).strict();
-const mutationSchema = z.discriminatedUnion("action", [z.object({ action: z.literal("create"), data: productSchema }), z.object({ action: z.literal("update"), productId: z.string().trim().min(1).max(200), data: productSchema })]);
+const mutationSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("create"), data: productSchema, forceNewBrand: z.boolean().optional().default(false) }),
+  z.object({ action: z.literal("update"), productId: z.string().trim().min(1).max(200), data: productSchema, forceNewBrand: z.boolean().optional().default(false) }),
+]);
 
 async function getCategories() {
   if (categoryCache && categoryCache.expiresAt > Date.now()) return categoryCache.values;
@@ -109,7 +112,16 @@ export async function POST(request: Request) {
   if (!parsed.success) return NextResponse.json({ success: false, message: parsed.error.issues[0]?.message || "Invalid product data." }, { status: 400 });
   const input = parsed.data; const productRef = input.action === "create" ? adminDb.collection("products").doc() : adminDb.collection("products").doc(input.productId);
   const knownBrands = await getBrands();
-  const { brand, brandKey } = productBrandFields(input.data.brand, knownBrands);
+  const brandResolved = resolveProductBrand(input.data.brand, knownBrands, { forceNewBrand: input.forceNewBrand });
+  if (!brandResolved.ok) {
+    return NextResponse.json({
+      success: false,
+      code: "BRAND_NEAR_DUPLICATE",
+      suggestedBrand: brandResolved.suggestedBrand,
+      message: `Brand looks similar to existing "${brandResolved.suggestedBrand}". Use that spelling, or confirm creating a new brand.`,
+    }, { status: 409 });
+  }
+  const { brand, brandKey } = brandResolved;
   const category = normalizeDisplayField(input.data.category) || input.data.category;
   const subCategory = normalizeDisplayField(input.data.subCategory);
   const productCode = normalizeDisplayField(input.data.productCode);

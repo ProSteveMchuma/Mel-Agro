@@ -29,13 +29,17 @@ export default function EditProductPage() {
         }
     }, [products, id, getProduct]);
 
-    const handleSubmit = async (data: Omit<Product, 'id'>) => {
+    const handleSubmit = async (data: Omit<Product, 'id'>, options?: { forceNewBrand?: boolean }) => {
         setIsSubmitting(true);
         try {
-            await updateProduct(id, data);
+            await updateProduct(id, data, options);
             router.push('/dashboard/admin/products');
         } catch (error: any) {
             console.error("Failed to update product:", error);
+            if (error.code === 'BRAND_NEAR_DUPLICATE') {
+                setIsSubmitting(false);
+                throw error;
+            }
             const errorMsg = error.code === 'permission-denied'
                 ? "Permission Denied: You don't have authorization to edit products."
                 : (error.message || "Please try again.");

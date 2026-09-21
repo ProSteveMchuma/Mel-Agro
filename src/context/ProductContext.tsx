@@ -11,8 +11,8 @@ export type { Product };
 interface ProductContextType {
     products: Product[];
     archivedProducts: Product[];
-    addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
-    updateProduct: (id: number | string, updates: Partial<Product>) => Promise<void>;
+    addProduct: (product: Omit<Product, 'id'>, options?: { forceNewBrand?: boolean }) => Promise<void>;
+    updateProduct: (id: number | string, updates: Partial<Product>, options?: { forceNewBrand?: boolean }) => Promise<void>;
     deleteProduct: (id: number | string) => Promise<void>;
     restoreProduct: (id: number | string) => Promise<void>;
     getProduct: (id: number | string) => Product | undefined;
@@ -58,15 +58,15 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
         return () => unsubscribe();
     }, [pathname]);
 
-    const addProduct = async (productData: Omit<Product, 'id'>) => {
-        try { await mutateProduct({ action: 'create', data: productData }); } catch (error) {
+    const addProduct = async (productData: Omit<Product, 'id'>, options?: { forceNewBrand?: boolean }) => {
+        try { await mutateProduct({ action: 'create', data: productData, forceNewBrand: options?.forceNewBrand === true }); } catch (error) {
             console.error("Error adding product context:", error);
             throw error;
         }
     };
 
-    const updateProduct = async (id: number | string, updates: Partial<Product>) => {
-        try { await mutateProduct({ action: 'update', productId: String(id), data: updates }); } catch (error) {
+    const updateProduct = async (id: number | string, updates: Partial<Product>, options?: { forceNewBrand?: boolean }) => {
+        try { await mutateProduct({ action: 'update', productId: String(id), data: updates, forceNewBrand: options?.forceNewBrand === true }); } catch (error) {
             console.error("Error updating product:", error);
             throw error;
         }
@@ -80,7 +80,26 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
         if (!response.ok) throw new Error(result.message || `Could not ${action} product.`);
     };
 
-    const mutateProduct = async (body: unknown) => { const token = await getAuth().currentUser?.getIdToken(); if (!token) throw new Error('Admin session is unavailable.'); const response = await fetch('/api/admin/products', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(body) }); const result = await response.json(); if (!response.ok) throw new Error(result.message || 'Could not save product.'); return result; };
+    const mutateProduct = async (body: unknown) => {
+        const token = await getAuth().currentUser?.getIdToken();
+        if (!token) throw new Error('Admin session is unavailable.');
+        const response = await fetch('/api/admin/products', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify(body),
+        });
+        const result = await response.json();
+        if (!response.ok) {
+            const error = new Error(result.message || 'Could not save product.') as Error & {
+                code?: string;
+                suggestedBrand?: string;
+            };
+            error.code = result.code;
+            error.suggestedBrand = result.suggestedBrand;
+            throw error;
+        }
+        return result;
+    };
     const deleteProduct = (id: number | string) => changeLifecycle(id, 'archive');
     const restoreProduct = (id: number | string) => changeLifecycle(id, 'restore');
 

@@ -7,6 +7,7 @@ import {
     normalizeDisplayField,
     productBrandFields,
     resolveCanonicalBrand,
+    resolveProductBrand,
 } from '../src/lib/catalog-normalize.ts';
 
 describe('catalog-normalize', () => {
@@ -49,7 +50,33 @@ describe('catalog-normalize', () => {
         assert.deepEqual(productBrandFields('  mel-agri ', ['MEL-AGRI']), {
             brand: 'MEL-AGRI',
             brandKey: 'mel-agri',
+            conflict: null,
         });
-        assert.deepEqual(productBrandFields(''), { brand: '', brandKey: '' });
+        assert.deepEqual(productBrandFields(''), { brand: '', brandKey: '', conflict: null });
+    });
+
+    it('resolveProductBrand remaps exact keys and blocks fuzzy typos', () => {
+        assert.deepEqual(resolveProductBrand('mel agri', ['MEL-AGRI']), {
+            ok: true,
+            brand: 'MEL-AGRI',
+            brandKey: 'mel-agri',
+            remappedFrom: 'mel agri',
+        });
+        assert.deepEqual(resolveProductBrand('Yarra', ['Yara']), {
+            ok: false,
+            reason: 'near_duplicate',
+            input: 'Yarra',
+            suggestedBrand: 'Yara',
+        });
+        assert.deepEqual(resolveProductBrand('Yarra', ['Yara'], { forceNewBrand: true }), {
+            ok: true,
+            brand: 'Yarra',
+            brandKey: 'yarra',
+        });
+        assert.deepEqual(resolveProductBrand('Bayer', ['Yara']), {
+            ok: true,
+            brand: 'Bayer',
+            brandKey: 'bayer',
+        });
     });
 });

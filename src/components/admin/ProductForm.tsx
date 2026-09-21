@@ -4,12 +4,12 @@ import Link from "next/link";
 import { Product } from "@/types";
 import { uploadImage } from "@/lib/storage";
 import { getUniqueBrands, getUniqueCategories } from "@/lib/products";
-import { findNearDuplicateBrand, normalizeDisplayField } from "@/lib/catalog-normalize";
+import { brandKeyFrom, findNearDuplicateBrand, normalizeDisplayField } from "@/lib/catalog-normalize";
 import Image from "next/image";
 
 interface ProductFormProps {
     initialData?: Partial<Product>;
-    onSubmit: (data: Omit<Product, 'id'>) => Promise<void>;
+    onSubmit: (data: Omit<Product, 'id'>, options?: { forceNewBrand?: boolean }) => Promise<void>;
     isSubmitting: boolean;
     title: string;
 }
@@ -20,6 +20,8 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
     const [brandMode, setBrandMode] = useState<'pick' | 'new'>(initialData?.brand ? 'pick' : 'pick');
     const [newBrandDraft, setNewBrandDraft] = useState('');
     const [brandHint, setBrandHint] = useState<string | null>(null);
+    const [forceNewBrand, setForceNewBrand] = useState(false);
+    const [brandError, setBrandError] = useState<string | null>(null);
 
     useEffect(() => {
         getUniqueCategories()
@@ -143,6 +145,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setBrandError(null);
 
         const price = Number(formData.price);
         const stockQty = Number(formData.stockQuantity);
@@ -151,6 +154,29 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
         if (isNaN(price) || isNaN(stockQty)) {
             alert("Please enter valid numbers for price and stock.");
             return;
+        }
+
+        let brandValue = formData.brand;
+        let submitForceNewBrand = false;
+
+        if (brandMode === 'new') {
+            const draft = normalizeDisplayField(newBrandDraft || formData.brand);
+            const near = findNearDuplicateBrand(draft, knownBrands);
+            if (near && brandKeyFrom(near) === brandKeyFrom(draft)) {
+                brandValue = near;
+                setBrandMode('pick');
+                setFormData((prev) => ({ ...prev, brand: near }));
+                setNewBrandDraft('');
+                setBrandHint(null);
+                setForceNewBrand(false);
+            } else if (near && !forceNewBrand) {
+                setBrandHint(near);
+                setBrandError(`Similar brand "${near}" already exists. Use it, or confirm creating a new brand.`);
+                return;
+            } else {
+                brandValue = draft;
+                submitForceNewBrand = Boolean(near && forceNewBrand);
+            }
         }
 
         // Process Tags and Features
@@ -164,32 +190,45 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
             stockQuantity: Number(v.stockQuantity) || 0
         })).filter(v => v.name !== '');
 
-        await onSubmit({
-            name: formData.name,
-            price: price,
-            category: formData.category,
-            subCategory: formData.subCategory,
-            productCode: formData.productCode,
-            brand: formData.brand,
-            description: formData.description,
-            image: formData.image || 'https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?q=80&w=1000&auto=format&fit=crop',
-            images: formData.images,
-            stockQuantity: stockQty,
-            lowStockThreshold: threshold,
-            supplierLeadTimeDays: Math.max(1, Number(formData.supplierLeadTimeDays) || 14),
-            incomingStock: Math.max(0, Number(formData.incomingStock) || 0),
-            safetyStock: Math.max(0, Number(formData.safetyStock) || 0),
-            minimumOrderQuantity: Math.max(1, Number(formData.minimumOrderQuantity) || 1),
-            inStock: stockQty > 0 || processedVariants.some(v => v.stockQuantity > 0),
-            rating: initialData?.rating || 0,
-            reviews: initialData?.reviews || 0,
-            specification: formData.specification,
-            howToUse: formData.howToUse,
-            tags,
-            features,
-            variants: processedVariants,
-            featured: formData.featured,
-        });
+        try {
+            await onSubmit({
+                name: formData.name,
+                price: price,
+                category: formData.category,
+                subCategory: formData.subCategory,
+                productCode: formData.productCode,
+                brand: brandValue,
+                description: formData.description,
+                image: formData.image || 'https://images.unsplash.com/photo-1585314062340-f1a5a7c9328d?q=80&w=1000&auto=format&fit=crop',
+                images: formData.images,
+                stockQuantity: stockQty,
+                lowStockThreshold: threshold,
+                supplierLeadTimeDays: Math.max(1, Number(formData.supplierLeadTimeDays) || 14),
+                incomingStock: Math.max(0, Number(formData.incomingStock) || 0),
+                safetyStock: Math.max(0, Number(formData.safetyStock) || 0),
+                minimumOrderQuantity: Math.max(1, Number(formData.minimumOrderQuantity) || 1),
+                inStock: stockQty > 0 || processedVariants.some(v => v.stockQuantity > 0),
+                rating: initialData?.rating || 0,
+                reviews: initialData?.reviews || 0,
+                specification: formData.specification,
+                howToUse: formData.howToUse,
+                tags,
+                features,
+                variants: processedVariants,
+                featured: formData.featured,
+            }, { forceNewBrand: submitForceNewBrand });
+        } catch (error) {
+            const err = error as Error & { code?: string; suggestedBrand?: string };
+            if (err.code === 'BRAND_NEAR_DUPLICATE' && err.suggestedBrand) {
+                setBrandMode('new');
+                setNewBrandDraft(brandValue);
+                setBrandHint(err.suggestedBrand);
+                setForceNewBrand(false);
+                setBrandError(err.message);
+                return;
+            }
+            throw error;
+        }
     };
 
     return (
@@ -288,11 +327,15 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                             setFormData((prev) => ({ ...prev, brand: '' }));
                                             setNewBrandDraft('');
                                             setBrandHint(null);
+                                            setForceNewBrand(false);
+                                            setBrandError(null);
                                             return;
                                         }
                                         setBrandMode('pick');
                                         setFormData((prev) => ({ ...prev, brand: value }));
                                         setBrandHint(null);
+                                        setForceNewBrand(false);
+                                        setBrandError(null);
                                     }}
                                     className="w-full rounded-lg border-gray-300 focus:ring-melagri-primary focus:border-melagri-primary pr-10"
                                 >
@@ -312,9 +355,18 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                             onChange={(e) => {
                                                 const val = e.target.value;
                                                 setNewBrandDraft(val);
-                                                const near = findNearDuplicateBrand(val, knownBrands);
-                                                setBrandHint(near);
-                                                setFormData((prev) => ({ ...prev, brand: normalizeDisplayField(val) }));
+                                                setForceNewBrand(false);
+                                                setBrandError(null);
+                                                const cleaned = normalizeDisplayField(val);
+                                                const near = findNearDuplicateBrand(cleaned, knownBrands);
+                                                // Exact key variants remap silently to the canonical spelling
+                                                if (near && brandKeyFrom(near) === brandKeyFrom(cleaned)) {
+                                                    setBrandHint(null);
+                                                    setFormData((prev) => ({ ...prev, brand: near }));
+                                                } else {
+                                                    setBrandHint(near);
+                                                    setFormData((prev) => ({ ...prev, brand: cleaned }));
+                                                }
                                             }}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
@@ -322,42 +374,76 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
                                                     const val = normalizeDisplayField(newBrandDraft);
                                                     if (!val) return;
                                                     const near = findNearDuplicateBrand(val, knownBrands);
-                                                    if (near) {
+                                                    if (near && brandKeyFrom(near) === brandKeyFrom(val)) {
                                                         setBrandMode('pick');
                                                         setFormData((prev) => ({ ...prev, brand: near }));
+                                                        setNewBrandDraft('');
                                                         setBrandHint(null);
+                                                        setBrandError(null);
+                                                        setForceNewBrand(false);
+                                                        return;
+                                                    }
+                                                    if (near && !forceNewBrand) {
+                                                        setBrandHint(near);
+                                                        setBrandError(`Similar brand "${near}" already exists. Use it, or confirm creating a new brand.`);
                                                         return;
                                                     }
                                                     setKnownBrands((prev) => Array.from(new Set([...prev, val])).sort((a, b) => a.localeCompare(b)));
                                                     setBrandMode('pick');
                                                     setFormData((prev) => ({ ...prev, brand: val }));
-                                                }
-                                            }}
-                                            onBlur={() => {
-                                                const val = normalizeDisplayField(newBrandDraft);
-                                                if (!val) {
-                                                    setBrandMode('pick');
-                                                    setFormData((prev) => ({ ...prev, brand: '' }));
-                                                    return;
-                                                }
-                                                const near = findNearDuplicateBrand(val, knownBrands);
-                                                if (near) setBrandHint(near);
-                                                else {
-                                                    setKnownBrands((prev) => Array.from(new Set([...prev, val])).sort((a, b) => a.localeCompare(b)));
-                                                    setBrandMode('pick');
-                                                    setFormData((prev) => ({ ...prev, brand: val }));
+                                                    setBrandHint(null);
+                                                    setBrandError(null);
                                                 }
                                             }}
                                         />
-                                        {brandHint && (
-                                            <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                                                Similar brand already exists: <button type="button" className="font-bold underline" onClick={() => {
-                                                    setBrandMode('pick');
-                                                    setFormData((prev) => ({ ...prev, brand: brandHint }));
-                                                    setBrandHint(null);
-                                                }}>{brandHint}</button>
-                                                . Use that spelling to avoid duplicates, or keep typing a clearly different name.
+                                        {brandHint && !forceNewBrand && (
+                                            <div className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-3 space-y-2">
+                                                <p>
+                                                    Similar brand already exists: <span className="font-bold">{brandHint}</span>.
+                                                    Use the existing spelling to avoid duplicates.
+                                                </p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button
+                                                        type="button"
+                                                        className="rounded-lg bg-melagri-primary text-white px-3 py-1.5 font-bold"
+                                                        onClick={() => {
+                                                            setBrandMode('pick');
+                                                            setFormData((prev) => ({ ...prev, brand: brandHint }));
+                                                            setNewBrandDraft('');
+                                                            setBrandHint(null);
+                                                            setForceNewBrand(false);
+                                                            setBrandError(null);
+                                                        }}
+                                                    >
+                                                        Use {brandHint}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 font-bold text-amber-900"
+                                                        onClick={() => {
+                                                            setForceNewBrand(true);
+                                                            setBrandError(null);
+                                                        }}
+                                                    >
+                                                        Create &quot;{normalizeDisplayField(newBrandDraft) || 'new brand'}&quot; anyway
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {forceNewBrand && brandHint && (
+                                            <p className="text-xs text-slate-600 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                                                Creating a new brand despite similarity to <span className="font-bold">{brandHint}</span>.
+                                                <button
+                                                    type="button"
+                                                    className="ml-2 underline font-bold"
+                                                    onClick={() => setForceNewBrand(false)}
+                                                >
+                                                    Undo
+                                                </button>
                                             </p>
+                                        )}
+                                        {brandError && (
+                                            <p className="text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{brandError}</p>
                                         )}
                                     </div>
                                 )}
