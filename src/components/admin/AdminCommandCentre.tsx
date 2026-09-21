@@ -9,6 +9,7 @@ type Result = { id: string; type: string; title: string; subtitle: string; href:
 const quickActions: Result[] = [
   { id: "quick:new-product", type: "Quick action", title: "Add a product", subtitle: "Create a new catalogue listing", href: "/dashboard/admin/products/new" },
   { id: "quick:new-order", type: "Quick action", title: "Create an order", subtitle: "Enter a customer order manually", href: "/dashboard/admin/orders/create" },
+  { id: "quick:returns", type: "Quick action", title: "Open Returns desk", subtitle: "Approve or reject return requests", href: "/dashboard/admin/returns" },
   { id: "quick:alerts", type: "Quick action", title: "Open Action Centre", subtitle: "Review operational alerts", href: "/dashboard/admin/action-centre" },
   { id: "quick:settings", type: "Navigation", title: "Store settings", subtitle: "Payments, shipping and documents", href: "/dashboard/admin/settings" },
 ];

@@ -168,8 +168,7 @@ export function isReturnEligible(order: {
     if (order.returnStatus) {
         return { ok: false, message: `A return is already ${String(order.returnStatus).toLowerCase()}` };
     }
-    const completed =
-        order.status === 'Delivered' || order.status === 'Collected';
+    const completed = order.status === 'Delivered' || order.status === 'Collected';
     if (!completed) {
         return { ok: false, message: 'Returns are only available after delivery or collection' };
     }

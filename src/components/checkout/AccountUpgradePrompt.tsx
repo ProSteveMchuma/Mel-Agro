@@ -107,7 +107,7 @@ export default function AccountUpgradePrompt({ orderId, phone, name, onCompleted
                         'Content-Type': 'application/json',
                         Authorization: `Bearer ${targetToken}`,
                     },
-                    body: JSON.stringify({ guestToken }),
+                    body: JSON.stringify({ guestToken, byPhone: true }),
                 });
                 const claimResult = await claim.json().catch(() => ({}));
                 if (!claim.ok || !claimResult.success) {
@@ -179,7 +179,7 @@ export default function AccountUpgradePrompt({ orderId, phone, name, onCompleted
                         </>
                     )}
                     {error && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</p>}
-                    <p className="mt-3 text-[10px] leading-4 text-gray-400">Your paid order is already confirmed. Creating an account is optional and does not subscribe you to marketing.</p>
+                    <p className="mt-3 text-[10px] leading-4 text-gray-400">Creating an account is optional. We use your phone only to save and recover this order — not for marketing.</p>
                 </div>
             </div>
         </section>

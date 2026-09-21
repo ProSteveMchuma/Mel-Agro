@@ -27,7 +27,7 @@ interface OrderContextType {
     updateOrderStatus: (orderId: string, status: Order['status'], extras?: { tracking?: { carrier: string; trackingNumber: string } }) => Promise<void>;
     updateOrderPaymentStatus: (orderId: string, paymentStatus: 'Paid' | 'Unpaid', transactionDetails?: any) => Promise<void>;
     requestReturn: (orderId: string, reason: string) => Promise<void>;
-    updateReturnStatus: (orderId: string, status: 'Approved' | 'Rejected') => Promise<void>;
+    updateReturnStatus: (orderId: string, status: 'Approved' | 'Rejected', note?: string) => Promise<void>;
     handleConfirmReceipt: (orderId: string) => Promise<void>;
     markNotificationRead: (id: string) => Promise<void>;
     addInternalNote: (orderId: string, note: string) => Promise<void>;
@@ -51,7 +51,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
         let q;
         if (user.role === 'admin' || user.role === 'super-admin') {
-            if (pathname === '/dashboard/admin/orders' || pathname === '/dashboard/admin/inventory' || pathname === '/dashboard/admin/fulfillment' || pathname === '/dashboard/admin/payments' || pathname === '/dashboard/admin/reports' || pathname === '/dashboard/admin/analytics' || pathname === '/dashboard/admin/logistics') { setOrders([]); return; }
+            if (pathname === '/dashboard/admin/orders' || pathname === '/dashboard/admin/inventory' || pathname === '/dashboard/admin/fulfillment' || pathname === '/dashboard/admin/returns' || pathname === '/dashboard/admin/payments' || pathname === '/dashboard/admin/reports' || pathname === '/dashboard/admin/analytics' || pathname === '/dashboard/admin/logistics') { setOrders([]); return; }
             const adminOrderRoutes = ['/dashboard/admin', '/dashboard/admin/orders', '/dashboard/admin/analytics', '/dashboard/admin/reports', '/dashboard/admin/intelligence', '/dashboard/admin/logistics', '/dashboard/admin/inventory', '/dashboard/admin/fulfillment', '/dashboard/admin/operations', '/dashboard/admin/payments'];
             const needsAdminOrders = adminOrderRoutes.some((route) => pathname === route || (route !== '/dashboard/admin' && pathname.startsWith(`${route}/`)));
             if (!needsAdminOrders) { setOrders([]); return; }
@@ -534,31 +534,24 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const updateReturnStatus = async (orderId: string, status: 'Approved' | 'Rejected') => {
-        const orderRef = doc(db, "orders", orderId);
-        await updateDoc(orderRef, { returnStatus: status });
-
-        const order = orders.find(o => o.id === orderId);
-        if (order) {
-            const updateMessage = CommunicationTemplates.getReturnUpdate(order, status);
-            try {
-                await addDoc(collection(db, 'notifications'), {
-                    userId: order.userId,
-                    message: updateMessage.smsBody,
-                    date: new Date().toISOString(),
-                    read: false,
-                    type: 'order',
-                    orderId,
-                });
-            } catch (error) {
-                console.error("Error creating return status notification:", error);
-            }
-            try {
-                await NotificationService.notify(['sms'], { phone: order.phone, email: order.userEmail }, updateMessage);
-            } catch (error) {
-                console.error("Return status SMS error:", error);
-            }
-        }
+    const updateReturnStatus = async (orderId: string, status: 'Approved' | 'Rejected', note?: string) => {
+        const token = await getAuth().currentUser?.getIdToken();
+        if (!token) throw new Error('Your session expired. Please sign in again.');
+        const response = await fetch('/api/admin/returns', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                action: 'decide',
+                orderId,
+                status,
+                ...(note?.trim() ? { note: note.trim() } : {}),
+            }),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || 'Could not update return status.');
     };
 
     const handleConfirmReceipt = async (orderId: string) => {

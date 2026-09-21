@@ -25,7 +25,7 @@ async function authedFetch(url: string, body: any) {
 }
 
 export default function AdminOrderDetailsPage() {
-    const { orders, updateOrderStatus, updateOrderPaymentStatus } = useOrders();
+    const { orders, updateOrderStatus, updateOrderPaymentStatus, updateReturnStatus } = useOrders();
     const params = useParams();
     const router = useRouter();
     const [order, setOrder] = useState<any>(null);
@@ -38,6 +38,8 @@ export default function AdminOrderDetailsPage() {
     const [verifyCode, setVerifyCode] = useState('');
     const [reverseRemarks, setReverseRemarks] = useState('');
     const [mpesaActionLoading, setMpesaActionLoading] = useState<string | null>(null);
+    const [returnActionLoading, setReturnActionLoading] = useState<string | null>(null);
+    const [returnReviewNote, setReturnReviewNote] = useState('');
     const [trackingInfo, setTrackingInfo] = useState({ carrier: '', trackingNumber: '' });
     const [paymentRecord, setPaymentRecord] = useState({
         amount: 0,
@@ -531,6 +533,88 @@ export default function AdminOrderDetailsPage() {
                             </div>
                         </div>
                     </div>
+
+                    {order.returnStatus && (
+                        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Return Request</h2>
+                                <Link href="/dashboard/admin/returns" className="text-[10px] font-black text-melagri-primary uppercase tracking-widest hover:underline">
+                                    Returns desk →
+                                </Link>
+                            </div>
+                            <div className="mb-4">
+                                <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${
+                                    order.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' :
+                                    order.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' :
+                                    'bg-amber-100 text-amber-700'
+                                }`}>
+                                    {order.returnStatus}
+                                </span>
+                            </div>
+                            <p className="text-sm text-gray-700 leading-relaxed mb-4">{order.returnReason || 'No reason provided'}</p>
+                            {order.returnRequestedAt && (
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-6">
+                                    Requested {new Date(order.returnRequestedAt).toLocaleString()}
+                                </p>
+                            )}
+                            {order.returnStatus === 'Requested' ? (
+                                <div className="space-y-3">
+                                    <textarea
+                                        value={returnReviewNote}
+                                        onChange={(e) => setReturnReviewNote(e.target.value)}
+                                        maxLength={1000}
+                                        rows={3}
+                                        placeholder="Optional review note…"
+                                        className="w-full rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm outline-none focus:border-melagri-primary focus:bg-white"
+                                    />
+                                    <button
+                                        type="button"
+                                        disabled={!!returnActionLoading}
+                                        onClick={async () => {
+                                            if (!window.confirm('Approve this return request?')) return;
+                                            setReturnActionLoading('approve');
+                                            const t = toast.loading('Approving return…');
+                                            try {
+                                                await updateReturnStatus(order.id, 'Approved', returnReviewNote);
+                                                setOrder({ ...order, returnStatus: 'Approved', returnReviewNote: returnReviewNote || order.returnReviewNote });
+                                                toast.success('Return approved', { id: t });
+                                            } catch (err: any) {
+                                                toast.error(err?.message || 'Could not approve return', { id: t });
+                                            } finally {
+                                                setReturnActionLoading(null);
+                                            }
+                                        }}
+                                        className="w-full bg-green-600 text-white py-4 rounded-2xl hover:bg-green-700 transition-all font-black uppercase text-[10px] tracking-widest disabled:opacity-60"
+                                    >
+                                        Approve Return
+                                    </button>
+                                    <button
+                                        type="button"
+                                        disabled={!!returnActionLoading}
+                                        onClick={async () => {
+                                            if (!window.confirm('Reject this return request?')) return;
+                                            setReturnActionLoading('reject');
+                                            const t = toast.loading('Rejecting return…');
+                                            try {
+                                                await updateReturnStatus(order.id, 'Rejected', returnReviewNote);
+                                                setOrder({ ...order, returnStatus: 'Rejected', returnReviewNote: returnReviewNote || order.returnReviewNote });
+                                                toast.success('Return rejected', { id: t });
+                                            } catch (err: any) {
+                                                toast.error(err?.message || 'Could not reject return', { id: t });
+                                            } finally {
+                                                setReturnActionLoading(null);
+                                            }
+                                        }}
+                                        className="w-full bg-red-50 text-red-700 border border-red-100 py-4 rounded-2xl hover:bg-red-100 transition-all font-black uppercase text-[10px] tracking-widest disabled:opacity-60"
+                                    >
+                                        Reject Return
+                                    </button>
+                                </div>
+                            ) : order.returnReviewNote ? (
+                                <p className="text-xs text-gray-500">{order.returnReviewNote}</p>
+                            ) : null}
+                        </div>
+                    )}
 
                     {/* Customer Intelligence */}
                     <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">

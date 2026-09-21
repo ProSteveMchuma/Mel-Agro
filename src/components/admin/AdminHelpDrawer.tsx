@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const checklist = [
   { id: 'payments', label: 'Verify production payment settings', href: '/dashboard/admin/settings/mpesa' },
+  { id: 'returns', label: 'Clear pending return requests', href: '/dashboard/admin/returns' },
   { id: 'shipping', label: 'Review delivery zones and charges', href: '/dashboard/admin/logistics' },
   { id: 'catalogue', label: 'Resolve catalogue and stock alerts', href: '/dashboard/admin/products' },
   { id: 'automation', label: 'Review automation thresholds', href: '/dashboard/admin/automations' },
