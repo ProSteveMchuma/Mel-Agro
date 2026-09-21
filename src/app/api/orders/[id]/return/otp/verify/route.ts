@@ -48,8 +48,11 @@ export async function POST(
         const challenge = snap.data() || {};
         const result = assertCanVerifyOtp(challenge as any, phone, code, otpPepper());
         if (!result.ok) {
-            if (result.incrementAttempts) {
-                await ref.set({ attempts: (Number(challenge.attempts) || 0) + 1 }, { merge: true });
+            if ((challenge as any).codeHash && result.message.startsWith('Invalid OTP')) {
+                await ref.set({
+                    attempts: (Number(challenge.attempts) || 0) + 1,
+                    updatedAt: new Date().toISOString(),
+                }, { merge: true });
             }
             return NextResponse.json({ success: false, message: result.message }, { status: 401 });
         }
