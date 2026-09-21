@@ -30,6 +30,8 @@ import { Input } from '@/components/ui/form/Input';
 import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
 import { Select } from '@/components/ui/form/Select';
 import { Textarea } from '@/components/ui/form/Textarea';
+import AddressSearchField from '@/components/checkout/AddressSearchField';
+import { matchKenyanCounty, type GeocodeSuggestion } from '@/lib/geocode';
 import type { Order } from '@/types';
 
 const LocationPicker = dynamic(() => import('../../components/checkout/LocationPicker'), {
@@ -63,7 +65,7 @@ export default function CheckoutPage() {
     const [couponInput, setCouponInput] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<{ id: string; code: string; type: string; value: number; amount: number } | null>(null);
     const [couponLoading, setCouponLoading] = useState(false);
-    const [showMap, setShowMap] = useState(false);
+    const [showMap, setShowMap] = useState(true);
     const [quickCheckoutDismissed, setQuickCheckoutDismissed] = useState(false);
     const [paymentFailure, setPaymentFailure] = useState<{ orderId: string; message: string } | null>(null);
     const [showValidationErrors, setShowValidationErrors] = useState(false);
@@ -144,6 +146,22 @@ export default function CheckoutPage() {
     const shippingData = watch('shipping');
     const shippingMethod = watch('shippingMethod');
     const paymentMethod = watch('paymentMethod');
+
+    const applyMapPlace = (place: GeocodeSuggestion, opts?: { toastMessage?: string }) => {
+        setShowMap(true);
+        setValue('shipping.lat', place.lat);
+        setValue('shipping.lng', place.lng);
+
+        const county = matchKenyanCounty(place.county) || place.county;
+        if (county) setValue('shipping.county', county, { shouldValidate: true });
+        if (place.town) setValue('shipping.town', place.town, { shouldValidate: true });
+        if (place.street) setValue('shipping.address', place.street, { shouldValidate: true, shouldDirty: true });
+
+        toast.success(opts?.toastMessage || (county ? `Location found: ${county}` : 'Delivery location pinned on map'), {
+            id: 'map-toast',
+        });
+    };
+
     const validationErrors = showValidationErrors
         ? SHIPPING_FIELDS.flatMap(field => {
             const error = get(methods.formState.errors, field.name);
@@ -926,11 +944,13 @@ export default function CheckoutPage() {
                                                     required
                                                 />
 
-                                                <Input
+                                                <AddressSearchField
                                                     name="shipping.town"
                                                     label="Town / Estate / Area"
-                                                    placeholder="e.g. Westlands, Kilimani"
+                                                    placeholder="Start typing e.g. Westlands, Nakuru, Eldoret..."
                                                     required
+                                                    helperText="Suggestions search the online map. Pick one to pin your delivery location."
+                                                    onPlaceSelect={(place) => applyMapPlace(place)}
                                                 />
 
                                                 <Textarea
@@ -941,7 +961,7 @@ export default function CheckoutPage() {
                                                     required
                                                 />
 
-                                                {/* Map Location Picker — collapsed by default to keep checkout fast */}
+                                                {/* Map stays linked to address search — pin moves when a suggestion is chosen */}
                                                 <div className="mt-6">
                                                     {!showMap ? (
                                                         <button
@@ -950,12 +970,12 @@ export default function CheckoutPage() {
                                                             className="w-full flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-200 hover:border-melagri-primary hover:bg-green-50/50 rounded-2xl text-sm font-bold text-gray-500 hover:text-melagri-primary transition-all"
                                                         >
                                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                                            <span>Pin exact location on map (optional)</span>
+                                                            <span>Show delivery map</span>
                                                         </button>
                                                     ) : (
                                                         <>
                                                             <div className="flex items-center justify-between mb-4">
-                                                                <label className="block text-sm font-semibold text-gray-900">Pin Your Exact Delivery Location</label>
+                                                                <label className="block text-sm font-semibold text-gray-900">Delivery location on map</label>
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => setShowMap(false)}
@@ -965,22 +985,25 @@ export default function CheckoutPage() {
                                                                 </button>
                                                             </div>
                                                             <LocationPicker
+                                                                lat={shippingData.lat}
+                                                                lng={shippingData.lng}
                                                                 onLocationSelect={(lat, lng, address) => {
                                                                     setValue('shipping.lat', lat);
                                                                     setValue('shipping.lng', lng);
-                                                                    if (address?.county) setValue('shipping.county', address.county, { shouldValidate: true });
+                                                                    const county = matchKenyanCounty(address?.county) || address?.county;
+                                                                    if (county) setValue('shipping.county', county, { shouldValidate: true });
                                                                     if (address?.town) setValue('shipping.town', address.town, { shouldValidate: true });
 
-                                                                    if (address?.county) {
-                                                                        toast.success(`Location detected: ${address.county}`, { id: 'map-toast' });
+                                                                    if (county) {
+                                                                        toast.success(`Location detected: ${county}`, { id: 'map-toast' });
                                                                     } else {
-                                                                        toast.success("Location pinned!", { id: 'map-toast' });
+                                                                        toast.success('Location pinned!', { id: 'map-toast' });
                                                                     }
                                                                 }}
                                                                 initialLat={shippingData.lat}
                                                                 initialLng={shippingData.lng}
                                                             />
-                                                            <p className="text-[10px] text-gray-400 mt-2 italic">Drag the marker to your precise location for faster delivery.</p>
+                                                            <p className="text-[10px] text-gray-400 mt-2 italic">Search above to move the pin, or drag the marker to your exact delivery point.</p>
                                                         </>
                                                     )}
                                                 </div>
