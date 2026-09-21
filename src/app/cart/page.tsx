@@ -19,9 +19,9 @@ export default function CartPage() {
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
             <Header />
 
-            <main className="flex-grow py-12 pb-28 lg:pb-12">
+            <main className="flex-grow py-8 sm:py-12 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] lg:pb-12">
                 <div className="container-custom">
-                    <h1 className="text-3xl font-extrabold text-gray-900 mb-8">Shopping Cart</h1>
+                    <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 mb-6 sm:mb-8">Shopping Cart</h1>
 
                     {cartItems.length === 0 ? (
                         <div className="text-center py-20 bg-white rounded-2xl shadow-sm border border-gray-100">
@@ -42,7 +42,7 @@ export default function CartPage() {
                             <div className="lg:w-2/3 space-y-4">
                                 {cartItems.map((item) => {
                                     return (
-                                        <div key={item.cartItemId} className="bg-white p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-center gap-6 border border-gray-100">
+                                        <div key={item.cartItemId} className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-center gap-4 sm:gap-6 border border-gray-100">
                                             <div className="w-24 h-24 bg-gray-100 rounded-xl flex-shrink-0 overflow-hidden relative border border-gray-200">
                                                 {item.image ? (
                                                     <Image src={item.image} alt={item.name} fill className="object-cover" />
@@ -100,7 +100,7 @@ export default function CartPage() {
 
                             {/* Order Summary */}
                             <div className="lg:w-1/3">
-                                <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 sticky top-[120px]">
+                                <div className="bg-white p-5 sm:p-8 rounded-2xl shadow-sm border border-gray-100 sticky top-[120px]">
                                     <h2 className="text-xl font-bold mb-6 text-gray-900">Order Summary</h2>
 
                                     <div className="space-y-4 mb-6 text-gray-600">
@@ -141,15 +141,15 @@ export default function CartPage() {
             {/* Mobile Sticky Checkout Bar */}
             {
                 cartItems.length > 0 && (
-                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] lg:hidden z-50 safe-area-bottom">
-                        <div className="flex items-center justify-between gap-4">
-                            <div>
+                    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] lg:hidden z-50">
+                        <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
                                 <div className="text-xs text-gray-500">Total (Excl. Shipping)</div>
-                                <div className="text-lg font-extrabold text-melagri-primary">KES {cartTotal.toLocaleString()}</div>
+                                <div className="text-lg font-extrabold text-melagri-primary truncate">KES {cartTotal.toLocaleString()}</div>
                             </div>
                             <button
                                 onClick={handleCheckout}
-                                className="btn-primary py-3 px-6 text-sm shadow-none"
+                                className="btn-primary py-3 px-5 sm:px-6 text-sm shadow-none min-h-12 shrink-0"
                             >
                                 Checkout
                             </button>

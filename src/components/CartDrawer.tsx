@@ -41,14 +41,15 @@ export default function CartDrawer() {
             {/* Drawer */}
             <div
                 ref={drawerRef}
-                className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300"
+                className="relative w-full max-w-md bg-white h-full max-h-[100dvh] shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 pt-[env(safe-area-inset-top,0px)]"
             >
                 {/* Header */}
-                <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
-                    <h2 className="text-xl font-bold text-gray-900">Your Cart ({cartItems.length})</h2>
+                <div className="px-4 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gray-50 shrink-0">
+                    <h2 className="text-lg sm:text-xl font-bold text-gray-900">Your Cart ({cartItems.length})</h2>
                     <button
                         onClick={toggleCart}
-                        className="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500"
+                        aria-label="Close cart"
+                        className="min-h-11 min-w-11 flex items-center justify-center hover:bg-gray-200 rounded-full transition-colors text-gray-500"
                     >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -78,7 +79,7 @@ export default function CartDrawer() {
                 </div>
 
                 {/* Items */}
-                <div className="flex-grow overflow-y-auto p-6 space-y-6">
+                <div className="flex-grow overflow-y-auto overscroll-contain px-4 sm:px-6 py-5 space-y-5">
                     {cartItems.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-center text-gray-500">
                             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -88,14 +89,14 @@ export default function CartDrawer() {
                             </div>
                             <p className="text-lg font-medium mb-2">Your cart is empty</p>
                             <p className="text-sm mb-6">Looks like you haven't added any items yet.</p>
-                            <button onClick={toggleCart} className="btn-secondary">
+                            <button onClick={toggleCart} className="btn-secondary min-h-11">
                                 Continue Shopping
                             </button>
                         </div>
                     ) : (
                         cartItems.map((item) => (
-                            <div key={item.cartItemId} className="flex gap-4">
-                                <div className="w-20 h-20 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden relative border border-gray-200">
+                            <div key={item.cartItemId} className="flex gap-3 sm:gap-4">
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden relative border border-gray-200">
                                     {item.image ? (
                                         <Image src={item.image} alt={item.name} fill className="object-cover" />
                                     ) : (
@@ -106,12 +107,13 @@ export default function CartDrawer() {
                                         </div>
                                     )}
                                 </div>
-                                <div className="flex-grow">
-                                    <div className="flex justify-between items-start mb-1">
+                                <div className="flex-grow min-w-0">
+                                    <div className="flex justify-between items-start gap-2 mb-1">
                                         <h3 className="font-bold text-gray-900 line-clamp-2 text-sm">{item.name}</h3>
                                         <button
                                             onClick={() => removeFromCart(item.cartItemId)}
-                                            className="text-gray-400 hover:text-red-500 transition-colors"
+                                            aria-label={`Remove ${item.name}`}
+                                            className="min-h-11 min-w-11 -mr-2 -mt-2 flex items-center justify-center text-gray-400 hover:text-red-500 transition-colors shrink-0"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -119,17 +121,19 @@ export default function CartDrawer() {
                                         </button>
                                     </div>
                                     <p className="text-melagri-primary font-bold text-sm mb-2">KES {item.price.toLocaleString()}</p>
-                                    <div className="flex items-center border border-gray-200 rounded-lg w-24">
+                                    <div className="flex items-center border border-gray-200 rounded-lg w-28">
                                         <button
                                             onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
-                                            className="w-8 h-7 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-l-lg transition-colors"
+                                            aria-label="Decrease quantity"
+                                            className="min-h-11 w-10 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-l-lg transition-colors text-lg font-medium"
                                         >
                                             -
                                         </button>
                                         <span className="flex-1 text-center text-sm font-medium">{item.quantity}</span>
                                         <button
                                             onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
-                                            className="w-8 h-7 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-r-lg transition-colors"
+                                            aria-label="Increase quantity"
+                                            className="min-h-11 w-10 flex items-center justify-center text-gray-500 hover:bg-gray-100 rounded-r-lg transition-colors text-lg font-medium"
                                         >
                                             +
                                         </button>
@@ -142,24 +146,24 @@ export default function CartDrawer() {
 
                 {/* Footer */}
                 {cartItems.length > 0 && (
-                    <div className="p-6 border-t border-gray-100 bg-gray-50">
-                        <div className="flex justify-between items-center mb-4">
+                    <div className="px-4 sm:px-6 pt-5 pb-[calc(1.25rem+env(safe-area-inset-bottom,0px))] border-t border-gray-100 bg-gray-50 shrink-0">
+                        <div className="flex justify-between items-center mb-4 gap-3">
                             <span className="text-gray-600">Subtotal</span>
-                            <span className="text-xl font-bold text-gray-900">KES {cartTotal.toLocaleString()}</span>
+                            <span className="text-lg sm:text-xl font-bold text-gray-900 truncate">KES {cartTotal.toLocaleString()}</span>
                         </div>
-                        <p className="text-xs text-gray-500 mb-6 text-center">Shipping and taxes calculated at checkout.</p>
+                        <p className="text-xs text-gray-500 mb-4 sm:mb-6 text-center">Shipping and taxes calculated at checkout.</p>
                         <div className="space-y-3">
                             <Link
                                 href="/checkout"
                                 onClick={toggleCart}
-                                className="block w-full btn-primary text-center py-3 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all"
+                                className="block w-full btn-primary text-center py-3 min-h-12 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all"
                             >
                                 Checkout Now
                             </Link>
                             <Link
                                 href="/cart"
                                 onClick={toggleCart}
-                                className="block w-full btn-secondary text-center py-3"
+                                className="block w-full btn-secondary text-center py-3 min-h-12"
                             >
                                 View Cart
                             </Link>

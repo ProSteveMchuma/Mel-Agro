@@ -787,32 +787,38 @@ export default function CheckoutPage() {
                             </div>
                         )}
 
-                        {/* Step Indicators */}
-                        <div className="mb-12">
-                            <div className="flex items-center justify-between">
+                        {/* Step Indicators — circles + labels on sm+, circles only on narrow phones */}
+                        <div className="mb-8 sm:mb-12">
+                            <ol className="flex items-center justify-between gap-1 sm:gap-2">
                                 {steps.map((step, idx) => (
-                                    <div key={step.id} className="flex-1">
-                                        <div className="flex items-center">
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${currentStep >= step.id
-                                                ? 'bg-melagri-primary text-white'
-                                                : 'bg-gray-200 text-gray-500'
-                                                }`}>
+                                    <li key={step.id} className="flex flex-1 items-center min-w-0">
+                                        <div className="flex flex-col items-center gap-1.5 min-w-0 w-full sm:flex-row sm:gap-3">
+                                            <div
+                                                className={`w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold transition-all ${currentStep >= step.id
+                                                    ? 'bg-melagri-primary text-white'
+                                                    : 'bg-gray-200 text-gray-500'
+                                                    }`}
+                                                aria-current={currentStep === step.id ? 'step' : undefined}
+                                            >
                                                 {currentStep > step.id ? '✓' : step.id}
                                             </div>
-                                            <div className="ml-3 flex-1">
-                                                <p className={`text-sm font-semibold transition-all ${currentStep >= step.id ? 'text-melagri-primary' : 'text-gray-500'
-                                                    }`}>
-                                                    {step.label}
-                                                </p>
-                                            </div>
+                                            <p
+                                                className={`text-[10px] sm:text-sm font-semibold text-center sm:text-left truncate max-w-full transition-all ${currentStep >= step.id ? 'text-melagri-primary' : 'text-gray-500'
+                                                    }`}
+                                            >
+                                                {step.label}
+                                            </p>
                                         </div>
-                                        {idx < steps.length - 1 && (
-                                            <div className={`ml-5 mt-2 h-1 transition-all ${currentStep > step.id ? 'bg-melagri-primary' : 'bg-gray-200'
-                                                }`}></div>
-                                        )}
-                                    </div>
+                                        {idx < steps.length - 1 ? (
+                                            <div
+                                                className={`hidden sm:block h-1 w-full max-w-12 mx-1 rounded transition-all ${currentStep > step.id ? 'bg-melagri-primary' : 'bg-gray-200'
+                                                    }`}
+                                                aria-hidden="true"
+                                            />
+                                        ) : null}
+                                    </li>
                                 ))}
-                            </div>
+                            </ol>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -826,7 +832,7 @@ export default function CheckoutPage() {
                                             initial={{ opacity: 0, x: 20 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             exit={{ opacity: 0, x: -20 }}
-                                            className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm"
+                                            className="bg-white rounded-2xl p-4 sm:p-8 border border-gray-200 shadow-sm"
                                         >
                                             <h2 className="text-2xl font-bold mb-2 text-gray-900">How should we get this to you?</h2>
                                             <p className="mb-8 text-sm text-gray-500">Choose delivery or collection first — we only ask for the details that apply.</p>
@@ -1054,7 +1060,7 @@ export default function CheckoutPage() {
                                             initial={{ opacity: 0, x: 20 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             exit={{ opacity: 0, x: -20 }}
-                                            className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm"
+                                            className="bg-white rounded-2xl p-4 sm:p-8 border border-gray-200 shadow-sm"
                                         >
                                             <h2 className="text-2xl font-bold mb-2 text-gray-900">Payment</h2>
                                             <p className="mb-8 text-sm text-gray-500">Most farmers pay with M-Pesa Express — a prompt on your phone.</p>
@@ -1256,7 +1262,7 @@ export default function CheckoutPage() {
                                             initial={{ opacity: 0, x: 20 }}
                                             animate={{ opacity: 1, x: 0 }}
                                             exit={{ opacity: 0, x: -20 }}
-                                            className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm"
+                                            className="bg-white rounded-2xl p-4 sm:p-8 border border-gray-200 shadow-sm"
                                         >
                                             <h2 className="text-2xl font-bold mb-8 text-gray-900">Review Your Order</h2>
 

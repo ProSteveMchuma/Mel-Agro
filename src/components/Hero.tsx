@@ -41,12 +41,12 @@ export default function Hero() {
     }, [slides.length]);
 
     return (
-        <section className="bg-white py-4 md:py-6">
+        <section className="bg-white py-3 sm:py-4 md:py-6">
             <div className="container-custom">
-                <p className="mb-3 px-1 text-[10px] font-black uppercase tracking-[0.25em] text-green-700 md:px-2">
+                <p className="mb-3 px-0.5 text-[10px] font-black uppercase tracking-[0.2em] sm:tracking-[0.25em] text-green-700 md:px-2">
                     Mel-Agri · Online retail arm of Makamithi
                 </p>
-                <div className="relative rounded-[3rem] overflow-hidden group shadow-2xl h-[400px] md:h-[500px]">
+                <div className="relative rounded-2xl sm:rounded-[2rem] md:rounded-[3rem] overflow-hidden group shadow-2xl h-[min(70vw,360px)] sm:h-[400px] md:h-[500px] min-h-[280px]">
                     <AnimatePresence mode="wait">
                         <motion.div
                             key={currentSlide}
@@ -68,12 +68,12 @@ export default function Hero() {
                                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent" />
                             </div>
 
-                            <div className="absolute inset-0 flex flex-col justify-center px-10 md:px-20 text-white max-w-2xl">
+                            <div className="absolute inset-0 flex flex-col justify-center px-5 sm:px-10 md:px-20 text-white max-w-2xl pb-10 sm:pb-0">
                                 <motion.span
                                     initial={{ y: 20, opacity: 0 }}
                                     animate={{ y: 0, opacity: 1 }}
                                     transition={{ delay: 0.2 }}
-                                    className="inline-block px-4 py-1.5 bg-[#22c55e] text-white text-[10px] font-black rounded-lg mb-6 w-fit uppercase tracking-[0.2em] shadow-lg shadow-green-500/20"
+                                    className="inline-block px-3 py-1 sm:px-4 sm:py-1.5 bg-[#22c55e] text-white text-[10px] font-black rounded-lg mb-3 sm:mb-6 w-fit uppercase tracking-[0.2em] shadow-lg shadow-green-500/20"
                                 >
                                     {slides[currentSlide].tag}
                                 </motion.span>
@@ -82,7 +82,7 @@ export default function Hero() {
                                     initial={{ y: 30, opacity: 0 }}
                                     animate={{ y: 0, opacity: 1 }}
                                     transition={{ delay: 0.3 }}
-                                    className="text-4xl md:text-6xl font-black mb-6 leading-[0.9] tracking-tighter"
+                                    className="text-2xl sm:text-4xl md:text-6xl font-black mb-3 sm:mb-6 leading-[0.95] sm:leading-[0.9] tracking-tighter"
                                 >
                                     {slides[currentSlide].title}
                                 </motion.h2>
@@ -91,7 +91,7 @@ export default function Hero() {
                                     initial={{ y: 40, opacity: 0 }}
                                     animate={{ y: 0, opacity: 1 }}
                                     transition={{ delay: 0.4 }}
-                                    className="text-lg text-gray-300 mb-10 max-w-sm font-medium leading-relaxed"
+                                    className="text-sm sm:text-lg text-gray-300 mb-5 sm:mb-10 max-w-sm font-medium leading-relaxed line-clamp-2 sm:line-clamp-none"
                                 >
                                     {slides[currentSlide].description}
                                 </motion.p>
@@ -101,7 +101,7 @@ export default function Hero() {
                                     animate={{ y: 0, opacity: 1 }}
                                     transition={{ delay: 0.5 }}
                                 >
-                                    <Link href={slides[currentSlide].primaryLink} className="group relative bg-white text-gray-900 px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest w-fit inline-flex items-center gap-3 overflow-hidden transition-all hover:pr-12">
+                                    <Link href={slides[currentSlide].primaryLink} className="group relative bg-white text-gray-900 px-6 sm:px-10 py-3.5 sm:py-4 rounded-xl sm:rounded-2xl font-black text-xs uppercase tracking-widest w-fit inline-flex items-center gap-3 overflow-hidden transition-all hover:pr-12 min-h-11">
                                         <span className="relative z-10">{slides[currentSlide].primaryBtn}</span>
                                         <span className="relative z-10 group-hover:translate-x-1 transition-transform">→</span>
                                         <div className="absolute inset-0 bg-green-500 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
@@ -112,14 +112,15 @@ export default function Hero() {
                     </AnimatePresence>
 
                     {/* Slide Indicators */}
-                    <div className="absolute bottom-10 left-10 md:left-20 z-20 flex gap-3 items-center">
+                    <div className="absolute bottom-4 left-5 sm:bottom-10 sm:left-10 md:left-20 z-20 flex gap-1 sm:gap-3 items-center">
                         {slides.map((_, idx) => (
                             <button
                                 key={idx}
                                 onClick={() => setCurrentSlide(idx)}
-                                className="relative flex items-center justify-center p-2"
+                                aria-label={`Go to slide ${idx + 1}`}
+                                className="relative flex items-center justify-center min-h-11 min-w-11 sm:min-h-0 sm:min-w-0 p-2"
                             >
-                                <div className={`h-1 transition-all duration-300 rounded-full ${idx === currentSlide ? 'w-10 bg-white' : 'w-4 bg-white/30 hover:bg-white/50'}`} />
+                                <div className={`h-1 transition-all duration-300 rounded-full ${idx === currentSlide ? 'w-8 sm:w-10 bg-white' : 'w-3 sm:w-4 bg-white/30 hover:bg-white/50'}`} />
                             </button>
                         ))}
                     </div>

@@ -4,17 +4,21 @@ import { usePathname } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 
+/** Routes where the bottom tab bar is hidden (page has its own sticky CTA or is checkout). */
+export function hidesMobileNav(pathname: string): boolean {
+    return (
+        pathname === '/checkout'
+        || pathname === '/cart'
+        || (pathname.startsWith('/products/') && pathname !== '/products')
+    );
+}
+
 export default function MobileNav() {
     const pathname = usePathname();
     const { cartItems } = useCart();
     const { user } = useAuth();
 
-    // Don't show on checkout / cart (own bottom bars) or PDP sticky Add to Cart
-    if (
-        pathname === '/checkout'
-        || pathname === '/cart'
-        || (pathname.startsWith('/products/') && pathname !== '/products')
-    ) return null;
+    if (hidesMobileNav(pathname)) return null;
 
     const navItems = [
         {
@@ -79,25 +83,35 @@ export default function MobileNav() {
     ];
 
     return (
-        <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md shadow-[0_-5px_20px_rgba(0,0,0,0.03)] lg:hidden z-50 safe-area-bottom pb-safe">
-            <div className="flex items-center justify-around">
-                {navItems.map((item) => {
-                    const isActive =
-                        item.href === '/products'
-                            ? pathname === '/products' || pathname.startsWith('/categories/') || pathname.startsWith('/brands/')
-                            : pathname === item.href;
-                    return (
-                        <Link
-                            key={item.name}
-                            href={item.href}
-                            className={`flex flex-col items-center justify-center py-3 px-2 w-full transition-colors ${isActive ? 'text-melagri-primary' : 'text-gray-500 hover:text-gray-900'}`}
-                        >
-                            {item.icon(isActive)}
-                            <span className="text-[10px] font-medium mt-1">{item.name}</span>
-                        </Link>
-                    )
-                })}
-            </div>
-        </div>
+        <>
+            {/* In-flow spacer so page content (and footer) clear the fixed tab bar on all devices */}
+            <div
+                className="h-[calc(5.75rem+env(safe-area-inset-bottom,0px))] w-full shrink-0 lg:hidden"
+                aria-hidden="true"
+            />
+            <nav
+                className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md shadow-[0_-5px_20px_rgba(0,0,0,0.03)] lg:hidden z-50 pb-safe"
+                aria-label="Primary"
+            >
+                <div className="flex items-center justify-around">
+                    {navItems.map((item) => {
+                        const isActive =
+                            item.href === '/products'
+                                ? pathname === '/products' || pathname.startsWith('/categories/') || pathname.startsWith('/brands/')
+                                : pathname === item.href;
+                        return (
+                            <Link
+                                key={item.name}
+                                href={item.href}
+                                className={`flex flex-col items-center justify-center min-h-14 py-2 px-2 w-full transition-colors ${isActive ? 'text-melagri-primary' : 'text-gray-500 hover:text-gray-900'}`}
+                            >
+                                {item.icon(isActive)}
+                                <span className="text-[10px] font-medium mt-1">{item.name}</span>
+                            </Link>
+                        );
+                    })}
+                </div>
+            </nav>
+        </>
     );
 }
