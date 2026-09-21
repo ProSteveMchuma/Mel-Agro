@@ -20,6 +20,18 @@ export function hasAdminPermission(role: string | undefined, permissions: string
   return !Array.isArray(permissions) || permissions.includes(permission);
 }
 
+/** True when this staff member may open an admin href (Sidebar / Command Centre / Overview). */
+export function canAccessAdminPath(
+  role: string | undefined,
+  permissions: string[] | undefined,
+  path: string,
+): boolean {
+  if (role !== "admin" && role !== "super-admin") return false;
+  const needed = permissionForAdminPath(path);
+  if (!needed) return true;
+  return hasAdminPermission(role, permissions, needed);
+}
+
 export function profileForPermissions(permissions: string[] | undefined): StaffProfile | "custom" {
   if (!Array.isArray(permissions)) return "full";
   const normalized = [...permissions].sort().join("|");

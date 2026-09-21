@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useOrders } from "@/context/OrderContext";
 import { useProducts } from "@/context/ProductContext";
 import { useUsers } from "@/context/UserContext";
+import { useAuth } from "@/context/AuthContext";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AnalyticsCharts from "@/components/admin/AnalyticsCharts";
@@ -11,6 +12,7 @@ import { collection, query, orderBy, limit, getDocs, getDoc, doc, QueryDocumentS
 import { db } from "@/lib/firebase";
 import { Product } from "@/types";
 import { getAuth } from "firebase/auth";
+import { canAccessAdminPath, profileForPermissions, STAFF_PROFILES } from "@/lib/admin-permissions";
 
 interface SearchTerm {
     term: string;
@@ -44,7 +46,24 @@ export default function AdminDashboard() {
     const { orders } = useOrders();
     const { products } = useProducts();
     const { users } = useUsers();
+    const { user } = useAuth();
     const router = useRouter();
+
+    const role = user?.role;
+    const permissions = user?.adminPermissions;
+    const can = (path: string) => canAccessAdminPath(role, permissions, path);
+    const canOrders = can("/dashboard/admin/orders");
+    const canCatalogue = can("/dashboard/admin/products");
+    const canCustomers = can("/dashboard/admin/users");
+    const canAnalytics = can("/dashboard/admin/analytics");
+    const canReports = can("/dashboard/admin/reports");
+    const profile = role === "super-admin" ? "full" : profileForPermissions(permissions);
+    const profileLabel =
+        role === "super-admin"
+            ? "Super administrator"
+            : profile === "custom"
+                ? "Custom staff access"
+                : STAFF_PROFILES[profile].label;
 
     // UI State
     const [showReportsCenter, setShowReportsCenter] = useState(false);
@@ -65,6 +84,7 @@ export default function AdminDashboard() {
     const totalUsers = authoritativeSummary?.users ?? users.length;
 
     useEffect(() => {
+        if (!canReports && !canAnalytics) return;
         const loadSummary = async () => {
             const token = await getAuth().currentUser?.getIdToken();
             if (!token) return;
@@ -73,9 +93,10 @@ export default function AdminDashboard() {
             if (response.ok) setAuthoritativeSummary(result.summary);
         };
         void loadSummary();
-    }, []);
+    }, [canReports, canAnalytics]);
 
     useEffect(() => {
+        if (!canAnalytics) return;
         const loadOverview = async () => {
             const token = await getAuth().currentUser?.getIdToken();
             if (!token) return;
@@ -85,11 +106,12 @@ export default function AdminDashboard() {
             if (result?.success) setOverview(result);
         };
         void loadOverview();
-    }, []);
+    }, [canAnalytics]);
 
 
     // Fetch Analytics Data (Searches & Top Products)
     useEffect(() => {
+        if (!canAnalytics || products.length === 0) return;
         const fetchProductAnalytics = async () => {
             try {
                 // Top Searches
@@ -119,13 +141,15 @@ export default function AdminDashboard() {
             }
         };
 
-        if (products.length > 0) {
-            fetchProductAnalytics();
-        }
-    }, [products]);
+        void fetchProductAnalytics();
+    }, [products, canAnalytics]);
 
     // Fetch Today's Traffic (Independent of products)
     useEffect(() => {
+        if (!canAnalytics) {
+            setLoadingAnalytics(false);
+            return;
+        }
         const fetchTraffic = async () => {
             try {
                 const today = new Date().toISOString().split('T')[0];
@@ -140,8 +164,8 @@ export default function AdminDashboard() {
             }
         };
 
-        fetchTraffic();
-    }, []);
+        void fetchTraffic();
+    }, [canAnalytics]);
 
     return (
         <div className="space-y-8">
@@ -153,26 +177,45 @@ export default function AdminDashboard() {
                 />
             )}
 
-            <div className="flex justify-between items-end print:hidden">
+            <div className="flex justify-between items-end print:hidden gap-4 flex-wrap">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Dashboard Overview</h1>
-                    <p className="text-gray-500 mt-1">Status: <span className="text-green-600 font-bold">Online</span> • Monitoring Activity</p>
+                    <p className="text-gray-500 mt-1">
+                        <span className="text-green-700 font-bold">{profileLabel}</span>
+                        <span className="text-gray-300 mx-2">·</span>
+                        Status: <span className="text-green-600 font-bold">Online</span>
+                    </p>
                 </div>
-                <div className="flex gap-3">
-                    <Link href="/dashboard/admin/reports" className="btn-secondary text-sm flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                        Financial Reports
-                    </Link>
-                    <Link href="/dashboard/admin/products/new" className="btn-primary text-sm flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Add Product
-                    </Link>
+                <div className="flex gap-3 flex-wrap">
+                    {canReports && (
+                        <Link href="/dashboard/admin/reports" className="btn-secondary text-sm flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                            Financial Reports
+                        </Link>
+                    )}
+                    {canCatalogue && (
+                        <Link href="/dashboard/admin/products/new" className="btn-primary text-sm flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                            Add Product
+                        </Link>
+                    )}
+                    {canOrders && !canCatalogue && (
+                        <Link href="/dashboard/admin/action-centre" className="btn-primary text-sm flex items-center gap-2">
+                            Open Action Centre
+                        </Link>
+                    )}
+                    {canAnalytics && !canOrders && !canCatalogue && (
+                        <Link href="/dashboard/admin/analytics" className="btn-primary text-sm flex items-center gap-2">
+                            Open Analytics
+                        </Link>
+                    )}
                 </div>
             </div>
 
-            {/* AI MARKET INTELLIGENCE STRIP */}
+            {/* AI MARKET INTELLIGENCE STRIP — analysts, ops, catalogue, full */}
+            {canAnalytics && (
             <div className="print:hidden">
                 <div className="flex items-center gap-3 mb-6">
                     <div className="w-12 h-12 bg-melagri-primary/10 rounded-2xl flex items-center justify-center border border-melagri-primary/20">
@@ -208,9 +251,16 @@ export default function AdminDashboard() {
                                                 <p className="text-lg font-black tracking-tight">{overview?.demand?.headline || `Top search: ${topSearches[0]?.term}`}</p>
                                                 <p className="text-xs text-gray-400 mt-1">{overview?.demand?.detail || `${(topSearches[0]?.count || 0).toLocaleString()} recorded searches. Lifetime demand, not a 24-hour forecast.`}</p>
 
-                                                <div className="mt-4 flex gap-2">
-                                                    <Link href={`/dashboard/admin/products?search=${encodeURIComponent(overview?.demand?.term || topSearches[0]?.term || '')}`} className="px-3 py-1.5 bg-melagri-primary text-white text-[10px] font-black uppercase rounded-lg hover:bg-melagri-secondary transition-colors">Find in Catalog</Link>
-                                                    <Link href="/dashboard/admin/product-intelligence" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg hover:bg-white/20 transition-colors">Product Intel</Link>
+                                                <div className="mt-4 flex gap-2 flex-wrap">
+                                                    {canCatalogue && (
+                                                        <Link href={`/dashboard/admin/products?search=${encodeURIComponent(overview?.demand?.term || topSearches[0]?.term || '')}`} className="px-3 py-1.5 bg-melagri-primary text-white text-[10px] font-black uppercase rounded-lg hover:bg-melagri-secondary transition-colors">Find in Catalog</Link>
+                                                    )}
+                                                    {canCatalogue && (
+                                                        <Link href="/dashboard/admin/product-intelligence" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg hover:bg-white/20 transition-colors">Product Intel</Link>
+                                                    )}
+                                                    {!canCatalogue && (
+                                                        <Link href="/dashboard/admin/analytics" className="px-3 py-1.5 bg-white/10 text-white text-[10px] font-black uppercase rounded-lg hover:bg-white/20 transition-colors">Open Analytics</Link>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -311,9 +361,11 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             </div>
+            )}
 
-            {/* Stats Grid - Premium Glassmorphism */}
+            {/* Stats Grid - only cards the profile can open */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 print:hidden">
+                {canOrders && (
                 <Link href="/dashboard/admin/orders" className="relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl" />
                     <div className="relative bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-green-900/5 hover:shadow-2xl hover:shadow-green-900/10 transition-all duration-500 flex flex-col h-full border-t-white/80">
@@ -331,7 +383,9 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 </Link>
+                )}
 
+                {canOrders && (
                 <Link href="/dashboard/admin/orders" className="relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl" />
                     <div className="relative bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-blue-900/5 hover:shadow-2xl hover:shadow-blue-900/10 transition-all duration-500 flex flex-col h-full border-t-white/80">
@@ -349,7 +403,9 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 </Link>
+                )}
 
+                {canCatalogue && (
                 <Link href="/dashboard/admin/products" className="relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl" />
                     <div className="relative bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-orange-900/5 hover:shadow-2xl hover:shadow-orange-900/10 transition-all duration-500 flex flex-col h-full border-t-white/80">
@@ -367,7 +423,9 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 </Link>
+                )}
 
+                {canCustomers && (
                 <Link href="/dashboard/admin/users" className="relative overflow-hidden group">
                     <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-fuchsia-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl" />
                     <div className="relative bg-white/60 backdrop-blur-xl p-8 rounded-3xl border border-white shadow-xl shadow-purple-900/5 hover:shadow-2xl hover:shadow-purple-900/10 transition-all duration-500 flex flex-col h-full border-t-white/80">
@@ -385,16 +443,21 @@ export default function AdminDashboard() {
                         </div>
                     </div>
                 </Link>
+                )}
             </div>
 
             {/* Analytics Charts */}
+            {canAnalytics && (
             <div className="print:hidden">
                 <AnalyticsCharts orders={orders} />
             </div>
+            )}
 
+            {(canOrders || canCatalogue) && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 print:hidden">
                 {/* Recent Orders */}
-                <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                {canOrders && (
+                <div className={`${canCatalogue ? 'lg:col-span-2' : 'lg:col-span-3'} bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden`}>
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                         <h2 className="font-bold text-gray-900">Recent Orders</h2>
                         <Link href="/dashboard/admin/orders" className="text-sm text-melagri-primary hover:underline">View All</Link>
@@ -439,9 +502,11 @@ export default function AdminDashboard() {
                         </table>
                     </div>
                 </div>
+                )}
 
                 {/* Catalog & Inventory Status */}
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                {canCatalogue && (
+                <div className={`${canOrders ? '' : 'lg:col-span-3'} bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden`}>
                     <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                         <h2 className="font-bold text-gray-900">Catalog & Inventory</h2>
                         <span className="text-[10px] font-black bg-orange-100 text-orange-600 px-2 py-1 rounded-md uppercase tracking-wider">Alerts</span>
@@ -501,7 +566,9 @@ export default function AdminDashboard() {
                         <Link href="/dashboard/admin/products" className="text-sm text-melagri-primary font-bold hover:underline">Manage Catalog</Link>
                     </div>
                 </div>
+                )}
             </div>
+            )}
         </div>
     );
 }
