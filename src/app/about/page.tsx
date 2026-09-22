@@ -2,8 +2,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Metadata } from "next";
 import { getLiveCmsPage } from "@/lib/cms-pages-server";
-import type { AboutPageContent } from "@/lib/cms-pages";
 import AboutPageView from "@/components/cms/AboutPageView";
+import type { AboutBlocksPage } from "@/lib/cms-blocks";
 
 export const metadata: Metadata = {
   title: "About Our Premium Agritech & Agrovet Business in Kenya",
@@ -20,12 +20,11 @@ export const metadata: Metadata = {
 
 export default async function AboutPage() {
   const { content } = await getLiveCmsPage("about");
-  const page = content as AboutPageContent;
 
   return (
     <div className="min-h-screen flex flex-col font-sans">
       <Header />
-      <AboutPageView page={page} />
+      <AboutPageView page={content as AboutBlocksPage} />
       <Footer />
     </div>
   );

@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HelpCenterClient from "@/components/HelpCenterClient";
 import { getDraftCmsPage, getLiveCmsPage } from "@/lib/cms-pages-server";
-import type { HelpPageContent } from "@/lib/cms-pages";
+import { helpBlocksToFlat, type HelpBlocksPage } from "@/lib/cms-blocks";
 import PreviewChrome, { parsePreviewMode } from "../PreviewChrome";
 
 type Props = {
@@ -13,7 +13,7 @@ export default async function PreviewHelpPage({ searchParams }: Props) {
   const params = await searchParams;
   const mode = parsePreviewMode(params.mode);
   const snapshot = mode === "live" ? await getLiveCmsPage("help") : await getDraftCmsPage("help");
-  const page = snapshot.content as HelpPageContent;
+  const page = helpBlocksToFlat((snapshot.content as HelpBlocksPage).blocks);
 
   return (
     <PreviewChrome mode={mode} label="Help centre">

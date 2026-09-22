@@ -23,7 +23,7 @@ const guidance = [
   { match: /\/payments|\/mpesa/, title: "Payment operations", body: "Match receipt, amount, and phone before manually linking or approving an M-Pesa payment." },
   { match: /\/analytics|\/reports/, title: "Analytics workspace", body: "Save common time windows, set targets, and export the current filtered period for offline review." },
   { match: /\/automations/, title: "Automation safety", body: "Start in alert-only mode. Review generated work in the Action Centre before enabling assisted workflows." },
-  { match: /\/cms/, title: "Website content", body: "Edit drafts for homepage banners, About, and Help. Use the split Draft/Live preview on the right — shoppers only see changes after Publish. Save draft before refresh if you want the iframe to pick up form edits." },
+  { match: /\/cms/, title: "Website content", body: "Edit drafts for homepage banners, About, and Help. Drag sections or slides to reorder. Use Draft/Live preview on the right — shoppers only see changes after Publish." },
   { match: /\/users/, title: "People and staff", body: "Customers sign up on the shop first. Super-admins use “Make someone staff” (or the Role column) to promote them, then assign a staff profile for least privilege." },
 ];
 
