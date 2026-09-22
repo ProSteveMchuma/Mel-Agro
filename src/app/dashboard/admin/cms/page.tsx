@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
+import CmsPreviewFrame from "@/components/cms/CmsPreviewFrame";
 
 type Banner = {
   id: string;
@@ -35,6 +36,7 @@ export default function CMSPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [previewRefresh, setPreviewRefresh] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -82,6 +84,7 @@ export default function CMSPage() {
       if (!response.ok) throw new Error(result.message);
       setVersion(result.version);
       if (action === "publish") setLiveBanners(banners);
+      setPreviewRefresh((value) => value + 1);
       toast.success(action === "publish" ? "Homepage published" : "Draft saved");
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "Content update failed.");
@@ -166,12 +169,12 @@ export default function CMSPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <a
-            href="/"
+            href="/preview/home?mode=draft"
             target="_blank"
             rel="noreferrer"
             className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm font-black leading-[2.75rem] text-gray-700 hover:border-green-300"
           >
-            Preview home →
+            Preview draft →
           </a>
           <button
             type="button"
@@ -228,70 +231,75 @@ export default function CMSPage() {
         </p>
       )}
 
-      {loading ? (
-        <Empty>Loading homepage draft…</Empty>
-      ) : banners.length === 0 ? (
-        <Empty>No banners in this draft. Click Add banner to create the first slide.</Empty>
-      ) : (
+      <div className="grid gap-6 xl:grid-cols-2 xl:items-start">
         <div className="space-y-4">
-          {banners.map((banner, index) => (
-            <article
-              key={banner.id}
-              className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:flex-row md:items-center"
-            >
-              <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-xl bg-gray-100 md:w-52">
-                {banner.image ? (
-                  <Image src={banner.image} alt={banner.title} fill className="object-cover" />
-                ) : (
-                  <div className="flex h-full items-center justify-center text-xs text-gray-400">Image required</div>
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-black text-gray-400">#{index + 1}</span>
-                  <span
-                    className={`rounded-full px-2 py-1 text-[9px] font-black uppercase ${
-                      banner.active ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
-                    }`}
-                  >
-                    {banner.active ? "Visible when published" : "Hidden when published"}
-                  </span>
+          {loading ? (
+            <Empty>Loading homepage draft…</Empty>
+          ) : banners.length === 0 ? (
+            <Empty>No banners in this draft. Click Add banner to create the first slide.</Empty>
+          ) : (
+            banners.map((banner, index) => (
+              <article
+                key={banner.id}
+                className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:flex-row md:items-center"
+              >
+                <div className="relative h-32 w-full shrink-0 overflow-hidden rounded-xl bg-gray-100 md:w-52">
+                  {banner.image ? (
+                    <Image src={banner.image} alt={banner.title} fill className="object-cover" />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-xs text-gray-400">Image required</div>
+                  )}
                 </div>
-                <h3 className="mt-2 text-lg font-black text-gray-950">{banner.title || "Untitled banner"}</h3>
-                <p className="text-sm text-gray-500">{banner.subtitle}</p>
-                <p className="mt-2 truncate text-xs text-blue-600">{banner.link}</p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setBanners((current) =>
-                      current.map((item) => (item.id === banner.id ? { ...item, active: !item.active } : item)),
-                    )
-                  }
-                  className="rounded-lg border px-3 py-2 text-xs font-black"
-                >
-                  {banner.active ? "Hide" : "Show"}
-                </button>
-                <button type="button" onClick={() => setEditing({ ...banner })} className="rounded-lg border px-3 py-2 text-xs font-black">
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm("Remove this banner from the draft?")) {
-                      setBanners((current) => current.filter((item) => item.id !== banner.id));
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-black text-gray-400">#{index + 1}</span>
+                    <span
+                      className={`rounded-full px-2 py-1 text-[9px] font-black uppercase ${
+                        banner.active ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
+                      {banner.active ? "Visible when published" : "Hidden when published"}
+                    </span>
+                  </div>
+                  <h3 className="mt-2 text-lg font-black text-gray-950">{banner.title || "Untitled banner"}</h3>
+                  <p className="text-sm text-gray-500">{banner.subtitle}</p>
+                  <p className="mt-2 truncate text-xs text-blue-600">{banner.link}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setBanners((current) =>
+                        current.map((item) => (item.id === banner.id ? { ...item, active: !item.active } : item)),
+                      )
                     }
-                  }}
-                  className="rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-600"
-                >
-                  Remove
-                </button>
-              </div>
-            </article>
-          ))}
+                    className="rounded-lg border px-3 py-2 text-xs font-black"
+                  >
+                    {banner.active ? "Hide" : "Show"}
+                  </button>
+                  <button type="button" onClick={() => setEditing({ ...banner })} className="rounded-lg border px-3 py-2 text-xs font-black">
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm("Remove this banner from the draft?")) {
+                        setBanners((current) => current.filter((item) => item.id !== banner.id));
+                      }
+                    }}
+                    className="rounded-lg bg-red-50 px-3 py-2 text-xs font-black text-red-600"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </article>
+            ))
+          )}
         </div>
-      )}
+        <div className="xl:sticky xl:top-4">
+          <CmsPreviewFrame target="home" refreshToken={previewRefresh} />
+        </div>
+      </div>
 
       {editing && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">

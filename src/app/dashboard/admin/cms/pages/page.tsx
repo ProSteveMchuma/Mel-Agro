@@ -14,6 +14,8 @@ import {
   HelpPageContent,
   isCmsPageSlug,
 } from "@/lib/cms-pages";
+import CmsPreviewFrame from "@/components/cms/CmsPreviewFrame";
+import type { CmsPreviewTarget } from "@/components/cms/CmsPreviewFrame";
 
 type DraftState = AboutPageContent | HelpPageContent;
 
@@ -47,6 +49,7 @@ function CmsPagesAdminInner() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [previewRefresh, setPreviewRefresh] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -102,6 +105,7 @@ function CmsPagesAdminInner() {
       if (!response.ok) throw new Error(result.message || "Save failed.");
       setVersion(result.version);
       if (action === "publish") setLive(draft);
+      setPreviewRefresh((value) => value + 1);
       toast.success(action === "publish" ? `${labelFor(slug)} published` : "Draft saved");
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "Content update failed.");
@@ -143,12 +147,12 @@ function CmsPagesAdminInner() {
             </button>
           ))}
           <a
-            href={slug === "about" ? "/about" : "/help"}
+            href={`/preview/${slug}?mode=draft`}
             target="_blank"
             rel="noreferrer"
             className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm font-black leading-[2.75rem] text-gray-700"
           >
-            Preview live →
+            Preview draft →
           </a>
           <button
             type="button"
@@ -209,10 +213,19 @@ function CmsPagesAdminInner() {
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-16 text-center text-sm text-gray-500">
           Loading {labelFor(slug)} draft…
         </div>
-      ) : slug === "about" ? (
-        <AboutEditor draft={draft as AboutPageContent} onChange={setDraft} />
       ) : (
-        <HelpEditor draft={draft as HelpPageContent} onChange={setDraft} />
+        <div className="grid gap-6 xl:grid-cols-2 xl:items-start">
+          <div>
+            {slug === "about" ? (
+              <AboutEditor draft={draft as AboutPageContent} onChange={setDraft} />
+            ) : (
+              <HelpEditor draft={draft as HelpPageContent} onChange={setDraft} />
+            )}
+          </div>
+          <div className="xl:sticky xl:top-4">
+            <CmsPreviewFrame target={slug as CmsPreviewTarget} refreshToken={previewRefresh} />
+          </div>
+        </div>
       )}
     </div>
   );
