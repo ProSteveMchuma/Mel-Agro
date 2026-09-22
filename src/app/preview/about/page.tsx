@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import AboutPageView from "@/components/cms/AboutPageView";
 import { getDraftCmsPage, getLiveCmsPage } from "@/lib/cms-pages-server";
-import type { AboutPageContent } from "@/lib/cms-pages";
+import type { AboutBlocksPage } from "@/lib/cms-blocks";
 import PreviewChrome, { parsePreviewMode } from "../PreviewChrome";
 
 type Props = {
@@ -13,12 +13,11 @@ export default async function PreviewAboutPage({ searchParams }: Props) {
   const params = await searchParams;
   const mode = parsePreviewMode(params.mode);
   const snapshot = mode === "live" ? await getLiveCmsPage("about") : await getDraftCmsPage("about");
-  const page = snapshot.content as AboutPageContent;
 
   return (
     <PreviewChrome mode={mode} label="About Mel-Agri">
       <Header />
-      <AboutPageView page={page} />
+      <AboutPageView page={snapshot.content as AboutBlocksPage} />
       <Footer />
     </PreviewChrome>
   );

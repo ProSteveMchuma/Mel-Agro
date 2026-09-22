@@ -6,18 +6,24 @@ import { getAuth } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
 import {
-  AboutPageContent,
-  CMS_PAGE_SLUGS,
-  CmsPageSlug,
-  contentFieldsEqual,
-  DEFAULT_ABOUT_PAGE,
-  HelpPageContent,
-  isCmsPageSlug,
-} from "@/lib/cms-pages";
+  ABOUT_BLOCK_TYPES,
+  AboutBlock,
+  AboutBlockType,
+  blockLabel,
+  blocksContentEqual,
+  createDefaultAboutBlock,
+  createDefaultHelpBlock,
+  defaultBlocksPage,
+  HELP_BLOCK_TYPES,
+  HelpBlock,
+  HelpBlockType,
+  HelpBlocksPage,
+  type CmsBlocksPage,
+} from "@/lib/cms-blocks";
+import { CMS_PAGE_SLUGS, CmsPageSlug, isCmsPageSlug } from "@/lib/cms-pages";
 import CmsPreviewFrame from "@/components/cms/CmsPreviewFrame";
 import type { CmsPreviewTarget } from "@/components/cms/CmsPreviewFrame";
-
-type DraftState = AboutPageContent | HelpPageContent;
+import SortableBlockList from "@/components/cms/SortableBlockList";
 
 const VALUE_COLORS = [
   { label: "Green", value: "bg-green-500" },
@@ -30,7 +36,13 @@ const VALUE_COLORS = [
 
 export default function CmsPagesAdminPage() {
   return (
-    <Suspense fallback={<div className="rounded-2xl border border-dashed border-gray-200 bg-white p-16 text-center text-sm text-gray-500">Loading pages…</div>}>
+    <Suspense
+      fallback={
+        <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-16 text-center text-sm text-gray-500">
+          Loading pages…
+        </div>
+      }
+    >
       <CmsPagesAdminInner />
     </Suspense>
   );
@@ -42,14 +54,15 @@ function CmsPagesAdminInner() {
   const slugParam = searchParams.get("slug");
   const slug: CmsPageSlug = slugParam && isCmsPageSlug(slugParam) ? slugParam : "about";
 
-  const [draft, setDraft] = useState<DraftState>(DEFAULT_ABOUT_PAGE);
-  const [live, setLive] = useState<DraftState>(DEFAULT_ABOUT_PAGE);
+  const [draft, setDraft] = useState<CmsBlocksPage>(defaultBlocksPage("about"));
+  const [live, setLive] = useState<CmsBlocksPage>(defaultBlocksPage("about"));
   const [version, setVersion] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [refreshKey, setRefreshKey] = useState(0);
   const [previewRefresh, setPreviewRefresh] = useState(0);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -68,6 +81,7 @@ function CmsPagesAdminInner() {
         setDraft(result.draft.content);
         setLive(result.live.content);
         setVersion(result.draft.version || 0);
+        setExpandedId(result.draft.content?.blocks?.[0]?.id || null);
       } catch (caught) {
         if ((caught as Error).name !== "AbortError") {
           setError(caught instanceof Error ? caught.message : "Could not load page content.");
@@ -79,7 +93,7 @@ function CmsPagesAdminInner() {
     return () => controller.abort();
   }, [slug, refreshKey]);
 
-  const changed = useMemo(() => !contentFieldsEqual(draft, live), [draft, live]);
+  const changed = useMemo(() => !blocksContentEqual(draft, live), [draft, live]);
 
   function selectSlug(next: CmsPageSlug) {
     if (next === slug) return;
@@ -120,6 +134,64 @@ function CmsPagesAdminInner() {
     toast.success("Draft reset to live content");
   }
 
+  function reorderBlocks(blocks: AboutBlock[] | HelpBlock[]) {
+    setDraft({ schemaVersion: 2, blocks } as CmsBlocksPage);
+  }
+
+  function updateBlock(id: string, next: AboutBlock | HelpBlock) {
+    setDraft({
+      schemaVersion: 2,
+      blocks: draft.blocks.map((block) => (block.id === id ? next : block)),
+    } as CmsBlocksPage);
+  }
+
+  function removeBlock(id: string) {
+    const block = draft.blocks.find((item) => item.id === id);
+    if (!block) return;
+    if (slug === "about") {
+      toast.error("About sections are required — reorder them instead of removing.");
+      return;
+    }
+    if (block.type === "helpHeader") {
+      toast.error("Help pages need a header section.");
+      return;
+    }
+    const faqs = draft.blocks.filter((item) => item.type === "faqCategory");
+    if (block.type === "faqCategory" && faqs.length <= 1) {
+      toast.error("Keep at least one FAQ category.");
+      return;
+    }
+    if (!window.confirm("Remove this section from the draft?")) return;
+    setDraft({
+      schemaVersion: 2,
+      blocks: draft.blocks.filter((item) => item.id !== id),
+    } as CmsBlocksPage);
+  }
+
+  function addAboutBlock(type: AboutBlockType) {
+    if (draft.blocks.some((b) => b.type === type)) {
+      toast.error(`“${blockLabel(type)}” is already on this page.`);
+      return;
+    }
+    const block = createDefaultAboutBlock(type);
+    setDraft({ schemaVersion: 2, blocks: [...draft.blocks, block] });
+    setExpandedId(block.id);
+  }
+
+  function addHelpBlock(type: HelpBlockType) {
+    if (type === "helpHeader" && draft.blocks.some((b) => b.type === "helpHeader")) {
+      toast.error("Help already has a header.");
+      return;
+    }
+    if (type === "faqCategory" && draft.blocks.filter((b) => b.type === "faqCategory").length >= 12) {
+      toast.error("Maximum 12 FAQ categories.");
+      return;
+    }
+    const block = createDefaultHelpBlock(type);
+    setDraft({ schemaVersion: 2, blocks: [...draft.blocks, block] } as HelpBlocksPage);
+    setExpandedId(block.id);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -127,7 +199,7 @@ function CmsPagesAdminInner() {
           <p className="mb-1 text-[10px] font-black uppercase tracking-[.18em] text-green-700">Website content</p>
           <h1 className="text-2xl font-black text-gray-950">About & Help pages</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Edit the public pages customers read. Draft first, publish when ready.{" "}
+            Drag sections to reorder. Draft first, publish when ready.{" "}
             <Link href="/dashboard/admin/cms" className="font-bold text-melagri-primary hover:underline">
               ← Homepage banners
             </Link>
@@ -182,10 +254,10 @@ function CmsPagesAdminInner() {
       </div>
 
       <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-        <p className="font-black text-slate-900">Draft vs live</p>
+        <p className="font-black text-slate-900">Sections & draft</p>
         <p className="mt-1">
-          You are editing a <strong className="font-semibold">draft</strong>. Shoppers on{" "}
-          <code className="rounded bg-white px-1 text-xs">/{slug}</code> keep seeing the last published version until you click Publish.
+          Drag the handle to reorder sections. Shoppers on <code className="rounded bg-white px-1 text-xs">/{slug}</code> keep
+          seeing the last published version until you Publish.
         </p>
       </section>
 
@@ -196,7 +268,7 @@ function CmsPagesAdminInner() {
       >
         {changed ? "Draft has unpublished changes." : "Draft matches the live page."}{" "}
         <span className="font-normal">
-          Revision {version} · editing {labelFor(slug)}
+          Revision {version} · editing {labelFor(slug)} · {draft.blocks.length} sections
         </span>
       </div>
 
@@ -215,12 +287,70 @@ function CmsPagesAdminInner() {
         </div>
       ) : (
         <div className="grid gap-6 xl:grid-cols-2 xl:items-start">
-          <div>
-            {slug === "about" ? (
-              <AboutEditor draft={draft as AboutPageContent} onChange={setDraft} />
-            ) : (
-              <HelpEditor draft={draft as HelpPageContent} onChange={setDraft} />
-            )}
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {slug === "about"
+                ? ABOUT_BLOCK_TYPES.filter((type) => !draft.blocks.some((b) => b.type === type)).map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => addAboutBlock(type)}
+                      className="min-h-10 rounded-xl border border-dashed border-gray-300 bg-white px-3 text-xs font-black text-gray-700"
+                    >
+                      + {blockLabel(type)}
+                    </button>
+                  ))
+                : HELP_BLOCK_TYPES.map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => addHelpBlock(type)}
+                      className="min-h-10 rounded-xl border border-dashed border-gray-300 bg-white px-3 text-xs font-black text-gray-700"
+                    >
+                      + {blockLabel(type)}
+                    </button>
+                  ))}
+            </div>
+
+            <SortableBlockList
+              items={draft.blocks}
+              onReorder={reorderBlocks}
+              renderItem={(block, handle) => (
+                <article className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                  <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2">
+                    {handle}
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => setExpandedId((current) => (current === block.id ? null : block.id))}
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{block.type}</p>
+                      <h2 className="truncate text-sm font-black text-gray-950">
+                        {block.type === "faqCategory" ? block.data.label : blockLabel(block.type)}
+                      </h2>
+                    </button>
+                    {slug === "help" && block.type === "faqCategory" ? (
+                      <button
+                        type="button"
+                        onClick={() => removeBlock(block.id)}
+                        className="rounded-lg px-2 py-1 text-xs font-black text-red-600"
+                      >
+                        Remove
+                      </button>
+                    ) : null}
+                  </div>
+                  {expandedId === block.id ? (
+                    <div className="p-4">
+                      {slug === "about" ? (
+                        <AboutBlockFields block={block as AboutBlock} onChange={(next) => updateBlock(block.id, next)} />
+                      ) : (
+                        <HelpBlockFields block={block as HelpBlock} onChange={(next) => updateBlock(block.id, next)} />
+                      )}
+                    </div>
+                  ) : null}
+                </article>
+              )}
+            />
           </div>
           <div className="xl:sticky xl:top-4">
             <CmsPreviewFrame target={slug as CmsPreviewTarget} refreshToken={previewRefresh} />
@@ -255,92 +385,121 @@ function Field({
   );
 }
 
-function AboutEditor({
-  draft,
-  onChange,
-}: {
-  draft: AboutPageContent;
-  onChange: (value: AboutPageContent) => void;
-}) {
-  const update = (patch: Partial<AboutPageContent>) => onChange({ ...draft, ...patch });
+function AboutBlockFields({ block, onChange }: { block: AboutBlock; onChange: (block: AboutBlock) => void }) {
+  if (block.type === "hero") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
+        <Field label="Small label above the headline">
+          <input
+            value={data.heroEyebrow}
+            maxLength={120}
+            onChange={(e) => onChange({ ...block, data: { ...data, heroEyebrow: e.target.value } })}
+          />
+        </Field>
+        <Field label="Main headline (first part)">
+          <input
+            value={data.heroTitle}
+            maxLength={240}
+            onChange={(e) => onChange({ ...block, data: { ...data, heroTitle: e.target.value } })}
+          />
+        </Field>
+        <Field label="Coloured word in the headline">
+          <input
+            value={data.heroTitleAccent}
+            maxLength={80}
+            onChange={(e) => onChange({ ...block, data: { ...data, heroTitleAccent: e.target.value } })}
+          />
+        </Field>
+        <Field label="Headline ending">
+          <input
+            value={data.heroTitleSuffix}
+            maxLength={160}
+            onChange={(e) => onChange({ ...block, data: { ...data, heroTitleSuffix: e.target.value } })}
+          />
+        </Field>
+        <Field label="Supporting paragraph">
+          <textarea
+            rows={3}
+            maxLength={800}
+            value={data.heroSubtitle}
+            onChange={(e) => onChange({ ...block, data: { ...data, heroSubtitle: e.target.value } })}
+          />
+        </Field>
+      </div>
+    );
+  }
 
-  return (
-    <div className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <Section title="Top of the About page (hero)">
-        <Field label="Small label above the headline" hint="e.g. Online Retail Arm of Makamithi">
-          <input value={draft.heroEyebrow} maxLength={120} onChange={(e) => update({ heroEyebrow: e.target.value })} />
-        </Field>
-        <Field label="Main headline (first part)" hint="Shown in black before the coloured word">
-          <input value={draft.heroTitle} maxLength={240} onChange={(e) => update({ heroTitle: e.target.value })} />
-        </Field>
-        <Field label="Coloured word in the headline" hint="Highlighted in Mel-Agri green — e.g. online">
-          <input value={draft.heroTitleAccent} maxLength={80} onChange={(e) => update({ heroTitleAccent: e.target.value })} />
-        </Field>
-        <Field label="Headline ending" hint="Text after the coloured word">
-          <input value={draft.heroTitleSuffix} maxLength={160} onChange={(e) => update({ heroTitleSuffix: e.target.value })} />
-        </Field>
-        <Field label="Supporting paragraph" hint="Short intro under the headline">
-          <textarea rows={3} maxLength={800} value={draft.heroSubtitle} onChange={(e) => update({ heroSubtitle: e.target.value })} />
-        </Field>
-      </Section>
-
-      <Section title="Who we are">
+  if (block.type === "who") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
         <Field label="Section title">
-          <input value={draft.whoTitle} maxLength={200} onChange={(e) => update({ whoTitle: e.target.value })} />
+          <input value={data.whoTitle} maxLength={200} onChange={(e) => onChange({ ...block, data: { ...data, whoTitle: e.target.value } })} />
         </Field>
         <Field label="Story body">
-          <textarea rows={4} maxLength={2000} value={draft.whoBody} onChange={(e) => update({ whoBody: e.target.value })} />
+          <textarea rows={4} maxLength={2000} value={data.whoBody} onChange={(e) => onChange({ ...block, data: { ...data, whoBody: e.target.value } })} />
         </Field>
-        <Field label="Pull quote" hint="Short memorable line shown as a quote">
-          <textarea rows={2} maxLength={400} value={draft.quote} onChange={(e) => update({ quote: e.target.value })} />
+        <Field label="Pull quote">
+          <textarea rows={2} maxLength={400} value={data.quote} onChange={(e) => onChange({ ...block, data: { ...data, quote: e.target.value } })} />
         </Field>
-        <div className="grid gap-4 md:grid-cols-3">
-          {draft.stats.map((stat, index) => (
+        <div className="grid gap-3 md:grid-cols-3">
+          {data.stats.map((stat, index) => (
             <div key={index} className="space-y-2 rounded-xl border border-gray-100 p-3">
-              <Field label={`Stat ${index + 1} number`} hint="e.g. 20+">
+              <Field label={`Stat ${index + 1}`}>
                 <input
                   value={stat.value}
                   maxLength={24}
                   onChange={(e) => {
-                    const stats = draft.stats.map((item, i) => (i === index ? { ...item, value: e.target.value } : item));
-                    update({ stats });
+                    const stats = data.stats.map((item, i) => (i === index ? { ...item, value: e.target.value } : item));
+                    onChange({ ...block, data: { ...data, stats } });
                   }}
                 />
               </Field>
-              <Field label="What it means" hint="e.g. Years Experience">
+              <Field label="Label">
                 <input
                   value={stat.label}
                   maxLength={80}
                   onChange={(e) => {
-                    const stats = draft.stats.map((item, i) => (i === index ? { ...item, label: e.target.value } : item));
-                    update({ stats });
+                    const stats = data.stats.map((item, i) => (i === index ? { ...item, label: e.target.value } : item));
+                    onChange({ ...block, data: { ...data, stats } });
                   }}
                 />
               </Field>
             </div>
           ))}
         </div>
-      </Section>
+      </div>
+    );
+  }
 
-      <Section title="Mission & vision">
+  if (block.type === "missionVision") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
         <Field label="Mission">
-          <textarea rows={3} maxLength={800} value={draft.mission} onChange={(e) => update({ mission: e.target.value })} />
+          <textarea rows={3} maxLength={800} value={data.mission} onChange={(e) => onChange({ ...block, data: { ...data, mission: e.target.value } })} />
         </Field>
         <Field label="Vision">
-          <textarea rows={3} maxLength={800} value={draft.vision} onChange={(e) => update({ vision: e.target.value })} />
+          <textarea rows={3} maxLength={800} value={data.vision} onChange={(e) => onChange({ ...block, data: { ...data, vision: e.target.value } })} />
         </Field>
-      </Section>
+      </div>
+    );
+  }
 
-      <Section title="Values">
-        {draft.values.map((value, index) => (
+  if (block.type === "values") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
+        {data.values.map((value, index) => (
           <div key={index} className="grid gap-3 rounded-xl border border-gray-100 p-3 md:grid-cols-3">
             <Field label="Value name">
               <input
                 value={value.title}
                 maxLength={80}
                 onChange={(e) => {
-                  const values = draft.values.map((item, i) => (i === index ? { ...item, title: e.target.value } : item));
-                  update({ values });
+                  const values = data.values.map((item, i) => (i === index ? { ...item, title: e.target.value } : item));
+                  onChange({ ...block, data: { values } });
                 }}
               />
             </Field>
@@ -349,17 +508,17 @@ function AboutEditor({
                 value={value.desc}
                 maxLength={400}
                 onChange={(e) => {
-                  const values = draft.values.map((item, i) => (i === index ? { ...item, desc: e.target.value } : item));
-                  update({ values });
+                  const values = data.values.map((item, i) => (i === index ? { ...item, desc: e.target.value } : item));
+                  onChange({ ...block, data: { values } });
                 }}
               />
             </Field>
-            <Field label="Accent colour" hint="Pick a colour for the value card">
+            <Field label="Accent colour">
               <select
                 value={VALUE_COLORS.some((c) => c.value === value.color) ? value.color : VALUE_COLORS[0].value}
                 onChange={(e) => {
-                  const values = draft.values.map((item, i) => (i === index ? { ...item, color: e.target.value } : item));
-                  update({ values });
+                  const values = data.values.map((item, i) => (i === index ? { ...item, color: e.target.value } : item));
+                  onChange({ ...block, data: { values } });
                 }}
                 className="min-h-11 w-full rounded-xl border border-gray-200 px-3 text-sm font-bold"
               >
@@ -372,165 +531,122 @@ function AboutEditor({
             </Field>
           </div>
         ))}
-      </Section>
+      </div>
+    );
+  }
 
-      <Section title="Bottom call to action">
-        <Field label="CTA title">
-          <input value={draft.ctaTitle} maxLength={160} onChange={(e) => update({ ctaTitle: e.target.value })} />
+  const data = block.data;
+  return (
+    <div className="space-y-3">
+      <Field label="CTA title">
+        <input value={data.ctaTitle} maxLength={160} onChange={(e) => onChange({ ...block, data: { ...data, ctaTitle: e.target.value } })} />
+      </Field>
+      <Field label="CTA body">
+        <textarea rows={2} maxLength={400} value={data.ctaBody} onChange={(e) => onChange({ ...block, data: { ...data, ctaBody: e.target.value } })} />
+      </Field>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Button text">
+          <input value={data.ctaLabel} maxLength={80} onChange={(e) => onChange({ ...block, data: { ...data, ctaLabel: e.target.value } })} />
         </Field>
-        <Field label="CTA body">
-          <textarea rows={2} maxLength={400} value={draft.ctaBody} onChange={(e) => update({ ctaBody: e.target.value })} />
+        <Field label="Button link">
+          <input value={data.ctaHref} maxLength={200} onChange={(e) => onChange({ ...block, data: { ...data, ctaHref: e.target.value } })} />
         </Field>
-        <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Button text">
-            <input value={draft.ctaLabel} maxLength={80} onChange={(e) => update({ ctaLabel: e.target.value })} />
+      </div>
+    </div>
+  );
+}
+
+function HelpBlockFields({ block, onChange }: { block: HelpBlock; onChange: (block: HelpBlock) => void }) {
+  if (block.type === "helpHeader") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
+        <Field label="Page title">
+          <input value={data.title} maxLength={160} onChange={(e) => onChange({ ...block, data: { ...data, title: e.target.value } })} />
+        </Field>
+        <Field label="Subtitle">
+          <textarea rows={2} maxLength={400} value={data.subtitle} onChange={(e) => onChange({ ...block, data: { ...data, subtitle: e.target.value } })} />
+        </Field>
+        <Field label="Support hours note">
+          <textarea
+            rows={2}
+            maxLength={400}
+            value={data.supportBlurb}
+            onChange={(e) => onChange({ ...block, data: { ...data, supportBlurb: e.target.value } })}
+          />
+        </Field>
+      </div>
+    );
+  }
+
+  const data = block.data;
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 md:grid-cols-3">
+        <Field label="Group name">
+          <input value={data.label} maxLength={80} onChange={(e) => onChange({ ...block, data: { ...data, label: e.target.value } })} />
+        </Field>
+        <Field label="Emoji icon">
+          <input value={data.icon} maxLength={12} onChange={(e) => onChange({ ...block, data: { ...data, icon: e.target.value } })} />
+        </Field>
+        <Field label="Internal id">
+          <input value={data.id} disabled className="bg-gray-50 text-gray-400" />
+        </Field>
+      </div>
+      {data.faqs.map((faq, faqIndex) => (
+        <div key={faqIndex} className="space-y-3 rounded-xl border border-gray-100 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Question {faqIndex + 1}</p>
+            <button
+              type="button"
+              className="text-xs font-black text-red-600 disabled:opacity-40"
+              disabled={data.faqs.length <= 1}
+              onClick={() =>
+                onChange({
+                  ...block,
+                  data: { ...data, faqs: data.faqs.filter((_, j) => j !== faqIndex) },
+                })
+              }
+            >
+              Remove
+            </button>
+          </div>
+          <Field label="Question">
+            <input
+              value={faq.question}
+              maxLength={240}
+              onChange={(e) => {
+                const faqs = data.faqs.map((entry, j) => (j === faqIndex ? { ...entry, question: e.target.value } : entry));
+                onChange({ ...block, data: { ...data, faqs } });
+              }}
+            />
           </Field>
-          <Field label="Button link" hint="Start with / for a site page, or https://">
-            <input value={draft.ctaHref} maxLength={200} onChange={(e) => update({ ctaHref: e.target.value })} />
+          <Field label="Answer">
+            <textarea
+              rows={3}
+              maxLength={2000}
+              value={faq.answer}
+              onChange={(e) => {
+                const faqs = data.faqs.map((entry, j) => (j === faqIndex ? { ...entry, answer: e.target.value } : entry));
+                onChange({ ...block, data: { ...data, faqs } });
+              }}
+            />
           </Field>
         </div>
-      </Section>
-    </div>
-  );
-}
-
-function HelpEditor({
-  draft,
-  onChange,
-}: {
-  draft: HelpPageContent;
-  onChange: (value: HelpPageContent) => void;
-}) {
-  const update = (patch: Partial<HelpPageContent>) => onChange({ ...draft, ...patch });
-
-  return (
-    <div className="space-y-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <Section title="Help page header">
-        <Field label="Page title">
-          <input value={draft.title} maxLength={160} onChange={(e) => update({ title: e.target.value })} />
-        </Field>
-        <Field label="Subtitle" hint="Shown under the title">
-          <textarea rows={2} maxLength={400} value={draft.subtitle} onChange={(e) => update({ subtitle: e.target.value })} />
-        </Field>
-        <Field label="Support hours note" hint="e.g. Available Mon–Fri, 8am–5pm">
-          <textarea rows={2} maxLength={400} value={draft.supportBlurb} onChange={(e) => update({ supportBlurb: e.target.value })} />
-        </Field>
-      </Section>
-
-      {draft.categories.map((category, categoryIndex) => (
-        <Section key={category.id} title={`FAQ group: ${category.label}`}>
-          <div className="grid gap-3 md:grid-cols-3">
-            <Field label="Group name">
-              <input
-                value={category.label}
-                maxLength={80}
-                onChange={(e) => {
-                  const categories = draft.categories.map((item, i) =>
-                    i === categoryIndex ? { ...item, label: e.target.value } : item,
-                  );
-                  update({ categories });
-                }}
-              />
-            </Field>
-            <Field label="Emoji icon" hint="One emoji shown next to the group">
-              <input
-                value={category.icon}
-                maxLength={12}
-                onChange={(e) => {
-                  const categories = draft.categories.map((item, i) =>
-                    i === categoryIndex ? { ...item, icon: e.target.value } : item,
-                  );
-                  update({ categories });
-                }}
-              />
-            </Field>
-            <Field label="Internal id" hint="Fixed identifier — do not change">
-              <input value={category.id} disabled className="bg-gray-50 text-gray-400" />
-            </Field>
-          </div>
-
-          {category.faqs.map((faq, faqIndex) => (
-            <div key={`${category.id}-${faqIndex}`} className="space-y-3 rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Question {faqIndex + 1}</p>
-                <button
-                  type="button"
-                  className="text-xs font-black text-red-600 disabled:opacity-40"
-                  disabled={category.faqs.length <= 1}
-                  onClick={() => {
-                    const categories = draft.categories.map((item, i) =>
-                      i === categoryIndex
-                        ? { ...item, faqs: item.faqs.filter((_, j) => j !== faqIndex) }
-                        : item,
-                    );
-                    update({ categories });
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-              <Field label="Question customers ask">
-                <input
-                  value={faq.question}
-                  maxLength={240}
-                  onChange={(e) => {
-                    const categories = draft.categories.map((item, i) => {
-                      if (i !== categoryIndex) return item;
-                      const faqs = item.faqs.map((entry, j) =>
-                        j === faqIndex ? { ...entry, question: e.target.value } : entry,
-                      );
-                      return { ...item, faqs };
-                    });
-                    update({ categories });
-                  }}
-                />
-              </Field>
-              <Field label="Your answer">
-                <textarea
-                  rows={3}
-                  maxLength={2000}
-                  value={faq.answer}
-                  onChange={(e) => {
-                    const categories = draft.categories.map((item, i) => {
-                      if (i !== categoryIndex) return item;
-                      const faqs = item.faqs.map((entry, j) =>
-                        j === faqIndex ? { ...entry, answer: e.target.value } : entry,
-                      );
-                      return { ...item, faqs };
-                    });
-                    update({ categories });
-                  }}
-                />
-              </Field>
-            </div>
-          ))}
-
-          <button
-            type="button"
-            className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-black disabled:opacity-40"
-            disabled={category.faqs.length >= 20}
-            onClick={() => {
-              const categories = draft.categories.map((item, i) =>
-                i === categoryIndex
-                  ? { ...item, faqs: [...item.faqs, { question: "New question", answer: "New answer" }] }
-                  : item,
-              );
-              update({ categories });
-            }}
-          >
-            Add FAQ
-          </button>
-        </Section>
       ))}
+      <button
+        type="button"
+        className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-black disabled:opacity-40"
+        disabled={data.faqs.length >= 20}
+        onClick={() =>
+          onChange({
+            ...block,
+            data: { ...data, faqs: [...data.faqs, { question: "New question", answer: "New answer" }] },
+          })
+        }
+      >
+        Add FAQ
+      </button>
     </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="space-y-4 border-t border-gray-100 pt-6 first:border-t-0 first:pt-0">
-      <h2 className="text-sm font-black uppercase tracking-widest text-gray-900">{title}</h2>
-      {children}
-    </section>
   );
 }

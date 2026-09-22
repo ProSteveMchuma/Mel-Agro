@@ -3,16 +3,13 @@ import { z } from 'zod';
 import { adminDb } from '@/lib/firebase-admin';
 import { requirePermission } from '@/lib/auth-server';
 import {
-  aboutPageSchema,
   CMS_PAGE_SLUGS,
-  defaultPageContent,
   draftDocId,
-  helpPageSchema,
   isCmsPageSlug,
   liveDocId,
-  parsePageContent,
   type CmsPageSlug,
 } from '@/lib/cms-pages';
+import { defaultBlocksPage, parseBlocksPage, validateBlocksPage } from '@/lib/cms-blocks';
 import { getDraftCmsPage, getLiveCmsPage } from '@/lib/cms-pages-server';
 
 const mutationSchema = z.discriminatedUnion('action', [
@@ -31,8 +28,7 @@ const mutationSchema = z.discriminatedUnion('action', [
 ]);
 
 function validateContent(slug: CmsPageSlug, content: unknown) {
-  const schema = slug === 'about' ? aboutPageSchema : helpPageSchema;
-  return schema.safeParse(content);
+  return validateBlocksPage(slug, content);
 }
 
 export async function GET(request: Request) {
@@ -48,7 +44,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     success: true,
     slug: slugParam,
-    defaults: defaultPageContent(slugParam),
+    defaults: defaultBlocksPage(slugParam),
     live: {
       content: live.content,
       version: live.version,
@@ -78,7 +74,10 @@ export async function PUT(request: Request) {
   const contentParsed = validateContent(input.slug, input.content);
   if (!contentParsed.success) {
     return NextResponse.json(
-      { success: false, message: contentParsed.error.issues[0]?.message || 'Invalid page content.' },
+      {
+        success: false,
+        message: contentParsed.error.issues[0]?.message || 'Invalid page content.',
+      },
       { status: 400 },
     );
   }
@@ -95,25 +94,24 @@ export async function PUT(request: Request) {
 
       const nextVersion = currentVersion + 1;
       const now = new Date().toISOString();
+      // Replace document body with blocks schema (avoid leftover flat keys).
       const draftPayload = {
-        ...content,
+        schemaVersion: 2,
+        blocks: content.blocks,
         version: nextVersion,
         updatedAt: now,
         updatedBy: actor.uid,
       };
-      transaction.set(draftRef, draftPayload, { merge: true });
+      transaction.set(draftRef, draftPayload);
 
       if (input.action === 'publish') {
-        transaction.set(
-          liveRef,
-          {
-            ...content,
-            version: nextVersion,
-            publishedAt: now,
-            publishedBy: actor.uid,
-          },
-          { merge: true },
-        );
+        transaction.set(liveRef, {
+          schemaVersion: 2,
+          blocks: content.blocks,
+          version: nextVersion,
+          publishedAt: now,
+          publishedBy: actor.uid,
+        });
       }
 
       transaction.set(adminDb.collection('adminAuditLog').doc(), {
@@ -122,7 +120,7 @@ export async function PUT(request: Request) {
         actorEmail: actor.email || null,
         targetId: input.slug,
         before: { version: currentVersion },
-        after: { version: nextVersion },
+        after: { version: nextVersion, blockCount: content.blocks.length },
         createdAt: now,
       });
 
@@ -132,7 +130,7 @@ export async function PUT(request: Request) {
     return NextResponse.json({
       success: true,
       version,
-      content: parsePageContent(input.slug, content),
+      content: parseBlocksPage(input.slug, content),
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'VERSION_CONFLICT') {
