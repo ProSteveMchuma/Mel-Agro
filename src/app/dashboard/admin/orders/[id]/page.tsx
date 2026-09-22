@@ -1,5 +1,6 @@
 "use client";
 import { useOrders } from "@/context/OrderContext";
+import { useAuth } from "@/context/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -11,6 +12,7 @@ import {
     nextFulfillmentStatus,
     PICKUP_STORE,
 } from "@/lib/pickup";
+import { hasAdminPermission } from "@/lib/admin-permissions";
 
 async function authedFetch(url: string, body: any) {
     const token = await getAuth().currentUser?.getIdToken();
@@ -26,8 +28,10 @@ async function authedFetch(url: string, body: any) {
 
 export default function AdminOrderDetailsPage() {
     const { orders, updateOrderStatus, updateOrderPaymentStatus, updateReturnStatus } = useOrders();
+    const { user } = useAuth();
     const params = useParams();
     const router = useRouter();
+    const canRecordPayment = hasAdminPermission(user?.role, user?.adminPermissions, 'payments.manage');
     const [order, setOrder] = useState<any>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
     const [isDispatchModalOpen, setIsDispatchModalOpen] = useState(false);
@@ -59,16 +63,35 @@ export default function AdminOrderDetailsPage() {
     }, [params.id, orders]);
 
     const handleRecordPayment = async () => {
-        if (!paymentRecord.reference) {
+        if (!canRecordPayment) {
+            toast.error("Your staff profile cannot record payments. Ask a super-admin for payments access.");
+            return;
+        }
+        const reference = paymentRecord.reference.trim();
+        if (reference.length < 3) {
             toast.error("Please enter a payment reference (e.g. Receipt # or Name)");
             return;
         }
+        const amount = Number(paymentRecord.amount);
+        if (!Number.isFinite(amount) || amount <= 0) {
+            toast.error("Enter a valid settlement amount greater than zero.");
+            return;
+        }
         try {
-            await updateOrderPaymentStatus(order.id, 'Paid', paymentRecord);
+            // HTML date inputs are YYYY-MM-DD; API also accepts full ISO datetimes.
+            const date = /^\d{4}-\d{2}-\d{2}$/.test(paymentRecord.date)
+                ? `${paymentRecord.date}T12:00:00.000Z`
+                : paymentRecord.date;
+            await updateOrderPaymentStatus(order.id, 'Paid', {
+                ...paymentRecord,
+                amount,
+                reference,
+                date,
+            });
             toast.success("Payment recorded successfully");
             setIsPaymentModalOpen(false);
-        } catch {
-            toast.error("Failed to record payment");
+        } catch (error) {
+            toast.error(error instanceof Error ? error.message : "Failed to record payment");
         }
     };
 
@@ -715,12 +738,18 @@ export default function AdminOrderDetailsPage() {
 
                         {order.paymentStatus !== 'Paid' ? (
                             <div className="space-y-2">
+                                {canRecordPayment ? (
                                 <button
                                     onClick={() => setIsPaymentModalOpen(true)}
                                     className="w-full bg-green-600 text-white py-4 rounded-2xl hover:bg-green-700 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-600/10 active:scale-95"
                                 >
                                     Record Payment
                                 </button>
+                                ) : (
+                                <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-amber-800">
+                                    Payments access required to record settlement
+                                </p>
+                                )}
                                 <button
                                     onClick={() => setIsReminderModalOpen(true)}
                                     disabled={mpesaActionLoading === 'reminder'}

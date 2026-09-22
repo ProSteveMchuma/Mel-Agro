@@ -3,11 +3,11 @@ import { NextResponse } from 'next/server';
 import { requirePermission } from '@/lib/auth-server';
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { z } from 'zod';
 import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { withActionUrls } from '@/lib/order-access';
 import { notifyCustomer } from '@/lib/customer-notifications';
+import { adminOrderMutationSchema } from '@/lib/admin-order-mutations';
 
 const PAGE_SIZE = 20;
 const statusValues = new Set(['Pending Payment', 'Processing', 'Shipped', 'Delivered', 'Ready for Collection', 'Collected', 'Cancelled']);
@@ -53,10 +53,7 @@ export async function GET(request: Request) {
   return NextResponse.json({ success: true, orders, nextCursor: hasMore ? nextCursor : null, hasMore, scanned, searchLimited: Boolean(search && scanned >= 500) });
 }
 
-const mutationSchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('start_processing'), orderId: z.string().min(1).max(200) }),
-  z.object({ action: z.literal('payment_status'), orderId: z.string().min(1).max(200), paymentStatus: z.enum(['Paid', 'Unpaid']), transaction: z.object({ amount: z.number().positive().max(100_000_000), reference: z.string().trim().min(3).max(200), date: z.string().datetime(), method: z.string().trim().min(2).max(80) }).optional() }),
-]);
+const mutationSchema = adminOrderMutationSchema;
 
 export async function POST(request: Request) {
   const parsed = mutationSchema.safeParse(await request.json().catch(() => null));
