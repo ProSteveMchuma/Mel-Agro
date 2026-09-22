@@ -25,7 +25,7 @@ export default function Hero() {
             id: 'shamba-ready',
             image: "/images/kenyan-farmer-banner.png",
             tag: "WEEKLY OFFER",
-            title: "Prepare Your Shamba For The Long Rains",
+            title: "Prepare Your Shamba For The Short Rains",
             description: "Get certified hybrid maize seeds and planting fertilizers today.",
             primaryBtn: "Shop Now",
             primaryLink: "/categories/seeds"
