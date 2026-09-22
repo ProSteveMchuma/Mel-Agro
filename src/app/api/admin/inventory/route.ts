@@ -3,11 +3,14 @@ import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
 import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
+import { collapseBrandDisplays } from "@/lib/catalog-normalize";
+import { matchesBrandFilter, matchesPriceFilter, parsePriceBound } from "@/lib/admin-catalogue-filters";
 
 const PAGE_SIZE = 20;
 const SCAN_SIZE = 75;
 const MAX_SCANNED = 600;
 let salesCache: { values: Map<string, number>; expiresAt: number } | null = null;
+let brandCache: { values: string[]; expiresAt: number } | null = null;
 
 function decodeCursor(value: string | null) { if (!value) return null; try { return Buffer.from(value, "base64url").toString("utf8"); } catch { return null; } }
 function encodeCursor(value: string) { return Buffer.from(value, "utf8").toString("base64url"); }
@@ -16,6 +19,17 @@ function serialize(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(serialize);
   if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, serialize(entry)]));
   return value;
+}
+async function getBrands() {
+  if (brandCache && brandCache.expiresAt > Date.now()) return brandCache.values;
+  const snapshot = await adminDb.collection("products").select("brand", "brandKey", "archived").limit(1500).get();
+  const values = collapseBrandDisplays(
+    snapshot.docs
+      .filter((document) => document.data().archived !== true)
+      .map((document) => ({ brand: document.data().brand, brandKey: document.data().brandKey })),
+  );
+  brandCache = { values, expiresAt: Date.now() + 5 * 60 * 1000 };
+  return values;
 }
 async function recentSales() {
   if (salesCache && salesCache.expiresAt > Date.now()) return salesCache.values;
@@ -46,6 +60,9 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const queryText = (params.get("q") || "").trim().toLowerCase().slice(0, 120);
   const risk = params.get("risk") || "all";
+  const brand = (params.get("brand") || "").trim().slice(0, 120);
+  const minPrice = parsePriceBound(params.get("minPrice"));
+  const maxPrice = parsePriceBound(params.get("maxPrice"));
   let lastScannedId = decodeCursor(params.get("cursor"));
   let scanned = 0; let exhausted = false;
   const products: Record<string, unknown>[] = [];
@@ -62,6 +79,8 @@ export async function GET(request: Request) {
       const stock = Number(data.stockQuantity || 0);
       const threshold = Number(data.lowStockThreshold || 10);
       if (!matchesRisk(stock, threshold, risk)) continue;
+      if (!matchesBrandFilter(data, brand)) continue;
+      if (!matchesPriceFilter(data, minPrice, maxPrice)) continue;
       if (queryText) {
         const haystack = [data.name, data.category, data.productCode, data.brand, document.id].map((value) => String(value || "").toLowerCase()).join(" ");
         if (!haystack.includes(queryText)) continue;
@@ -72,7 +91,7 @@ export async function GET(request: Request) {
     }
     exhausted = snapshot.size < SCAN_SIZE;
   }
-  return NextResponse.json({ success: true, products, nextCursor: !exhausted && lastScannedId ? encodeCursor(lastScannedId) : null, searchLimited: scanned >= MAX_SCANNED && !exhausted });
+  return NextResponse.json({ success: true, products, brands: await getBrands(), nextCursor: !exhausted && lastScannedId ? encodeCursor(lastScannedId) : null, searchLimited: scanned >= MAX_SCANNED && !exhausted });
 }
 
 const adjustmentSchema = z.object({ productId: z.string().min(1).max(180), adjustment: z.number().int().min(-10000).max(10000).refine((value) => value !== 0), reason: z.string().trim().max(240).optional() });
