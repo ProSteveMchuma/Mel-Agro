@@ -19,7 +19,11 @@ export default function ProductManagement() {
     const [searchTerm, setSearchTerm] = useState("");
     const [selectedProducts, setSelectedProducts] = useState<string[]>([]);
     const [filterCategory, setFilterCategory] = useState("All");
+    const [filterBrand, setFilterBrand] = useState("All");
     const [filterStock, setFilterStock] = useState("all");
+    const [minPrice, setMinPrice] = useState("");
+    const [maxPrice, setMaxPrice] = useState("");
+    const [brands, setBrands] = useState<string[]>([]);
     const [deleteId, setDeleteId] = useState<string | number | null>(null);
     const [deleting, setDeleting] = useState(false);
     const [showArchived, setShowArchived] = useState(false);
@@ -41,18 +45,22 @@ export default function ProductManagement() {
                 const params = new URLSearchParams({ archived: String(showArchived), stock: filterStock });
                 if (searchTerm.trim()) params.set("q", searchTerm.trim());
                 if (filterCategory !== "All") params.set("category", filterCategory);
+                if (filterBrand !== "All") params.set("brand", filterBrand);
+                if (minPrice.trim()) params.set("minPrice", minPrice.trim());
+                if (maxPrice.trim()) params.set("maxPrice", maxPrice.trim());
                 if (cursor) params.set("cursor", cursor);
                 const response = await fetch(`/api/admin/products?${params}`, { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.message || "Could not load products.");
                 setProducts(result.products || []); setNextCursor(result.nextCursor || null); setSearchLimited(Boolean(result.searchLimited));
                 setCategories((current) => Array.from(new Set([...current, ...(result.categories || [])])).sort());
+                setBrands((current) => Array.from(new Set([...current, ...(result.brands || [])])).sort());
             } catch (caught) {
                 if ((caught as Error).name !== "AbortError") setError(caught instanceof Error ? caught.message : "Could not load products.");
             } finally { if (!controller.signal.aborted) setLoading(false); }
-        }, searchTerm ? 300 : 0);
+        }, searchTerm || minPrice || maxPrice ? 300 : 0);
         return () => { window.clearTimeout(timer); controller.abort(); };
-    }, [showArchived, searchTerm, filterCategory, filterStock, cursor, refreshKey]);
+    }, [showArchived, searchTerm, filterCategory, filterBrand, filterStock, minPrice, maxPrice, cursor, refreshKey]);
 
     const visibleProducts = products;
     const visibleIds = visibleProducts.map(product => String(product.id));
@@ -117,7 +125,8 @@ export default function ProductManagement() {
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col md:flex-row gap-4">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3">
+                <div className="flex flex-col md:flex-row gap-4">
                 <div className="flex shrink-0 rounded-lg border border-gray-200 p-1">
                     <button type="button" onClick={() => { setShowArchived(false); resetPage(); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${!showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Active</button>
                     <button type="button" onClick={() => { setShowArchived(true); resetPage(); }} className={`rounded-md px-3 py-1.5 text-xs font-bold ${showArchived ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Archived</button>
@@ -143,6 +152,14 @@ export default function ProductManagement() {
                     {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
                 </select>
                 <select
+                    value={filterBrand}
+                    onChange={(e) => { setFilterBrand(e.target.value); resetPage(); }}
+                    className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary outline-none bg-white"
+                >
+                    <option value="All">All brands</option>
+                    {brands.map((brand) => <option key={brand} value={brand}>{brand}</option>)}
+                </select>
+                <select
                     value={filterStock}
                     onChange={(e) => { setFilterStock(e.target.value); resetPage(); }}
                     className="px-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary outline-none bg-white"
@@ -152,8 +169,46 @@ export default function ProductManagement() {
                     <option value="low">Low Stock</option>
                     <option value="out">Out of Stock</option>
                 </select>
+                </div>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                    <label className="flex-1 max-w-xs">
+                        <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-gray-400">Min price (KES)</span>
+                        <input
+                            type="number"
+                            inputMode="decimal"
+                            min={0}
+                            step={1}
+                            value={minPrice}
+                            onChange={(e) => { setMinPrice(e.target.value); resetPage(); }}
+                            placeholder="0"
+                            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary outline-none"
+                        />
+                    </label>
+                    <label className="flex-1 max-w-xs">
+                        <span className="mb-1 block text-[10px] font-black uppercase tracking-widest text-gray-400">Max price (KES)</span>
+                        <input
+                            type="number"
+                            inputMode="decimal"
+                            min={0}
+                            step={1}
+                            value={maxPrice}
+                            onChange={(e) => { setMaxPrice(e.target.value); resetPage(); }}
+                            placeholder="Any"
+                            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:border-melagri-primary outline-none"
+                        />
+                    </label>
+                    {(filterBrand !== "All" || minPrice || maxPrice) ? (
+                        <button
+                            type="button"
+                            onClick={() => { setFilterBrand("All"); setMinPrice(""); setMaxPrice(""); resetPage(); }}
+                            className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-bold text-gray-600 hover:border-melagri-primary"
+                        >
+                            Clear brand / price
+                        </button>
+                    ) : null}
+                </div>
             </div>
-            {searchLimited && <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">This broad filter checked the next 600 catalogue records. Add a product name, code, brand, or category to narrow it.</p>}
+            {searchLimited && <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">This broad filter checked the next 600 catalogue records. Add a product name, code, brand, category, or price range to narrow it.</p>}
             {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error} <button type="button" onClick={refresh} className="ml-2 font-black underline">Retry</button></div>}
 
             {/* Product Table */}
@@ -171,6 +226,7 @@ export default function ProductManagement() {
                                     />
                                 </th>
                                 <th className="px-6 py-4 font-medium">Product</th>
+                                <th className="px-6 py-4 font-medium">Brand</th>
                                 <th className="px-6 py-4 font-medium">Category</th>
                                 <th className="px-6 py-4 font-medium">Price</th>
                                 <th className="px-6 py-4 font-medium">Stock Level</th>
@@ -217,6 +273,7 @@ export default function ProductManagement() {
                                                 </div>
                                             </div>
                                         </td>
+                                        <td className="px-6 py-4 text-sm font-semibold text-gray-700">{product.brand || "—"}</td>
                                         <td className="px-6 py-4 text-gray-600">
                                             <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs font-medium">
                                                 {product.category}

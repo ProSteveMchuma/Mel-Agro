@@ -19,7 +19,7 @@ const checklist = [
 const guidance = [
   { match: /\/orders\//, title: "Order workspace", body: "Verify payment before dispatch. Use the timeline and internal notes to leave an auditable handover." },
   { match: /\/orders$/, title: "Order queue", body: "Use saved views for daily queues. Bulk changes are best for orders that share the same verified state." },
-  { match: /\/products|\/inventory/, title: "Catalogue operations", body: "Check variants as well as product-level stock before archiving or replenishing a listing." },
+  { match: /\/products|\/inventory/, title: "Catalogue operations", body: "Filter by brand and price range to find stock faster. Check variants as well as product-level stock before archiving or replenishing a listing." },
   { match: /\/payments|\/mpesa/, title: "Payment operations", body: "Match receipt, amount, and phone before manually linking or approving an M-Pesa payment." },
   { match: /\/analytics|\/reports/, title: "Analytics workspace", body: "Save common time windows, set targets, and export the current filtered period for offline review." },
   { match: /\/automations/, title: "Automation safety", body: "Start in alert-only mode. Review generated work in the Action Centre before enabling assisted workflows." },

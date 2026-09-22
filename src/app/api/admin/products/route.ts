@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth-server";
 import { z } from "zod";
 import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
 import { collapseBrandDisplays, normalizeDisplayField, resolveProductBrand } from "@/lib/catalog-normalize";
+import { matchesBrandFilter, matchesPriceFilter, parsePriceBound } from "@/lib/admin-catalogue-filters";
 
 const PAGE_SIZE = 20;
 const SCAN_SIZE = 75;
@@ -74,8 +75,11 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const queryText = (params.get("q") || "").trim().toLowerCase().slice(0, 120);
   const category = (params.get("category") || "").trim().slice(0, 100);
+  const brand = (params.get("brand") || "").trim().slice(0, 120);
   const stock = params.get("stock") || "all";
   const archived = params.get("archived") === "true";
+  const minPrice = parsePriceBound(params.get("minPrice"));
+  const maxPrice = parsePriceBound(params.get("maxPrice"));
   const cursor = decodeCursor(params.get("cursor"));
   let lastScannedId = cursor;
   let scanned = 0;
@@ -92,6 +96,8 @@ export async function GET(request: Request) {
       const data = document.data() as Record<string, unknown>;
       if ((data.archived === true) !== archived) continue;
       if (category && data.category !== category) continue;
+      if (!matchesBrandFilter(data, brand)) continue;
+      if (!matchesPriceFilter(data, minPrice, maxPrice)) continue;
       if (!matchesStock(data, stock)) continue;
       if (queryText) {
         const haystack = [data.name, data.category, data.subCategory, data.productCode, data.brand, document.id].map((value) => String(value || "").toLowerCase()).join(" ");
