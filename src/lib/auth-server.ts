@@ -57,6 +57,30 @@ export async function requirePermissionToken(
     return result;
 }
 
+/** Session-cookie gate for same-origin staff pages (e.g. /preview iframe). */
+export async function requirePermissionFromSessionCookie(
+    sessionCookie: string | null | undefined,
+    permission: AdminPermission,
+): Promise<AdminAuthResult> {
+    if (!sessionCookie) return { ok: false, message: 'Missing session cookie' };
+    try {
+        const decoded = await admin.auth().verifySessionCookie(decodeURIComponent(sessionCookie), true);
+        const userSnap = await adminDb.collection('users').doc(decoded.uid).get();
+        const userData = userSnap.data();
+        const role = userData?.role || (decoded as { role?: string }).role;
+        if (role !== 'admin' && role !== 'super-admin') {
+            return { ok: false, message: 'Admin access required' };
+        }
+        if (!hasAdminPermission(role, userData?.adminPermissions, permission)) {
+            return { ok: false, uid: decoded.uid, email: decoded.email, role, message: `Missing required permission: ${permission}` };
+        }
+        return { ok: true, uid: decoded.uid, email: decoded.email, role, permissions: userData?.adminPermissions };
+    } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : 'Invalid session';
+        return { ok: false, message };
+    }
+}
+
 export async function requireUser(request: Request): Promise<AdminAuthResult> {
     const authHeader = request.headers.get('authorization') || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
