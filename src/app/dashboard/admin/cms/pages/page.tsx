@@ -9,6 +9,7 @@ import {
   ABOUT_BLOCK_TYPES,
   AboutBlock,
   AboutBlockType,
+  AboutBlocksPage,
   blockLabel,
   blocksContentEqual,
   createDefaultAboutBlock,
@@ -18,6 +19,7 @@ import {
   HelpBlock,
   HelpBlockType,
   HelpBlocksPage,
+  type CmsBlock,
   type CmsBlocksPage,
 } from "@/lib/cms-blocks";
 import { CMS_PAGE_SLUGS, CmsPageSlug, isCmsPageSlug } from "@/lib/cms-pages";
@@ -134,19 +136,20 @@ function CmsPagesAdminInner() {
     toast.success("Draft reset to live content");
   }
 
-  function reorderBlocks(blocks: AboutBlock[] | HelpBlock[]) {
+  function reorderBlocks(blocks: CmsBlock[]) {
     setDraft({ schemaVersion: 2, blocks } as CmsBlocksPage);
   }
 
-  function updateBlock(id: string, next: AboutBlock | HelpBlock) {
+  function updateBlock(id: string, next: CmsBlock) {
     setDraft({
       schemaVersion: 2,
-      blocks: draft.blocks.map((block) => (block.id === id ? next : block)),
+      blocks: (draft.blocks as CmsBlock[]).map((block) => (block.id === id ? next : block)),
     } as CmsBlocksPage);
   }
 
   function removeBlock(id: string) {
-    const block = draft.blocks.find((item) => item.id === id);
+    const blocks = draft.blocks as CmsBlock[];
+    const block = blocks.find((item) => item.id === id);
     if (!block) return;
     if (slug === "about") {
       toast.error("About sections are required — reorder them instead of removing.");
@@ -156,7 +159,7 @@ function CmsPagesAdminInner() {
       toast.error("Help pages need a header section.");
       return;
     }
-    const faqs = draft.blocks.filter((item) => item.type === "faqCategory");
+    const faqs = blocks.filter((item) => item.type === "faqCategory");
     if (block.type === "faqCategory" && faqs.length <= 1) {
       toast.error("Keep at least one FAQ category.");
       return;
@@ -164,31 +167,33 @@ function CmsPagesAdminInner() {
     if (!window.confirm("Remove this section from the draft?")) return;
     setDraft({
       schemaVersion: 2,
-      blocks: draft.blocks.filter((item) => item.id !== id),
-    } as CmsBlocksPage);
+      blocks: blocks.filter((item) => item.id !== id),
+    } as HelpBlocksPage);
   }
 
   function addAboutBlock(type: AboutBlockType) {
-    if (draft.blocks.some((b) => b.type === type)) {
+    const blocks = draft.blocks as AboutBlock[];
+    if (blocks.some((b) => b.type === type)) {
       toast.error(`“${blockLabel(type)}” is already on this page.`);
       return;
     }
     const block = createDefaultAboutBlock(type);
-    setDraft({ schemaVersion: 2, blocks: [...draft.blocks, block] });
+    setDraft({ schemaVersion: 2, blocks: [...blocks, block] } satisfies AboutBlocksPage);
     setExpandedId(block.id);
   }
 
   function addHelpBlock(type: HelpBlockType) {
-    if (type === "helpHeader" && draft.blocks.some((b) => b.type === "helpHeader")) {
+    const blocks = draft.blocks as HelpBlock[];
+    if (type === "helpHeader" && blocks.some((b) => b.type === "helpHeader")) {
       toast.error("Help already has a header.");
       return;
     }
-    if (type === "faqCategory" && draft.blocks.filter((b) => b.type === "faqCategory").length >= 12) {
+    if (type === "faqCategory" && blocks.filter((b) => b.type === "faqCategory").length >= 12) {
       toast.error("Maximum 12 FAQ categories.");
       return;
     }
     const block = createDefaultHelpBlock(type);
-    setDraft({ schemaVersion: 2, blocks: [...draft.blocks, block] } as HelpBlocksPage);
+    setDraft({ schemaVersion: 2, blocks: [...blocks, block] } satisfies HelpBlocksPage);
     setExpandedId(block.id);
   }
 
@@ -313,9 +318,14 @@ function CmsPagesAdminInner() {
             </div>
 
             <SortableBlockList
-              items={draft.blocks}
+              items={draft.blocks as CmsBlock[]}
               onReorder={reorderBlocks}
-              renderItem={(block, handle) => (
+              renderItem={(block, handle) => {
+                const title =
+                  block.type === "faqCategory"
+                    ? block.data.label
+                    : blockLabel(block.type);
+                return (
                 <article className="rounded-2xl border border-gray-200 bg-white shadow-sm">
                   <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2">
                     {handle}
@@ -325,9 +335,7 @@ function CmsPagesAdminInner() {
                       onClick={() => setExpandedId((current) => (current === block.id ? null : block.id))}
                     >
                       <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{block.type}</p>
-                      <h2 className="truncate text-sm font-black text-gray-950">
-                        {block.type === "faqCategory" ? block.data.label : blockLabel(block.type)}
-                      </h2>
+                      <h2 className="truncate text-sm font-black text-gray-950">{title}</h2>
                     </button>
                     {slug === "help" && block.type === "faqCategory" ? (
                       <button
@@ -349,7 +357,8 @@ function CmsPagesAdminInner() {
                     </div>
                   ) : null}
                 </article>
-              )}
+                );
+              }}
             />
           </div>
           <div className="xl:sticky xl:top-4">
