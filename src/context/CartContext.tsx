@@ -1,12 +1,12 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { CartItem, Product, ProductVariant } from '@/types';
 import { toast } from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { mergeCartItems } from '@/lib/cart-merge';
+import { resolveCartForAuthState } from '@/lib/cart-merge';
 
 interface CartContextType {
     cartItems: CartItem[];
@@ -28,48 +28,62 @@ function getAvailableStock(product: Product, variant?: ProductVariant): number {
     return Number.isFinite(stock) ? Math.max(0, stock) : 0;
 }
 
+function readLocalCart(): CartItem[] {
+    try {
+        const localCart = localStorage.getItem('Mel-Agri_cart');
+        if (!localCart) return [];
+        const parsed = JSON.parse(localCart);
+        return Array.isArray(parsed) ? (parsed as CartItem[]) : [];
+    } catch (e) {
+        console.error('Failed to parse local cart', e);
+        return [];
+    }
+}
+
 export function CartProvider({ children }: { children: ReactNode }) {
-    const { user } = useAuth();
+    const { user, isLoading: authLoading } = useAuth();
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    /** undefined = auth not settled yet; null = guest; string = last signed-in uid */
+    const previousUserIdRef = useRef<string | null | undefined>(undefined);
 
-    // Load + merge local guest cart with the signed-in account cart.
+    // Load cart only after auth settles so we do not re-merge local+cloud on every refresh.
+    // Depend on uid (not the whole user object) so profile snapshot updates do not reload the cart.
+    const userId = user?.uid ?? null;
     useEffect(() => {
+        if (authLoading) return;
+
         let cancelled = false;
         setIsInitialLoad(true);
 
         const loadCart = async () => {
-            const localCart = localStorage.getItem('Mel-Agri_cart');
-            let localItems: CartItem[] = [];
+            const localItems = readLocalCart();
+            const nextUserId = userId;
+            let cloudItems: CartItem[] = [];
 
-            if (localCart) {
+            if (nextUserId) {
                 try {
-                    const parsed = JSON.parse(localCart);
-                    localItems = Array.isArray(parsed) ? parsed : [];
-                } catch (e) {
-                    console.error("Failed to parse local cart", e);
-                }
-            }
-
-            let items = localItems;
-
-            if (user) {
-                try {
-                    const cartDoc = await getDoc(doc(db, 'carts', user.uid));
+                    const cartDoc = await getDoc(doc(db, 'carts', nextUserId));
                     if (cartDoc.exists()) {
-                        const cloudItems = (cartDoc.data().items || []) as CartItem[];
-                        if (Array.isArray(cloudItems) && cloudItems.length > 0) {
-                            items = mergeCartItems(localItems, cloudItems);
-                        }
+                        const raw = cartDoc.data().items;
+                        cloudItems = Array.isArray(raw) ? (raw as CartItem[]) : [];
                     }
                 } catch (e) {
-                    console.error("Failed to sync cloud cart", e);
+                    console.error('Failed to sync cloud cart', e);
                 }
             }
 
+            const resolved = resolveCartForAuthState({
+                previousUserId: previousUserIdRef.current,
+                nextUserId,
+                localItems,
+                cloudItems,
+            });
+
             if (cancelled) return;
-            setCartItems(items);
+            previousUserIdRef.current = resolved.nextPreviousUserId;
+            setCartItems(resolved.items);
             setIsInitialLoad(false);
         };
 
@@ -77,11 +91,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return () => {
             cancelled = true;
         };
-    }, [user]);
+    }, [userId, authLoading]);
 
     // Persist to LocalStorage and Cloud after the load/merge settles.
     useEffect(() => {
-        if (isInitialLoad) return;
+        if (isInitialLoad || authLoading) return;
 
         localStorage.setItem('Mel-Agri_cart', JSON.stringify(cartItems));
 
@@ -104,12 +118,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
                         cartRecoveryConsent: user.cartRecoveryConsent === true,
                     }, { merge: true });
                 } catch (e) {
-                    console.error("Cloud cart sync failed", e);
+                    console.error('Cloud cart sync failed', e);
                 }
             };
             void syncCart();
         }
-    }, [cartItems, user, isInitialLoad]);
+    }, [cartItems, user, isInitialLoad, authLoading]);
 
     const addToCart = (product: Product, quantity = 1, variant?: ProductVariant) => {
         const availableStock = getAvailableStock(product, variant);
