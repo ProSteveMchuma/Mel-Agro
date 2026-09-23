@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const MARKETING_PAGE_SLUGS = [
+  'home-below',
   'delivery',
   'returns',
   'privacy',
@@ -15,7 +16,14 @@ export function isMarketingPageSlug(value: string): value is MarketingPageSlug {
   return (MARKETING_PAGE_SLUGS as readonly string[]).includes(value);
 }
 
-export const MARKETING_BLOCK_TYPES = ['pageHeader', 'prose', 'callout', 'bullets'] as const;
+export const MARKETING_BLOCK_TYPES = [
+  'pageHeader',
+  'prose',
+  'callout',
+  'bullets',
+  'quickShop',
+  'partnersIntro',
+] as const;
 export type MarketingBlockType = (typeof MARKETING_BLOCK_TYPES)[number];
 
 const pageHeaderDataSchema = z.object({
@@ -39,11 +47,43 @@ const bulletsDataSchema = z.object({
   items: z.array(z.string().trim().min(1).max(400)).min(1).max(20),
 });
 
+const quickShopTileSchema = z.object({
+  label: z.string().trim().min(1).max(80),
+  hint: z.string().trim().max(120),
+  href: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .refine((value) => value.startsWith('/') || value.startsWith('https://'), 'Tile links must be internal paths or HTTPS URLs.'),
+  /** Case-insensitive substring used to match a live category name (optional). */
+  categoryMatch: z.string().trim().max(80).optional(),
+});
+
+const quickShopDataSchema = z.object({
+  browseAllLabel: z.string().trim().min(1).max(80),
+  browseAllHref: z
+    .string()
+    .trim()
+    .min(1)
+    .max(200)
+    .refine((value) => value.startsWith('/') || value.startsWith('https://'), 'Browse-all link must be an internal path or HTTPS URL.'),
+  tiles: z.array(quickShopTileSchema).min(1).max(6),
+});
+
+const partnersIntroDataSchema = z.object({
+  eyebrow: z.string().trim().max(80),
+  title: z.string().trim().min(1).max(120),
+  subtitle: z.string().trim().max(240),
+});
+
 export const marketingBlockSchema = z.discriminatedUnion('type', [
   z.object({ id: z.string().min(1).max(80), type: z.literal('pageHeader'), data: pageHeaderDataSchema }),
   z.object({ id: z.string().min(1).max(80), type: z.literal('prose'), data: proseDataSchema }),
   z.object({ id: z.string().min(1).max(80), type: z.literal('callout'), data: calloutDataSchema }),
   z.object({ id: z.string().min(1).max(80), type: z.literal('bullets'), data: bulletsDataSchema }),
+  z.object({ id: z.string().min(1).max(80), type: z.literal('quickShop'), data: quickShopDataSchema }),
+  z.object({ id: z.string().min(1).max(80), type: z.literal('partnersIntro'), data: partnersIntroDataSchema }),
 ]);
 
 export type MarketingBlock = z.infer<typeof marketingBlockSchema>;
@@ -69,6 +109,10 @@ export function marketingBlockLabel(type: MarketingBlockType): string {
       return 'Highlight box';
     case 'bullets':
       return 'Bullet list';
+    case 'quickShop':
+      return 'Quick shop tiles';
+    case 'partnersIntro':
+      return 'Partners intro';
     default:
       return type;
   }
@@ -104,10 +148,68 @@ export function createDefaultMarketingBlock(type: MarketingBlockType): Marketing
         type: 'bullets',
         data: { heading: 'Key points', items: ['First point', 'Second point'] },
       };
+    case 'quickShop':
+      return {
+        id: id('quick-shop'),
+        type: 'quickShop',
+        data: {
+          browseAllLabel: 'Browse all farm inputs →',
+          browseAllHref: '/products',
+          tiles: [
+            { label: 'Seeds', hint: 'Maize, veg & pasture', href: '/categories/seeds', categoryMatch: 'seed' },
+            { label: 'Fertilizers', hint: 'Planting & top dress', href: '/categories/fertilizers', categoryMatch: 'fertiliz' },
+            {
+              label: 'Crop protection',
+              hint: 'Herbicides & sprays',
+              href: '/categories/crop-protection',
+              categoryMatch: 'protect',
+            },
+          ],
+        },
+      };
+    case 'partnersIntro':
+      return {
+        id: id('partners'),
+        type: 'partnersIntro',
+        data: {
+          eyebrow: 'Quality you can trust',
+          title: 'Our Partners',
+          subtitle: 'Trusted agricultural brands available through Mel-Agri',
+        },
+      };
   }
 }
 
 const DEFAULTS: Record<MarketingPageSlug, MarketingBlock[]> = {
+  'home-below': [
+    {
+      id: 'home-quick-shop',
+      type: 'quickShop',
+      data: {
+        browseAllLabel: 'Browse all farm inputs →',
+        browseAllHref: '/products',
+        tiles: [
+          { label: 'Seeds', hint: 'Maize, veg & pasture', href: '/categories/seeds', categoryMatch: 'seed' },
+          { label: 'Fertilizers', hint: 'Planting & top dress', href: '/categories/fertilizers', categoryMatch: 'fertiliz' },
+          {
+            label: 'Crop protection',
+            hint: 'Herbicides & sprays',
+            href: '/categories/crop-protection',
+            categoryMatch: 'protect',
+          },
+        ],
+      },
+    },
+    {
+      id: 'home-partners',
+      type: 'partnersIntro',
+      data: {
+        eyebrow: 'Quality you can trust',
+        title: 'Our Partners',
+        subtitle: 'Trusted agricultural brands available through Mel-Agri',
+      },
+    },
+  ],
   delivery: [
     {
       id: 'delivery-header',
@@ -367,9 +469,28 @@ export function parseMarketingBlocksPage(slug: MarketingPageSlug, raw: unknown):
   return defaultMarketingBlocksPage(slug);
 }
 
-export function validateMarketingBlocksPage(content: unknown) {
+export function validateMarketingBlocksPage(slug: MarketingPageSlug, content: unknown) {
   const parsed = marketingBlocksPageSchema.safeParse(content);
   if (!parsed.success) return parsed;
+
+  if (slug === 'home-below') {
+    const quickShops = parsed.data.blocks.filter((block) => block.type === 'quickShop');
+    if (quickShops.length !== 1) {
+      return {
+        success: false as const,
+        error: { issues: [{ message: 'Home (below hero) needs exactly one Quick shop tiles section.' }] },
+      };
+    }
+    const partners = parsed.data.blocks.filter((block) => block.type === 'partnersIntro');
+    if (partners.length > 1) {
+      return {
+        success: false as const,
+        error: { issues: [{ message: 'Only one Partners intro is allowed on Home (below hero).' }] },
+      };
+    }
+    return parsed;
+  }
+
   const headers = parsed.data.blocks.filter((block) => block.type === 'pageHeader');
   if (headers.length !== 1) {
     return {
@@ -378,4 +499,42 @@ export function validateMarketingBlocksPage(content: unknown) {
     };
   }
   return parsed;
+}
+
+/** Resolve quick-shop tile hrefs against live category names when categoryMatch is set. */
+export function resolveQuickShopTiles(
+  tiles: Array<{ label: string; hint: string; href: string; categoryMatch?: string }>,
+  categories: string[],
+  slugify: (value: string) => string,
+) {
+  return tiles.map((tile) => {
+    const match = (tile.categoryMatch || '').trim().toLowerCase();
+    if (!match) return { label: tile.label, hint: tile.hint, href: tile.href };
+    const found = categories.find((category) => category.toLowerCase().includes(match));
+    return {
+      label: tile.label,
+      hint: tile.hint,
+      href: found ? `/categories/${slugify(found)}` : tile.href,
+    };
+  });
+}
+
+export function partnersIntroFromBlocks(blocks: MarketingBlock[]) {
+  const block = blocks.find((item) => item.type === 'partnersIntro');
+  if (!block || block.type !== 'partnersIntro') {
+    return {
+      eyebrow: 'Quality you can trust',
+      title: 'Our Partners',
+      subtitle: 'Trusted agricultural brands available through Mel-Agri',
+    };
+  }
+  return block.data;
+}
+
+export function quickShopFromBlocks(blocks: MarketingBlock[]) {
+  const block = blocks.find((item) => item.type === 'quickShop');
+  if (!block || block.type !== 'quickShop') {
+    return createDefaultMarketingBlock('quickShop').data as Extract<MarketingBlock, { type: 'quickShop' }>['data'];
+  }
+  return block.data;
 }

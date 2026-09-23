@@ -13,12 +13,13 @@ type Props = {
 };
 
 const LABELS: Record<string, string> = {
-  delivery: "Delivery",
-  returns: "Returns",
-  privacy: "Privacy",
-  terms: "Terms",
-  contact: "Contact",
-  bulk: "Bulk orders",
+  'home-below': 'Home (below hero)',
+  delivery: 'Delivery',
+  returns: 'Returns',
+  privacy: 'Privacy',
+  terms: 'Terms',
+  contact: 'Contact',
+  bulk: 'Bulk orders',
 };
 
 export default async function PreviewMarketingPage({ params, searchParams }: Props) {

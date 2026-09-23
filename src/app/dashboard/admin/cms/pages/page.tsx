@@ -161,8 +161,12 @@ function CmsPagesAdminInner() {
       toast.error("About sections are required — reorder them instead of removing.");
       return;
     }
-    if (block.type === "helpHeader" || block.type === "pageHeader") {
+    if (block.type === "helpHeader" || (block.type === "pageHeader" && slug !== "home-below")) {
       toast.error("This page needs a header section.");
+      return;
+    }
+    if (block.type === "quickShop") {
+      toast.error("Home (below hero) needs the Quick shop tiles section.");
       return;
     }
     const faqs = blocks.filter((item) => item.type === "faqCategory");
@@ -211,6 +215,18 @@ function CmsPagesAdminInner() {
     const blocks = draft.blocks as MarketingBlock[];
     if (type === "pageHeader" && blocks.some((b) => b.type === "pageHeader")) {
       toast.error("This page already has a header.");
+      return;
+    }
+    if (type === "quickShop" && blocks.some((b) => b.type === "quickShop")) {
+      toast.error("Quick shop tiles are already on this page.");
+      return;
+    }
+    if (type === "partnersIntro" && blocks.some((b) => b.type === "partnersIntro")) {
+      toast.error("Partners intro is already on this page.");
+      return;
+    }
+    if (slug === "home-below" && type === "pageHeader") {
+      toast.error("Home (below hero) uses Quick shop / Partners — not a page header.");
       return;
     }
     if (blocks.length >= 40) {
@@ -341,7 +357,10 @@ function CmsPagesAdminInner() {
                         + {blockLabel(type)}
                       </button>
                     ))
-                  : MARKETING_BLOCK_TYPES.map((type) => (
+                  : MARKETING_BLOCK_TYPES.filter((type) => {
+                      if (slug === "home-below" && type === "pageHeader") return false;
+                      return true;
+                    }).map((type) => (
                       <button
                         key={type}
                         type="button"
@@ -364,9 +383,11 @@ function CmsPagesAdminInner() {
                       ? block.data.title
                       : block.type === "prose" || block.type === "bullets"
                         ? block.data.heading || blockLabel(block.type)
-                        : block.type === "callout"
+                        : block.type === "callout" || block.type === "partnersIntro"
                           ? block.data.title
-                          : blockLabel(block.type);
+                          : block.type === "quickShop"
+                            ? `${block.data.tiles.length} tiles`
+                            : blockLabel(block.type);
                 return (
                 <article className="rounded-2xl border border-gray-200 bg-white shadow-sm">
                   <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2">
@@ -380,7 +401,9 @@ function CmsPagesAdminInner() {
                       <h2 className="truncate text-sm font-black text-gray-950">{title}</h2>
                     </button>
                     {(slug === "help" && block.type === "faqCategory") ||
-                    (isMarketingPageSlug(slug) && block.type !== "pageHeader") ? (
+                    (isMarketingPageSlug(slug) &&
+                      block.type !== "pageHeader" &&
+                      block.type !== "quickShop") ? (
                       <button
                         type="button"
                         onClick={() => removeBlock(block.id)}
@@ -424,6 +447,8 @@ function labelFor(slug: CmsPageSlug) {
       return "About";
     case "help":
       return "Help";
+    case "home-below":
+      return "Home below";
     case "delivery":
       return "Delivery";
     case "returns":
@@ -834,6 +859,146 @@ function MarketingBlockFields({
         >
           Add bullet
         </button>
+      </div>
+    );
+  }
+
+  if (block.type === "quickShop") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Browse-all label">
+            <input
+              value={data.browseAllLabel}
+              maxLength={80}
+              onChange={(e) => onChange({ ...block, data: { ...data, browseAllLabel: e.target.value } })}
+            />
+          </Field>
+          <Field label="Browse-all link">
+            <input
+              value={data.browseAllHref}
+              maxLength={200}
+              onChange={(e) => onChange({ ...block, data: { ...data, browseAllHref: e.target.value } })}
+            />
+          </Field>
+        </div>
+        {data.tiles.map((tile, index) => (
+          <div key={index} className="space-y-2 rounded-xl border border-gray-100 p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Tile {index + 1}</p>
+              <button
+                type="button"
+                className="text-xs font-black text-red-600 disabled:opacity-40"
+                disabled={data.tiles.length <= 1}
+                onClick={() =>
+                  onChange({
+                    ...block,
+                    data: { ...data, tiles: data.tiles.filter((_, i) => i !== index) },
+                  })
+                }
+              >
+                Remove
+              </button>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <Field label="Label">
+                <input
+                  value={tile.label}
+                  maxLength={80}
+                  onChange={(e) => {
+                    const tiles = data.tiles.map((entry, i) =>
+                      i === index ? { ...entry, label: e.target.value } : entry,
+                    );
+                    onChange({ ...block, data: { ...data, tiles } });
+                  }}
+                />
+              </Field>
+              <Field label="Hint">
+                <input
+                  value={tile.hint}
+                  maxLength={120}
+                  onChange={(e) => {
+                    const tiles = data.tiles.map((entry, i) =>
+                      i === index ? { ...entry, hint: e.target.value } : entry,
+                    );
+                    onChange({ ...block, data: { ...data, tiles } });
+                  }}
+                />
+              </Field>
+              <Field label="Fallback link">
+                <input
+                  value={tile.href}
+                  maxLength={200}
+                  onChange={(e) => {
+                    const tiles = data.tiles.map((entry, i) =>
+                      i === index ? { ...entry, href: e.target.value } : entry,
+                    );
+                    onChange({ ...block, data: { ...data, tiles } });
+                  }}
+                />
+              </Field>
+              <Field label="Category match" hint="Optional substring to match a live category name">
+                <input
+                  value={tile.categoryMatch || ""}
+                  maxLength={80}
+                  onChange={(e) => {
+                    const tiles = data.tiles.map((entry, i) =>
+                      i === index ? { ...entry, categoryMatch: e.target.value } : entry,
+                    );
+                    onChange({ ...block, data: { ...data, tiles } });
+                  }}
+                />
+              </Field>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-black disabled:opacity-40"
+          disabled={data.tiles.length >= 6}
+          onClick={() =>
+            onChange({
+              ...block,
+              data: {
+                ...data,
+                tiles: [...data.tiles, { label: "New tile", hint: "Short hint", href: "/products" }],
+              },
+            })
+          }
+        >
+          Add tile
+        </button>
+      </div>
+    );
+  }
+
+  if (block.type === "partnersIntro") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
+        <Field label="Eyebrow">
+          <input
+            value={data.eyebrow}
+            maxLength={80}
+            onChange={(e) => onChange({ ...block, data: { ...data, eyebrow: e.target.value } })}
+          />
+        </Field>
+        <Field label="Title">
+          <input
+            value={data.title}
+            maxLength={120}
+            onChange={(e) => onChange({ ...block, data: { ...data, title: e.target.value } })}
+          />
+        </Field>
+        <Field label="Subtitle">
+          <textarea
+            rows={2}
+            maxLength={240}
+            value={data.subtitle}
+            onChange={(e) => onChange({ ...block, data: { ...data, subtitle: e.target.value } })}
+          />
+        </Field>
       </div>
     );
   }

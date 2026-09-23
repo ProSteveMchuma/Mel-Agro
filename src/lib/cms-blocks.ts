@@ -265,7 +265,7 @@ export function parseBlocksPage(slug: CmsPageSlug, raw: unknown): CmsBlocksPage 
 
 export function validateBlocksPage(slug: CmsPageSlug, content: unknown) {
   if (isMarketingPageSlug(slug)) {
-    return validateMarketingBlocksPage(content);
+    return validateMarketingBlocksPage(slug, content);
   }
 
   const schema = slug === 'about' ? aboutBlocksPageSchema : helpBlocksPageSchema;

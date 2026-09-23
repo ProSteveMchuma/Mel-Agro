@@ -158,8 +158,8 @@ export default function CMSPage() {
         />
         <HubCard
           title="More site pages"
-          body="Delivery, returns, privacy, terms, contact, and bulk copy."
-          href="/dashboard/admin/cms/pages?slug=delivery"
+          body="Home below hero, delivery, returns, privacy, terms, contact, and bulk."
+          href="/dashboard/admin/cms/pages?slug=home-below"
         />
       </section>
 

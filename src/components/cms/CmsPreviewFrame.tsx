@@ -6,6 +6,7 @@ export type CmsPreviewTarget =
   | "home"
   | "about"
   | "help"
+  | "home-below"
   | "delivery"
   | "returns"
   | "privacy"
