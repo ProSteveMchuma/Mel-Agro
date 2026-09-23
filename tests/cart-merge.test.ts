@@ -184,4 +184,6 @@ test('CartContext waits for auth and uses resolveCartForAuthState', () => {
     assert.match(source, /previousUserIdRef/);
     assert.match(source, /cloudCartItemsFromDoc/);
     assert.match(source, /buildCartItem/);
+    assert.match(source, /createCartWriteQueue/);
+    assert.match(source, /cartItemsRef/);
 });

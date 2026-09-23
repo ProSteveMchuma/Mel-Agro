@@ -12,20 +12,25 @@ import {
     resolveCartForAuthState,
     sanitizeCartItems,
 } from '@/lib/cart-merge';
+import { createCartWriteQueue, shouldApplyLoadedCart } from '@/lib/cart-write-queue';
 
 interface CartContextType {
     cartItems: CartItem[];
     addToCart: (product: Product, quantity?: number, variant?: ProductVariant) => boolean;
     removeFromCart: (cartItemId: string) => void;
     updateQuantity: (cartItemId: string, quantity: number) => void;
-    clearCart: () => void;
+    clearCart: (options?: { status?: 'cleared' | 'converted'; lastOrderId?: string }) => void;
     cartTotal: number;
     cartCount: number;
     isCartOpen: boolean;
     toggleCart: () => void;
+    /** True until the first auth-aware cart load finishes. */
+    isCartReady: boolean;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
+
+const LOCAL_CART_KEY = 'Mel-Agri_cart';
 
 function getAvailableStock(product: Product, variant?: ProductVariant): number {
     const rawStock = variant?.stockQuantity ?? product.stockQuantity ?? product.stock ?? 0;
@@ -35,7 +40,7 @@ function getAvailableStock(product: Product, variant?: ProductVariant): number {
 
 function readLocalCart(): CartItem[] {
     try {
-        const localCart = localStorage.getItem('Mel-Agri_cart');
+        const localCart = localStorage.getItem(LOCAL_CART_KEY);
         if (!localCart) return [];
         return sanitizeCartItems(JSON.parse(localCart));
     } catch (e) {
@@ -44,29 +49,14 @@ function readLocalCart(): CartItem[] {
     }
 }
 
-async function persistCloudCart(
-    user: { uid: string; name?: string; email?: string; phone?: string; cartRecoveryConsent?: boolean },
-    items: CartItem[],
-    status?: 'active' | 'cleared' | 'converted',
-) {
-    const nextStatus = status || (items.length > 0 ? 'active' : 'cleared');
-    await setDoc(
-        doc(db, 'carts', user.uid),
-        {
-            userId: user.uid,
-            userName: user.name || 'Anonymous Farmer',
-            userEmail: user.email || '',
-            userPhone: user.phone || '',
-            items,
-            total: items.reduce((acc, item) => acc + item.price * item.quantity, 0),
-            itemCount: items.reduce((acc, item) => acc + item.quantity, 0),
-            updatedAt: new Date().toISOString(),
-            status: nextStatus,
-            recoveryConsent: user.cartRecoveryConsent === true,
-            cartRecoveryConsent: user.cartRecoveryConsent === true,
-        },
-        { merge: true },
-    );
+function writeLocalCart(items: CartItem[]): CartItem[] {
+    const lean = sanitizeCartItems(items);
+    try {
+        localStorage.setItem(LOCAL_CART_KEY, JSON.stringify(lean));
+    } catch (e) {
+        console.error('Failed to write local cart', e);
+    }
+    return lean;
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -76,15 +66,65 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     /** undefined = auth not settled yet; null = guest; string = last signed-in uid */
     const previousUserIdRef = useRef<string | null | undefined>(undefined);
+    const cartItemsRef = useRef<CartItem[]>([]);
+    /** Bumped on every local mutation so an in-flight load cannot clobber newer edits. */
+    const mutationGenerationRef = useRef(0);
+    const writeQueueRef = useRef(createCartWriteQueue());
+    /** Last uid we successfully targeted for cloud writes (avoids writing under a stale user object). */
+    const cloudUserIdRef = useRef<string | null>(null);
+    /** When clearCart already enqueued an authoritative empty write, skip the persist effect's duplicate. */
+    const skipNextEmptyPersistRef = useRef(false);
+
+    const userId = user?.uid ?? null;
+    const recoveryConsent = user?.cartRecoveryConsent === true;
+
+    useEffect(() => {
+        cartItemsRef.current = cartItems;
+    }, [cartItems]);
+
+    const enqueueCloudPersist = (
+        targetUser: { uid: string; name?: string; email?: string; phone?: string },
+        items: CartItem[],
+        status?: 'active' | 'cleared' | 'converted',
+        extra?: { lastOrderId?: string; convertedAt?: string },
+    ) => {
+        const lean = sanitizeCartItems(items);
+        const nextStatus = status || (lean.length > 0 ? 'active' : 'cleared');
+        cloudUserIdRef.current = targetUser.uid;
+
+        return writeQueueRef.current.enqueue(async () => {
+            // Drop writes if the shopper signed out / switched accounts since enqueue.
+            if (cloudUserIdRef.current !== targetUser.uid) return;
+
+            await setDoc(
+                doc(db, 'carts', targetUser.uid),
+                {
+                    userId: targetUser.uid,
+                    userName: targetUser.name || 'Anonymous Farmer',
+                    userEmail: targetUser.email || '',
+                    userPhone: targetUser.phone || '',
+                    items: lean,
+                    total: lean.reduce((acc, item) => acc + item.price * item.quantity, 0),
+                    itemCount: lean.reduce((acc, item) => acc + item.quantity, 0),
+                    updatedAt: new Date().toISOString(),
+                    status: nextStatus,
+                    recoveryConsent,
+                    cartRecoveryConsent: recoveryConsent,
+                    ...(extra?.lastOrderId ? { lastOrderId: extra.lastOrderId } : {}),
+                    ...(extra?.convertedAt ? { convertedAt: extra.convertedAt } : {}),
+                },
+                { merge: true },
+            );
+        });
+    };
 
     // Load cart only after auth settles so we do not re-merge local+cloud on every refresh.
-    // Depend on uid (not the whole user object) so profile snapshot updates do not reload the cart.
-    const userId = user?.uid ?? null;
     useEffect(() => {
         if (authLoading) return;
 
         let cancelled = false;
         setIsInitialLoad(true);
+        const loadGeneration = mutationGenerationRef.current;
 
         const loadCart = async () => {
             const localItems = readLocalCart();
@@ -102,6 +142,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 }
             }
 
+            if (cancelled) return;
+
+            // Shopper edited the cart while we were fetching — keep their edits.
+            if (!shouldApplyLoadedCart({
+                loadGeneration,
+                currentGeneration: mutationGenerationRef.current,
+            })) {
+                previousUserIdRef.current = nextUserId;
+                setIsInitialLoad(false);
+                return;
+            }
+
             const resolved = resolveCartForAuthState({
                 previousUserId: previousUserIdRef.current,
                 nextUserId,
@@ -109,9 +161,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 cloudItems,
             });
 
-            if (cancelled) return;
             previousUserIdRef.current = resolved.nextPreviousUserId;
+            cartItemsRef.current = resolved.items;
             setCartItems(resolved.items);
+            writeLocalCart(resolved.items);
             setIsInitialLoad(false);
         };
 
@@ -121,19 +174,31 @@ export function CartProvider({ children }: { children: ReactNode }) {
         };
     }, [userId, authLoading]);
 
-    // Persist to LocalStorage and Cloud after the load/merge settles.
+    // Persist to cloud after hydrate. Local storage is written eagerly on each mutation.
     useEffect(() => {
         if (isInitialLoad || authLoading) return;
+        if (!userId || !user) return;
 
-        const lean = sanitizeCartItems(cartItems);
-        localStorage.setItem('Mel-Agri_cart', JSON.stringify(lean));
-
-        if (user) {
-            void persistCloudCart(user, lean).catch((e) => {
-                console.error('Cloud cart sync failed', e);
-            });
+        if (cartItems.length === 0 && skipNextEmptyPersistRef.current) {
+            skipNextEmptyPersistRef.current = false;
+            return;
         }
-    }, [cartItems, user, isInitialLoad, authLoading]);
+
+        void enqueueCloudPersist(user, cartItems).catch((e) => {
+            console.error('Cloud cart sync failed', e);
+        });
+        // Intentionally depend on userId + consent flag, not the whole user object,
+        // so profile snapshot noise does not re-fire persists.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [cartItems, userId, recoveryConsent, isInitialLoad, authLoading]);
+
+    const commitItems = (next: CartItem[]) => {
+        mutationGenerationRef.current += 1;
+        const lean = writeLocalCart(next);
+        cartItemsRef.current = lean;
+        setCartItems(lean);
+        return lean;
+    };
 
     const addToCart = (product: Product, quantity = 1, variant?: ProductVariant) => {
         const availableStock = getAvailableStock(product, variant);
@@ -149,60 +214,70 @@ export function CartProvider({ children }: { children: ReactNode }) {
             return false;
         }
 
-        import('@/lib/analytics').then(({ AnalyticsService }) => {
-            AnalyticsService.logAddToCart(String(product.id));
-        });
-
-        const existing = cartItems.find((item) => item.cartItemId === line.cartItemId);
+        // Use the live ref (not a render closure) so rapid clicks merge into one
+        // line instead of appending duplicates from a stale snapshot.
+        const prev = cartItemsRef.current;
+        const existing = prev.find((item) => item.cartItemId === line.cartItemId);
         const nextQuantity = (existing?.quantity || 0) + requestedQuantity;
-
         if (nextQuantity > availableStock) {
             toast.error(`Only ${availableStock} ${line.name} available`);
             return false;
         }
 
-        if (existing) {
-            setCartItems((prev) =>
-                sanitizeCartItems(
-                    prev.map((item) =>
-                        item.cartItemId === line.cartItemId ? { ...item, quantity: nextQuantity } : item,
-                    ),
-                ),
-            );
-            toast.success(`Updated quantity for ${line.name}`);
-        } else {
-            setCartItems((prev) => sanitizeCartItems([...prev, line]));
-            toast.success(`Added ${line.name} to cart`);
-        }
+        const next = existing
+            ? prev.map((item) =>
+                item.cartItemId === line.cartItemId ? { ...item, quantity: nextQuantity } : item,
+            )
+            : [...prev, line];
+        commitItems(next);
+
+        import('@/lib/analytics').then(({ AnalyticsService }) => {
+            AnalyticsService.logAddToCart(String(product.id));
+        });
+
+        toast.success(existing ? `Updated quantity for ${line.name}` : `Added ${line.name} to cart`);
         setIsCartOpen(true);
         return true;
     };
 
     const removeFromCart = (cartItemId: string) => {
-        setCartItems((prev) => prev.filter((item) => item.cartItemId !== cartItemId));
+        commitItems(cartItemsRef.current.filter((item) => item.cartItemId !== cartItemId));
         toast.success('Removed from cart');
     };
 
     const updateQuantity = (cartItemId: string, quantity: number) => {
         if (quantity < 1) return;
-        setCartItems((prev) =>
-            prev.map((item) => {
-                if (item.cartItemId !== cartItemId) return item;
-                const availableStock = getAvailableStock(item, item.selectedVariant);
-                if (quantity > availableStock) {
-                    toast.error(`Only ${availableStock} ${item.name} available`);
-                    return item;
-                }
-                return { ...item, quantity };
-            }),
+        const prev = cartItemsRef.current;
+        const target = prev.find((item) => item.cartItemId === cartItemId);
+        if (!target) return;
+        const availableStock = getAvailableStock(target, target.selectedVariant);
+        if (quantity > availableStock) {
+            toast.error(`Only ${availableStock} ${target.name} available`);
+            return;
+        }
+        commitItems(
+            prev.map((item) => (item.cartItemId === cartItemId ? { ...item, quantity } : item)),
         );
     };
 
-    const clearCart = () => {
-        setCartItems([]);
-        localStorage.setItem('Mel-Agri_cart', JSON.stringify([]));
+    const clearCart = (options?: { status?: 'cleared' | 'converted'; lastOrderId?: string }) => {
+        const status = options?.status || 'cleared';
+        // clearCart itself enqueues the empty cloud write — don't also fire the
+        // persist effect for the same [] commit (that used to race status).
+        skipNextEmptyPersistRef.current = true;
+        commitItems([]);
         if (user) {
-            void persistCloudCart(user, [], 'cleared').catch((e) => {
+            void enqueueCloudPersist(
+                user,
+                [],
+                status,
+                status === 'converted'
+                    ? {
+                        lastOrderId: options?.lastOrderId,
+                        convertedAt: new Date().toISOString(),
+                    }
+                    : undefined,
+            ).catch((e) => {
                 console.error('Cloud cart clear failed', e);
             });
         }
@@ -227,6 +302,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 cartCount,
                 isCartOpen,
                 toggleCart,
+                isCartReady: !isInitialLoad && !authLoading,
             }}
         >
             {children}

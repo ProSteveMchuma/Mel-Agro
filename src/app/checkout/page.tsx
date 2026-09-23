@@ -532,16 +532,9 @@ export default function CheckoutPage() {
             const newOrder = createResult.order as Order;
             const authoritativeTotal = Number(newOrder.total);
 
-            // Clear line items when converting — merge:true previously left old
-            // products in Firestore, so they reappeared as "items I didn't select".
-            await setDoc(doc(db, 'carts', activeUser.uid), {
-                status: 'converted',
-                items: [],
-                itemCount: 0,
-                total: 0,
-                convertedAt: new Date().toISOString(),
-                lastOrderId: newOrder.id,
-            }, { merge: true }).catch(() => { });
+            // Clear through CartContext so the write is serialised behind any
+            // in-flight persist — a stale "active" write must not resurrect lines.
+            clearCart({ status: 'converted', lastOrderId: newOrder.id });
 
             if (data.paymentMethod === 'mpesa') {
 
