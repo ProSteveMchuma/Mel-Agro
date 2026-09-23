@@ -9,10 +9,10 @@ service cloud.firestore {
     }
     function hasPermission(permission) {
       let account = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      // Default-deny: missing adminPermissions grants nothing (super-admin excepted).
       return isAdmin() && (
         account.get('role', 'user') == 'super-admin' ||
-        !account.keys().hasAny(['adminPermissions']) ||
-        permission in account.adminPermissions
+        (account.keys().hasAny(['adminPermissions']) && permission in account.adminPermissions)
       );
     }
 
@@ -68,10 +68,10 @@ service cloud.firestore {
       allow delete: if hasPermission('customers.manage');
     }
 
-    // Transactions are written by payment APIs (Admin SDK) or admins.
+    // Transactions are written only by payment APIs (Admin SDK). No client creates.
     match /transactions/{id} {
         allow read: if isAdmin();
-        allow create: if isAdmin();
+        allow create, update, delete: if false;
     }
 
     // Settings: Public read (for shipping rates), Admin write
@@ -169,9 +169,9 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Discounts/Coupons: Public read, Admin write
+    // Discounts/Coupons: validate via /api/discounts/validate only (no public catalogue dump).
     match /discounts/{id} {
-      allow read: if true;
+      allow read: if isAdmin();
       allow write: if false;
     }
 

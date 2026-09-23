@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { verifySafaricomCallback } from '@/lib/safaricom-ips';
 import { normalizeMpesaReceipt } from '@/lib/mpesa';
-import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
+import { markOrderPaidWithReceipt } from '@/lib/mpesa-orders';
+import { reportIncident } from '@/lib/incident-reporting';
 
 export async function POST(request: Request) {
     const ipCheck = verifySafaricomCallback(request);
@@ -62,10 +63,15 @@ export async function POST(request: Request) {
         let matchedOrderId: string | null = null;
         let matchReason: string | null = null;
 
+        const amountMatchesOrder = (orderTotal: unknown) => {
+            const expected = Number(orderTotal) || 0;
+            return expected > 0 && amount > 0 && Math.abs(expected - amount) < 1;
+        };
+
         if (billRef) {
             try {
                 const direct = await adminDb.collection('orders').doc(billRef).get();
-                if (direct.exists && direct.data()?.paymentStatus !== 'Paid') {
+                if (direct.exists && direct.data()?.paymentStatus !== 'Paid' && amountMatchesOrder(direct.data()?.total)) {
                     matchedOrderId = direct.id;
                     matchReason = 'BillRefNumber=fullOrderId';
                 }
@@ -78,8 +84,9 @@ export async function POST(request: Request) {
                     .limit(50)
                     .get();
                 for (const d of prefixSnap.docs) {
-                    if (d.id.toLowerCase().startsWith(billRef.toLowerCase()) ||
-                        d.id.toLowerCase().slice(0, 8) === billRef.toLowerCase()) {
+                    const prefixHit = d.id.toLowerCase().startsWith(billRef.toLowerCase())
+                        || d.id.toLowerCase().slice(0, 8) === billRef.toLowerCase();
+                    if (prefixHit && amountMatchesOrder(d.data()?.total)) {
                         matchedOrderId = d.id;
                         matchReason = 'BillRefNumber=orderIdPrefix';
                         break;
@@ -94,7 +101,11 @@ export async function POST(request: Request) {
                 .where('claimedMpesaReceipt', '==', transID)
                 .limit(1)
                 .get();
-            if (!claimedSnap.empty && claimedSnap.docs[0].data()?.paymentStatus !== 'Paid') {
+            if (
+                !claimedSnap.empty
+                && claimedSnap.docs[0].data()?.paymentStatus !== 'Paid'
+                && amountMatchesOrder(claimedSnap.docs[0].data()?.total)
+            ) {
                 matchedOrderId = claimedSnap.docs[0].id;
                 matchReason = 'ClaimedReceipt=TransID';
             }
@@ -110,10 +121,8 @@ export async function POST(request: Request) {
             for (const d of candidates.docs) {
                 const data = d.data();
                 const orderPhone = String(data.phone || '').replace(/\D/g, '');
-                const orderTotal = Number(data.total) || 0;
                 const phoneMatches = phoneVariants.some(v => v.replace(/\D/g, '') === orderPhone || orderPhone.endsWith(v.replace(/\D/g, '').slice(-9)));
-                const amountMatches = Math.abs(orderTotal - amount) < 1;
-                if (phoneMatches && amountMatches) {
+                if (phoneMatches && amountMatchesOrder(data.total)) {
                     matchedOrderId = d.id;
                     matchReason = 'Phone+Amount';
                     break;
@@ -147,54 +156,34 @@ export async function POST(request: Request) {
             const orderSnap = await orderRef.get();
             const orderData = orderSnap.data();
 
-            if (orderData?.paymentStatus !== 'Paid') {
-                await orderRef.update({
-                    paymentStatus: 'Paid',
-                    processingAt: new Date().toISOString(),
-                    paymentMethod: 'M-Pesa Till (C2B)',
-                    transactionId: transID,
-                    mpesaReceiptNumber: transID,
-                    mpesaPhoneNumber: phone,
-                    mpesaTransactionDate: TransTime || null,
+            if (orderData?.paymentStatus !== 'Paid' && amountMatchesOrder(orderData?.total)) {
+                await markOrderPaidWithReceipt({
+                    orderId: matchedOrderId,
+                    order: orderData || {},
+                    receipt: transID,
                     amountPaid: amount,
-                    status: orderData?.status === 'Pending Payment' || !orderData?.status ? 'Processing' : orderData.status,
-                    stockReservationStatus: 'committed',
-                    paidAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    paymentResolvedVia: `C2B_AUTO_${matchReason}`,
-                });
-
-                await adminDb.collection('transactions').add({
-                    orderId: matchedOrderId,
-                    userId: orderData?.userId || null,
-                    amount,
-                    receipt: transID,
                     phone,
-                    method: 'M-Pesa Till (C2B)',
-                    date: new Date().toISOString(),
-                    status: 'Success',
+                    transactionDate: TransTime || undefined,
+                    paymentMethod: 'M-Pesa Till (C2B)',
+                    paymentResolvedVia: `C2B_AUTO_${matchReason}`,
                     recordedBy: 'System (C2B Auto-Match)',
-                    matchReason,
+                    extraOrderFields: { matchReason },
                 });
-
-                void notifyCustomerPaymentReceived({
-                    orderId: matchedOrderId,
-                    order: {
-                        ...orderData,
-                        amountPaid: amount,
-                        mpesaReceiptNumber: transID,
-                        paymentMethod: 'M-Pesa Till (C2B)',
-                    },
-                    receipt: transID,
-                    phone: phone || orderData?.phone,
-                    method: 'M-Pesa Till (C2B)',
-                });
+            } else if (orderData?.paymentStatus !== 'Paid') {
+                console.warn(`C2B match ${matchedOrderId} skipped — amount mismatch (got ${amount}, expected ${orderData?.total})`);
             }
         }
 
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     } catch (error) {
         console.error('C2B Confirmation Error:', error);
-        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+        void reportIncident({
+            type: 'callback_error',
+            severity: 'critical',
+            source: 'mpesa-c2b-confirmation',
+            message: error instanceof Error ? error.message : 'C2B confirmation failed',
+        });
+        // Non-2xx so Safaricom retries; mark-paid is idempotent.
+        return NextResponse.json({ ResultCode: 1, ResultDesc: 'Failed' }, { status: 500 });
     }
 }

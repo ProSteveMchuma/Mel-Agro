@@ -98,38 +98,55 @@ export async function POST(request: Request) {
         const data = resolved.data;
 
         if (resolved.outcome === 'paid') {
-            if (orderRef && order?.paymentStatus !== 'Paid') {
-                await orderRef.update({
-                    paymentStatus: 'Paid',
-                    paymentMethod: order.paymentMethod || 'M-Pesa',
-                    status: order.status === 'Pending Payment' || !order.status ? 'Processing' : order.status,
-                    processingAt: new Date().toISOString(),
-                    stockReservationStatus: 'committed',
-                    paidAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    paymentFailureReason: null,
-                    paymentFailureCode: null,
-                    paymentFailureMessage: null,
-                    paymentResolvedVia: 'STK_QUERY',
+            const receipt = String(
+                (data as { CallbackMetadata?: { Item?: Array<{ Name: string; Value: unknown }> } })
+                    ?.CallbackMetadata?.Item?.find((item) => item.Name === 'MpesaReceiptNumber')?.Value
+                || order?.mpesaReceiptNumber
+                || order?.transactionId
+                || '',
+            ).trim();
+
+            // STK query ResultCode=0 alone is not proof — require a receipt (or existing one on the order).
+            if (!receipt) {
+                return NextResponse.json({
+                    success: true,
+                    paid: false,
+                    paymentStatus: order?.paymentStatus || 'Unpaid',
+                    resultCode,
+                    resultDesc: resultDesc || 'STK reported success but no receipt yet — waiting for callback',
+                    pendingReceipt: true,
                 });
             }
-            await notifyCustomerPaymentReceived({
-                orderId,
-                order: {
-                    ...order,
-                    paymentStatus: 'Paid',
+
+            if (orderRef && order?.paymentStatus !== 'Paid') {
+                const { markOrderPaidWithReceipt } = await import('@/lib/mpesa-orders');
+                await markOrderPaidWithReceipt({
+                    orderId,
+                    order,
+                    receipt,
                     paymentMethod: order.paymentMethod || 'M-Pesa',
-                },
-                receipt: order?.mpesaReceiptNumber || order?.transactionId,
-                method: order?.paymentMethod || 'M-Pesa',
-            });
+                    paymentResolvedVia: 'STK_QUERY',
+                    recordedBy: 'System (STK Query)',
+                });
+            } else if (!order?.paymentSmsSentAt) {
+                await notifyCustomerPaymentReceived({
+                    orderId,
+                    order: {
+                        ...order,
+                        paymentStatus: 'Paid',
+                        paymentMethod: order.paymentMethod || 'M-Pesa',
+                        mpesaReceiptNumber: receipt,
+                    },
+                    receipt,
+                    method: order?.paymentMethod || 'M-Pesa',
+                });
+            }
             return NextResponse.json({
                 success: true,
                 paid: true,
                 paymentStatus: 'Paid',
                 resultCode,
-                receipt: order?.mpesaReceiptNumber || order?.transactionId || null,
-                message: 'Payment confirmed',
+                receipt,
             });
         }
 

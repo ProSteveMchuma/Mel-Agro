@@ -12,12 +12,16 @@ export const ORDER_ACCESS_TTL_MS: Record<Exclude<OrderAccessAction, 'rs'>, numbe
 export const RETURN_SESSION_TTL_MS = 15 * 60 * 1000;
 
 function accessSecret(): string {
-    return (
+    const secret =
         process.env.ORDER_ACCESS_SECRET ||
         process.env.OTP_PEPPER ||
-        process.env.FIREBASE_PRIVATE_KEY ||
-        'melagri-order-access-dev'
-    ).slice(0, 120);
+        '';
+    if (secret.trim()) return secret.trim().slice(0, 120);
+
+    if (process.env.NODE_ENV === 'production') {
+        throw new Error('ORDER_ACCESS_SECRET (or OTP_PEPPER) must be configured in production');
+    }
+    return 'melagri-order-access-dev';
 }
 
 export function phoneAccessKey(raw?: string | null): string {

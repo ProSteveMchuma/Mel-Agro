@@ -131,6 +131,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     } catch (error) {
         console.error('Status Result Error:', error);
-        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+        return NextResponse.json({ ResultCode: 1, ResultDesc: 'Failed' }, { status: 500 });
     }
 }
