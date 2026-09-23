@@ -2,8 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { cartLineKey, mergeCartItems, resolveCartForAuthState } from '../src/lib/cart-merge.ts';
-import type { CartItem } from '../src/types/index.ts';
+import {
+    buildCartItem,
+    cartLineKey,
+    cloudCartItemsFromDoc,
+    mergeCartItems,
+    resolveCartForAuthState,
+    sanitizeCartItems,
+} from '../src/lib/cart-merge.ts';
+import type { CartItem, Product } from '../src/types/index.ts';
 
 function line(partial: Partial<CartItem> & { id: string; name: string; price: number; quantity: number }): CartItem {
     return {
@@ -12,14 +19,66 @@ function line(partial: Partial<CartItem> & { id: string; name: string; price: nu
         image: '',
         inStock: true,
         stockQuantity: partial.stockQuantity ?? 99,
+        lowStockThreshold: 10,
+        rating: 0,
+        reviews: 0,
         ...partial,
     } as CartItem;
 }
 
-test('cartLineKey prefers cartItemId then product-variant', () => {
-    assert.equal(cartLineKey({ cartItemId: 'a-1', id: 'a' }), 'a-1');
+test('cartLineKey uses product id and variant, ignoring stale cartItemId', () => {
+    assert.equal(cartLineKey({ cartItemId: 'stale', id: 'a' }), 'a');
     assert.equal(cartLineKey({ id: 'seed', selectedVariant: { id: '5kg' } }), 'seed-5kg');
     assert.equal(cartLineKey({ id: 'seed' }), 'seed');
+});
+
+test('buildCartItem keeps a lean line for one selected product', () => {
+    const product = {
+        id: 'seed-1',
+        name: 'Hybrid Maize',
+        price: 450,
+        category: 'Seeds',
+        image: 'https://example.com/a.png',
+        rating: 0,
+        reviews: 0,
+        inStock: true,
+        stockQuantity: 12,
+        lowStockThreshold: 2,
+        description: 'long text that should not bloat the cart',
+        features: ['a', 'b'],
+        variants: [
+            { id: '2kg', name: '2kg', price: 450, stockQuantity: 12 },
+            { id: '5kg', name: '5kg', price: 900, stockQuantity: 4 },
+        ],
+    } as Product;
+
+    const lineItem = buildCartItem(product, 1, product.variants![0]);
+    assert.ok(lineItem);
+    assert.equal(lineItem!.cartItemId, 'seed-1-2kg');
+    assert.equal(lineItem!.quantity, 1);
+    assert.equal(lineItem!.price, 450);
+    assert.equal((lineItem as any).features, undefined);
+    assert.equal((lineItem as any).description, undefined);
+    assert.equal((lineItem as any).variants, undefined);
+});
+
+test('sanitizeCartItems drops corrupt rows and does not invent catalogue lines', () => {
+    const cleaned = sanitizeCartItems([
+        line({ id: 'ok', name: 'Ok', price: 10, quantity: 1 }),
+        { name: 'No id', price: 1, quantity: 1 },
+        null,
+        'junk',
+        { id: 'x', name: '', price: 1, quantity: 1 },
+    ]);
+    assert.equal(cleaned.length, 1);
+    assert.equal(cleaned[0].id, 'ok');
+});
+
+test('cloudCartItemsFromDoc ignores converted and cleared carts', () => {
+    const items = [line({ id: 'old', name: 'Old', price: 10, quantity: 3 })];
+    assert.equal(cloudCartItemsFromDoc({ status: 'converted', items }).length, 0);
+    assert.equal(cloudCartItemsFromDoc({ status: 'cleared', items }).length, 0);
+    assert.equal(cloudCartItemsFromDoc({ status: 'active', items }).length, 1);
 });
 
 test('mergeCartItems keeps unique lines from both carts', () => {
@@ -123,4 +182,6 @@ test('CartContext waits for auth and uses resolveCartForAuthState', () => {
     assert.match(source, /resolveCartForAuthState/);
     assert.match(source, /authLoading/);
     assert.match(source, /previousUserIdRef/);
+    assert.match(source, /cloudCartItemsFromDoc/);
+    assert.match(source, /buildCartItem/);
 });

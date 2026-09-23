@@ -532,11 +532,15 @@ export default function CheckoutPage() {
             const newOrder = createResult.order as Order;
             const authoritativeTotal = Number(newOrder.total);
 
-            // Mark cart as converted for analytics
+            // Clear line items when converting — merge:true previously left old
+            // products in Firestore, so they reappeared as "items I didn't select".
             await setDoc(doc(db, 'carts', activeUser.uid), {
                 status: 'converted',
+                items: [],
+                itemCount: 0,
+                total: 0,
                 convertedAt: new Date().toISOString(),
-                lastOrderId: newOrder.id
+                lastOrderId: newOrder.id,
             }, { merge: true }).catch(() => { });
 
             if (data.paymentMethod === 'mpesa') {

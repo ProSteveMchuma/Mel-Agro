@@ -6,7 +6,12 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { resolveCartForAuthState } from '@/lib/cart-merge';
+import {
+    buildCartItem,
+    cloudCartItemsFromDoc,
+    resolveCartForAuthState,
+    sanitizeCartItems,
+} from '@/lib/cart-merge';
 
 interface CartContextType {
     cartItems: CartItem[];
@@ -32,12 +37,36 @@ function readLocalCart(): CartItem[] {
     try {
         const localCart = localStorage.getItem('Mel-Agri_cart');
         if (!localCart) return [];
-        const parsed = JSON.parse(localCart);
-        return Array.isArray(parsed) ? (parsed as CartItem[]) : [];
+        return sanitizeCartItems(JSON.parse(localCart));
     } catch (e) {
         console.error('Failed to parse local cart', e);
         return [];
     }
+}
+
+async function persistCloudCart(
+    user: { uid: string; name?: string; email?: string; phone?: string; cartRecoveryConsent?: boolean },
+    items: CartItem[],
+    status?: 'active' | 'cleared' | 'converted',
+) {
+    const nextStatus = status || (items.length > 0 ? 'active' : 'cleared');
+    await setDoc(
+        doc(db, 'carts', user.uid),
+        {
+            userId: user.uid,
+            userName: user.name || 'Anonymous Farmer',
+            userEmail: user.email || '',
+            userPhone: user.phone || '',
+            items,
+            total: items.reduce((acc, item) => acc + item.price * item.quantity, 0),
+            itemCount: items.reduce((acc, item) => acc + item.quantity, 0),
+            updatedAt: new Date().toISOString(),
+            status: nextStatus,
+            recoveryConsent: user.cartRecoveryConsent === true,
+            cartRecoveryConsent: user.cartRecoveryConsent === true,
+        },
+        { merge: true },
+    );
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -66,8 +95,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 try {
                     const cartDoc = await getDoc(doc(db, 'carts', nextUserId));
                     if (cartDoc.exists()) {
-                        const raw = cartDoc.data().items;
-                        cloudItems = Array.isArray(raw) ? (raw as CartItem[]) : [];
+                        cloudItems = cloudCartItemsFromDoc(cartDoc.data() as Record<string, unknown>);
                     }
                 } catch (e) {
                     console.error('Failed to sync cloud cart', e);
@@ -97,31 +125,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     useEffect(() => {
         if (isInitialLoad || authLoading) return;
 
-        localStorage.setItem('Mel-Agri_cart', JSON.stringify(cartItems));
+        const lean = sanitizeCartItems(cartItems);
+        localStorage.setItem('Mel-Agri_cart', JSON.stringify(lean));
 
         if (user) {
-            const syncCart = async () => {
-                try {
-                    await setDoc(doc(db, 'carts', user.uid), {
-                        userId: user.uid,
-                        userName: user.name || 'Anonymous Farmer',
-                        userEmail: user.email || '',
-                        userPhone: user.phone || '',
-                        items: cartItems,
-                        total: cartItems.reduce((acc, item) => acc + (item.price * item.quantity), 0),
-                        itemCount: cartItems.reduce((acc, item) => acc + item.quantity, 0),
-                        updatedAt: new Date().toISOString(),
-                        status: cartItems.length > 0 ? 'active' : 'cleared',
-                        // Keep both keys: admin API historically used recoveryConsent;
-                        // automation-engine reads cartRecoveryConsent.
-                        recoveryConsent: user.cartRecoveryConsent === true,
-                        cartRecoveryConsent: user.cartRecoveryConsent === true,
-                    }, { merge: true });
-                } catch (e) {
-                    console.error('Cloud cart sync failed', e);
-                }
-            };
-            void syncCart();
+            void persistCloudCart(user, lean).catch((e) => {
+                console.error('Cloud cart sync failed', e);
+            });
         }
     }, [cartItems, user, isInitialLoad, authLoading]);
 
@@ -133,80 +143,92 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         const requestedQuantity = Math.max(1, Math.floor(quantity));
+        const line = buildCartItem(product, requestedQuantity, variant);
+        if (!line) {
+            toast.error('Could not add that product to the cart');
+            return false;
+        }
+
         import('@/lib/analytics').then(({ AnalyticsService }) => {
             AnalyticsService.logAddToCart(String(product.id));
         });
 
-        const cartItemId = variant ? `${product.id}-${variant.id}` : String(product.id);
-        const itemPrice = variant?.price || product.price;
-        const itemName = variant ? `${product.name} (${variant.name})` : product.name;
-        const existing = cartItems.find(item => item.cartItemId === cartItemId);
+        const existing = cartItems.find((item) => item.cartItemId === line.cartItemId);
         const nextQuantity = (existing?.quantity || 0) + requestedQuantity;
 
         if (nextQuantity > availableStock) {
-            toast.error(`Only ${availableStock} ${itemName} available`);
+            toast.error(`Only ${availableStock} ${line.name} available`);
             return false;
         }
 
         if (existing) {
-            setCartItems(prev => prev.map(item =>
-                    item.cartItemId === cartItemId
-                        ? { ...item, quantity: nextQuantity }
-                        : item
-                ));
-            toast.success(`Updated quantity for ${itemName}`);
+            setCartItems((prev) =>
+                sanitizeCartItems(
+                    prev.map((item) =>
+                        item.cartItemId === line.cartItemId ? { ...item, quantity: nextQuantity } : item,
+                    ),
+                ),
+            );
+            toast.success(`Updated quantity for ${line.name}`);
         } else {
-            setCartItems(prev => [
-                ...prev,
-                { ...product, cartItemId, quantity: requestedQuantity, selectedVariant: variant, price: itemPrice },
-            ]);
-            toast.success(`Added ${itemName} to cart`);
+            setCartItems((prev) => sanitizeCartItems([...prev, line]));
+            toast.success(`Added ${line.name} to cart`);
         }
         setIsCartOpen(true);
         return true;
     };
 
     const removeFromCart = (cartItemId: string) => {
-        setCartItems(prev => prev.filter(item => item.cartItemId !== cartItemId));
+        setCartItems((prev) => prev.filter((item) => item.cartItemId !== cartItemId));
         toast.success('Removed from cart');
     };
 
     const updateQuantity = (cartItemId: string, quantity: number) => {
         if (quantity < 1) return;
-        setCartItems(prev => prev.map(item => {
-            if (item.cartItemId !== cartItemId) return item;
-            const availableStock = getAvailableStock(item, item.selectedVariant);
-            if (quantity > availableStock) {
-                toast.error(`Only ${availableStock} ${item.name} available`);
-                return item;
-            }
-            return { ...item, quantity };
-        }));
+        setCartItems((prev) =>
+            prev.map((item) => {
+                if (item.cartItemId !== cartItemId) return item;
+                const availableStock = getAvailableStock(item, item.selectedVariant);
+                if (quantity > availableStock) {
+                    toast.error(`Only ${availableStock} ${item.name} available`);
+                    return item;
+                }
+                return { ...item, quantity };
+            }),
+        );
     };
 
     const clearCart = () => {
         setCartItems([]);
+        localStorage.setItem('Mel-Agri_cart', JSON.stringify([]));
+        if (user) {
+            void persistCloudCart(user, [], 'cleared').catch((e) => {
+                console.error('Cloud cart clear failed', e);
+            });
+        }
     };
 
     const toggleCart = () => {
-        setIsCartOpen(prev => !prev);
+        setIsCartOpen((prev) => !prev);
     };
 
-    const cartTotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    const cartTotal = cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
     const cartCount = cartItems.reduce((count, item) => count + item.quantity, 0);
 
     return (
-        <CartContext.Provider value={{
-            cartItems,
-            addToCart,
-            removeFromCart,
-            updateQuantity,
-            clearCart,
-            cartTotal,
-            cartCount,
-            isCartOpen,
-            toggleCart
-        }}>
+        <CartContext.Provider
+            value={{
+                cartItems,
+                addToCart,
+                removeFromCart,
+                updateQuantity,
+                clearCart,
+                cartTotal,
+                cartCount,
+                isCartOpen,
+                toggleCart,
+            }}
+        >
             {children}
         </CartContext.Provider>
     );
