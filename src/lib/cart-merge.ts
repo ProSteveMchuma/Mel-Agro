@@ -28,6 +28,27 @@ function normalizeLine(item: CartItem): CartItem {
     return { ...item, cartItemId: key, quantity };
 }
 
+export function normalizeCartItems(items: CartItem[]): CartItem[] {
+    const map = new Map<string, CartItem>();
+    for (const raw of items) {
+        if (!raw || raw.id == null) continue;
+        const line = normalizeLine(raw);
+        const existing = map.get(line.cartItemId);
+        if (!existing) {
+            map.set(line.cartItemId, line);
+            continue;
+        }
+        const summed = existing.quantity + line.quantity;
+        const cap = stockCap(line) || stockCap(existing);
+        map.set(line.cartItemId, {
+            ...existing,
+            ...line,
+            quantity: cap > 0 ? Math.min(summed, cap) : summed,
+        });
+    }
+    return Array.from(map.values());
+}
+
 /**
  * Merge guest (local) and account (cloud) carts by line key.
  * Quantities are summed; when stock is known on either line, the total is capped.
@@ -64,4 +85,40 @@ export function mergeCartItems(localItems: CartItem[], cloudItems: CartItem[]): 
     }
 
     return Array.from(map.values());
+}
+
+/**
+ * Decide which cart to show when auth state settles.
+ *
+ * - Guest (`nextUserId` null): local only.
+ * - Login / account switch (`previousUserId` was null or a different uid): sum-merge once.
+ * - Cold refresh while already signed in (`previousUserId` undefined, or same uid):
+ *   cloud is source of truth (local is only a cache of the last sync — summing would double).
+ */
+export function resolveCartForAuthState(args: {
+    previousUserId: string | null | undefined;
+    nextUserId: string | null;
+    localItems: CartItem[];
+    cloudItems: CartItem[];
+}): { items: CartItem[]; nextPreviousUserId: string | null } {
+    const { previousUserId, nextUserId, localItems, cloudItems } = args;
+
+    if (!nextUserId) {
+        return { items: normalizeCartItems(localItems), nextPreviousUserId: null };
+    }
+
+    const loggedInFromGuest = previousUserId === null;
+    const switchedAccount = typeof previousUserId === 'string' && previousUserId !== nextUserId;
+    if (loggedInFromGuest || switchedAccount) {
+        return {
+            items: mergeCartItems(localItems, cloudItems),
+            nextPreviousUserId: nextUserId,
+        };
+    }
+
+    if (cloudItems.length > 0) {
+        return { items: normalizeCartItems(cloudItems), nextPreviousUserId: nextUserId };
+    }
+
+    return { items: normalizeCartItems(localItems), nextPreviousUserId: nextUserId };
 }
