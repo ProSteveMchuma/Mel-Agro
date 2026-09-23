@@ -222,10 +222,10 @@ export default function SettingsPage() {
                 )}
             </div>
 
-            <div className="mt-8">
+            <div className="mt-8 space-y-3">
                 <a
                     href="/dashboard/admin/settings/mpesa"
-                    className="inline-flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 border border-green-200 rounded-2xl transition-all group"
+                    className="inline-flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 border border-green-200 rounded-2xl transition-all group w-full max-w-xl"
                 >
                     <span className="text-2xl">📱</span>
                     <div>
@@ -234,6 +234,17 @@ export default function SettingsPage() {
                     </div>
                     <span className="ml-4 text-green-600 group-hover:translate-x-1 transition-transform">→</span>
                 </a>
+                <Link
+                    href="/dashboard/admin/settings/staff-roles"
+                    className="inline-flex items-center gap-3 px-6 py-4 bg-gradient-to-r from-slate-50 to-gray-50 hover:from-slate-100 hover:to-gray-100 border border-slate-200 rounded-2xl transition-all group w-full max-w-xl"
+                >
+                    <span className="text-2xl">🔐</span>
+                    <div>
+                        <p className="font-black text-gray-900 text-sm">Staff roles</p>
+                        <p className="text-xs text-gray-500">Create roles with checkboxes for portal permissions</p>
+                    </div>
+                    <span className="ml-4 text-slate-600 group-hover:translate-x-1 transition-transform">→</span>
+                </Link>
             </div>
         </div>
     );
