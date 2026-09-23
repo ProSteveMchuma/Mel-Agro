@@ -3,7 +3,30 @@ import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
 
-const bannerSchema = z.object({ id: z.string().min(1).max(80), title: z.string().trim().min(1).max(100), subtitle: z.string().trim().max(180), description: z.string().trim().max(500).optional(), image: z.string().trim().url().refine((value) => value.startsWith("https://"), "Banner images must use HTTPS."), link: z.string().trim().max(500).refine((value) => value.startsWith("/") || value.startsWith("https://"), "Links must be internal paths or HTTPS URLs."), active: z.boolean() });
+const bannerSchema = z.object({
+  id: z.string().min(1).max(80),
+  title: z.string().trim().min(1).max(100),
+  subtitle: z.string().trim().max(180),
+  description: z.string().trim().max(500).optional(),
+  image: z
+    .string()
+    .trim()
+    .min(1)
+    .max(1000)
+    .refine(
+      (value) => value.startsWith("https://") || (value.startsWith("/") && !value.startsWith("//")),
+      "Banner images must use HTTPS or a site path starting with /.",
+    ),
+  link: z
+    .string()
+    .trim()
+    .max(500)
+    .refine(
+      (value) => value.startsWith("/") || value.startsWith("https://"),
+      "Links must be internal paths or HTTPS URLs.",
+    ),
+  active: z.boolean(),
+});
 const contentSchema = z.object({ action: z.enum(["saveDraft", "publish"]), version: z.number().int().min(0), banners: z.array(bannerSchema).max(8) });
 
 export async function GET(request: Request) {

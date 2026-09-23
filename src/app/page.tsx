@@ -11,29 +11,27 @@ import Hero from "@/components/Hero";
 import Newsletter from "@/components/Newsletter";
 import { getAllProductsServerCached, getFeaturedProductsCached, getUniqueCategoriesCached } from '@/lib/products-server';
 import { slugifySeoValue } from '@/lib/seo';
-
-const QUICK_SHOP = [
-  { label: 'Seeds', match: /seed/i, href: '/categories/seeds', hint: 'Maize, veg & pasture' },
-  { label: 'Fertilizers', match: /fertiliz/i, href: '/categories/fertilizers', hint: 'Planting & top dress' },
-  { label: 'Crop protection', match: /protect|chemical|pesticid|herbicide|insecticide/i, href: '/categories/crop-protection', hint: 'Herbicides & sprays' },
-] as const;
+import { getLiveCmsPage } from '@/lib/cms-pages-server';
+import {
+  partnersIntroFromBlocks,
+  quickShopFromBlocks,
+  resolveQuickShopTiles,
+  type MarketingBlocksPage,
+} from '@/lib/cms-marketing';
 
 // Server Component
 export default async function Home() {
-  const [categories, featuredProducts, allProducts] = await Promise.all([
+  const [categories, featuredProducts, allProducts, homeBelow] = await Promise.all([
     getUniqueCategoriesCached(),
     getFeaturedProductsCached(5),
-    getAllProductsServerCached(24)
+    getAllProductsServerCached(24),
+    getLiveCmsPage('home-below'),
   ]);
 
-  const quickLinks = QUICK_SHOP.map((item) => {
-    const found = categories.find((category) => item.match.test(category));
-    return {
-      label: item.label,
-      hint: item.hint,
-      href: found ? `/categories/${slugifySeoValue(found)}` : item.href,
-    };
-  });
+  const below = homeBelow.content as MarketingBlocksPage;
+  const quickShop = quickShopFromBlocks(below.blocks);
+  const partners = partnersIntroFromBlocks(below.blocks);
+  const quickLinks = resolveQuickShopTiles(quickShop.tiles, categories, slugifySeoValue);
 
   return (
     <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-green-100 selection:text-green-900">
@@ -44,7 +42,7 @@ export default async function Home() {
         {/* Brand-first hero (CMS banners when published) */}
         <Hero />
 
-        {/* One clear job: pick what to shop */}
+        {/* One clear job: pick what to shop (CMS home-below) */}
         <section className="container-custom -mt-2 mb-10" aria-label="Shop farm inputs">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {quickLinks.map((link) => (
@@ -62,8 +60,8 @@ export default async function Home() {
             ))}
           </div>
           <div className="mt-4 flex justify-center sm:justify-end">
-            <Link href="/products" className="text-xs font-black uppercase tracking-widest text-green-700 hover:underline">
-              Browse all farm inputs →
+            <Link href={quickShop.browseAllHref} className="text-xs font-black uppercase tracking-widest text-green-700 hover:underline">
+              {quickShop.browseAllLabel}
             </Link>
           </div>
         </section>
@@ -94,7 +92,7 @@ export default async function Home() {
           </div>
         </section>
 
-        <Partners />
+        <Partners eyebrow={partners.eyebrow} title={partners.title} subtitle={partners.subtitle} />
         <Newsletter />
       </main>
       <Footer />

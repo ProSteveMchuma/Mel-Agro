@@ -3,10 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import CmsPreviewFrame from "@/components/cms/CmsPreviewFrame";
 import SortableBlockList from "@/components/cms/SortableBlockList";
+import { waitForAuthToken } from "@/lib/wait-for-auth-token";
 
 type Banner = {
   id: string;
@@ -45,7 +45,7 @@ export default function CMSPage() {
       setLoading(true);
       setError("");
       try {
-        const token = await getAuth().currentUser?.getIdToken();
+        const token = await waitForAuthToken();
         if (!token) throw new Error("Admin session is unavailable.");
         const response = await fetch("/api/admin/content", {
           headers: { Authorization: `Bearer ${token}` },
@@ -71,7 +71,7 @@ export default function CMSPage() {
     if (action === "publish" && !window.confirm("Publish this draft to the live homepage now?")) return;
     setSaving(true);
     try {
-      const token = await getAuth().currentUser?.getIdToken();
+      const token = await waitForAuthToken();
       if (!token) throw new Error("Admin session is unavailable.");
       const response = await fetch("/api/admin/content", {
         method: "PUT",
@@ -103,10 +103,25 @@ export default function CMSPage() {
   function saveBanner(event: React.FormEvent) {
     event.preventDefault();
     if (!editing) return;
+    const image = editing.image.trim();
+    const link = editing.link.trim();
+    if (!editing.title.trim()) {
+      toast.error("Headline is required.");
+      return;
+    }
+    if (!(image.startsWith("https://") || image.startsWith("/"))) {
+      toast.error("Image must be an HTTPS URL or a site path starting with /.");
+      return;
+    }
+    if (!(link.startsWith("https://") || link.startsWith("/"))) {
+      toast.error("Button destination must be an internal path or HTTPS URL.");
+      return;
+    }
+    const next: Banner = { ...editing, image, link, title: editing.title.trim() };
     setBanners((current) =>
-      current.some((item) => item.id === editing.id)
-        ? current.map((item) => (item.id === editing.id ? editing : item))
-        : [...current, editing],
+      current.some((item) => item.id === next.id)
+        ? current.map((item) => (item.id === next.id ? next : item))
+        : [...current, next],
     );
     setEditing(null);
   }
@@ -124,7 +139,7 @@ export default function CMSPage() {
         </p>
       </header>
 
-      <section className="grid gap-3 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <HubCard
           active
           title="Homepage banners"
@@ -140,6 +155,11 @@ export default function CMSPage() {
           title="Help centre"
           body="FAQ categories and answers on /help — payments, delivery, returns."
           href="/dashboard/admin/cms/pages?slug=help"
+        />
+        <HubCard
+          title="More site pages"
+          body="Home below hero, delivery, returns, privacy, terms, contact, and bulk."
+          href="/dashboard/admin/cms/pages?slug=home-below"
         />
       </section>
 
@@ -327,13 +347,14 @@ export default function CMSPage() {
                   onChange={(event) => setEditing({ ...editing, description: event.target.value })}
                 />
               </Field>
-              <Field label="Image URL (HTTPS)" hint="Must start with https:// — paste a hosted image link">
+              <Field label="Image URL" hint="HTTPS link (https://…) or a site path (/images/…).">
                 <input
                   required
-                  type="url"
-                  pattern="https://.*"
+                  type="text"
+                  inputMode="url"
                   value={editing.image}
                   onChange={(event) => setEditing({ ...editing, image: event.target.value })}
+                  placeholder="https://… or /images/banner.png"
                 />
               </Field>
               <Field label="Button destination" hint="Where Shop Now goes — e.g. /products or /categories/seeds">

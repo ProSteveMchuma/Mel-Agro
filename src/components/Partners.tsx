@@ -35,20 +35,30 @@ function PartnerGroup({ duplicate = false }: { duplicate?: boolean }) {
   );
 }
 
-export default function Partners() {
+export default function Partners({
+  eyebrow = 'Quality you can trust',
+  title = 'Our Partners',
+  subtitle = 'Trusted agricultural brands available through Mel-Agri',
+}: {
+  eyebrow?: string;
+  title?: string;
+  subtitle?: string;
+} = {}) {
   return (
     <section
       className="partners-section py-16 bg-gray-50 relative overflow-hidden rounded-[3rem] mx-4 md:mx-8 my-8 border border-gray-100 shadow-sm"
       aria-labelledby="partners-heading"
     >
       <div className="container-custom mb-10 flex flex-col items-center relative z-10 text-center">
-        <span className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-melagri-primary">
-          Quality you can trust
-        </span>
+        {eyebrow ? (
+          <span className="mb-3 text-xs font-black uppercase tracking-[0.22em] text-melagri-primary">
+            {eyebrow}
+          </span>
+        ) : null}
         <h2 id="partners-heading" className="text-3xl font-black text-gray-900 tracking-tighter mb-2">
-          Our Partners
+          {title}
         </h2>
-        <p className="text-gray-500 font-medium">Trusted agricultural brands available through Mel-Agri</p>
+        {subtitle ? <p className="text-gray-500 font-medium">{subtitle}</p> : null}
       </div>
 
       <div className="partners-marquee" aria-label="Partner logos">

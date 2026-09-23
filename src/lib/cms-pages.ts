@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { MARKETING_PAGE_SLUGS } from './cms-marketing.ts';
 
-export const CMS_PAGE_SLUGS = ['about', 'help'] as const;
+export const CMS_PAGE_SLUGS = ['about', 'help', ...MARKETING_PAGE_SLUGS] as const;
 export type CmsPageSlug = (typeof CMS_PAGE_SLUGS)[number];
 
 export function isCmsPageSlug(value: string): value is CmsPageSlug {
@@ -196,10 +197,14 @@ export const DEFAULT_HELP_PAGE: HelpPageContent = {
 };
 
 export function defaultPageContent(slug: CmsPageSlug): CmsPageContent {
-  return slug === 'about' ? DEFAULT_ABOUT_PAGE : DEFAULT_HELP_PAGE;
+  if (slug === 'about') return DEFAULT_ABOUT_PAGE;
+  if (slug === 'help') return DEFAULT_HELP_PAGE;
+  // Marketing pages use block defaults via cms-blocks / cms-marketing.
+  return DEFAULT_HELP_PAGE;
 }
 
 export function parsePageContent(slug: CmsPageSlug, raw: unknown): CmsPageContent {
+  if (slug !== 'about' && slug !== 'help') return defaultPageContent(slug);
   const schema = slug === 'about' ? aboutPageSchema : helpPageSchema;
   const parsed = schema.safeParse(raw);
   if (!parsed.success) return defaultPageContent(slug);

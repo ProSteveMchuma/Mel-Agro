@@ -1,13 +1,17 @@
-import Header from "@/components/Header";
-import Footer from "@/components/Footer";
-import Link from "next/link";
-import { Metadata } from 'next';
-import { whatsAppUrl, SUPPORT_PHONE_E164, SUPPORT_PHONE_DISPLAY } from "@/lib/site";
-import ContactForm from "@/components/ContactForm";
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import Link from 'next/link';
+import type { Metadata } from 'next';
+import { whatsAppUrl, SUPPORT_PHONE_E164, SUPPORT_PHONE_DISPLAY } from '@/lib/site';
+import ContactForm from '@/components/ContactForm';
+import MarketingPageView from '@/components/cms/MarketingPageView';
+import { getLiveCmsPage } from '@/lib/cms-pages-server';
+import type { MarketingBlocksPage } from '@/lib/cms-marketing';
 
 export const metadata: Metadata = {
-    title: "Agrovet Customer Support & Location in Nairobi",
-    description: "Get in touch with Mel-Agri for inquiries about crop fertilizers, hybrid seeds, and bulk farm orders. Reach our agronomy support team in Nairobi via Phone, Email or WhatsApp.",
+    title: 'Agrovet Customer Support & Location in Nairobi',
+    description:
+        'Get in touch with Mel-Agri for inquiries about crop fertilizers, hybrid seeds, and bulk farm orders. Reach our agronomy support team in Nairobi via Phone, Email or WhatsApp.',
     alternates: { canonical: '/contact' },
     openGraph: {
         title: 'Contact Mel-Agri | Agrovet Customer Support & Location Nairobi',
@@ -16,153 +20,63 @@ export const metadata: Metadata = {
     },
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+    const { content } = await getLiveCmsPage('contact');
+
     return (
         <div className="min-h-screen flex flex-col bg-gray-50 font-sans">
             <Header />
-
             <main className="flex-grow py-12 px-4">
-                <div className="max-w-7xl mx-auto">
-                    {/* Header */}
-                    <div className="mb-16 text-center lg:text-left">
-                        <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Contact Mel-Agri</h1>
-                        <p className="text-lg text-gray-600">Bringing Quality Agricultural Inputs online in Kenya and Beyond. Reach out with your orders or partnerships.</p>
+                <div className="mx-auto max-w-7xl space-y-12">
+                    <div className="rounded-3xl border border-gray-100 bg-white p-8 shadow-sm md:p-10">
+                        <MarketingPageView content={content as MarketingBlocksPage} />
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
-                        {/* Contact Form */}
-                        <div className="bg-white rounded-2xl p-8 border border-gray-200">
-                            <h2 className="text-2xl font-bold text-gray-900 mb-8">Send us a message</h2>
-
+                    <div className="grid grid-cols-1 gap-12 lg:grid-cols-2">
+                        <div className="rounded-2xl border border-gray-200 bg-white p-8">
+                            <h2 className="mb-8 text-2xl font-bold text-gray-900">Send us a message</h2>
                             <ContactForm />
                         </div>
 
-                        {/* Contact Information */}
                         <div className="space-y-6">
-                            {/* Info Card */}
-                            <div className="bg-white rounded-2xl p-8 border border-gray-200 h-full">
-                                <h3 className="text-xl font-bold text-gray-900 mb-6">Contact Information</h3>
-
+                            <div className="h-full rounded-2xl border border-gray-200 bg-white p-8">
+                                <h3 className="mb-6 text-xl font-bold text-gray-900">Contact Information</h3>
                                 <div className="space-y-6">
-                                    {/* Phone */}
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-melagri-primary/10 flex items-center justify-center flex-shrink-0">
-                                            <span className="text-lg">📞</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-500 uppercase">Phone Support</p>
-                                            <p className="text-lg font-bold text-gray-900">{SUPPORT_PHONE_DISPLAY}</p>
-                                        </div>
+                                    <div>
+                                        <p className="text-sm font-bold uppercase text-gray-500">Phone Support</p>
+                                        <p className="text-lg font-bold text-gray-900">{SUPPORT_PHONE_DISPLAY}</p>
                                     </div>
-
-                                    {/* Email */}
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-melagri-primary/10 flex items-center justify-center flex-shrink-0">
-                                            <span className="text-lg">✉️</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-500 uppercase">Email</p>
-                                            <p className="text-lg font-bold text-gray-900">support@melagri.com</p>
-                                        </div>
+                                    <div>
+                                        <p className="text-sm font-bold uppercase text-gray-500">Email</p>
+                                        <p className="text-lg font-bold text-gray-900">support@melagri.com</p>
                                     </div>
-
-                                    {/* Address */}
-                                    <div className="flex items-start gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-melagri-primary/10 flex items-center justify-center flex-shrink-0">
-                                            <span className="text-lg">📍</span>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-bold text-gray-500 uppercase">Address</p>
-                                            <p className="text-gray-900 font-semibold">Makamithi Towers, 4th Floor</p>
-                                            <p className="text-gray-900 font-semibold">Ngong Road, Nairobi, Kenya</p>
-                                        </div>
+                                    <div>
+                                        <p className="text-sm font-bold uppercase text-gray-500">Address</p>
+                                        <p className="font-semibold text-gray-900">Makamithi Towers, 4th Floor</p>
+                                        <p className="font-semibold text-gray-900">Ngong Road, Nairobi, Kenya</p>
                                     </div>
                                 </div>
-
-                                <div className="mt-8 pt-8 border-t border-gray-100">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-4">Opening Hours</h3>
-                                    <div className="space-y-3 text-sm">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Monday - Friday</span>
-                                            <span className="font-bold text-gray-900">8:00 AM - 5:00 PM</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Saturday</span>
-                                            <span className="font-bold text-gray-900">8:00 AM - 1:00 PM</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-600">Sunday</span>
-                                            <span className="font-bold text-gray-900">Closed</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="mt-8">
-                                    <Link href={whatsAppUrl()} target="_blank" className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center gap-2">
-                                        <span>💬</span> Chat on WhatsApp
+                                <div className="mt-8 space-y-3">
+                                    <Link
+                                        href={whatsAppUrl()}
+                                        target="_blank"
+                                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-500 px-6 py-3 font-bold text-white transition-colors hover:bg-green-600"
+                                    >
+                                        Chat on WhatsApp
+                                    </Link>
+                                    <Link
+                                        href={`tel:${SUPPORT_PHONE_E164}`}
+                                        className="flex w-full items-center justify-center rounded-lg border border-gray-200 px-6 py-3 font-bold text-gray-800 hover:bg-gray-50"
+                                    >
+                                        Call support
                                     </Link>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    {/* FAQ Section */}
-                    <div className="bg-white rounded-2xl p-12 border border-gray-200">
-                        <div className="text-center mb-12">
-                            <h2 className="text-3xl font-bold text-gray-900 mb-2">Frequently Asked Questions</h2>
-                            <p className="text-gray-600">Find quick answers to common questions</p>
-                            <Link href="/help" className="text-melagri-primary hover:underline font-semibold text-sm mt-2 inline-block">
-                                Visit FAQ Center →
-                            </Link>
-                        </div>
-
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-                            {[
-                                {
-                                    question: "What are your delivery options?",
-                                    answer: "Delivery is zone-based from about KES 200 in Nairobi to KES 750 upcountry. Free pickup is available at our Machakos collection point only. You'll see the exact cost at checkout."
-                                },
-                                {
-                                    question: "How do I track my order?",
-                                    answer: "You can track your order in real-time from your account dashboard after placing it."
-                                },
-                                {
-                                    question: "What payment methods do you accept?",
-                                    answer: "We currently accept M-Pesa Express, manual M-Pesa Buy Goods, and Cash on Delivery where available."
-                                },
-                                {
-                                    question: "Can I return items?",
-                                    answer: "Eligible unopened, defective, or incorrect items can be returned within 7 days of delivery. Some seeds, live plants, and opened crop-protection products are excluded."
-                                }
-                            ].map((faq, idx) => (
-                                <div key={idx} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
-                                    <h4 className="font-bold text-gray-900 mb-2">{faq.question}</h4>
-                                    <p className="text-gray-600 text-sm">{faq.answer}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Support Section */}
-                    <div className="mt-16 bg-gradient-to-r from-melagri-primary to-melagri-secondary rounded-2xl p-12 text-white text-center">
-                        <h2 className="text-3xl font-bold mb-4">Still need help?</h2>
-                        <p className="text-lg mb-8 opacity-90">Our support team is available Monday–Friday, 8am–5pm, and Saturday, 8am–1pm.</p>
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                            <Link href={whatsAppUrl()} target="_blank" className="bg-white text-melagri-primary px-8 py-3 rounded-lg font-bold hover:bg-gray-100 transition-colors">
-                                💬 WhatsApp
-                            </Link>
-                            <Link href={`tel:${SUPPORT_PHONE_E164}`} className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">
-                                📞 Call Us
-                            </Link>
-                            <Link href="mailto:support@melagri.com" className="border-2 border-white text-white px-8 py-3 rounded-lg font-bold hover:bg-white/10 transition-colors">
-                                📧 Email
-                            </Link>
-                        </div>
-                    </div>
                 </div>
             </main>
-
             <Footer />
         </div>
     );
 }
-

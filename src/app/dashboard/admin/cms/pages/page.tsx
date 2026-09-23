@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { getAuth } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
 import {
@@ -14,18 +13,25 @@ import {
   blocksContentEqual,
   createDefaultAboutBlock,
   createDefaultHelpBlock,
+  createDefaultMarketingBlock,
   defaultBlocksPage,
   HELP_BLOCK_TYPES,
   HelpBlock,
   HelpBlockType,
   HelpBlocksPage,
+  MARKETING_BLOCK_TYPES,
   type CmsBlock,
   type CmsBlocksPage,
+  type MarketingBlock,
+  type MarketingBlockType,
+  type MarketingBlocksPage,
 } from "@/lib/cms-blocks";
 import { CMS_PAGE_SLUGS, CmsPageSlug, isCmsPageSlug } from "@/lib/cms-pages";
+import { isMarketingPageSlug } from "@/lib/cms-marketing";
 import CmsPreviewFrame from "@/components/cms/CmsPreviewFrame";
 import type { CmsPreviewTarget } from "@/components/cms/CmsPreviewFrame";
 import SortableBlockList from "@/components/cms/SortableBlockList";
+import { waitForAuthToken } from "@/lib/wait-for-auth-token";
 
 const VALUE_COLORS = [
   { label: "Green", value: "bg-green-500" },
@@ -72,7 +78,7 @@ function CmsPagesAdminInner() {
       setLoading(true);
       setError("");
       try {
-        const token = await getAuth().currentUser?.getIdToken();
+        const token = await waitForAuthToken();
         if (!token) throw new Error("Admin session is unavailable.");
         const response = await fetch(`/api/admin/pages?slug=${slug}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -107,7 +113,7 @@ function CmsPagesAdminInner() {
     if (action === "publish" && !window.confirm(`Publish this ${labelFor(slug)} draft to the live site now?`)) return;
     setSaving(true);
     try {
-      const token = await getAuth().currentUser?.getIdToken();
+      const token = await waitForAuthToken();
       if (!token) throw new Error("Admin session is unavailable.");
       const response = await fetch("/api/admin/pages", {
         method: "PUT",
@@ -155,8 +161,12 @@ function CmsPagesAdminInner() {
       toast.error("About sections are required — reorder them instead of removing.");
       return;
     }
-    if (block.type === "helpHeader") {
-      toast.error("Help pages need a header section.");
+    if (block.type === "helpHeader" || (block.type === "pageHeader" && slug !== "home-below")) {
+      toast.error("This page needs a header section.");
+      return;
+    }
+    if (block.type === "quickShop") {
+      toast.error("Home (below hero) needs the Quick shop tiles section.");
       return;
     }
     const faqs = blocks.filter((item) => item.type === "faqCategory");
@@ -164,11 +174,15 @@ function CmsPagesAdminInner() {
       toast.error("Keep at least one FAQ category.");
       return;
     }
+    if (isMarketingPageSlug(slug) && blocks.length <= 1) {
+      toast.error("Keep at least one section.");
+      return;
+    }
     if (!window.confirm("Remove this section from the draft?")) return;
     setDraft({
       schemaVersion: 2,
       blocks: blocks.filter((item) => item.id !== id),
-    } as HelpBlocksPage);
+    } as CmsBlocksPage);
   }
 
   function addAboutBlock(type: AboutBlockType) {
@@ -197,12 +211,39 @@ function CmsPagesAdminInner() {
     setExpandedId(block.id);
   }
 
+  function addMarketingBlock(type: MarketingBlockType) {
+    const blocks = draft.blocks as MarketingBlock[];
+    if (type === "pageHeader" && blocks.some((b) => b.type === "pageHeader")) {
+      toast.error("This page already has a header.");
+      return;
+    }
+    if (type === "quickShop" && blocks.some((b) => b.type === "quickShop")) {
+      toast.error("Quick shop tiles are already on this page.");
+      return;
+    }
+    if (type === "partnersIntro" && blocks.some((b) => b.type === "partnersIntro")) {
+      toast.error("Partners intro is already on this page.");
+      return;
+    }
+    if (slug === "home-below" && type === "pageHeader") {
+      toast.error("Home (below hero) uses Quick shop / Partners — not a page header.");
+      return;
+    }
+    if (blocks.length >= 40) {
+      toast.error("Maximum 40 sections.");
+      return;
+    }
+    const block = createDefaultMarketingBlock(type);
+    setDraft({ schemaVersion: 2, blocks: [...blocks, block] } satisfies MarketingBlocksPage);
+    setExpandedId(block.id);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <header>
           <p className="mb-1 text-[10px] font-black uppercase tracking-[.18em] text-green-700">Website content</p>
-          <h1 className="text-2xl font-black text-gray-950">About & Help pages</h1>
+          <h1 className="text-2xl font-black text-gray-950">Site pages</h1>
           <p className="mt-1 text-sm text-gray-500">
             Drag sections to reorder. Draft first, publish when ready.{" "}
             <Link href="/dashboard/admin/cms" className="font-bold text-melagri-primary hover:underline">
@@ -305,16 +346,30 @@ function CmsPagesAdminInner() {
                       + {blockLabel(type)}
                     </button>
                   ))
-                : HELP_BLOCK_TYPES.map((type) => (
-                    <button
-                      key={type}
-                      type="button"
-                      onClick={() => addHelpBlock(type)}
-                      className="min-h-10 rounded-xl border border-dashed border-gray-300 bg-white px-3 text-xs font-black text-gray-700"
-                    >
-                      + {blockLabel(type)}
-                    </button>
-                  ))}
+                : slug === "help"
+                  ? HELP_BLOCK_TYPES.map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => addHelpBlock(type)}
+                        className="min-h-10 rounded-xl border border-dashed border-gray-300 bg-white px-3 text-xs font-black text-gray-700"
+                      >
+                        + {blockLabel(type)}
+                      </button>
+                    ))
+                  : MARKETING_BLOCK_TYPES.filter((type) => {
+                      if (slug === "home-below" && type === "pageHeader") return false;
+                      return true;
+                    }).map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => addMarketingBlock(type)}
+                        className="min-h-10 rounded-xl border border-dashed border-gray-300 bg-white px-3 text-xs font-black text-gray-700"
+                      >
+                        + {blockLabel(type)}
+                      </button>
+                    ))}
             </div>
 
             <SortableBlockList
@@ -324,7 +379,15 @@ function CmsPagesAdminInner() {
                 const title =
                   block.type === "faqCategory"
                     ? block.data.label
-                    : blockLabel(block.type);
+                    : block.type === "pageHeader"
+                      ? block.data.title
+                      : block.type === "prose" || block.type === "bullets"
+                        ? block.data.heading || blockLabel(block.type)
+                        : block.type === "callout" || block.type === "partnersIntro"
+                          ? block.data.title
+                          : block.type === "quickShop"
+                            ? `${block.data.tiles.length} tiles`
+                            : blockLabel(block.type);
                 return (
                 <article className="rounded-2xl border border-gray-200 bg-white shadow-sm">
                   <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2">
@@ -337,7 +400,10 @@ function CmsPagesAdminInner() {
                       <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">{block.type}</p>
                       <h2 className="truncate text-sm font-black text-gray-950">{title}</h2>
                     </button>
-                    {slug === "help" && block.type === "faqCategory" ? (
+                    {(slug === "help" && block.type === "faqCategory") ||
+                    (isMarketingPageSlug(slug) &&
+                      block.type !== "pageHeader" &&
+                      block.type !== "quickShop") ? (
                       <button
                         type="button"
                         onClick={() => removeBlock(block.id)}
@@ -351,8 +417,13 @@ function CmsPagesAdminInner() {
                     <div className="p-4">
                       {slug === "about" ? (
                         <AboutBlockFields block={block as AboutBlock} onChange={(next) => updateBlock(block.id, next)} />
-                      ) : (
+                      ) : slug === "help" ? (
                         <HelpBlockFields block={block as HelpBlock} onChange={(next) => updateBlock(block.id, next)} />
+                      ) : (
+                        <MarketingBlockFields
+                          block={block as MarketingBlock}
+                          onChange={(next) => updateBlock(block.id, next)}
+                        />
                       )}
                     </div>
                   ) : null}
@@ -371,7 +442,28 @@ function CmsPagesAdminInner() {
 }
 
 function labelFor(slug: CmsPageSlug) {
-  return slug === "about" ? "About" : "Help";
+  switch (slug) {
+    case "about":
+      return "About";
+    case "help":
+      return "Help";
+    case "home-below":
+      return "Home below";
+    case "delivery":
+      return "Delivery";
+    case "returns":
+      return "Returns";
+    case "privacy":
+      return "Privacy";
+    case "terms":
+      return "Terms";
+    case "contact":
+      return "Contact";
+    case "bulk":
+      return "Bulk";
+    default:
+      return slug;
+  }
 }
 
 function Field({
@@ -656,6 +748,279 @@ function HelpBlockFields({ block, onChange }: { block: HelpBlock; onChange: (blo
       >
         Add FAQ
       </button>
+    </div>
+  );
+}
+
+function MarketingBlockFields({
+  block,
+  onChange,
+}: {
+  block: MarketingBlock;
+  onChange: (block: MarketingBlock) => void;
+}) {
+  if (block.type === "pageHeader") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
+        <Field label="Page title">
+          <input value={data.title} maxLength={160} onChange={(e) => onChange({ ...block, data: { ...data, title: e.target.value } })} />
+        </Field>
+        <Field label="Subtitle">
+          <textarea
+            rows={3}
+            maxLength={600}
+            value={data.subtitle}
+            onChange={(e) => onChange({ ...block, data: { ...data, subtitle: e.target.value } })}
+          />
+        </Field>
+      </div>
+    );
+  }
+
+  if (block.type === "callout") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
+        <Field label="Highlight title">
+          <input value={data.title} maxLength={120} onChange={(e) => onChange({ ...block, data: { ...data, title: e.target.value } })} />
+        </Field>
+        <Field label="Highlight body">
+          <textarea
+            rows={3}
+            maxLength={1200}
+            value={data.body}
+            onChange={(e) => onChange({ ...block, data: { ...data, body: e.target.value } })}
+          />
+        </Field>
+        <Field label="Tone">
+          <select
+            value={data.tone}
+            onChange={(e) =>
+              onChange({
+                ...block,
+                data: { ...data, tone: e.target.value as "green" | "amber" | "neutral" },
+              })
+            }
+            className="min-h-11 w-full rounded-xl border border-gray-200 px-3 text-sm font-bold"
+          >
+            <option value="green">Green</option>
+            <option value="amber">Amber</option>
+            <option value="neutral">Neutral</option>
+          </select>
+        </Field>
+      </div>
+    );
+  }
+
+  if (block.type === "bullets") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
+        <Field label="List heading">
+          <input
+            value={data.heading}
+            maxLength={160}
+            onChange={(e) => onChange({ ...block, data: { ...data, heading: e.target.value } })}
+          />
+        </Field>
+        {data.items.map((item, index) => (
+          <div key={index} className="flex gap-2">
+            <Field label={`Bullet ${index + 1}`}>
+              <input
+                value={item}
+                maxLength={400}
+                onChange={(e) => {
+                  const items = data.items.map((entry, i) => (i === index ? e.target.value : entry));
+                  onChange({ ...block, data: { ...data, items } });
+                }}
+              />
+            </Field>
+            <button
+              type="button"
+              className="mt-7 h-11 rounded-xl px-3 text-xs font-black text-red-600 disabled:opacity-40"
+              disabled={data.items.length <= 1}
+              onClick={() =>
+                onChange({
+                  ...block,
+                  data: { ...data, items: data.items.filter((_, i) => i !== index) },
+                })
+              }
+            >
+              Remove
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-black disabled:opacity-40"
+          disabled={data.items.length >= 20}
+          onClick={() => onChange({ ...block, data: { ...data, items: [...data.items, "New point"] } })}
+        >
+          Add bullet
+        </button>
+      </div>
+    );
+  }
+
+  if (block.type === "quickShop") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Browse-all label">
+            <input
+              value={data.browseAllLabel}
+              maxLength={80}
+              onChange={(e) => onChange({ ...block, data: { ...data, browseAllLabel: e.target.value } })}
+            />
+          </Field>
+          <Field label="Browse-all link">
+            <input
+              value={data.browseAllHref}
+              maxLength={200}
+              onChange={(e) => onChange({ ...block, data: { ...data, browseAllHref: e.target.value } })}
+            />
+          </Field>
+        </div>
+        {data.tiles.map((tile, index) => (
+          <div key={index} className="space-y-2 rounded-xl border border-gray-100 p-3">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Tile {index + 1}</p>
+              <button
+                type="button"
+                className="text-xs font-black text-red-600 disabled:opacity-40"
+                disabled={data.tiles.length <= 1}
+                onClick={() =>
+                  onChange({
+                    ...block,
+                    data: { ...data, tiles: data.tiles.filter((_, i) => i !== index) },
+                  })
+                }
+              >
+                Remove
+              </button>
+            </div>
+            <div className="grid gap-2 md:grid-cols-2">
+              <Field label="Label">
+                <input
+                  value={tile.label}
+                  maxLength={80}
+                  onChange={(e) => {
+                    const tiles = data.tiles.map((entry, i) =>
+                      i === index ? { ...entry, label: e.target.value } : entry,
+                    );
+                    onChange({ ...block, data: { ...data, tiles } });
+                  }}
+                />
+              </Field>
+              <Field label="Hint">
+                <input
+                  value={tile.hint}
+                  maxLength={120}
+                  onChange={(e) => {
+                    const tiles = data.tiles.map((entry, i) =>
+                      i === index ? { ...entry, hint: e.target.value } : entry,
+                    );
+                    onChange({ ...block, data: { ...data, tiles } });
+                  }}
+                />
+              </Field>
+              <Field label="Fallback link">
+                <input
+                  value={tile.href}
+                  maxLength={200}
+                  onChange={(e) => {
+                    const tiles = data.tiles.map((entry, i) =>
+                      i === index ? { ...entry, href: e.target.value } : entry,
+                    );
+                    onChange({ ...block, data: { ...data, tiles } });
+                  }}
+                />
+              </Field>
+              <Field label="Category match" hint="Optional substring to match a live category name">
+                <input
+                  value={tile.categoryMatch || ""}
+                  maxLength={80}
+                  onChange={(e) => {
+                    const tiles = data.tiles.map((entry, i) =>
+                      i === index ? { ...entry, categoryMatch: e.target.value } : entry,
+                    );
+                    onChange({ ...block, data: { ...data, tiles } });
+                  }}
+                />
+              </Field>
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          className="rounded-xl border border-gray-200 px-4 py-2 text-xs font-black disabled:opacity-40"
+          disabled={data.tiles.length >= 6}
+          onClick={() =>
+            onChange({
+              ...block,
+              data: {
+                ...data,
+                tiles: [...data.tiles, { label: "New tile", hint: "Short hint", href: "/products" }],
+              },
+            })
+          }
+        >
+          Add tile
+        </button>
+      </div>
+    );
+  }
+
+  if (block.type === "partnersIntro") {
+    const data = block.data;
+    return (
+      <div className="space-y-3">
+        <Field label="Eyebrow">
+          <input
+            value={data.eyebrow}
+            maxLength={80}
+            onChange={(e) => onChange({ ...block, data: { ...data, eyebrow: e.target.value } })}
+          />
+        </Field>
+        <Field label="Title">
+          <input
+            value={data.title}
+            maxLength={120}
+            onChange={(e) => onChange({ ...block, data: { ...data, title: e.target.value } })}
+          />
+        </Field>
+        <Field label="Subtitle">
+          <textarea
+            rows={2}
+            maxLength={240}
+            value={data.subtitle}
+            onChange={(e) => onChange({ ...block, data: { ...data, subtitle: e.target.value } })}
+          />
+        </Field>
+      </div>
+    );
+  }
+
+  const data = block.data;
+  return (
+    <div className="space-y-3">
+      <Field label="Section heading">
+        <input
+          value={data.heading}
+          maxLength={160}
+          onChange={(e) => onChange({ ...block, data: { ...data, heading: e.target.value } })}
+        />
+      </Field>
+      <Field label="Body" hint="Blank line starts a new paragraph">
+        <textarea
+          rows={6}
+          maxLength={8000}
+          value={data.body}
+          onChange={(e) => onChange({ ...block, data: { ...data, body: e.target.value } })}
+        />
+      </Field>
     </div>
   );
 }
