@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getAuth } from 'firebase/auth';
 import type { Order } from '@/types';
+import { waitForAuthToken } from '@/lib/wait-for-auth-token';
 
 type State =
     | { status: 'loading'; order: null; error: null }
@@ -12,6 +12,9 @@ type State =
 /**
  * Load an order for printable documents: prefer context seed when present,
  * otherwise fetch via /api/orders/[id]/document (auth or ?t= token).
+ *
+ * Waits for Firebase Auth to hydrate before fetching so admins opening
+ * receipt/invoice/delivery-note in a new tab are not rejected as anonymous.
  */
 export function useOrderDocument(orderId: string | undefined, seed?: Order | null) {
     const [state, setState] = useState<State>({ status: 'loading', order: null, error: null });
@@ -31,10 +34,13 @@ export function useOrderDocument(orderId: string | undefined, seed?: Order | nul
         (async () => {
             setState({ status: 'loading', order: null, error: null });
             try {
-                const token = await getAuth().currentUser?.getIdToken().catch(() => null);
+                const access = typeof window !== 'undefined'
+                    ? (new URLSearchParams(window.location.search).get('t')
+                        || new URLSearchParams(window.location.search).get('token'))
+                    : null;
+                // SMS token links can fetch immediately; signed-in staff need auth ready.
+                const token = access ? null : await waitForAuthToken();
                 const url = new URL(`/api/orders/${encodeURIComponent(orderId)}/document`, window.location.origin);
-                const access = new URLSearchParams(window.location.search).get('t')
-                    || new URLSearchParams(window.location.search).get('token');
                 if (access) url.searchParams.set('t', access);
 
                 const response = await fetch(url.toString(), {

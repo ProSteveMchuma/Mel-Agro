@@ -2,8 +2,10 @@ import type { Metadata } from 'next';
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import Link from 'next/link';
+import MarketingPageView from '@/components/cms/MarketingPageView';
 import { DELIVERY_ZONES, FREE_SHIPPING_THRESHOLD } from '@/lib/delivery';
-import { PICKUP_STORE } from '@/lib/pickup';
+import { getLiveCmsPage } from '@/lib/cms-pages-server';
+import type { MarketingBlocksPage } from '@/lib/cms-marketing';
 
 export const metadata: Metadata = {
     title: 'Delivery Information — Rates, Pickup & Tracking Across Kenya',
@@ -17,36 +19,18 @@ export const metadata: Metadata = {
     },
 };
 
-export default function DeliveryInfo() {
+export default async function DeliveryInfo() {
+    const { content } = await getLiveCmsPage('delivery');
     const zones = DELIVERY_ZONES.filter((z) => z.regions[0] !== 'Other');
 
     return (
         <div className="min-h-screen flex flex-col bg-gray-50">
             <Header />
             <main className="flex-grow container-custom py-12">
-                <div className="bg-white p-8 md:p-10 rounded-3xl border border-gray-100 shadow-sm max-w-4xl mx-auto">
-                    <h1 className="text-3xl font-black text-gray-900 mb-4">Delivery Information</h1>
-                    <p className="text-gray-600 mb-8">
-                        Mel-Agri delivers seeds, fertilizers, and agrochemicals across Kenya. Choose home delivery at checkout,
-                        or collect free from our Machakos collection point.
-                    </p>
+                <div className="bg-white p-8 md:p-10 rounded-3xl border border-gray-100 shadow-sm max-w-4xl mx-auto space-y-10">
+                    <MarketingPageView content={content as MarketingBlocksPage} />
 
-                    <div className="grid md:grid-cols-2 gap-4 mb-10">
-                        <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100">
-                            <h2 className="font-bold text-lg text-melagri-primary mb-2">Free delivery</h2>
-                            <p className="text-sm text-gray-700">
-                                On orders of KES {FREE_SHIPPING_THRESHOLD.toLocaleString()} or more, country-wide.
-                            </p>
-                        </div>
-                        <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100">
-                            <h2 className="font-bold text-lg text-amber-900 mb-2">Free pickup (Machakos only)</h2>
-                            <p className="text-sm text-gray-700">
-                                Collect at {PICKUP_STORE.label} — {PICKUP_STORE.etaText.toLowerCase()}. Available only in Machakos.
-                            </p>
-                        </div>
-                    </div>
-
-                    <section className="mb-10">
+                    <section>
                         <h2 className="text-xl font-bold text-gray-900 mb-4">Delivery times by region</h2>
                         <ul className="space-y-3 rounded-2xl border border-gray-100 bg-gray-50 p-5">
                             {zones.map((zone, idx) => (
@@ -65,15 +49,13 @@ export default function DeliveryInfo() {
                                 </li>
                             ))}
                         </ul>
-                        <p className="mt-3 text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded-xl px-4 py-3">
-                            Orders placed before 12:00 PM are processed same-day. Sunday and public-holiday orders process the next business day.
-                        </p>
                     </section>
 
-                    <section className="mb-10">
+                    <section>
                         <h2 className="text-xl font-bold text-gray-900 mb-4">Delivery rates</h2>
                         <p className="text-sm text-gray-600 mb-4">
-                            Final cost is confirmed at checkout when you select your county. Pickup is always free in Machakos.
+                            Final cost is confirmed at checkout when you select your county. Free delivery applies on orders of KES{' '}
+                            {FREE_SHIPPING_THRESHOLD.toLocaleString()} or more. Pickup is always free in Machakos.
                         </p>
                         <div className="overflow-hidden rounded-2xl border border-gray-100">
                             <table className="w-full text-sm">
@@ -97,22 +79,18 @@ export default function DeliveryInfo() {
                         </div>
                     </section>
 
-                    <section className="mb-10">
-                        <h2 className="text-xl font-bold text-gray-900 mb-3">Tracking your order</h2>
-                        <p className="text-gray-600 mb-4">
-                            When your order is dispatched you receive an SMS with a track link (including carrier details when available).
-                            You can also open the order from your account dashboard.
-                        </p>
-                        <Link href="/dashboard/user?tab=orders" className="btn-primary inline-flex">
-                            Track my order
-                        </Link>
-                    </section>
-
                     <section>
-                        <h2 className="text-xl font-bold text-gray-900 mb-3">Returns</h2>
-                        <p className="text-gray-600 mb-3">
-                            Damaged or not-as-described items can be returned within 7 days of delivery or collection.
-                            See the full <Link href="/returns" className="text-melagri-primary font-semibold hover:underline">return policy</Link>.
+                        <h2 className="text-xl font-bold text-gray-900 mb-3">Track or return</h2>
+                        <p className="text-gray-600 mb-4">
+                            Open your{' '}
+                            <Link href="/dashboard/user?tab=orders" className="font-semibold text-melagri-primary hover:underline">
+                                order dashboard
+                            </Link>{' '}
+                            to track shipments, or read the{' '}
+                            <Link href="/returns" className="font-semibold text-melagri-primary hover:underline">
+                                return policy
+                            </Link>
+                            .
                         </p>
                     </section>
                 </div>

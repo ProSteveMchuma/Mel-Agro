@@ -5,10 +5,25 @@ import {
   aboutPageSchema,
   helpPageSchema,
 } from './cms-pages.ts';
+import {
+  createDefaultMarketingBlock,
+  defaultMarketingBlocksPage,
+  isMarketingPageSlug,
+  marketingBlockLabel,
+  marketingBlockSchema,
+  marketingBlocksPageSchema,
+  parseMarketingBlocksPage,
+  validateMarketingBlocksPage,
+  MARKETING_BLOCK_TYPES,
+  type MarketingBlock,
+  type MarketingBlockType,
+  type MarketingBlocksPage,
+  type MarketingPageSlug,
+} from './cms-marketing.ts';
 
 type AboutPageContent = z.infer<typeof aboutPageSchema>;
 type HelpPageContent = z.infer<typeof helpPageSchema>;
-type CmsPageSlug = 'about' | 'help';
+type CmsPageSlug = 'about' | 'help' | MarketingPageSlug;
 
 const faqSchema = z.object({
   question: z.string().trim().min(1).max(240),
@@ -31,6 +46,9 @@ export type AboutBlockType = (typeof ABOUT_BLOCK_TYPES)[number];
 
 export const HELP_BLOCK_TYPES = ['helpHeader', 'faqCategory'] as const;
 export type HelpBlockType = (typeof HELP_BLOCK_TYPES)[number];
+
+export { MARKETING_BLOCK_TYPES };
+export type { MarketingBlock, MarketingBlockType, MarketingBlocksPage, MarketingPageSlug };
 
 const aboutHeroDataSchema = z.object({
   heroEyebrow: z.string().trim().min(1).max(120),
@@ -100,7 +118,7 @@ export const helpBlockSchema = z.discriminatedUnion('type', [
 
 export type AboutBlock = z.infer<typeof aboutBlockSchema>;
 export type HelpBlock = z.infer<typeof helpBlockSchema>;
-export type CmsBlock = AboutBlock | HelpBlock;
+export type CmsBlock = AboutBlock | HelpBlock | MarketingBlock;
 
 export const aboutBlocksPageSchema = z.object({
   schemaVersion: z.literal(2),
@@ -114,7 +132,7 @@ export const helpBlocksPageSchema = z.object({
 
 export type AboutBlocksPage = z.infer<typeof aboutBlocksPageSchema>;
 export type HelpBlocksPage = z.infer<typeof helpBlocksPageSchema>;
-export type CmsBlocksPage = AboutBlocksPage | HelpBlocksPage;
+export type CmsBlocksPage = AboutBlocksPage | HelpBlocksPage | MarketingBlocksPage;
 
 function newId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
@@ -213,11 +231,18 @@ export function defaultBlocksPage(slug: CmsPageSlug): CmsBlocksPage {
   if (slug === 'about') {
     return { schemaVersion: 2, blocks: aboutFlatToBlocks(DEFAULT_ABOUT_PAGE) };
   }
-  return { schemaVersion: 2, blocks: helpFlatToBlocks(DEFAULT_HELP_PAGE) };
+  if (slug === 'help') {
+    return { schemaVersion: 2, blocks: helpFlatToBlocks(DEFAULT_HELP_PAGE) };
+  }
+  return defaultMarketingBlocksPage(slug);
 }
 
 /** Normalize Firestore payload: v2 blocks, or legacy flat → blocks. */
 export function parseBlocksPage(slug: CmsPageSlug, raw: unknown): CmsBlocksPage {
+  if (isMarketingPageSlug(slug)) {
+    return parseMarketingBlocksPage(slug, raw);
+  }
+
   if (raw && typeof raw === 'object' && Array.isArray((raw as { blocks?: unknown }).blocks)) {
     const schema = slug === 'about' ? aboutBlocksPageSchema : helpBlocksPageSchema;
     const parsed = schema.safeParse({
@@ -239,6 +264,10 @@ export function parseBlocksPage(slug: CmsPageSlug, raw: unknown): CmsBlocksPage 
 }
 
 export function validateBlocksPage(slug: CmsPageSlug, content: unknown) {
+  if (isMarketingPageSlug(slug)) {
+    return validateMarketingBlocksPage(content);
+  }
+
   const schema = slug === 'about' ? aboutBlocksPageSchema : helpBlocksPageSchema;
   const parsed = schema.safeParse(content);
   if (!parsed.success) return parsed;
@@ -281,8 +310,11 @@ export function validateBlocksPage(slug: CmsPageSlug, content: unknown) {
   return parsed;
 }
 
-export function blockLabel(type: AboutBlockType | HelpBlockType): string {
-  switch (type) {
+export function blockLabel(type: AboutBlockType | HelpBlockType | MarketingBlockType): string {
+  if ((MARKETING_BLOCK_TYPES as readonly string[]).includes(type)) {
+    return marketingBlockLabel(type as MarketingBlockType);
+  }
+  switch (type as AboutBlockType | HelpBlockType) {
     case 'hero':
       return 'Hero';
     case 'who':
@@ -325,6 +357,8 @@ export function createDefaultHelpBlock(type: HelpBlockType): HelpBlock {
     },
   };
 }
+
+export { createDefaultMarketingBlock };
 
 export function blocksContentEqual(a: CmsBlocksPage, b: CmsBlocksPage): boolean {
   return JSON.stringify(a.blocks) === JSON.stringify(b.blocks);

@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import { KENYAN_COUNTIES, DeliveryZone, getDeliveryCost, FREE_SHIPPING_THRESHOLD } from "@/lib/delivery";
+import { waitForAuthToken } from "@/lib/wait-for-auth-token";
 
 type ZoneFormState = {
     id?: string;
@@ -54,7 +54,7 @@ export default function LogisticsPage() {
     // Server-authoritative configuration snapshot.
     useEffect(() => {
         const controller = new AbortController();
-        (async () => { try { const token = await getAuth().currentUser?.getIdToken(); if (!token) throw new Error('Admin session is unavailable.'); const response = await fetch('/api/admin/logistics', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }); const result = await response.json(); if (!response.ok) throw new Error(result.message); setZones(result.zones || []); setVersion(result.version || 0); setAnalytics(result.analytics || {}); setCoverage(result.coverage || coverage); } catch (error) { if ((error as Error).name !== 'AbortError') toast.error(error instanceof Error ? error.message : 'Could not load zones'); } finally { if (!controller.signal.aborted) setLoading(false); } })();
+        (async () => { try { const token = await waitForAuthToken(); if (!token) throw new Error('Admin session is unavailable.'); const response = await fetch('/api/admin/logistics', { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal }); const result = await response.json(); if (!response.ok) throw new Error(result.message); setZones(result.zones || []); setVersion(result.version || 0); setAnalytics(result.analytics || {}); setCoverage(result.coverage || coverage); } catch (error) { if ((error as Error).name !== 'AbortError') toast.error(error instanceof Error ? error.message : 'Could not load zones'); } finally { if (!controller.signal.aborted) setLoading(false); } })();
         return () => controller.abort();
         // Coverage is replaced by the response and should not trigger another fetch.
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,14 +80,23 @@ export default function LogisticsPage() {
     const zoneAnalytics = useMemo(() => new Map(Object.entries(analytics)), [analytics]);
 
     const publishZones = async (nextZones: DeliveryZone[]) => {
-        const token = await getAuth().currentUser?.getIdToken();
+        const token = await waitForAuthToken();
         if (!token) throw new Error('Admin session is unavailable.');
-        const normalized = nextZones.map((zone, index) => ({ ...zone, id: String(zone.id || `zone_${crypto.randomUUID()}`), order: Number(zone.order ?? index + 1), freeShippingThreshold: Number(zone.freeShippingThreshold || 0) }));
+        const normalized = nextZones.map((zone, index) => ({
+            ...zone,
+            id: String(zone.id || `zone_${crypto.randomUUID()}`),
+            order: Number(zone.order ?? index + 1),
+            freeShippingThreshold: Number(zone.freeShippingThreshold || 0),
+            isFallback: Boolean(zone.isFallback),
+            etaText: (zone.etaText || '').trim() || autoEtaText(Number(zone.etaMinDays) || 0, Number(zone.etaMaxDays) || 0),
+        }));
         const response = await fetch('/api/admin/logistics', { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ version, zones: normalized }) });
         const result = await response.json(); if (!response.ok) throw new Error(result.message || 'Could not publish shipping zones.');
-        setZones(normalized); setVersion(result.version);
-        const explicit = new Set(normalized.flatMap((zone) => zone.regions.filter((region) => KENYAN_COUNTIES.includes(region))));
-        setCoverage({ explicitlyAssigned: explicit.size, totalCounties: KENYAN_COUNTIES.length, fallbackConfigured: normalized.filter((zone) => zone.isFallback).length === 1 });
+        setZones(Array.isArray(result.zones) ? result.zones : normalized);
+        setVersion(result.version);
+        const published = Array.isArray(result.zones) ? result.zones as DeliveryZone[] : normalized;
+        const explicit = new Set(published.flatMap((zone) => (zone.regions || []).filter((region) => KENYAN_COUNTIES.includes(region))));
+        setCoverage({ explicitlyAssigned: explicit.size, totalCounties: KENYAN_COUNTIES.length, fallbackConfigured: published.filter((zone) => zone.isFallback).length === 1 });
     };
 
     // Preview rate

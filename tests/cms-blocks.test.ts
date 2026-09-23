@@ -76,6 +76,22 @@ test('validateBlocksPage requires help header and at least one FAQ', () => {
   assert.equal(validateBlocksPage('help', noFaq).success, false);
 });
 
+test('marketing pages default and validate with a single header', () => {
+  const page = defaultBlocksPage('delivery');
+  assert.equal(page.schemaVersion, 2);
+  assert.equal(page.blocks[0]?.type, 'pageHeader');
+  assert.equal(validateBlocksPage('delivery', page).success, true);
+
+  const noHeader = {
+    schemaVersion: 2 as const,
+    blocks: page.blocks.filter((b) => b.type !== 'pageHeader'),
+  };
+  assert.equal(validateBlocksPage('delivery', noHeader).success, false);
+
+  const privacy = parseBlocksPage('privacy', defaultBlocksPage('privacy'));
+  assert.ok(privacy.blocks.some((b) => b.type === 'prose'));
+});
+
 test('createDefaultHelpBlock can add FAQ categories', () => {
   const block = createDefaultHelpBlock('faqCategory');
   assert.equal(block.type, 'faqCategory');

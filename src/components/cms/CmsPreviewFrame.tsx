@@ -2,7 +2,16 @@
 
 import { useState } from "react";
 
-export type CmsPreviewTarget = "home" | "about" | "help";
+export type CmsPreviewTarget =
+  | "home"
+  | "about"
+  | "help"
+  | "delivery"
+  | "returns"
+  | "privacy"
+  | "terms"
+  | "contact"
+  | "bulk";
 
 type Props = {
   target: CmsPreviewTarget;
