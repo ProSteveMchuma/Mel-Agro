@@ -25,6 +25,7 @@ export const PRODUCTION_ENV_GROUPS = {
     sms: ['ADVANTA_API_KEY', 'ADVANTA_PARTNER_ID'],
     whatsapp: ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_WHATSAPP_NUMBER'],
     intelligence: ['CRON_SECRET'],
+    orderAccess: ['ORDER_ACCESS_SECRET'],
 } as const;
 
 type Environment = Record<string, string | undefined>;
@@ -58,6 +59,11 @@ export function getEnvironmentReadiness(env: Environment, requireProductionServi
     const advantaReady = isConfigured(env.ADVANTA_API_KEY)
         && isConfigured(env.ADVANTA_PARTNER_ID);
     if (africaTalkingReady || advantaReady) missingByService.sms = [];
+
+    // Order-access HMAC: ORDER_ACCESS_SECRET preferred; OTP_PEPPER is an accepted fallback.
+    if (isConfigured(env.ORDER_ACCESS_SECRET) || isConfigured(env.OTP_PEPPER)) {
+        missingByService.orderAccess = [];
+    }
 
     const issues: string[] = [];
     if (env.NEXT_PUBLIC_BASE_URL && !env.NEXT_PUBLIC_BASE_URL.startsWith('https://')) {

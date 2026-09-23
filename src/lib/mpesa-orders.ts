@@ -29,6 +29,11 @@ export function checkoutRequestFields(checkoutRequestID: string) {
     };
 }
 
+function sanitizeReceiptDocId(receipt: string): string {
+    const sanitized = String(receipt || '').replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase();
+    return sanitized.slice(0, 150) || 'UNKNOWN';
+}
+
 export async function markOrderPaidWithReceipt(args: {
     orderId: string;
     order: DocumentData;
@@ -40,56 +45,87 @@ export async function markOrderPaidWithReceipt(args: {
     paymentResolvedVia: string;
     recordedBy: string;
     extraOrderFields?: Record<string, unknown>;
-}) {
-    const now = new Date().toISOString();
+}): Promise<{ alreadyPaid: boolean }> {
     const orderRef = adminDb.collection('orders').doc(args.orderId);
     const amountPaid = Number(args.amountPaid ?? args.order.total) || 0;
+    const transactionRef = adminDb.collection('transactions').doc(sanitizeReceiptDocId(args.receipt));
 
-    await orderRef.update({
-        paymentStatus: 'Paid',
-        paymentMethod: args.paymentMethod,
-        transactionId: args.receipt,
-        mpesaReceiptNumber: args.receipt,
-        ...(args.phone ? { mpesaPhoneNumber: args.phone } : {}),
-        ...(args.transactionDate ? { mpesaTransactionDate: args.transactionDate } : {}),
-        amountPaid,
-        status: args.order.status === 'Pending Payment' || !args.order.status ? 'Processing' : args.order.status,
-        processingAt: args.order.processingAt || now,
-        stockReservationStatus: 'committed',
-        paidAt: now,
-        updatedAt: now,
-        paymentFailureReason: null,
-        paymentFailureCode: null,
-        paymentFailureMessage: null,
-        claimedMpesaReceipt: args.receipt,
-        paymentResolvedVia: args.paymentResolvedVia,
-        ...args.extraOrderFields,
-    });
+    const outcome = await adminDb.runTransaction(async transaction => {
+        const orderSnap = await transaction.get(orderRef);
+        if (!orderSnap.exists) {
+            throw new Error('ORDER_NOT_FOUND');
+        }
 
-    await adminDb.collection('transactions').add({
-        orderId: args.orderId,
-        userId: args.order.userId || null,
-        amount: amountPaid,
-        receipt: args.receipt,
-        phone: args.phone || args.order.phone || null,
-        method: args.paymentMethod,
-        date: now,
-        status: 'Success',
-        recordedBy: args.recordedBy,
-    });
+        const current = orderSnap.data() || {};
+        if (current.paymentStatus === 'Paid') {
+            // Idempotent no-op when already Paid (same or concurrent receipt write).
+            return {
+                alreadyPaid: true as const,
+                order: current,
+                amountPaid: Number(current.amountPaid ?? amountPaid) || amountPaid,
+            };
+        }
 
-    await notifyCustomerPaymentReceived({
-        orderId: args.orderId,
-        order: {
-            ...args.order,
-            amountPaid,
-            mpesaReceiptNumber: args.receipt,
+        const now = new Date().toISOString();
+        const nextStatus =
+            current.status === 'Pending Payment' || !current.status ? 'Processing' : current.status;
+
+        transaction.update(orderRef, {
+            paymentStatus: 'Paid',
             paymentMethod: args.paymentMethod,
-            phone: args.phone || args.order.phone,
-            mpesaPhoneNumber: args.phone || args.order.mpesaPhoneNumber,
-        },
-        receipt: args.receipt,
-        phone: args.phone,
-        method: args.paymentMethod,
+            transactionId: args.receipt,
+            mpesaReceiptNumber: args.receipt,
+            ...(args.phone ? { mpesaPhoneNumber: args.phone } : {}),
+            ...(args.transactionDate ? { mpesaTransactionDate: args.transactionDate } : {}),
+            amountPaid,
+            status: nextStatus,
+            processingAt: current.processingAt || now,
+            stockReservationStatus: 'committed',
+            paidAt: now,
+            updatedAt: now,
+            paymentFailureReason: null,
+            paymentFailureCode: null,
+            paymentFailureMessage: null,
+            claimedMpesaReceipt: args.receipt,
+            paymentResolvedVia: args.paymentResolvedVia,
+            ...args.extraOrderFields,
+        });
+
+        transaction.set(transactionRef, {
+            orderId: args.orderId,
+            userId: current.userId || args.order.userId || null,
+            amount: amountPaid,
+            receipt: args.receipt,
+            phone: args.phone || current.phone || args.order.phone || null,
+            method: args.paymentMethod,
+            date: now,
+            status: 'Success',
+            recordedBy: args.recordedBy,
+        }, { merge: true });
+
+        return {
+            alreadyPaid: false as const,
+            order: { ...current, ...args.order },
+            amountPaid,
+        };
     });
+
+    if (!outcome.alreadyPaid) {
+        await notifyCustomerPaymentReceived({
+            orderId: args.orderId,
+            order: {
+                ...outcome.order,
+                amountPaid: outcome.amountPaid,
+                mpesaReceiptNumber: args.receipt,
+                paymentMethod: args.paymentMethod,
+                phone: args.phone || outcome.order.phone || args.order.phone,
+                mpesaPhoneNumber: args.phone || outcome.order.mpesaPhoneNumber || args.order.mpesaPhoneNumber,
+            },
+            receipt: args.receipt,
+            phone: args.phone,
+            method: args.paymentMethod,
+        });
+    }
+
+    return { alreadyPaid: outcome.alreadyPaid };
 }

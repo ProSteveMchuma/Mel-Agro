@@ -510,11 +510,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             }
         }
         if (order?.phone) {
-            try {
-                await NotificationService.sendSMS(order.phone, smsBody);
-            } catch (error) {
-                console.error("Return request SMS error:", error);
-            }
+            // SMS is sent by /api/orders/[id]/return — do not call the sealed client relay.
         }
 
         try {

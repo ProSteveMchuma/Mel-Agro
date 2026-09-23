@@ -86,7 +86,8 @@ function paymentDetails(method: z.infer<typeof createOrderSchema>['paymentMethod
         case 'cod':
             return { paymentMethod: 'Cash on Delivery', paymentStatus: 'Unpaid', status: 'Processing' };
         case 'whatsapp':
-            return { paymentMethod: 'WhatsApp Order', paymentStatus: 'Pending WhatsApp', status: 'Processing' };
+            // Ops queue — not Processing until payment/ops confirms.
+            return { paymentMethod: 'WhatsApp Order', paymentStatus: 'Pending WhatsApp', status: 'Pending Payment' };
         default:
             return { paymentMethod: 'M-Pesa', paymentStatus: 'Unpaid', status: 'Pending Payment' };
     }

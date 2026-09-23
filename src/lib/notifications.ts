@@ -1,46 +1,29 @@
-import { getAuth } from 'firebase/auth';
-
-async function authedFetch(url: string, body: any) {
-    const token = await getAuth().currentUser?.getIdToken().catch(() => null);
-    return fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(body),
-    });
-}
+/**
+ * Browser-facing notification helpers are intentionally inert.
+ * All real SMS/email/WhatsApp delivery goes through server-only
+ * `notifyCustomer` / `sendServerSms` paths so destinations cannot be forged.
+ */
+export type NotifyChannel = 'sms' | 'email' | 'whatsapp';
 
 export const NotificationService = {
-    sendEmail: async (to: string, subject: string, body: string) => {
-        try {
-            await authedFetch('/api/notifications/email', { to, subject, html: body });
-        } catch (error) {
-            console.error("Email Notification Error:", error);
-        }
+    sendEmail: async (_to: string, _subject: string, _body: string) => {
+        console.warn('NotificationService.sendEmail is disabled; use server notifyCustomer');
+        return { success: false, disabled: true };
     },
-
-    sendSMS: async (to: string, message: string) => {
-        try {
-            await authedFetch('/api/notifications/sms', { to, message });
-        } catch (error) {
-            console.error("SMS Notification Error:", error);
-        }
+    sendSMS: async (_to: string, _message: string) => {
+        console.warn('NotificationService.sendSMS is disabled; use server notifyCustomer');
+        return { success: false, disabled: true };
     },
-
-    sendWhatsApp: async (to: string, message: string) => {
-        try {
-            await authedFetch('/api/notifications/whatsapp', { to, message });
-        } catch (error) {
-            console.error("WhatsApp Notification Error:", error);
-        }
+    sendWhatsApp: async (_to: string, _message: string) => {
+        console.warn('NotificationService.sendWhatsApp is disabled; use server notifyCustomer');
+        return { success: false, disabled: true };
     },
-
-    notify: async (_preferences: string[], contact: { email?: string, phone?: string }, message: { subject: string, emailBody: string, smsBody: string }) => {
-        // System notifications go out as SMS. Email will be wired later.
-        if (contact.phone) {
-            await NotificationService.sendSMS(contact.phone, message.smsBody);
-        }
-    }
+    notify: async (
+        _channels: NotifyChannel[],
+        _contact: { email?: string; phone?: string },
+        _message: { smsBody?: string; emailSubject?: string; emailBody?: string },
+    ) => {
+        console.warn('NotificationService.notify is disabled; use server notifyCustomer');
+        return { success: false, disabled: true };
+    },
 };

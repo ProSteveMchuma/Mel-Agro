@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getMpesaErrorMessage } from '@/lib/mpesa';
-import { findOrderByCheckoutRequestId } from '@/lib/mpesa-orders';
+import { findOrderByCheckoutRequestId, markOrderPaidWithReceipt } from '@/lib/mpesa-orders';
 import { verifySafaricomCallback } from '@/lib/safaricom-ips';
 import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
 import { reportIncident } from '@/lib/incident-reporting';
@@ -94,65 +94,37 @@ export async function POST(request: Request) {
             const orderTotal = Number(orderData.total || 0);
             const amountMatches = orderTotal > 0 && Math.abs(amountPaid - orderTotal) < 1;
 
-            if (!amountMatches) {
+            if (!mpesaReceiptNumber || !amountMatches) {
                 await orderRef.update({
                     paymentStatus: 'Pending Verification',
                     status: 'Pending Payment',
                     amountPaid,
-                    mpesaReceiptNumber,
+                    mpesaReceiptNumber: mpesaReceiptNumber || null,
                     mpesaPhoneNumber: phoneNumber,
                     mpesaTransactionDate: transactionDate,
-                    paymentFailureReason: `Amount mismatch: received KES ${amountPaid}, expected KES ${orderTotal}`,
+                    paymentFailureReason: !mpesaReceiptNumber
+                        ? 'STK success without receipt — pending verification'
+                        : `Amount mismatch: received KES ${amountPaid}, expected KES ${orderTotal}`,
                     lastCallbackEventId: callbackEventId,
                     updatedAt: new Date().toISOString(),
                 });
-                console.warn(`M-Pesa amount mismatch for order ${orderDoc.id}: received ${amountPaid}, expected ${orderTotal}`);
+                console.warn(`M-Pesa callback held for verification on ${orderDoc.id}`);
                 return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
             }
 
-            await orderRef.update({
-                paymentStatus: 'Paid',
-                paymentMethod: 'M-Pesa',
-                transactionId: mpesaReceiptNumber,
-                mpesaReceiptNumber,
-                mpesaPhoneNumber: phoneNumber,
-                mpesaTransactionDate: transactionDate,
+            await markOrderPaidWithReceipt({
+                orderId: orderDoc.id,
+                order: orderData,
+                receipt: mpesaReceiptNumber,
                 amountPaid,
-                status: 'Processing',
-                processingAt: new Date().toISOString(),
-                stockReservationStatus: 'committed',
-                lastCallbackEventId: callbackEventId,
-                paidAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                paymentFailureReason: null,
-                paymentFailureCode: null,
-                paymentFailureMessage: null,
-            });
-
-            await adminDb.collection('transactions').add({
-                orderId: orderDoc.id,
-                userId: orderData.userId || null,
-                amount: amountPaid,
-                receipt: mpesaReceiptNumber,
                 phone: phoneNumber,
-                method: 'M-Pesa',
-                date: new Date().toISOString(),
-                status: 'Success',
-                checkoutRequestId: CheckoutRequestID,
+                transactionDate,
+                paymentMethod: 'M-Pesa',
+                paymentResolvedVia: 'STK_CALLBACK',
                 recordedBy: 'System (M-Pesa)',
-            });
-
-            void notifyCustomerPaymentReceived({
-                orderId: orderDoc.id,
-                order: {
-                    ...orderData,
-                    amountPaid,
-                    mpesaReceiptNumber,
-                    paymentMethod: 'M-Pesa',
+                extraOrderFields: {
+                    lastCallbackEventId: callbackEventId,
                 },
-                receipt: mpesaReceiptNumber,
-                phone: phoneNumber || orderData.phone,
-                method: 'M-Pesa',
             });
         } else {
             void reportIncident({
@@ -182,6 +154,6 @@ export async function POST(request: Request) {
             source: 'mpesa-callback',
             message: error instanceof Error ? error.message : 'Callback processing failed',
         });
-        return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+        return NextResponse.json({ ResultCode: 1, ResultDesc: 'Failed' }, { status: 500 });
     }
 }

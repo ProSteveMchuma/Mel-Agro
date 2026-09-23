@@ -71,13 +71,37 @@ export async function POST(request: Request) {
         return { kind: 'processing' as const, order: { id: input.orderId, ...order, status: 'Processing' } as Record<string, any> };
       }
       if (input.paymentStatus === 'Paid' && !input.transaction) throw new Error('TRANSACTION_REQUIRED');
+      if (order.paymentStatus === 'Paid' && input.paymentStatus === 'Paid') throw new Error('ALREADY_PAID');
       const update: Record<string, unknown> = { paymentStatus: input.paymentStatus, updatedAt: now };
       if (input.paymentStatus === 'Paid' && input.transaction) {
+        const orderTotal = Number(order.total || 0);
+        const recordedAmount = Number(input.transaction.amount);
+        if (!orderTotal || !Number.isFinite(recordedAmount) || Math.abs(recordedAmount - orderTotal) > 1) {
+          throw new Error('AMOUNT_MISMATCH');
+        }
+        const receipt = String(input.transaction.reference || '').trim();
+        if (!receipt) throw new Error('TRANSACTION_REQUIRED');
         update.stockReservationStatus = 'committed';
         update.paidAt = now;
-        update.transactionId = input.transaction.reference;
+        update.transactionId = receipt;
         update.paymentMethod = input.transaction.method;
-        transaction.set(adminDb.collection('transactions').doc(), { orderId: input.orderId, amount: input.transaction.amount, reference: input.transaction.reference, method: input.transaction.method, date: input.transaction.date, status: 'Success', recordedBy: actor.uid, recordedAt: now });
+        update.mpesaReceiptNumber = receipt;
+        update.amountPaid = recordedAmount;
+        if (order.status === 'Pending Payment' || !order.status) {
+          update.status = 'Processing';
+          update.processingAt = now;
+        }
+        transaction.set(adminDb.collection('transactions').doc(receipt.replace(/[^a-zA-Z0-9_-]/g, '').toUpperCase().slice(0, 150) || `manual_${input.orderId}`), {
+          orderId: input.orderId,
+          amount: recordedAmount,
+          reference: receipt,
+          receipt,
+          method: input.transaction.method,
+          date: input.transaction.date,
+          status: 'Success',
+          recordedBy: actor.uid,
+          recordedAt: now,
+        }, { merge: true });
       }
       transaction.update(orderRef, update); transaction.set(adminDb.collection('adminAuditLog').doc(), { action: 'order_payment_status_changed', actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, before: { paymentStatus: order.paymentStatus || 'Unpaid' }, after: { paymentStatus: input.paymentStatus, reference: input.transaction?.reference || null }, createdAt: now });
       return { kind: 'payment' as const };
@@ -105,5 +129,13 @@ export async function POST(request: Request) {
       });
     }
     return NextResponse.json({ success: true });
-  } catch (error) { const code = error instanceof Error ? error.message : ''; if (code === 'ORDER_NOT_FOUND') return NextResponse.json({ success: false, message: 'Order not found.' }, { status: 404 }); if (code === 'INVALID_TRANSITION') return NextResponse.json({ success: false, message: 'Only a paid pending order can begin processing.' }, { status: 409 }); if (code === 'TRANSACTION_REQUIRED') return NextResponse.json({ success: false, message: 'Transaction details are required when manually marking an order paid.' }, { status: 400 }); throw error; }
+  } catch (error) {
+    const code = error instanceof Error ? error.message : '';
+    if (code === 'ORDER_NOT_FOUND') return NextResponse.json({ success: false, message: 'Order not found.' }, { status: 404 });
+    if (code === 'INVALID_TRANSITION') return NextResponse.json({ success: false, message: 'Only a paid pending order can begin processing.' }, { status: 409 });
+    if (code === 'TRANSACTION_REQUIRED') return NextResponse.json({ success: false, message: 'Transaction details are required when manually marking an order paid.' }, { status: 400 });
+    if (code === 'ALREADY_PAID') return NextResponse.json({ success: false, message: 'Order is already marked paid.' }, { status: 409 });
+    if (code === 'AMOUNT_MISMATCH') return NextResponse.json({ success: false, message: 'Recorded amount must match the order total.' }, { status: 400 });
+    throw error;
+  }
 }

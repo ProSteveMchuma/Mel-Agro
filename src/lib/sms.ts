@@ -1,40 +1,9 @@
-// Browser-safe SMS facade. The authenticated API route owns provider
-// credentials and sends via Advanta Africa (Africa's Talking fallback).
+// Browser SMS facade is sealed — destinations must not be chosen in the client.
+// Server paths use notifyCustomer / sendServerSms instead.
 
 export const SmsService = {
-    sendOrderUpdate: async (phoneNumber: string, orderId: string, status: string, name?: string) => {
-        if (!phoneNumber) return;
-
-        // Ensure Kenyan format (254...)
-        let formattedPhone = phoneNumber.replace(/\s/g, '');
-        if (formattedPhone.startsWith('0')) {
-            formattedPhone = '+254' + formattedPhone.substring(1);
-        } else if (!formattedPhone.startsWith('+')) {
-            formattedPhone = '+' + formattedPhone;
-        }
-
-        const message = `Habari ${name || 'Farmer'}, your Mel-Agri order #${orderId.slice(0, 5)} is now ${status}. Thank you for farming with us!`;
-
-        // Send via our API route (browser-safe)
-        try {
-            const response = await fetch('/api/notifications/sms', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ to: formattedPhone, message }),
-            });
-
-            const data = await response.json();
-
-            if (response.ok && data.success) {
-                console.log("SMS sent successfully via API route");
-                return { success: true, details: data.details };
-            } else {
-                console.warn("SMS API failed:", data.message);
-                return { success: false, error: data.message };
-            }
-        } catch (error) {
-            console.error("SMS Service Error:", error);
-            return { success: false, error };
-        }
-    }
+    sendOrderUpdate: async (_phoneNumber: string, _orderId: string, _status: string, _name?: string) => {
+        console.warn('SmsService.sendOrderUpdate is disabled; use server notifyCustomer');
+        return { success: false, disabled: true };
+    },
 };
