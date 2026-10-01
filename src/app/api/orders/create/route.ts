@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import * as admin from 'firebase-admin';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireUser } from '@/lib/auth-server';
+import { requirePermission, requireUser } from '@/lib/auth-server';
+import { normalizeKenyanPhone } from '@/lib/account-upgrade';
+import { WHATSAPP_STAFF_ORDER } from '@/lib/whatsapp-order';
 import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
 import { PICKUP_STORE } from '@/lib/pickup';
 import { getZonesServer } from '@/lib/delivery-server';
@@ -101,9 +103,91 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: authenticated.message || 'Unauthorized' }, { status: 401 });
     }
 
+    let orderCommitted = false;
+    let staffMeta: {
+        customerId: string;
+        actorId: string;
+        actorEmail: string | null;
+        clientRequestId: string | null;
+        whatsappPhone: string | null;
+        lockRef: FirebaseFirestore.DocumentReference | null;
+    } | null = null;
+
     try {
-        const parsed = createOrderSchema.safeParse(await request.json());
+        const body = await request.json().catch(() => null);
+
+        if (body && typeof body === 'object' && (body as { orderChannel?: string }).orderChannel === 'whatsapp') {
+            const actor = await requirePermission(request, 'orders.manage');
+            if (!actor.ok || !actor.uid) {
+                return NextResponse.json({ success: false, message: actor.message || 'Orders access required' }, { status: 403 });
+            }
+            const customerId = String((body as { customerId?: string }).customerId || '').trim();
+            if (!customerId || customerId.length > 128) {
+                return NextResponse.json({ success: false, message: 'Choose a customer before creating the order.' }, { status: 400 });
+            }
+            const customerSnap = await adminDb.collection('users').doc(customerId).get();
+            if (!customerSnap.exists) {
+                return NextResponse.json({ success: false, message: 'Customer not found.' }, { status: 404 });
+            }
+            if (customerSnap.data()?.status === 'suspended') {
+                return NextResponse.json({ success: false, message: 'This account is suspended.' }, { status: 409 });
+            }
+            const clientRequestId = String((body as { clientRequestId?: string }).clientRequestId || '').trim();
+            if (!/^[A-Za-z0-9_-]{8,80}$/.test(clientRequestId)) {
+                return NextResponse.json({ success: false, message: 'Missing order request id.' }, { status: 400 });
+            }
+            const lockRef = adminDb.collection('staffOrderRequests').doc(clientRequestId);
+            try {
+                await lockRef.create({
+                    status: 'pending',
+                    actorId: actor.uid,
+                    customerId,
+                    createdAt: new Date().toISOString(),
+                });
+            } catch (lockError: any) {
+                const code = lockError?.code;
+                const already = code === 6 || code === 'already-exists' || code === 'ALREADY_EXISTS';
+                if (!already) throw lockError;
+                const lock = await lockRef.get();
+                const existingId = String(lock.data()?.orderId || '');
+                if (existingId) {
+                    const existing = await adminDb.collection('orders').doc(existingId).get();
+                    if (existing.exists) {
+                        return NextResponse.json({
+                            success: true,
+                            duplicate: true,
+                            order: { id: existing.id, ...existing.data() },
+                        });
+                    }
+                }
+                return NextResponse.json({ success: false, message: 'This order is already being created.' }, { status: 409 });
+            }
+            const rawWhatsapp = String((body as { whatsappPhone?: string }).whatsappPhone || '').trim();
+            let whatsappPhone: string | null = null;
+            if (rawWhatsapp) {
+                try {
+                    whatsappPhone = normalizeKenyanPhone(rawWhatsapp);
+                } catch {
+                    whatsappPhone = null;
+                }
+            }
+            (body as { paymentMethod?: string }).paymentMethod = 'mpesa';
+            (body as { redeemPoints?: boolean }).redeemPoints = false;
+            delete (body as { couponCode?: string }).couponCode;
+            delete (body as { transactionCode?: string }).transactionCode;
+            staffMeta = {
+                customerId,
+                actorId: actor.uid,
+                actorEmail: actor.email || null,
+                clientRequestId,
+                whatsappPhone,
+                lockRef,
+            };
+        }
+
+        const parsed = createOrderSchema.safeParse(body);
         if (!parsed.success) {
+            if (staffMeta?.lockRef) await staffMeta.lockRef.delete().catch(() => undefined);
             return NextResponse.json({
                 success: false,
                 code: 'VALIDATION_ERROR',
@@ -113,7 +197,7 @@ export async function POST(request: Request) {
         }
 
         const input = parsed.data;
-        const uid = authenticated.uid;
+        const uid = staffMeta?.customerId || authenticated.uid;
         const normalizedCoupon = input.couponCode?.toUpperCase() || '';
         const zones = await getZonesServer();
 
@@ -299,9 +383,18 @@ export async function POST(request: Request) {
                 id: orderRef.id,
                 userId: uid,
                 userName: input.shipping.fullName,
-                userEmail: input.shipping.email || authenticated.email || '',
+                userEmail: staffMeta
+                    ? (userData.email || input.shipping.email || '')
+                    : (input.shipping.email || authenticated.email || ''),
                 phone: input.shipping.phone,
                 phoneKey: orderPhoneKey(input.shipping.phone) || null,
+                ...(staffMeta ? {
+                    orderChannel: WHATSAPP_STAFF_ORDER.orderChannel,
+                    whatsappPhone: staffMeta.whatsappPhone || input.shipping.phone,
+                    createdByStaffId: staffMeta.actorId,
+                    createdByStaffEmail: staffMeta.actorEmail,
+                    clientRequestId: staffMeta.clientRequestId,
+                } : {}),
                 items: orderItems,
                 subtotal,
                 shippingCost: shippingInfo.cost,
@@ -314,9 +407,9 @@ export async function POST(request: Request) {
                 couponId,
                 total,
                 shippingAddress,
-                paymentMethod: payment.paymentMethod,
-                paymentStatus: payment.paymentStatus,
-                status: payment.status,
+                paymentMethod: staffMeta ? WHATSAPP_STAFF_ORDER.paymentMethod : payment.paymentMethod,
+                paymentStatus: staffMeta ? WHATSAPP_STAFF_ORDER.paymentStatus : payment.paymentStatus,
+                status: staffMeta ? WHATSAPP_STAFF_ORDER.status : payment.status,
                 notificationPreferences: ['sms'],
                 date,
                 createdAt: date,
@@ -361,7 +454,7 @@ export async function POST(request: Request) {
                     previousStock,
                     newStock: nextStock,
                     change: -quantity,
-                    updatedBy: 'System (Secure Checkout)',
+                    updatedBy: staffMeta ? 'Staff (WhatsApp order)' : 'System (Secure Checkout)',
                     updatedAt: date,
                     orderId: orderRef.id,
                 });
@@ -396,10 +489,21 @@ export async function POST(request: Request) {
                 isPrimary: existingAddresses.length === 0,
                 savedAt: date,
             }];
+            if (staffMeta?.lockRef) {
+                transaction.set(staffMeta.lockRef, {
+                    status: 'created',
+                    orderId: orderRef.id,
+                    customerId: uid,
+                    updatedAt: date,
+                }, { merge: true });
+            }
+
             transaction.set(userRef, {
                 name: userData.name || input.shipping.fullName,
-                email: userData.email || input.shipping.email || authenticated.email || '',
-                phone: input.shipping.phone,
+                email: staffMeta
+                    ? (userData.email || input.shipping.email || '')
+                    : (userData.email || input.shipping.email || authenticated.email || ''),
+                phone: staffMeta && userData.phone ? userData.phone : input.shipping.phone,
                 ...(input.shippingMethod === 'standard' ? {
                     address: shipping.address,
                     city: shipping.town,
@@ -416,26 +520,50 @@ export async function POST(request: Request) {
 
             return createdOrder;
         });
+        orderCommitted = true;
 
-        try {
-            const awaitingPayment = order.status === 'Pending Payment';
-            const confirmation = awaitingPayment
-                ? CommunicationTemplates.getAwaitingPayment(await withActionUrls(order as any))
-                : CommunicationTemplates.getOrderConfirmation(await withActionUrls(order as any));
-            await notifyCustomer({
-                userId: order.userId,
-                phone: order.phone,
-                message: confirmation.smsBody,
-                orderId: order.id,
-                skipDashboard: true,
-            });
-        } catch (notificationError) {
-            console.warn('Order confirmation notification failed (non-fatal):', notificationError);
+        if (staffMeta) {
+            try {
+                await adminDb.collection('adminAuditLog').add({
+                    action: 'whatsapp_order_created',
+                    actorId: staffMeta.actorId,
+                    actorEmail: staffMeta.actorEmail,
+                    targetId: order.id,
+                    after: {
+                        userId: order.userId,
+                        total: order.total,
+                        phone: order.phone,
+                        orderChannel: WHATSAPP_STAFF_ORDER.orderChannel,
+                    },
+                    createdAt: order.date,
+                });
+            } catch (auditError) {
+                console.warn('WhatsApp order audit failed (non-fatal):', auditError);
+            }
+        }
+
+        if (!staffMeta) {
+            try {
+                const awaitingPayment = order.status === 'Pending Payment';
+                const confirmation = awaitingPayment
+                    ? CommunicationTemplates.getAwaitingPayment(await withActionUrls(order as any))
+                    : CommunicationTemplates.getOrderConfirmation(await withActionUrls(order as any));
+                await notifyCustomer({
+                    userId: order.userId,
+                    phone: order.phone,
+                    message: confirmation.smsBody,
+                    orderId: order.id,
+                    skipDashboard: true,
+                });
+            } catch (notificationError) {
+                console.warn('Order confirmation notification failed (non-fatal):', notificationError);
+            }
         }
 
         revalidateStorefrontCatalogue();
         return NextResponse.json({ success: true, order }, { status: 201 });
     } catch (error: any) {
+        if (!orderCommitted && staffMeta?.lockRef) await staffMeta.lockRef.delete().catch(() => undefined);
         const known = error instanceof OrderCreationError;
         console.error('Secure order creation failed:', error);
         return NextResponse.json({

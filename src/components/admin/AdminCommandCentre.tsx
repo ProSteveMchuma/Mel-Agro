@@ -11,7 +11,7 @@ type Result = { id: string; type: string; title: string; subtitle: string; href:
 
 const ALL_QUICK_ACTIONS: Result[] = [
   { id: "quick:new-product", type: "Quick action", title: "Add a product", subtitle: "Create a new catalogue listing", href: "/dashboard/admin/products/new" },
-  { id: "quick:new-order", type: "Quick action", title: "Create an order", subtitle: "Enter a customer order manually", href: "/dashboard/admin/orders/create" },
+  { id: "quick:new-order", type: "Quick action", title: "Create an order", subtitle: "WhatsApp customer, then M-Pesa prompt", href: "/dashboard/admin/orders/create" },
   { id: "quick:returns", type: "Quick action", title: "Open Returns desk", subtitle: "Approve or reject return requests", href: "/dashboard/admin/returns" },
   { id: "quick:alerts", type: "Quick action", title: "Open Action Centre", subtitle: "Review operational alerts", href: "/dashboard/admin/action-centre" },
   { id: "quick:analytics", type: "Navigation", title: "Revenue analytics", subtitle: "Traffic, searches, and paid orders", href: "/dashboard/admin/analytics" },

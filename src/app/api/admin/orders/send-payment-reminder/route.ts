@@ -6,6 +6,7 @@ import { CommunicationTemplates } from '@/lib/communication-templates';
 import { withActionUrls } from '@/lib/order-access';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { sendServerEmail } from '@/lib/server-notifications';
+import { reminderBlockReason } from '@/lib/whatsapp-order';
 
 type Channel = 'sms' | 'email';
 
@@ -36,16 +37,15 @@ export async function POST(request: Request) {
 
         const order = { id: orderSnap.id, ...orderSnap.data() } as any;
 
-        if (order.paymentStatus === 'Paid') {
-            return NextResponse.json({ success: false, message: 'Order is already paid — nothing to remind' }, { status: 409 });
-        }
-        if (order.paymentStatus === 'Refunded') {
-            return NextResponse.json({ success: false, message: 'Order has been refunded' }, { status: 409 });
+        const blocked = reminderBlockReason(order.paymentStatus);
+        if (blocked) {
+            return NextResponse.json({ success: false, message: blocked }, { status: 409 });
         }
 
-        const tpl = CommunicationTemplates.getPaymentReminder(await withActionUrls(order));
+        const linked = await withActionUrls(order);
+        const tpl = CommunicationTemplates.getPaymentReminder(linked);
 
-        const results: Record<Channel, { ok: boolean; reason?: string }> = {} as any;
+        const results: Record<string, { ok: boolean; reason?: string }> = {};
 
         if (channels.includes('sms')) {
             const phone = order.phone || order.mpesaPhoneNumber;
