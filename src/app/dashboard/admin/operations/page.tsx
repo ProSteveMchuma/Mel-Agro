@@ -1,13 +1,9 @@
 "use client";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useOrders } from "@/context/OrderContext";
-import { useProducts } from "@/context/ProductContext";
-import {
-    stockOutForecast, demandSpikes, paymentFailureClusters, refundWatch, slaBreaches, computeAlertKPIs,
-    type StockAlert,
-} from "@/lib/operational-alerts";
+import { getAuth } from "firebase/auth";
+import type { DemandSpike, PaymentFailureCluster, RefundWatch, SlaBreach, StockAlert } from "@/lib/operational-alerts";
 
 const fmtKES = (n: number) => `KES ${Math.round(n).toLocaleString()}`;
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
@@ -56,34 +52,69 @@ function severityBadge(s: StockAlert['severity']) {
     return <span className={`px-2 py-1 rounded-md text-[10px] font-black tracking-tight ${cfg.bg}`}>{cfg.label}</span>;
 }
 
+type OpsPayload = {
+    scannedOrders: number;
+    stock: StockAlert[];
+    spikes: DemandSpike[];
+    failures: PaymentFailureCluster[];
+    refund: RefundWatch;
+    sla: SlaBreach[];
+    kpis: { totalOpenAlerts: number; outOfStock: number; criticalStock: number; spikingProducts: number; failedPayments24h: number; lowStock: number; refundRate7d: number; slaBreaches: number };
+};
+
+const emptyRefund: RefundWatch = { refundedRevenue30d: 0, totalRevenue30d: 0, refundRate30d: 0, refundedRevenue7d: 0, totalRevenue7d: 0, refundRate7d: 0, topRefundedProducts: [] };
+
 export default function OperationsPage() {
-    const { orders } = useOrders();
-    const { products } = useProducts();
+    const [payload, setPayload] = useState<OpsPayload | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
 
-    const stockAlerts = useMemo(() => stockOutForecast(orders, products, 30), [orders, products]);
-    const spikes = useMemo(() => demandSpikes(orders, products), [orders, products]);
-    const failures = useMemo(() => paymentFailureClusters(orders), [orders]);
-    const refund = useMemo(() => refundWatch(orders), [orders]);
-    const sla = useMemo(() => slaBreaches(orders, 48), [orders]);
+    useEffect(() => {
+        const controller = new AbortController();
+        (async () => {
+            try {
+                const token = await getAuth().currentUser?.getIdToken();
+                if (!token) throw new Error("Admin session is unavailable.");
+                const response = await fetch("/api/admin/intelligence/operations", { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal });
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.message || "Could not load operations.");
+                setPayload(result);
+            } catch (caught) {
+                if ((caught as Error).name !== "AbortError") setError(caught instanceof Error ? caught.message : "Could not load operations.");
+            } finally {
+                if (!controller.signal.aborted) setLoading(false);
+            }
+        })();
+        return () => controller.abort();
+    }, []);
 
-    const kpis = useMemo(() => computeAlertKPIs(stockAlerts, spikes, failures, refund, sla), [stockAlerts, spikes, failures, refund, sla]);
+    const stockAlerts = payload?.stock || [];
+    const spikes = payload?.spikes || [];
+    const failures = payload?.failures || [];
+    const refund = payload?.refund || emptyRefund;
+    const sla = payload?.sla || [];
+    const kpis = payload?.kpis || { totalOpenAlerts: 0, outOfStock: 0, criticalStock: 0, spikingProducts: 0, failedPayments24h: 0, lowStock: 0, refundRate7d: 0, slaBreaches: 0 };
 
     const stockNeedingAttention = useMemo(() => stockAlerts
         .filter(s => s.severity !== 'ok')
         .sort((a, b) => {
             const order = { out: 0, critical: 1, low: 2, ok: 3 } as const;
             if (order[a.severity] !== order[b.severity]) return order[a.severity] - order[b.severity];
-            return a.daysOfCover - b.daysOfCover;
+            const cover = (value: number | null) => value != null && Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+            return cover(a.daysOfCover) - cover(b.daysOfCover);
         }), [stockAlerts]);
 
     return (
         <div className="space-y-8 pb-12">
             <div>
                 <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Operations Alerts</h1>
-                <p className="text-gray-500 text-sm mt-1">Real-time signals — stock-outs, demand spikes, payment health, refunds, SLA breaches.</p>
+                <p className="text-gray-500 text-sm mt-1">Stock, payments, refunds, and late packing from the latest {payload?.scannedOrders ?? "…"} orders on the server.</p>
             </div>
 
-            {kpis.totalOpenAlerts === 0 && (
+            {loading && <p className="rounded-2xl border border-gray-100 bg-white p-6 text-sm text-gray-500">Loading operations…</p>}
+            {error && <p className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</p>}
+
+            {!loading && !error && kpis.totalOpenAlerts === 0 && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-6 text-emerald-900">
                     <p className="font-black text-sm uppercase tracking-tight">All systems healthy</p>
                     <p className="text-xs text-emerald-800 mt-1">No open alerts. Stock levels are comfortable, payments are clearing, fulfillment is on track.</p>

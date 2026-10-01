@@ -92,11 +92,18 @@ export default function InventoryManagement() {
     }
   }
 
-  async function adjustStock(product: InventoryProduct, adjustment: number) {
+  async function adjustStock(product: InventoryProduct, adjustment: number, variantId?: string, packName?: string) {
     await postInventory(
       product,
-      { action: "adjust", adjustment, reason: `Quick adjustment ${adjustment > 0 ? "+" : ""}${adjustment}` },
-      "Stock updated.",
+      {
+        action: "adjust",
+        adjustment,
+        ...(variantId ? { variantId } : {}),
+        reason: packName
+          ? `Quick adjustment ${adjustment > 0 ? "+" : ""}${adjustment} (${packName})`
+          : `Quick adjustment ${adjustment > 0 ? "+" : ""}${adjustment}`,
+      },
+      packName ? `${packName} stock updated.` : "Stock updated.",
     );
   }
 
@@ -257,6 +264,7 @@ export default function InventoryManagement() {
             <tbody className="divide-y divide-gray-100">
               {!loading &&
                 products.map((product) => {
+                  const packs = Array.isArray(product.variants) ? product.variants : [];
                   const stock = Number(product.stockQuantity || 0);
                   const velocity = Number(product.dailyVelocity || 0);
                   const totalSold = Number(product.totalSold30d || 0);
@@ -301,6 +309,15 @@ export default function InventoryManagement() {
                       <td className="px-6 py-4">
                         <span className="text-lg font-black text-gray-950">{stock}</span>
                         <span className="ml-1 text-xs text-gray-400">units</span>
+                        {packs.length > 0 && (
+                          <ul className="mt-2 space-y-1">
+                            {packs.map((pack) => (
+                              <li key={pack.id} className="text-xs font-semibold text-gray-600">
+                                {pack.name || "Pack"} · {Number(pack.stockQuantity ?? 0)}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <p className="font-bold text-gray-700">{totalSold} units</p>
@@ -320,7 +337,7 @@ export default function InventoryManagement() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-right" onClick={(event) => event.stopPropagation()}>
-                        <div className="flex justify-end gap-2">
+                        <div className="flex flex-col items-end gap-2">
                           {Number(product.incomingStock || 0) > 0 && (
                             <button
                               type="button"
@@ -331,7 +348,29 @@ export default function InventoryManagement() {
                               Goods arrived ({Number(product.incomingStock)})
                             </button>
                           )}
-                          {[-10, -1, 1, 10].map((amount) => (
+                          {packs.length > 0 ? packs.map((pack) => {
+                            const packStock = Number(pack.stockQuantity ?? 0);
+                            return (
+                              <div key={pack.id} className="flex items-center justify-end gap-2">
+                                <span className="max-w-24 truncate text-[10px] font-black uppercase text-gray-500">{pack.name || "Pack"}</span>
+                                {[-10, -1, 1, 10].map((amount) => (
+                                  <button
+                                    key={amount}
+                                    type="button"
+                                    disabled={busy || packStock + amount < 0}
+                                    onClick={() => adjustStock(product, amount, String(pack.id), pack.name)}
+                                    className={`flex h-9 min-w-9 items-center justify-center rounded-lg px-2 text-xs font-black disabled:cursor-not-allowed disabled:opacity-35 ${
+                                      amount < 0
+                                        ? "bg-red-50 text-red-600 hover:bg-red-100"
+                                        : "bg-green-50 text-green-700 hover:bg-green-100"
+                                    }`}
+                                  >
+                                    {amount > 0 ? `+${amount}` : amount}
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          }) : [-10, -1, 1, 10].map((amount) => (
                             <button
                               key={amount}
                               type="button"

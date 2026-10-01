@@ -8,7 +8,7 @@ import { WHATSAPP_STAFF_ORDER } from '@/lib/whatsapp-order';
 import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
 import { PICKUP_STORE } from '@/lib/pickup';
 import { getZonesServer } from '@/lib/delivery-server';
-import { CommunicationTemplates } from '@/lib/communication-templates';
+import { applyOrderConfirmationSms, CommunicationTemplates } from '@/lib/communication-templates';
 import { withActionUrls, withActionUrlsSync } from '@/lib/order-access';
 import { orderPhoneKey } from '@/lib/phone-match';
 import { notifyCustomer } from '@/lib/customer-notifications';
@@ -551,13 +551,24 @@ export async function POST(request: Request) {
         if (!staffMeta) {
             try {
                 const awaitingPayment = order.status === 'Pending Payment';
+                const linked = await withActionUrls(order as any);
                 const confirmation = awaitingPayment
-                    ? CommunicationTemplates.getAwaitingPayment(await withActionUrls(order as any))
-                    : CommunicationTemplates.getOrderConfirmation(await withActionUrls(order as any));
+                    ? CommunicationTemplates.getAwaitingPayment(linked)
+                    : CommunicationTemplates.getOrderConfirmation(linked);
+                let template: string | undefined;
+                if (!awaitingPayment) {
+                    try {
+                        const settingsSnap = await adminDb.collection('settings').doc('notifications').get();
+                        template = settingsSnap.data()?.orderConfirmationTemplate;
+                    } catch (settingsError) {
+                        console.warn('Order confirmation template unavailable:', settingsError);
+                    }
+                }
+                const confirmationSms = awaitingPayment ? confirmation.smsBody : applyOrderConfirmationSms(linked, template);
                 await notifyCustomer({
                     userId: order.userId,
                     phone: order.phone,
-                    message: confirmation.smsBody,
+                    message: confirmationSms,
                     orderId: order.id,
                     skipDashboard: true,
                 });

@@ -134,7 +134,7 @@ export default function SettingsPage() {
                                 onChange={(e) => setTaxForm({ ...taxForm, enabled: e.target.checked })}
                                 className="w-4 h-4 text-melagri-primary rounded focus:ring-melagri-primary"
                             />
-                            <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-900">Enable Tax Calculation</label>
+                            <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-900">Show VAT on the invoice</label>
                         </div>
                         <div className="grid grid-cols-1 gap-6">
                             <div>

@@ -13,6 +13,9 @@ export default function UserProfilePage() {
     const router = useRouter();
     const [user, setUser] = useState<any>(null);
     const [orders, setOrders] = useState<any[]>([]);
+    const [paidSpend, setPaidSpend] = useState(0);
+    const [paidOrderCount, setPaidOrderCount] = useState(0);
+    const [orderCount, setOrderCount] = useState(0);
     const [lastOrderAt, setLastOrderAt] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -35,6 +38,9 @@ export default function UserProfilePage() {
                 if (!response.ok) throw new Error(data.message || "Could not load this customer.");
                 setUser(data.user);
                 setOrders(data.orders || []);
+                setPaidSpend(Number(data.paidSpend) || 0);
+                setPaidOrderCount(Number(data.paidOrderCount) || 0);
+                setOrderCount(Number(data.orderCount) || (data.orders || []).length);
                 setLastOrderAt(data.lastOrderAt || null);
             } catch (caught) {
                 if ((caught as Error).name !== "AbortError") {
@@ -58,8 +64,7 @@ export default function UserProfilePage() {
         return <div className="p-8 text-center text-gray-600">{error || "Customer not found."}</div>;
     }
 
-    const totalSpend = orders.reduce((sum, order) => sum + (Number(order.total) || 0), 0);
-    const averageOrderValue = orders.length > 0 ? totalSpend / orders.length : 0;
+    const averageOrderValue = paidOrderCount > 0 ? paidSpend / paidOrderCount : 0;
     const suspended = user.status === "suspended";
 
     const handleSuspendToggle = async () => {
@@ -128,12 +133,12 @@ export default function UserProfilePage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                    <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Total Spend</h3>
-                    <p className="text-2xl font-bold text-gray-900">KES {totalSpend.toLocaleString()}</p>
+                    <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Paid spend</h3>
+                    <p className="text-2xl font-bold text-gray-900">KES {paidSpend.toLocaleString()}</p>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Orders Placed</h3>
-                    <p className="text-2xl font-bold text-gray-900">{orders.length}</p>
+                    <p className="text-2xl font-bold text-gray-900">{orderCount}</p>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h3 className="text-gray-500 text-xs font-bold uppercase tracking-wider mb-2">Avg. Order Value</h3>
@@ -144,7 +149,7 @@ export default function UserProfilePage() {
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="p-6 border-b border-gray-100">
                     <h2 className="text-lg font-bold text-gray-900">Order History</h2>
-                    {orders.length >= 100 && <p className="mt-1 text-xs text-gray-500">This profile lists 100 orders. Spend is counted from those orders.</p>}
+                    <p className="mt-1 text-xs text-gray-500">Paid spend KES {paidSpend.toLocaleString()} from {paidOrderCount} paid order{paidOrderCount === 1 ? "" : "s"}. Recent list below{orderCount > orders.length ? ` (${orders.length} of ${orderCount})` : ""}.</p>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left text-sm">
