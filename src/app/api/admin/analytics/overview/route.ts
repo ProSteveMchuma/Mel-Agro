@@ -11,6 +11,7 @@ import {
     visitorToPaidRate,
     type FunnelDoc,
 } from '@/lib/storefront-analytics';
+import { rollupVisitBreakdown } from '@/lib/commerce-ops';
 
 async function settled<T>(promise: Promise<T>): Promise<T | null> {
     try {
@@ -30,13 +31,14 @@ export async function GET(request: Request) {
         const yesterday = previousUtcDateKey();
         const dayStart = `${today}T00:00:00.000Z`;
 
-        const [todayTraffic, yesterdayTraffic, searchesSnap, productsSnap, funnelsSnap, todayOrdersSnap] = await Promise.all([
+        const [todayTraffic, yesterdayTraffic, searchesSnap, productsSnap, funnelsSnap, todayOrdersSnap, todayPagesSnap] = await Promise.all([
             settled(adminDb.collection('analytics_traffic').doc(today).get()),
             settled(adminDb.collection('analytics_traffic').doc(yesterday).get()),
             settled(adminDb.collection('analytics_search_terms').orderBy('count', 'desc').limit(5).get()),
-            settled(adminDb.collection('analytics_products').orderBy('views', 'desc').limit(5).get()),
+            settled(adminDb.collection('analytics_products').orderBy('views', 'desc').limit(8).get()),
             settled(adminDb.collection('analytics_funnels').limit(1500).get()),
             settled(adminDb.collection('orders').where('date', '>=', dayStart).limit(500).get()),
+            settled(adminDb.collection('analytics_pages').where('date', '==', today).limit(80).get()),
         ]);
 
         const searches = (searchesSnap?.docs || []).map(doc => ({
@@ -44,7 +46,7 @@ export async function GET(request: Request) {
             count: Number(doc.data().count || 0),
         })).filter(item => item.term);
 
-        const products = (productsSnap?.docs || []).map(doc => {
+        const productRows = (productsSnap?.docs || []).map(doc => {
             const data = doc.data();
             return {
                 productId: String(data.productId || doc.id),
@@ -52,7 +54,27 @@ export async function GET(request: Request) {
                 addToCartCount: Number(data.addToCartCount || 0),
                 purchases: Number(data.purchases || 0),
             };
+        }).filter(item => item.productId && item.productId.length <= 128 && !item.productId.includes('/'));
+        const catalogueSnaps = productRows.length
+            ? await adminDb.getAll(...productRows.map(row => adminDb.collection('products').doc(row.productId))).catch(() => [])
+            : [];
+        const catalogue = new Map(catalogueSnaps.filter(snap => snap.exists).map(snap => [snap.id, snap.data() || {}]));
+        const products = productRows.map(row => {
+            const data = catalogue.get(row.productId);
+            const qty = data ? Number(data.stockQuantity ?? data.stock ?? 0) : null;
+            const stockQuantity = qty != null && Number.isFinite(qty) ? qty : null;
+            return {
+                ...row,
+                name: String(data?.name || '').trim() || row.productId,
+                stockQuantity,
+                inStock: data ? data.inStock !== false && (stockQuantity ?? 0) > 0 : null,
+            };
         });
+        const todayPages = rollupVisitBreakdown((todayPagesSnap?.docs || []).map(doc => ({
+            key: String(doc.data().path || ''),
+            views: Number(doc.data().views || 0),
+            uniques: Number(doc.data().uniques || 0),
+        })));
 
         const funnel = summariseFunnels((funnelsSnap?.docs || []).map(doc => doc.data() as FunnelDoc));
         const traffic = trafficDelta(todayTraffic?.data(), yesterdayTraffic?.data());
@@ -71,6 +93,7 @@ export async function GET(request: Request) {
             },
             searches,
             products,
+            todayPages,
             funnel,
             demand,
             bottleneck,
@@ -81,6 +104,8 @@ export async function GET(request: Request) {
                 funnel: 'Signed-in checkout sessions in analytics_funnels',
                 traffic: 'UTC calendar-day visits from analytics_traffic',
                 paidToday: 'Orders with date today and paymentStatus Paid',
+                todayPages: 'Anonymous page views for this UTC day',
+                products: 'Lifetime product views, adds, and purchases, with current stock',
             },
         });
     } catch (error) {

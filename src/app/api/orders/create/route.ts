@@ -16,6 +16,7 @@ import { sendStaffOrderAlert } from '@/lib/staff-order-alert-server';
 import { enforceRateLimit } from '@/lib/request-guard';
 import { revalidateStorefrontCatalogue } from '@/lib/revalidate-catalogue';
 import { normalizeAnalyticsPath } from '@/lib/commerce-ops';
+import { isListingPath } from '@/lib/shop-journey';
 
 const lineItemSchema = z.object({
     id: z.union([z.string(), z.number()]).transform(String),
@@ -43,6 +44,7 @@ const createOrderSchema = z.object({
     couponCode: z.string().trim().max(50).optional(),
     redeemPoints: z.boolean().default(false),
     entryPath: z.string().trim().max(200).optional(),
+    salePath: z.string().trim().max(200).optional(),
 }).superRefine((value, ctx) => {
     const uniqueLines = new Set<string>();
     for (const item of value.items) {
@@ -379,6 +381,8 @@ export async function POST(request: Request) {
                 ...(shipping.lng != null ? { lng: shipping.lng } : {}),
             };
             const entryPath = normalizeAnalyticsPath(input.entryPath);
+            const saleCandidate = normalizeAnalyticsPath(input.salePath);
+            const salePath = isListingPath(saleCandidate) ? saleCandidate : null;
             const reservationMinutes = ['mpesa', 'card'].includes(input.paymentMethod) ? 30 : 24 * 60;
             const inventoryCommitted = input.paymentMethod === 'cod';
             const reservationExpiresAt = new Date(now.getTime() + reservationMinutes * 60_000).toISOString();
@@ -425,6 +429,7 @@ export async function POST(request: Request) {
                 stockReservationStatus: inventoryCommitted ? 'committed' : 'active',
                 ...(inventoryCommitted ? {} : { stockReservationExpiresAt: reservationExpiresAt }),
                 ...(entryPath ? { entryPath } : {}),
+                ...(salePath ? { salePath } : {}),
             };
 
             transaction.set(orderRef, createdOrder);
