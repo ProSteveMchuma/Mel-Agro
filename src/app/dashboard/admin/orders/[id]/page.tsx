@@ -2,7 +2,7 @@
 import { useOrders } from "@/context/OrderContext";
 import { useAuth } from "@/context/AuthContext";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 import { getAuth } from "firebase/auth";
@@ -13,6 +13,7 @@ import {
     PICKUP_STORE,
 } from "@/lib/pickup";
 import { hasAdminPermission } from "@/lib/admin-permissions";
+import { mpesaControlVisibility, paymentPromptAccess, stkRetryBody } from "@/lib/whatsapp-order";
 
 async function authedFetch(url: string, body: any) {
     const token = await getAuth().currentUser?.getIdToken();
@@ -31,6 +32,7 @@ export default function AdminOrderDetailsPage() {
     const { user } = useAuth();
     const params = useParams();
     const router = useRouter();
+    const canPrompt = paymentPromptAccess(user?.role, user?.adminPermissions).canPrompt;
     const canRecordPayment = hasAdminPermission(user?.role, user?.adminPermissions, 'payments.manage');
     const [order, setOrder] = useState<any>(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -38,7 +40,11 @@ export default function AdminOrderDetailsPage() {
     const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
     const [isReverseModalOpen, setIsReverseModalOpen] = useState(false);
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
-    const [reminderChannels, setReminderChannels] = useState<{ sms: boolean; email: boolean }>({ sms: true, email: false });
+    const [reminderChannels, setReminderChannels] = useState<{ sms: boolean; email: boolean; whatsapp: boolean }>({ sms: true, email: false, whatsapp: true });
+    const [promptPhone, setPromptPhone] = useState('');
+    const [promptFeedback, setPromptFeedback] = useState<{ stkOk: boolean; stkMessage: string; waMessage: string; text: string; url: string; draft: boolean } | null>(null);
+    const seenOrderId = useRef('');
+    const autoPrompted = useRef(false);
     const [verifyCode, setVerifyCode] = useState('');
     const [reverseRemarks, setReverseRemarks] = useState('');
     const [mpesaActionLoading, setMpesaActionLoading] = useState<string | null>(null);
@@ -58,6 +64,11 @@ export default function AdminOrderDetailsPage() {
             if (foundOrder) {
                 setOrder(foundOrder);
                 setPaymentRecord(prev => ({ ...prev, amount: foundOrder.total }));
+                if (seenOrderId.current !== foundOrder.id) {
+                    seenOrderId.current = foundOrder.id;
+                    setPromptPhone(foundOrder.phone || '');
+                    setPromptFeedback(null);
+                }
             }
         }
     }, [params.id, orders]);
@@ -95,24 +106,89 @@ export default function AdminOrderDetailsPage() {
         }
     };
 
-    const handleRetrySTK = async () => {
-        if (!order) return;
-        setMpesaActionLoading('retry');
-        const t = toast.loading("Sending STK Push to customer...");
+    const sendPaymentPrompt = async (phoneRaw?: string) => {
+        if (!order || !canPrompt) return;
+        let body: { orderId: string; phoneNumber: string };
         try {
-            const res = await authedFetch('/api/payment/mpesa/retry', { orderId: order.id });
-            const data = await res.json();
-            if (data.success) {
-                toast.success("STK Push sent. Customer will see prompt on phone.", { id: t });
-            } else {
-                toast.error(data.message || "Failed to send STK Push", { id: t });
-            }
-        } catch (e: any) {
-            toast.error(e?.message || "Retry failed", { id: t });
-        } finally {
-            setMpesaActionLoading(null);
+            body = stkRetryBody(order.id, phoneRaw || promptPhone || order.phone || '');
+        } catch {
+            toast.error('Enter a valid Kenyan phone number (e.g. 0712 345 678).');
+            return;
         }
+        setMpesaActionLoading('prompt');
+        const notice = toast.loading('Sending M-Pesa prompt...');
+        let stkOk = false;
+        let stkMessage = '';
+        try {
+            const res = await authedFetch('/api/payment/mpesa/retry', body);
+            const data = await res.json();
+            stkOk = Boolean(data.success);
+            stkMessage = data.message || (stkOk ? 'Check the phone and enter the M-Pesa PIN' : 'M-Pesa prompt failed');
+            if (res.status === 409) {
+                toast.error(data.message || 'Already paid', { id: notice });
+                setPromptFeedback({ stkOk: false, stkMessage: data.message || 'Already paid', waMessage: '', text: '', url: '', draft: false });
+                setMpesaActionLoading(null);
+                return;
+            }
+        } catch (error: any) {
+            stkMessage = error?.message || 'M-Pesa prompt failed';
+        }
+
+        let wa: any = null;
+        let waMessage = '';
+        try {
+            const res = await authedFetch('/api/admin/orders/whatsapp-prompt', { orderId: order.id });
+            wa = await res.json();
+            waMessage = wa.message || '';
+            if (res.status === 409) {
+                toast.error(wa.message || 'Already paid', { id: notice });
+                setMpesaActionLoading(null);
+                return;
+            }
+            if (wa?.url) window.open(wa.url, '_blank', 'noopener,noreferrer');
+        } catch (error: any) {
+            waMessage = error?.message || 'WhatsApp could not be sent';
+        }
+
+        setPromptFeedback({
+            stkOk,
+            stkMessage,
+            waMessage,
+            text: wa?.text || '',
+            url: wa?.url || '',
+            draft: Boolean(wa?.draft || wa?.message === 'WhatsApp draft ready'),
+        });
+        if (stkOk) {
+            toast.success(
+                wa?.draft ? 'Check the phone and enter the M-Pesa PIN. WhatsApp draft ready.' : 'Check the phone and enter the M-Pesa PIN.',
+                { id: notice, duration: 6000 },
+            );
+        } else {
+            toast.error(stkMessage || 'M-Pesa prompt failed', { id: notice, duration: 7000 });
+        }
+        setMpesaActionLoading(null);
     };
+
+    const handleRetrySTK = async () => {
+        await sendPaymentPrompt();
+    };
+
+    const sendPromptRef = useRef(sendPaymentPrompt);
+    sendPromptRef.current = sendPaymentPrompt;
+    useEffect(() => {
+        if (!order?.id || autoPrompted.current) return;
+        if (typeof window === 'undefined') return;
+        if (new URLSearchParams(window.location.search).get('prompt') !== '1') return;
+        if (order.paymentStatus === 'Paid' || order.paymentStatus === 'Refunded') return;
+        const key = `wa-prompted:${order.id}`;
+        if (sessionStorage.getItem(key)) {
+            autoPrompted.current = true;
+            return;
+        }
+        sessionStorage.setItem(key, '1');
+        autoPrompted.current = true;
+        void sendPromptRef.current(order.phone || '');
+    }, [order?.id, order?.paymentStatus, order?.phone]);
 
     const handleQueryStatus = async () => {
         if (!order) return;
@@ -185,8 +261,10 @@ export default function AdminOrderDetailsPage() {
                 channels,
             });
             const data = await res.json();
+            const whatsapp = data.results?.whatsapp;
+            if (whatsapp?.url) window.open(whatsapp.url, '_blank', 'noopener,noreferrer');
             if (data.success) {
-                toast.success(data.message, { id: t, duration: 5000 });
+                toast.success(whatsapp?.draft ? `${data.message}. WhatsApp draft ready.` : data.message, { id: t, duration: 5000 });
                 setIsReminderModalOpen(false);
             } else {
                 const reasons = data.results
@@ -298,6 +376,9 @@ export default function AdminOrderDetailsPage() {
                     <div className="flex items-center gap-3 mb-2">
                         <span className="px-2 py-0.5 bg-gray-100 text-[10px] font-black text-gray-500 rounded-md uppercase tracking-widest border border-gray-200">Order ID</span>
                         <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase">#{order.id.slice(0, 8)}</h1>
+                        {order.orderChannel === 'whatsapp' ? (
+                            <span className="px-2 py-0.5 bg-green-50 text-[10px] font-black text-green-700 rounded-md uppercase tracking-widest border border-green-200">WhatsApp</span>
+                        ) : null}
                     </div>
                     <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Placed on {new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}</p>
                 </div>
@@ -747,7 +828,7 @@ export default function AdminOrderDetailsPage() {
                                 </button>
                                 ) : (
                                 <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-amber-800">
-                                    Payments access required to record settlement
+                                    Operations confirms till payments
                                 </p>
                                 )}
                                 <button
@@ -813,11 +894,8 @@ export default function AdminOrderDetailsPage() {
 
                     {/* M-Pesa Controls Card */}
                     {(() => {
-                        const m = (order.paymentMethod || '').toLowerCase();
-                        const isMpesa = m.includes('m-pesa') || m.includes('mpesa');
+                        const { isMpesa, isStk: isStkMpesa } = mpesaControlVisibility(order.paymentMethod);
                         if (!isMpesa) return null;
-
-                        const isStkMpesa = m === 'm-pesa' || m === 'mpesa';
                         const status = order.paymentStatus;
                         const isUnpaid = status !== 'Paid' && status !== 'Refunded';
 
@@ -829,14 +907,46 @@ export default function AdminOrderDetailsPage() {
                                 </div>
 
                                 <div className="space-y-3">
-                                    {isStkMpesa && isUnpaid && (
-                                        <button
-                                            onClick={handleRetrySTK}
-                                            disabled={mpesaActionLoading === 'retry'}
-                                            className="w-full bg-[#22c55e] text-white py-3.5 rounded-2xl hover:bg-green-600 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-500/10 active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
-                                        >
-                                            {mpesaActionLoading === 'retry' ? 'Sending...' : '↻ Retry STK Push'}
-                                        </button>
+                                    {isStkMpesa && isUnpaid && canPrompt && (
+                                        <div className="space-y-2">
+                                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                                M-Pesa number
+                                                <input
+                                                    type="tel"
+                                                    value={promptPhone}
+                                                    onChange={(event) => setPromptPhone(event.target.value)}
+                                                    className="mt-1 w-full min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold normal-case tracking-normal text-gray-900"
+                                                />
+                                            </label>
+                                            <button
+                                                onClick={handleRetrySTK}
+                                                disabled={mpesaActionLoading === 'prompt'}
+                                                className="w-full bg-[#22c55e] text-white py-3.5 rounded-2xl hover:bg-green-600 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-500/10 active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
+                                            >
+                                                {mpesaActionLoading === 'prompt' ? 'Sending...' : (order.retryCount > 0 ? 'Send M-Pesa prompt again' : 'Send M-Pesa prompt')}
+                                            </button>
+                                            {promptFeedback ? (
+                                                <div className={`rounded-xl border p-3 text-xs ${promptFeedback.stkOk ? 'border-green-200 bg-green-50 text-green-900' : 'border-amber-200 bg-amber-50 text-amber-950'}`}>
+                                                    <p>{promptFeedback.stkMessage}</p>
+                                                    {promptFeedback.waMessage ? <p className="mt-1">{promptFeedback.draft ? 'WhatsApp draft ready' : promptFeedback.waMessage}</p> : null}
+                                                    {promptFeedback.url ? (
+                                                        <a href={promptFeedback.url} target="_blank" rel="noopener noreferrer" className="mt-2 block font-bold underline">Open WhatsApp draft</a>
+                                                    ) : null}
+                                                    {promptFeedback.text ? (
+                                                        <button
+                                                            type="button"
+                                                            className="mt-2 font-bold underline"
+                                                            onClick={() => void navigator.clipboard.writeText(promptFeedback.text)}
+                                                        >
+                                                            Copy message
+                                                        </button>
+                                                    ) : null}
+                                                </div>
+                                            ) : null}
+                                            {order.lastWhatsAppPromptMode === 'draft' && !promptFeedback ? (
+                                                <p className="text-center text-[10px] font-bold uppercase tracking-widest text-green-700">WhatsApp draft ready</p>
+                                            ) : null}
+                                        </div>
                                     )}
 
                                     {isStkMpesa && (
@@ -849,7 +959,7 @@ export default function AdminOrderDetailsPage() {
                                         </button>
                                     )}
 
-                                    {isMpesa && isUnpaid && (
+                                    {isMpesa && isUnpaid && canRecordPayment && (
                                         <button
                                             onClick={() => {
                                                 const codeFromOrder = order.claimedMpesaReceipt || (order.paymentMethod || '').match(/\(([^)]+)\)/)?.[1] || '';
@@ -860,6 +970,11 @@ export default function AdminOrderDetailsPage() {
                                         >
                                             ✓ Enter / Verify Transaction Code
                                         </button>
+                                    )}
+                                    {isMpesa && isUnpaid && !canRecordPayment && (
+                                        <p className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-center text-[10px] font-bold uppercase tracking-widest text-amber-800">
+                                            Operations confirms till payments
+                                        </p>
                                     )}
 
                                     {status === 'Paid' && !order.refundStatus && (order.mpesaReceiptNumber || order.transactionId) && (
@@ -1161,6 +1276,19 @@ export default function AdminOrderDetailsPage() {
                                     className="w-5 h-5 rounded accent-melagri-primary cursor-pointer"
                                 />
                             </label>
+                            <label className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${reminderChannels.whatsapp ? 'border-melagri-primary bg-green-50/50' : 'border-gray-100 hover:border-gray-200'} ${!(order.whatsappPhone || order.phone) ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                <div>
+                                    <p className="font-bold text-gray-900 text-sm">WhatsApp</p>
+                                    <p className="text-[10px] text-gray-500 mt-0.5">{order.whatsappPhone || order.phone || 'No phone on order'}</p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    checked={reminderChannels.whatsapp}
+                                    disabled={!(order.whatsappPhone || order.phone)}
+                                    onChange={(e) => setReminderChannels(c => ({ ...c, whatsapp: e.target.checked }))}
+                                    className="w-5 h-5 rounded accent-melagri-primary cursor-pointer"
+                                />
+                            </label>
                             <label className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${reminderChannels.email ? 'border-melagri-primary bg-green-50/50' : 'border-gray-100 hover:border-gray-200'} ${!order.userEmail ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                 <div>
                                     <p className="font-bold text-gray-900 text-sm">Email</p>
@@ -1186,7 +1314,7 @@ export default function AdminOrderDetailsPage() {
                             </button>
                             <button
                                 onClick={handleSendReminder}
-                                disabled={mpesaActionLoading === 'reminder' || (!reminderChannels.sms && !reminderChannels.email)}
+                                disabled={mpesaActionLoading === 'reminder' || (!reminderChannels.sms && !reminderChannels.email && !reminderChannels.whatsapp)}
                                 className="flex-[1.5] py-5 text-[10px] font-black text-white bg-amber-600 hover:bg-amber-700 rounded-[1.5rem] transition-all shadow-xl shadow-amber-600/20 uppercase tracking-[0.2em] active:scale-95 disabled:opacity-60"
                             >
                                 {mpesaActionLoading === 'reminder' ? 'Sending...' : 'Send Now'}

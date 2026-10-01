@@ -20,7 +20,7 @@ function challengeRef(phone: string) {
     return adminDb.collection('otpChallenges').doc(otpPhoneDocId(phone));
 }
 
-async function getOrCreateUserByPhone(phone: string) {
+export async function getOrCreateUserByPhone(phone: string) {
     try {
         return await adminAuth.getUserByPhoneNumber(phone);
     } catch (error: any) {

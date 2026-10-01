@@ -1,4 +1,4 @@
-import { SUPPORT_WHATSAPP } from './site';
+import { SUPPORT_WHATSAPP } from './site.ts';
 
 export interface WhatsAppOrderDetails {
     orderId: string;
