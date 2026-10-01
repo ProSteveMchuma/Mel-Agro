@@ -3,6 +3,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requirePermission } from '@/lib/auth-server';
 import { FieldValue } from 'firebase-admin/firestore';
 import { scoreCartRecovery } from '@/lib/recovery-intelligence';
+import { notifyCustomer } from '@/lib/customer-notifications';
+import { SITE_URL } from '@/lib/site';
 
 function isoDate(value: unknown): string | null {
     if (typeof value === 'string') {
@@ -85,7 +87,20 @@ export async function POST(request: Request) {
         if (user.data()?.cartRecoveryConsent !== true) return NextResponse.json({ success: false, message: 'Customer has not consented to cart recovery messages' }, { status: 409 });
         if (Number(data.recoveryContactCount || 0) >= 3) return NextResponse.json({ success: false, message: 'Maximum contact attempts reached' }, { status: 409 });
         if (lastContact && Date.now() - new Date(lastContact).getTime() < 72 * 3_600_000) return NextResponse.json({ success: false, message: '72-hour contact cooldown is still active' }, { status: 409 });
-        await cartRef.set({ lastRecoveryContactAt: FieldValue.serverTimestamp(), recoveryContactCount: FieldValue.increment(1), recoveryHistory: FieldValue.arrayUnion({ action: 'contacted', channel: 'whatsapp', by: auth.email || auth.uid, at: new Date().toISOString() }) }, { merge: true });
+        const phone = String(data.userPhone || user.data()?.phone || '').trim();
+        if (!phone) return NextResponse.json({ success: false, message: 'No customer phone' }, { status: 409 });
+        const userId = String(data.userId || cartId);
+        const related = await adminDb.collection('orders').where('userId', '==', userId).limit(20).get();
+        const cartTime = new Date(isoDate(data.updatedAt) || 0).getTime();
+        const purchasedAfter = related.docs.some((order) => order.data().paymentStatus === 'Paid' && new Date(order.data().date || order.data().createdAt || 0).getTime() > cartTime);
+        if (purchasedAfter) return NextResponse.json({ success: false, message: 'Customer already paid for an order after this cart' }, { status: 409 });
+        const items = Array.isArray(data.items) ? data.items : [];
+        const names = items.map((item: { name?: string }) => String(item.name || '').trim()).filter(Boolean).slice(0, 3).join(', ');
+        const total = Number(data.total || 0);
+        const message = `Habari ${String(data.userName || 'there')}, you left ${names || 'items'} (KES ${total.toLocaleString()}) in your Mel-Agri cart. Finish here: ${SITE_URL}/cart`;
+        const sent = await notifyCustomer({ userId, phone, message, type: 'system' });
+        if (!sent.sms.ok) return NextResponse.json({ success: false, message: sent.sms.reason || 'SMS could not be sent' }, { status: 502 });
+        await cartRef.set({ lastRecoveryContactAt: FieldValue.serverTimestamp(), recoveryContactCount: FieldValue.increment(1), recoveryHistory: FieldValue.arrayUnion({ action: 'contacted', channel: 'sms', by: auth.email || auth.uid, at: new Date().toISOString() }) }, { merge: true });
     } else {
         const outcome = typeof body.outcome === 'string' ? body.outcome.slice(0, 200) : '';
         if (!outcome) return NextResponse.json({ success: false, message: 'Outcome is required' }, { status: 400 });

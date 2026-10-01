@@ -6,6 +6,8 @@ import { requirePermission } from "@/lib/auth-server";
 import { CommunicationTemplates } from "@/lib/communication-templates";
 import { withActionUrls } from "@/lib/order-access";
 import { notifyCustomer } from "@/lib/customer-notifications";
+import { linesFromOrderItems, writeStockIncrease } from "@/lib/stock-restore";
+import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
 
 const PAGE_SIZE = 20;
 const RETURN_STATUSES = ["Requested", "Approved", "Rejected"] as const;
@@ -150,6 +152,21 @@ export async function POST(request: Request) {
         returnReviewedBy: actor.email || actor.uid,
         updatedAt: now,
       };
+      if (input.status === "Approved" && order.returnStockRestored !== true) {
+        const lines = linesFromOrderItems(order.items);
+        const productIds = [...new Set(lines.map((line) => line.productId))];
+        const productSnaps = productIds.length
+          ? await transaction.getAll(...productIds.map((id) => adminDb.collection("products").doc(id)))
+          : [];
+        writeStockIncrease(transaction, productSnaps, lines, {
+          orderId: input.orderId,
+          updatedBy: `Return approved (${actor.email || actor.uid})`,
+          now,
+          historyType: "return",
+        });
+        update.returnStockRestored = true;
+        update.returnStockRestoredAt = now;
+      }
       if (input.note?.trim()) {
         update.returnReviewNote = input.note.trim();
         const entry = {
@@ -183,6 +200,8 @@ export async function POST(request: Request) {
         status: input.status,
       };
     });
+
+    if (outcome.kind === "decide" && outcome.status === "Approved") revalidateStorefrontCatalogue();
 
     if (outcome.kind === "decide") {
       try {

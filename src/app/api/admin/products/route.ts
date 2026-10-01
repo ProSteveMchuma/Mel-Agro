@@ -5,6 +5,7 @@ import { z } from "zod";
 import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
 import { collapseBrandDisplays, normalizeDisplayField, resolveProductBrand } from "@/lib/catalog-normalize";
 import { matchesBrandFilter, matchesPriceFilter, parsePriceBound } from "@/lib/admin-catalogue-filters";
+import { notifyBackInStock } from "@/lib/commerce-jobs";
 
 const PAGE_SIZE = 20;
 const SCAN_SIZE = 75;
@@ -140,9 +141,10 @@ export async function POST(request: Request) {
   }
 
   try {
-    await adminDb.runTransaction(async (transaction) => {
+    const saved = await adminDb.runTransaction(async (transaction) => {
       const existing = await transaction.get(productRef); if (input.action === "update" && !existing.exists) throw new Error("PRODUCT_NOT_FOUND");
       const before = existing.data() || {}; const now = new Date().toISOString(); const totalAvailable = input.data.stockQuantity + input.data.variants.reduce((sum, variant) => sum + variant.stockQuantity, 0);
+      const previousStock = Number(before.stockQuantity || 0);
       const product = {
         ...input.data,
         name,
@@ -157,12 +159,16 @@ export async function POST(request: Request) {
         updatedBy: actor.uid,
       };
       if (input.action === "update") transaction.set(productRef, product, { merge: true }); else transaction.set(productRef, product);
-      const previousStock = Number(before.stockQuantity || 0); if (input.action === "create" || previousStock !== input.data.stockQuantity) transaction.set(adminDb.collection("inventory_history").doc(), { productId: productRef.id, productName: name, previousStock: input.action === "create" ? 0 : previousStock, newStock: input.data.stockQuantity, change: input.data.stockQuantity - (input.action === "create" ? 0 : previousStock), type: input.action === "create" ? "initial" : "product_edit", updatedBy: actor.email || actor.uid, updatedAt: now, note: input.action === "create" ? "Product created" : "Stock changed through product editor" });
+      if (input.action === "create" || previousStock !== input.data.stockQuantity) transaction.set(adminDb.collection("inventory_history").doc(), { productId: productRef.id, productName: name, previousStock: input.action === "create" ? 0 : previousStock, newStock: input.data.stockQuantity, change: input.data.stockQuantity - (input.action === "create" ? 0 : previousStock), type: input.action === "create" ? "initial" : "product_edit", updatedBy: actor.email || actor.uid, updatedAt: now, note: input.action === "create" ? "Product created" : "Stock changed through product editor" });
       transaction.set(adminDb.collection("adminAuditLog").doc(), { action: input.action === "create" ? "product_created" : "product_updated", actorId: actor.uid, actorEmail: actor.email || null, targetId: productRef.id, before: input.action === "update" ? { name: before.name || null, price: before.price || null, stockQuantity: before.stockQuantity || 0, brand: before.brand || null } : null, after: { name, price: input.data.price, stockQuantity: input.data.stockQuantity, brand, brandKey, variants: input.data.variants.length }, createdAt: now });
+      return { previousStock: input.action === "create" ? 0 : previousStock, newStock: input.data.stockQuantity, name, productId: productRef.id };
     });
     categoryCache = null;
     brandCache = null;
     revalidateStorefrontCatalogue();
+    if (saved.newStock > saved.previousStock && saved.newStock > 0) {
+      try { await notifyBackInStock({ id: saved.productId, name: saved.name }); } catch (error) { console.warn("Back-in-stock SMS failed (non-fatal):", error); }
+    }
     return NextResponse.json({ success: true, productId: productRef.id }, { status: input.action === "create" ? 201 : 200 });
   } catch (error) {
     if (error instanceof Error && error.message === "PRODUCT_NOT_FOUND") return NextResponse.json({ success: false, message: "Product not found." }, { status: 404 });

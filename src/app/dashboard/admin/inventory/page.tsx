@@ -70,7 +70,7 @@ export default function InventoryManagement() {
     setCursorHistory([]);
   }
 
-  async function adjustStock(product: InventoryProduct, adjustment: number) {
+  async function postInventory(product: InventoryProduct, body: Record<string, unknown>, success: string) {
     const id = String(product.id);
     setPendingId(id);
     try {
@@ -79,25 +79,29 @@ export default function InventoryManagement() {
       const response = await fetch("/api/admin/inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          productId: id,
-          adjustment,
-          reason: `Quick adjustment ${adjustment > 0 ? "+" : ""}${adjustment}`,
-        }),
+        body: JSON.stringify({ productId: id, ...body }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message || "Could not adjust stock.");
-      setProducts((current) =>
-        current.map((item) =>
-          String(item.id) === id ? { ...item, stockQuantity: result.newStock, inStock: result.newStock > 0 } : item,
-        ),
-      );
-      toast.success(`Stock updated to ${result.newStock}`);
+      if (!response.ok) throw new Error(result.message || "Could not update stock.");
+      toast.success(result.restockSms ? `${success} ${result.restockSms} back-in-stock SMS sent.` : success);
+      setRefreshKey((value) => value + 1);
     } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Could not adjust stock.");
+      toast.error(caught instanceof Error ? caught.message : "Could not update stock.");
     } finally {
       setPendingId(null);
     }
+  }
+
+  async function adjustStock(product: InventoryProduct, adjustment: number) {
+    await postInventory(
+      product,
+      { action: "adjust", adjustment, reason: `Quick adjustment ${adjustment > 0 ? "+" : ""}${adjustment}` },
+      "Stock updated.",
+    );
+  }
+
+  async function receiveGoods(product: InventoryProduct) {
+    await postInventory(product, { action: "receive" }, "Incoming stock is now on the shelf.");
   }
 
   const hasExtraFilters = filterBrand !== "All" || Boolean(minPrice.trim()) || Boolean(maxPrice.trim());
@@ -317,6 +321,16 @@ export default function InventoryManagement() {
                       </td>
                       <td className="px-6 py-4 text-right" onClick={(event) => event.stopPropagation()}>
                         <div className="flex justify-end gap-2">
+                          {Number(product.incomingStock || 0) > 0 && (
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => receiveGoods(product)}
+                              className="h-9 rounded-lg bg-emerald-700 px-3 text-[10px] font-black uppercase tracking-widest text-white disabled:opacity-35"
+                            >
+                              Goods arrived ({Number(product.incomingStock)})
+                            </button>
+                          )}
                           {[-10, -1, 1, 10].map((amount) => (
                             <button
                               key={amount}

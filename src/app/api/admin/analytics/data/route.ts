@@ -3,6 +3,7 @@ import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
 import { dateRangeCutoff, type DateRange } from "@/lib/analytics-aggregations";
 import { summariseFunnels, type FunnelDoc } from "@/lib/storefront-analytics";
+import { rollupVisitBreakdown } from "@/lib/commerce-ops";
 
 const ranges = new Set<DateRange>(["7d", "30d", "90d", "12m", "all"]);
 export async function GET(request: Request) {
@@ -16,14 +17,22 @@ export async function GET(request: Request) {
     if (cutoff) query = query.where("date", ">=", cutoff.toISOString());
     const trafficLimit = range === "7d" ? 7 : range === "30d" ? 31 : range === "90d" ? 90 : 120;
     const snapshot = await query.get();
-    const emptyStorefront = { traffic: [], searches: [], products: [], funnel: summariseFunnels([]) };
+    const emptyStorefront = { traffic: [], searches: [], products: [], funnel: summariseFunnels([]), pages: [], regions: [] };
+    const pageQuery = cutoff
+      ? adminDb.collection("analytics_pages").where("date", ">=", cutoff.toISOString().slice(0, 10)).limit(500)
+      : adminDb.collection("analytics_pages").orderBy("date", "desc").limit(500);
+    const regionQuery = cutoff
+      ? adminDb.collection("analytics_regions").where("date", ">=", cutoff.toISOString().slice(0, 10)).limit(500)
+      : adminDb.collection("analytics_regions").orderBy("date", "desc").limit(500);
     const storefrontReads = await Promise.allSettled([
       adminDb.collection("analytics_traffic").orderBy("date", "desc").limit(trafficLimit).get(),
       adminDb.collection("analytics_search_terms").orderBy("count", "desc").limit(8).get(),
       adminDb.collection("analytics_products").orderBy("views", "desc").limit(8).get(),
       adminDb.collection("analytics_funnels").limit(1500).get(),
+      pageQuery.get(),
+      regionQuery.get(),
     ]);
-    const [trafficSnap, searchSnap, productSnap, funnelSnap] = storefrontReads.map((result) => result.status === "fulfilled" ? result.value : null);
+    const [trafficSnap, searchSnap, productSnap, funnelSnap, pageSnap, regionSnap] = storefrontReads.map((result) => result.status === "fulfilled" ? result.value : null);
     const storefront = {
       traffic: trafficSnap ? trafficSnap.docs.map((document) => ({
         date: String(document.data().date || document.id),
@@ -44,6 +53,16 @@ export async function GET(request: Request) {
         };
       }) : emptyStorefront.products,
       funnel: funnelSnap ? summariseFunnels(funnelSnap.docs.map((document) => document.data() as FunnelDoc)) : emptyStorefront.funnel,
+      pages: rollupVisitBreakdown(pageSnap ? pageSnap.docs.map((document) => ({
+        key: String(document.data().path || ""),
+        views: Number(document.data().views || 0),
+        uniques: Number(document.data().uniques || 0),
+      })) : []),
+      regions: rollupVisitBreakdown(regionSnap ? regionSnap.docs.map((document) => ({
+        key: String(document.data().region || ""),
+        views: Number(document.data().views || 0),
+        uniques: Number(document.data().uniques || 0),
+      })) : []),
     };
     return NextResponse.json({
       success: true,
@@ -55,6 +74,8 @@ export async function GET(request: Request) {
         revenue: "Gross paid order total",
         refunds: "Tracked separately and not silently netted from revenue",
         traffic: "UTC calendar-day visits from analytics_traffic",
+        pages: "Page views recorded with each visit, staff console excluded",
+        regions: "Visit region from hosting geo headers, not a customer address",
         searches: "Lifetime search counts from /api/analytics",
         funnel: "Signed-in checkout sessions in analytics_funnels",
       },

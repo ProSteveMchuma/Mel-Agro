@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { requireUser } from '@/lib/auth-server';
 import { checkRateLimit, getClientAddress } from '@/lib/rate-limit';
 import { ANALYTICS_SCHEMA_VERSION } from '@/lib/storefront-analytics';
+import { normalizeAnalyticsPath, visitRegionLabel } from '@/lib/commerce-ops';
 import { recordPaidPurchase } from '@/lib/purchase-analytics';
 
 type AnalyticsEvent = 'search' | 'view' | 'add_to_cart' | 'visit' | 'purchase' | 'recommendation_impression' | 'recommendation_click' | 'recommendation_add_to_cart';
@@ -91,19 +92,48 @@ export async function POST(request: Request) {
             await batch.commit();
         } else if (event === 'visit') {
             const today = new Date().toISOString().slice(0, 10);
+            const path = normalizeAnalyticsPath(body?.path) || '/';
+            const region = visitRegionLabel(request.headers);
             const visitorKey = createHash('sha256').update(`${today}:${client}:${request.headers.get('user-agent') || ''}`).digest('hex');
+            const pageId = createHash('sha256').update(`${today}:${path}`).digest('hex').slice(0, 40);
+            const regionId = createHash('sha256').update(`${today}:${region}`).digest('hex').slice(0, 40);
             const visitRef = adminDb.collection('analytics_visit_dedup').doc(visitorKey);
+            const pageVisitorRef = adminDb.collection('analytics_visit_dedup').doc(createHash('sha256').update(`${visitorKey}:page:${path}`).digest('hex').slice(0, 40));
+            const regionVisitorRef = adminDb.collection('analytics_visit_dedup').doc(createHash('sha256').update(`${visitorKey}:region:${region}`).digest('hex').slice(0, 40));
             const trafficRef = adminDb.collection('analytics_traffic').doc(today);
+            const pageRef = adminDb.collection('analytics_pages').doc(pageId);
+            const regionRef = adminDb.collection('analytics_regions').doc(regionId);
             await adminDb.runTransaction(async transaction => {
                 const existing = await transaction.get(visitRef);
+                const pageVisitor = await transaction.get(pageVisitorRef);
+                const regionVisitor = await transaction.get(regionVisitorRef);
+                const stamp = { lastActive: FieldValue.serverTimestamp() };
                 transaction.set(trafficRef, {
                     schemaVersion: ANALYTICS_SCHEMA_VERSION,
                     date: today,
                     totalVisits: FieldValue.increment(1),
                     ...(existing.exists ? {} : { uniqueVisitors: FieldValue.increment(1) }),
-                    lastActive: FieldValue.serverTimestamp(),
+                    ...stamp,
+                }, { merge: true });
+                transaction.set(pageRef, {
+                    schemaVersion: ANALYTICS_SCHEMA_VERSION,
+                    date: today,
+                    path,
+                    views: FieldValue.increment(1),
+                    ...(pageVisitor.exists ? {} : { uniques: FieldValue.increment(1) }),
+                    ...stamp,
+                }, { merge: true });
+                transaction.set(regionRef, {
+                    schemaVersion: ANALYTICS_SCHEMA_VERSION,
+                    date: today,
+                    region,
+                    views: FieldValue.increment(1),
+                    ...(regionVisitor.exists ? {} : { uniques: FieldValue.increment(1) }),
+                    ...stamp,
                 }, { merge: true });
                 if (!existing.exists) transaction.set(visitRef, { date: today, createdAt: FieldValue.serverTimestamp() });
+                if (!pageVisitor.exists) transaction.set(pageVisitorRef, { date: today, createdAt: FieldValue.serverTimestamp() });
+                if (!regionVisitor.exists) transaction.set(regionVisitorRef, { date: today, createdAt: FieldValue.serverTimestamp() });
             });
         } else {
             const auth = await requireUser(request);

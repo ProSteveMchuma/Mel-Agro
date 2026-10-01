@@ -32,8 +32,23 @@ export async function runAutomations(actor: string) {
     if (rule.key === 'abandoned_cart') cartsSnap.docs.forEach((doc) => { const data = doc.data(); const age = (now - millis(data.updatedAt || data.lastUpdated || data.createdAt)) / 60000; const hasItems = Array.isArray(data.items) && data.items.length > 0; const consented = data.cartRecoveryConsent === true || data.recoveryConsent === true; if (hasItems && consented && age >= rule.threshold) candidates.push({ id: safeId(`auto_cart_${doc.id}`), type: 'abandoned_cart', severity: 'warning', title: `Consented checkout recovery opportunity`, summary: `Cart has been inactive for ${Math.floor(age)} minutes and recovery consent is recorded.`, recommendedAction: 'Confirm no later purchase exists before approving a single recovery contact.', entityId: doc.id, automationKey: rule.key, automationMode: rule.mode }); });
   }
   const limitedCandidates = candidates.slice(0, 450);
+  const refs = limitedCandidates.map((candidate) => adminDb.collection('intelligence_alerts').doc(candidate.id));
+  const existing = refs.length ? await adminDb.getAll(...refs) : [];
   const batch = adminDb.batch(); const timestamp = new Date().toISOString();
-  limitedCandidates.forEach((candidate) => batch.set(adminDb.collection('intelligence_alerts').doc(candidate.id), { ...candidate, status: 'new', source: 'automation', lastDetectedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(), firstDetectedAt: FieldValue.serverTimestamp(), history: FieldValue.arrayUnion({ action: 'automation_detected', by: actor, at: timestamp }) }, { merge: true }));
+  limitedCandidates.forEach((candidate, index) => {
+    const isNew = !existing[index]?.exists;
+    batch.set(refs[index], {
+      ...candidate,
+      source: 'automation',
+      lastDetectedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      ...(isNew ? {
+        status: 'new',
+        firstDetectedAt: FieldValue.serverTimestamp(),
+        history: [{ action: 'automation_detected', by: actor, at: timestamp }],
+      } : {}),
+    }, { merge: true });
+  });
   const runRef = adminDb.collection('automationRuns').doc();
   batch.set(runRef, { actor, rulesEvaluated: rules.map((rule) => rule.key), generated: limitedCandidates.length, truncated: candidates.length > limitedCandidates.length, sourceCounts: { orders: ordersSnap.size, products: productsSnap.size, carts: cartsSnap.size }, status: 'completed', createdAt: FieldValue.serverTimestamp() });
   await batch.commit();
