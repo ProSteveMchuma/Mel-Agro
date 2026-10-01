@@ -29,7 +29,7 @@ test('sales report dates are Africa/Nairobi days', () => {
 });
 
 test('confirmation SMS uses a saved template only when it contains the order id', () => {
-    const order = { id: 'abcde12345', userName: 'Wanjiku', total: 1500, items: [] } as Order;
+    const order = { id: 'abcde12345', userName: 'Wanjiku', total: 1500, items: [] } as unknown as Order;
     const saved = applyOrderConfirmationSms(order, 'Thank you {customerName}, order {orderId} is KES {total}.');
     assert.equal(saved, 'Thank you Wanjiku, order ABCDE is KES 1,500.');
     const fallback = applyOrderConfirmationSms(order, '   ');
