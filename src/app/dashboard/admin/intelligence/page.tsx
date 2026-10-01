@@ -5,6 +5,8 @@ import { useOrders } from "@/context/OrderContext";
 import { CATEGORY_ICONS } from "@/components/SidebarCategories";
 import Link from "next/link";
 import { auth } from "@/lib/firebase";
+import { getAuth } from "firebase/auth";
+import { toast } from "react-hot-toast";
 import { buildCustomerProfiles, summariseSegments, computeIntelKPIs, segmentColor, segmentDescription, Segment } from "@/lib/customer-intelligence";
 import { actionableReorders, buildReorderPredictions } from '@/lib/reorder-intelligence';
 
@@ -15,6 +17,8 @@ export default function IntelligencePage() {
     const { users } = useUsers();
     const { orders } = useOrders();
     const [cartCount, setCartCount] = useState<number | null>(null);
+    const [serverReorders, setServerReorders] = useState<Array<{ userId: string; productId: string; productName: string; userName: string; phone: string; daysUntilExpected: number; confidence: string; lastPrice: number; recommendedQuantity: number; alreadyReminded: boolean }>>([]);
+    const [reorderBusy, setReorderBusy] = useState<string | null>(null);
     const [funnel, setFunnel] = useState<{ sampled: number; steps: Array<{ key: string; label: string; count: number; conversionFromStart: number }> } | null>(null);
     const [activeSegment, setActiveSegment] = useState<Segment | 'all'>('all');
     const [tableSort, setTableSort] = useState<'ltv' | 'frequency' | 'recency'>('ltv');
@@ -46,12 +50,15 @@ export default function IntelligencePage() {
             .then(token => Promise.all([
                 fetch('/api/admin/intelligence/abandoned-carts', { headers: { Authorization: `Bearer ${token}` } }),
                 fetch('/api/admin/analytics/overview', { headers: { Authorization: `Bearer ${token}` } }),
+                fetch('/api/admin/intelligence/reorders', { headers: { Authorization: `Bearer ${token}` } }),
             ]))
-            .then(async ([cartsResponse, overviewResponse]) => {
+            .then(async ([cartsResponse, overviewResponse, reorderResponse]) => {
                 const cartsData = cartsResponse.ok ? await cartsResponse.json() : null;
                 const overviewData = overviewResponse.ok ? await overviewResponse.json() : null;
+                const reorderData = reorderResponse.ok ? await reorderResponse.json() : null;
                 setCartCount(Array.isArray(cartsData?.carts) ? cartsData.carts.length : null);
                 if (overviewData?.funnel?.steps) setFunnel(overviewData.funnel);
+                setServerReorders(Array.isArray(reorderData?.queue) ? reorderData.queue : []);
             })
             .catch(() => setCartCount(null));
     }, []);
@@ -103,28 +110,43 @@ export default function IntelligencePage() {
                     <div>
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-700">Revenue opportunity</p>
                         <h2 id="reorder-opportunities" className="mt-1 text-2xl font-black text-gray-900">Reorder review queue</h2>
-                        <p className="mt-1 text-sm text-gray-500">Customers approaching their observed replenishment interval. No messages are sent automatically.</p>
+                        <p className="mt-1 text-sm text-gray-500">Paid history, high or medium confidence only. One text per purchase cycle. Nothing is sent on its own.</p>
                     </div>
-                    <span className="rounded-xl bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-widest text-emerald-700">{reorderQueue.length} due soon</span>
+                    <span className="rounded-xl bg-emerald-50 px-4 py-2 text-xs font-black uppercase tracking-widest text-emerald-700">{serverReorders.length} due soon</span>
                 </div>
-                {reorderQueue.length > 0 ? (
+                {serverReorders.length > 0 ? (
                     <div className="mt-6 overflow-x-auto">
                         <table className="w-full text-left text-sm">
-                            <thead className="border-b border-gray-100 text-[10px] uppercase tracking-widest text-gray-400"><tr><th className="py-3">Customer</th><th>Product</th><th>Timing</th><th>Confidence</th><th>Suggested value</th></tr></thead>
+                            <thead className="border-b border-gray-100 text-[10px] uppercase tracking-widest text-gray-400"><tr><th className="py-3">Customer</th><th>Product</th><th>Timing</th><th>Confidence</th><th>Suggested value</th><th></th></tr></thead>
                             <tbody className="divide-y divide-gray-100">
-                                {reorderQueue.map(item => (
-                                    <tr key={`${item.userId}:${item.productId}`}>
-                                        <td className="py-4 font-mono text-xs text-gray-500">{item.userId.slice(0, 10)}…</td>
+                                {serverReorders.map(item => {
+                                    const key = `${item.userId}:${item.productId}`;
+                                    return (
+                                    <tr key={key}>
+                                        <td className="py-4 font-bold text-gray-900">{item.userName}<span className="block font-mono text-[10px] font-normal text-gray-400">{item.phone || item.userId.slice(0, 10)}</span></td>
                                         <td className="font-bold text-gray-900">{item.productName}<span className="block text-xs font-normal text-gray-400">Qty {item.recommendedQuantity}</span></td>
                                         <td className="text-gray-600">{item.daysUntilExpected <= 0 ? `${Math.abs(item.daysUntilExpected)}d overdue` : `In ${item.daysUntilExpected}d`}</td>
                                         <td><span className="rounded-full bg-gray-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest text-gray-600">{item.confidence}</span></td>
                                         <td className="font-black text-emerald-700">{fmtKES(item.lastPrice * item.recommendedQuantity)}</td>
+                                        <td className="py-4 text-right"><button type="button" disabled={item.alreadyReminded || reorderBusy === key || !item.phone} onClick={async () => {
+                                            setReorderBusy(key);
+                                            try {
+                                                const token = await getAuth().currentUser?.getIdToken();
+                                                const response = await fetch('/api/admin/intelligence/reorders', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ userId: item.userId, productId: item.productId }) });
+                                                const result = await response.json();
+                                                if (!response.ok) throw new Error(result.message || 'Could not send the reminder');
+                                                setServerReorders((current) => current.map((row) => row.userId === item.userId && row.productId === item.productId ? { ...row, alreadyReminded: true } : row));
+                                                toast.success('Reorder SMS sent');
+                                            } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not send the reminder'); }
+                                            finally { setReorderBusy(null); }
+                                        }} className="rounded-xl bg-emerald-700 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-white disabled:bg-gray-200 disabled:text-gray-500">{item.alreadyReminded ? 'Sent' : 'Text reminder'}</button></td>
                                     </tr>
-                                ))}
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
-                ) : <p className="mt-6 rounded-2xl bg-gray-50 p-6 text-sm font-semibold text-gray-500">No customers are currently inside the reorder window.</p>}
+                ) : <p className="mt-6 rounded-2xl bg-gray-50 p-6 text-sm font-semibold text-gray-500">No repeat buyers are inside the reorder window.</p>}
             </section>
 
             {/* CONVERSION FUNNEL VISUALIZATION */}

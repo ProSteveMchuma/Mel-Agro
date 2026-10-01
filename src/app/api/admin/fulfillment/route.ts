@@ -9,13 +9,14 @@ import { notifyCustomer } from "@/lib/customer-notifications";
 import {
   awardsLoyaltyOnStatus,
   fulfillmentMethodOf,
-  isActiveFulfillmentStatus,
   isPickupOrder,
   nextFulfillmentStatus,
 } from "@/lib/pickup";
 import { pointsEarnedForOrderTotal } from "@/lib/loyalty";
 import { lineBalances, outstandingQuantity, partialBlocksCompletion, partialSmsSummary } from "@/lib/order-admin";
 import { orderPhoneKey } from "@/lib/phone-match";
+import { canPackOrder, cashSettlementOnFinish } from "@/lib/commerce-ops";
+import { notifyCustomerPaymentReceived } from "@/lib/payment-notifications";
 
 const PAGE_SIZE = 20;
 type Cursor = { date: string; id: string };
@@ -55,7 +56,7 @@ export async function GET(request: Request) {
       const data = document.data();
       const date = String(data.date || "");
       cursor = { date, id: document.id };
-      if (data.paymentStatus !== "Paid" || !isActiveFulfillmentStatus(String(data.status || ""))) continue;
+      if (!canPackOrder(data as any)) continue;
       if (status && data.status !== status) continue;
       const orderMethod = fulfillmentMethodOf(data as any);
       if (method !== "all" && orderMethod !== method) continue;
@@ -199,6 +200,36 @@ function writeRestoredStock(
   }
 }
 
+function recordCashIfDue(
+  transaction: Transaction,
+  orderRef: DocumentReference,
+  order: Record<string, any>,
+  actor: { uid: string; email?: string | null },
+  now: string,
+  nextStatus: string,
+  update: Record<string, unknown>,
+) {
+  if (!cashSettlementOnFinish(order, nextStatus)) return false;
+  const reference = actor.email || "cash-on-delivery";
+  const amount = Number(order.total) || 0;
+  update.paymentStatus = "Paid";
+  update.paidAt = now;
+  update.amountPaid = amount;
+  update.transactionId = reference;
+  update.stockReservationStatus = "committed";
+  transaction.set(adminDb.collection("transactions").doc(), {
+    orderId: orderRef.id,
+    amount,
+    reference,
+    method: "Cash on Delivery",
+    date: now,
+    status: "Success",
+    recordedBy: actor.uid,
+    recordedAt: now,
+  });
+  return true;
+}
+
 function writeFinishedOrder(
   transaction: Transaction,
   args: {
@@ -220,6 +251,7 @@ function writeFinishedOrder(
     statusHistory: FieldValue.arrayUnion({ status, at: args.now, by: args.actor.email || args.actor.uid }),
     ...(args.pickup ? { collectedAt: args.now } : { deliveredAt: args.now }),
   };
+  const cashRecorded = recordCashIfDue(transaction, args.orderRef, args.order, args.actor, args.now, status, update);
   if (!args.order.loyaltyAwarded && args.userRef && args.userSnapshot?.exists) {
     const points = pointsEarnedForOrderTotal(Number(args.order.total || 0));
     transaction.update(args.userRef, { loyaltyPoints: FieldValue.increment(points) });
@@ -239,7 +271,8 @@ function writeFinishedOrder(
   });
   return {
     status,
-    order: { id: args.orderRef.id, ...args.order, status, deliveries: args.deliveries } as Record<string, unknown>,
+    cashRecorded,
+    order: { id: args.orderRef.id, ...args.order, status, deliveries: args.deliveries, ...(cashRecorded ? { paymentStatus: "Paid", amountPaid: Number(args.order.total) || 0 } : {}) } as Record<string, unknown>,
   };
 }
 
@@ -276,7 +309,7 @@ export async function POST(request: Request) {
         return { kind: "note" as const };
       }
 
-      if (order.paymentStatus !== "Paid") throw new Error("PAYMENT_REQUIRED");
+      if (!canPackOrder(order as any)) throw new Error("PAYMENT_REQUIRED");
 
       if (input.action === "partial" || input.action === "shortfall") {
         if (!["Processing", "Shipped"].includes(String(order.status || ""))) throw new Error("INVALID_TRANSITION");
@@ -306,7 +339,7 @@ export async function POST(request: Request) {
           const finished = writeFinishedOrder(transaction, {
             orderRef, order, actor: staffActor, now, pickup, deliveries, ...loyalty,
           });
-          return { kind: "status" as const, order: finished.order, status: finished.status };
+          return { kind: "status" as const, order: finished.order, status: finished.status, cashRecorded: finished.cashRecorded };
         }
 
         if (!pickup && (!input.tracking?.carrier || !input.tracking?.trackingNumber)) throw new Error("TRACKING_REQUIRED");
@@ -340,7 +373,7 @@ export async function POST(request: Request) {
           const finished = writeFinishedOrder(transaction, {
             orderRef, order, actor: staffActor, now, pickup, deliveries, ...loyalty,
           });
-          return { kind: "status" as const, order: finished.order, status: finished.status };
+          return { kind: "status" as const, order: finished.order, status: finished.status, cashRecorded: finished.cashRecorded };
         }
         transaction.update(orderRef, { deliveries, updatedAt: now });
         transaction.set(adminDb.collection("adminAuditLog").doc(), {
@@ -403,6 +436,15 @@ export async function POST(request: Request) {
       if (input.status === "Ready for Collection") update.readyForCollectionAt = now;
       if (input.status === "Delivered") update.deliveredAt = now;
       if (input.status === "Collected") update.collectedAt = now;
+      const cashRecorded = recordCashIfDue(
+        transaction,
+        orderRef,
+        order,
+        { uid: actor.uid || "staff", email: actor.email || null },
+        now,
+        input.status,
+        update,
+      );
 
       if (awardsLoyaltyOnStatus(input.status) && !order.loyaltyAwarded && userRef && userSnapshot?.exists) {
         const points = pointsEarnedForOrderTotal(Number(order.total || 0));
@@ -425,8 +467,15 @@ export async function POST(request: Request) {
 
       return {
         kind: "status" as const,
-        order: { id: input.orderId, ...order, status: input.status, tracking: input.tracking || order.tracking } as Record<string, unknown>,
+        order: {
+          id: input.orderId,
+          ...order,
+          status: input.status,
+          tracking: input.tracking || order.tracking,
+          ...(cashRecorded ? { paymentStatus: "Paid", amountPaid: Number(order.total) || 0, transactionId: actor.email || "cash-on-delivery" } : {}),
+        } as Record<string, unknown>,
         status: input.status,
+        cashRecorded,
       };
     });
 
@@ -445,6 +494,14 @@ export async function POST(request: Request) {
       } catch (error) {
         console.warn("Fulfillment customer notification failed (non-fatal):", error);
       }
+    }
+    if (outcome.kind === "status" && outcome.cashRecorded) {
+      void notifyCustomerPaymentReceived({
+        orderId: input.orderId,
+        order: outcome.order,
+        receipt: String(outcome.order.transactionId || actor.email || "cash-on-delivery"),
+        method: "Cash on Delivery",
+      });
     }
     return NextResponse.json({
       success: true,

@@ -6,7 +6,7 @@ import { CommunicationTemplates } from '@/lib/communication-templates';
 import { withActionUrls } from '@/lib/order-access';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { sendServerEmail } from '@/lib/server-notifications';
-import { reminderBlockReason } from '@/lib/whatsapp-order';
+import { paymentReminderBlockReason } from '@/lib/commerce-ops';
 
 type Channel = 'sms' | 'email';
 
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
         const order = { id: orderSnap.id, ...orderSnap.data() } as any;
 
-        const blocked = reminderBlockReason(order.paymentStatus);
+        const blocked = paymentReminderBlockReason(order);
         if (blocked) {
             return NextResponse.json({ success: false, message: blocked }, { status: 409 });
         }

@@ -42,7 +42,7 @@ export async function GET(request: Request) {
 
     const productsMissingSupplyData = products.docs.filter(doc => {
         const data = doc.data();
-        return !Number.isFinite(Number(data.leadTimeDays)) || !Number.isFinite(Number(data.safetyStock)) || !Number.isFinite(Number(data.minimumOrderQuantity));
+        return !Number.isFinite(Number(data.supplierLeadTimeDays)) || !Number.isFinite(Number(data.safetyStock)) || !Number.isFinite(Number(data.minimumOrderQuantity));
     }).length;
     const lastAlertSyncAt = alerts.empty ? null : timestampMs(alerts.docs[0].data().updatedAt);
     const reconciliationGap = Math.abs(paidOrderCount - purchaseCount);

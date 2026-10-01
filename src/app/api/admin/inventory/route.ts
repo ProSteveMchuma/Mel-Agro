@@ -5,6 +5,7 @@ import { requirePermission } from "@/lib/auth-server";
 import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
 import { collapseBrandDisplays } from "@/lib/catalog-normalize";
 import { matchesBrandFilter, matchesPriceFilter, parsePriceBound } from "@/lib/admin-catalogue-filters";
+import { notifyBackInStock } from "@/lib/commerce-jobs";
 
 const PAGE_SIZE = 20;
 const SCAN_SIZE = 75;
@@ -94,34 +95,59 @@ export async function GET(request: Request) {
   return NextResponse.json({ success: true, products, brands: await getBrands(), nextCursor: !exhausted && lastScannedId ? encodeCursor(lastScannedId) : null, searchLimited: scanned >= MAX_SCANNED && !exhausted });
 }
 
-const adjustmentSchema = z.object({ productId: z.string().min(1).max(180), adjustment: z.number().int().min(-10000).max(10000).refine((value) => value !== 0), reason: z.string().trim().max(240).optional() });
+const adjustmentSchema = z.union([
+  z.object({ action: z.literal("receive"), productId: z.string().min(1).max(180) }),
+  z.object({ action: z.literal("adjust").optional(), productId: z.string().min(1).max(180), adjustment: z.number().int().min(-10000).max(10000).refine((value) => value !== 0), reason: z.string().trim().max(240).optional() }),
+]);
 
 export async function POST(request: Request) {
   const actor = await requirePermission(request, "catalogue.manage");
   if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 401 });
   const parsed = adjustmentSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid stock adjustment." }, { status: 400 });
-  const { productId, adjustment, reason } = parsed.data;
+  const input = parsed.data;
+  const productId = input.productId;
+  const receiving = input.action === "receive";
+  const adjustment = input.action === "receive" ? 0 : input.adjustment;
+  const reason = input.action === "receive" ? "Goods arrived" : input.reason;
   const productRef = adminDb.collection("products").doc(productId);
   const result = await adminDb.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(productRef);
     if (!snapshot.exists) throw new Error("PRODUCT_NOT_FOUND");
     const data = snapshot.data() || {};
     const previousStock = Number(data.stockQuantity || 0);
-    const newStock = previousStock + adjustment;
+    const incoming = Math.max(0, Number(data.incomingStock || 0));
+    if (receiving && incoming <= 0) throw new Error("NOTHING_INCOMING");
+    const applied = receiving ? incoming : adjustment;
+    const newStock = previousStock + applied;
     if (newStock < 0) throw new Error("NEGATIVE_STOCK");
     const now = new Date().toISOString();
-    transaction.update(productRef, { stockQuantity: newStock, inStock: newStock > 0, updatedAt: now });
-    transaction.set(adminDb.collection("inventory_history").doc(), { productId, productName: data.name || "Unknown product", previousStock, newStock, change: adjustment, type: "admin_adjustment", reason: reason || "Quick inventory adjustment", updatedBy: actor.email || actor.uid, updatedAt: now });
-    transaction.set(adminDb.collection("adminAuditLog").doc(), { action: "inventory_adjusted", actorId: actor.uid, actorEmail: actor.email || null, targetId: productId, before: { stockQuantity: previousStock }, after: { stockQuantity: newStock, adjustment, reason: reason || null }, createdAt: now });
-    return { previousStock, newStock };
+    transaction.update(productRef, {
+      stockQuantity: newStock,
+      inStock: newStock > 0,
+      updatedAt: now,
+      ...(receiving ? { incomingStock: 0 } : {}),
+    });
+    transaction.set(adminDb.collection("inventory_history").doc(), { productId, productName: data.name || "Unknown product", previousStock, newStock, change: applied, type: receiving ? "goods_arrived" : "admin_adjustment", reason: reason || "Quick inventory adjustment", updatedBy: actor.email || actor.uid, updatedAt: now });
+    transaction.set(adminDb.collection("adminAuditLog").doc(), { action: receiving ? "inventory_received" : "inventory_adjusted", actorId: actor.uid, actorEmail: actor.email || null, targetId: productId, before: { stockQuantity: previousStock, incomingStock: incoming }, after: { stockQuantity: newStock, adjustment: applied, incomingStock: receiving ? 0 : incoming, reason: reason || null }, createdAt: now });
+    return { previousStock, newStock, name: String(data.name || "Product") };
   }).catch((error: Error) => {
     if (error.message === "PRODUCT_NOT_FOUND") return null;
     if (error.message === "NEGATIVE_STOCK") return { negative: true } as const;
+    if (error.message === "NOTHING_INCOMING") return { emptyIncoming: true } as const;
     throw error;
   });
   if (!result) return NextResponse.json({ success: false, message: "Product not found." }, { status: 404 });
   if ("negative" in result) return NextResponse.json({ success: false, message: "Adjustment would make stock negative." }, { status: 409 });
+  if ("emptyIncoming" in result) return NextResponse.json({ success: false, message: "There is no incoming stock to receive." }, { status: 409 });
   revalidateStorefrontCatalogue();
-  return NextResponse.json({ success: true, ...result });
+  let restockSms = 0;
+  if (result.newStock > result.previousStock && result.newStock > 0) {
+    try {
+      restockSms = (await notifyBackInStock({ id: productId, name: result.name })).sent;
+    } catch (error) {
+      console.warn("Back-in-stock SMS failed (non-fatal):", error);
+    }
+  }
+  return NextResponse.json({ success: true, ...result, restockSms });
 }

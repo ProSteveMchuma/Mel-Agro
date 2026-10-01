@@ -8,6 +8,7 @@ import { CommunicationTemplates } from '@/lib/communication-templates';
 import { withActionUrls } from '@/lib/order-access';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { adminOrderMutationSchema } from '@/lib/admin-order-mutations';
+import { isCashOnDelivery } from '@/lib/commerce-ops';
 import { orderPhoneKey, phoneQueryVariants } from '@/lib/phone-match';
 
 const PAGE_SIZE = 20;
@@ -117,6 +118,11 @@ export async function POST(request: Request) {
         update.paidAt = now;
         update.transactionId = input.transaction.reference;
         update.paymentMethod = input.transaction.method;
+        if (order.status === 'Pending Payment' || !order.status) {
+          update.status = 'Processing';
+          update.processingAt = order.processingAt || now;
+          update.statusHistory = FieldValue.arrayUnion({ status: 'Processing', at: now, by: actor.email || actor.uid });
+        }
         transaction.set(adminDb.collection('transactions').doc(), { orderId: input.orderId, amount: input.transaction.amount, reference: input.transaction.reference, method: input.transaction.method, date: input.transaction.date, status: 'Success', recordedBy: actor.uid, recordedAt: now });
       }
       transaction.update(orderRef, update); transaction.set(adminDb.collection('adminAuditLog').doc(), { action: 'order_payment_status_changed', actorId: actor.uid, actorEmail: actor.email || null, targetId: input.orderId, before: { paymentStatus: order.paymentStatus || 'Unpaid' }, after: { paymentStatus: input.paymentStatus, reference: input.transaction?.reference || null }, createdAt: now });
@@ -135,7 +141,7 @@ export async function POST(request: Request) {
         console.warn('Processing customer notification failed (non-fatal):', error);
       }
     }
-    if (input.action === 'payment_status' && input.paymentStatus === 'Paid' && input.transaction) {
+    if (input.action === 'payment_status' && input.paymentStatus === 'Paid' && input.transaction && !isCashOnDelivery(input.transaction.method)) {
       const paidSnap = await adminDb.collection('orders').doc(input.orderId).get();
       void notifyCustomerPaymentReceived({
         orderId: input.orderId,

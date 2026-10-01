@@ -73,10 +73,10 @@ export const AnalyticsService = {
      * Track a general website visit.
      * Records daily totals and unique visitor counts.
      */
-    trackVisit: async (isUnique: boolean = false) => {
+    trackVisit: async (isUnique: boolean = false, path = '/') => {
         const today = new Date().toISOString().split('T')[0];
         try {
-            await sendEvent({ event: 'visit', clientUniqueHint: isUnique, date: today });
+            await sendEvent({ event: 'visit', clientUniqueHint: isUnique, date: today, path });
         } catch (error) {
             console.error("Failed to track visit:", error);
         }

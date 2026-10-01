@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { demandSpikes, paymentFailureClusters, refundWatch, slaBreaches, stockOutForecast } from '@/lib/operational-alerts';
 import type { Order, Product } from '@/types';
 import { classifyPaymentHealth, deliveryEtaAccuracy } from '@/lib/fulfillment-intelligence';
+import { snoozeUntilFrom } from '@/lib/commerce-ops';
 
 const statuses = ['new', 'acknowledged', 'assigned', 'in_progress', 'resolved', 'snoozed'] as const;
 
@@ -74,6 +75,8 @@ export async function PATCH(request: Request) {
         updatedAt: FieldValue.serverTimestamp(),
         history: FieldValue.arrayUnion({ action: body.status, by: auth.email || auth.uid, note: typeof body.note === 'string' ? body.note.slice(0, 500) : '', at: new Date().toISOString() }),
     };
+    if (body.status === 'snoozed') update.snoozedUntil = snoozeUntilFrom();
+    else update.snoozedUntil = null;
     await adminDb.collection('intelligence_alerts').doc(id).set(update, { merge: true });
     return NextResponse.json({ success: true });
 }

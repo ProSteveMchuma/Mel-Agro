@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 import Link from "next/link";
-import { generateAbandonedCartNudge, getWhatsAppDirectUrl } from "@/lib/whatsapp";
 import { toast } from "react-hot-toast";
 
 interface AbandonedCart {
@@ -59,8 +58,8 @@ export default function AbandonedCartsPage() {
             const data = await response.json();
             if (!response.ok) throw new Error(data.message || 'Unable to record contact');
             setCarts(current => current.map(item => item.id === cart.id ? { ...item, recoveryContactCount: item.recoveryContactCount + 1, recovery: { ...item.recovery, contactEligible: false, blockedReason: '72-hour contact cooldown is active' } } : item));
-            window.open(getWhatsAppDirectUrl(cart.userPhone, generateAbandonedCartNudge(cart.userName, cart.items)), '_blank', 'noopener,noreferrer');
-        } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to open recovery message'); }
+            toast.success('Recovery SMS sent');
+        } catch (error) { toast.error(error instanceof Error ? error.message : 'Unable to send recovery SMS'); }
     };
 
     const recordOutcome = async (cart: AbandonedCart) => {
@@ -80,7 +79,7 @@ export default function AbandonedCartsPage() {
             <div className="flex justify-between items-end">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Abandoned Cart Recovery</h1>
-                    <p className="text-gray-500 mt-1">Nudge high-intent customers who haven't completed checkout.</p>
+                    <p className="text-gray-500 mt-1">Text consented customers from the shop SMS line. Nothing is sent until you press Text customer.</p>
                 </div>
                 <Link href="/dashboard/admin/intelligence" className="text-sm font-bold text-melagri-primary hover:underline">
                     ← Back to Intelligence
@@ -132,10 +131,9 @@ export default function AbandonedCartsPage() {
                                                 onClick={() => handleNudge(cart)}
                                                 disabled={!cart.recovery.contactEligible}
                                                 title={cart.recovery.blockedReason}
-                                                className="bg-[#25D366] hover:bg-[#128C7E] text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 float-right disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:shadow-none"
+                                                className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 float-right disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:shadow-none"
                                             >
-                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.038 3.284l-.54 1.964 2.009-.528c.954.524 1.942.85 3.037.852 3.181 0 5.767-2.586 5.768-5.766 0-3.18-2.586-5.772-5.744-5.772zm3.374 8.086c-.1.272-.58.513-.801.551-.237.042-.46.079-.769-.015-.297-.091-.676-.239-1.144-.442-1.99-.861-3.284-2.885-3.383-3.018-.099-.134-.736-.979-.736-1.959 0-.979.512-1.46.694-1.658.183-.198.396-.247.53-.247.13 0 .26.012.37.012.11 0 .26-.041.408.321.148.36.512 1.25.56 1.348.049.099.083.214.016.347-.066.13-.1.214-.2.33-.1.115-.208.261-.297.35-.099.099-.198.198-.083.396.115.198.512.845 1.099 1.366.759.673 1.398.882 1.596.981.198.099.313.082.43-.049.115-.132.512-.596.644-.793.132-.198.26-.165.43-.099.172.066 1.09.514 1.277.613.183.1.312.148.363.23.049.082.049.479-.05.751z" /></svg>
-                                                Nudge
+                                                Text customer
                                             </button>
                                             {cart.recoveryContactCount > 0 && <button onClick={() => recordOutcome(cart)} className="text-[10px] font-black uppercase tracking-widest text-gray-500 underline">Record outcome</button>}</div>
                                         </td>

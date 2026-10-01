@@ -8,6 +8,7 @@ import { authorizeOrderAction } from '@/lib/order-access-server';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { revalidateStorefrontCatalogue } from '@/lib/revalidate-catalogue';
 import { enforceRateLimit } from '@/lib/request-guard';
+import { linesFromOrderItems, writeStockIncrease } from '@/lib/stock-restore';
 
 const cancelSchema = z.object({
     orderId: z.string().trim().min(1).max(200),
@@ -90,38 +91,12 @@ export async function POST(request: Request) {
             const usageSnap = usageRef ? readSnaps[1 + productRefs.length + (discountRef ? 1 : 0)] : null;
             const now = new Date().toISOString();
 
-            for (const snapshot of productSnaps) {
-                if (!snapshot.exists) continue;
-                const product: any = snapshot.data();
-                const productItems = items.filter((item: any) => String(item.id) === snapshot.id);
-                const quantity = productItems.reduce((sum: number, item: any) => sum + Math.max(0, numberOrZero(item.quantity)), 0);
-                const previousStock = numberOrZero(product.stockQuantity);
-                const nextStock = previousStock + quantity;
-                const variants = Array.isArray(product.variants) ? product.variants.map((variant: any) => {
-                    const restoredQuantity = productItems
-                        .filter((item: any) => String(item.selectedVariant?.id || '') === String(variant.id))
-                        .reduce((sum: number, item: any) => sum + Math.max(0, numberOrZero(item.quantity)), 0);
-                    return restoredQuantity > 0
-                        ? { ...variant, stockQuantity: numberOrZero(variant.stockQuantity ?? variant.stock) + restoredQuantity }
-                        : variant;
-                }) : undefined;
-
-                transaction.update(snapshot.ref, {
-                    stockQuantity: nextStock,
-                    inStock: nextStock > 0,
-                    ...(variants ? { variants } : {}),
-                });
-                transaction.set(adminDb.collection('inventory_history').doc(), {
-                    productId: snapshot.id,
-                    productName: String(product.name || productItems[0]?.name || 'Product'),
-                    previousStock,
-                    newStock: nextStock,
-                    change: quantity,
-                    updatedBy: `System (Cancellation by ${actorId})`,
-                    updatedAt: now,
-                    orderId,
-                });
-            }
+            writeStockIncrease(transaction, productSnaps, linesFromOrderItems(items), {
+                orderId,
+                updatedBy: `System (Cancellation by ${actorId})`,
+                now,
+                historyType: 'cancellation',
+            });
 
             const pointsRedeemed = Math.max(0, numberOrZero(order.pointsRedeemed));
             if (pointsRedeemed > 0) {

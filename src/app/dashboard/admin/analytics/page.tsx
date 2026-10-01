@@ -56,6 +56,8 @@ export default function AnalyticsPage() {
         searches: Array<{ term: string; count: number }>;
         products: Array<{ productId: string; views: number; addToCartCount: number; purchases: number }>;
         funnel: { sampled: number; steps: Array<{ key: string; label: string; count: number; conversionFromStart: number }> };
+        pages?: Array<{ key: string; views: number; uniques: number }>;
+        regions?: Array<{ key: string; views: number; uniques: number }>;
     } | null>(null);
     const [dataLoading, setDataLoading] = useState(true);
     const [dataError, setDataError] = useState<string | null>(null);
@@ -101,7 +103,7 @@ export default function AnalyticsPage() {
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Revenue Analytics</h1>
-                    <p className="text-gray-500 text-sm mt-1">Live numbers from Firestore: paid orders, anonymous storefront visits, searches, and signed-in checkout sessions.</p>
+                    <p className="text-gray-500 text-sm mt-1">Live numbers from Firestore: paid orders, anonymous storefront visits by page and region, searches, and signed-in checkout sessions.</p>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
                     <select
@@ -148,7 +150,7 @@ export default function AnalyticsPage() {
                 <p className="font-black text-xs uppercase tracking-widest text-emerald-800 mb-1">What visitor data means</p>
                 <p className="text-xs leading-relaxed text-emerald-900/90">
                     <strong>Visits</strong> and <strong>uniques</strong> are anonymous daily counts (IP + browser fingerprint, hashed — we do not store names, phones, or IPs).
-                    You cannot open a roster of “who browsed the site.” Named people appear only after they sign in or place an order (Customers KPI, Orders, checkout funnel).
+                    You cannot open a roster of “who browsed the site.” Page and region totals use the same anonymous visit. Named people appear only after they sign in or place an order (Customers KPI, Orders, checkout funnel).
                 </p>
             </div>
 
@@ -199,6 +201,35 @@ export default function AnalyticsPage() {
                                     <div key={step.key} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
                                         <span className="font-bold text-gray-900">{step.label}</span>
                                         <span className="text-sm font-black text-gray-900">{step.count} <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{Math.round(step.conversionFromStart * 100)}%</span></span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                </div>
+            )}
+
+            {storefront && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <Card title="Viewers by page" subtitle="Anonymous page loads in this range. Daily uniques are counted again each day.">
+                        {(storefront.pages || []).length === 0 ? <p className="text-gray-400 text-sm">No page visits recorded yet. New visits fill this in.</p> : (
+                            <div className="space-y-3">
+                                {(storefront.pages || []).map((item) => (
+                                    <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
+                                        <span className="truncate font-bold text-gray-900">{item.key}</span>
+                                        <span className="shrink-0 text-xs font-black uppercase tracking-widest text-gray-500">{item.views} views · {item.uniques} daily uniques</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
+                    <Card title="Visits by region" subtitle="City and country from the hosting network, not the delivery address.">
+                        {(storefront.regions || []).length === 0 ? <p className="text-gray-400 text-sm">No region data yet. New visits fill this in.</p> : (
+                            <div className="space-y-3">
+                                {(storefront.regions || []).map((item) => (
+                                    <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
+                                        <span className="truncate font-bold text-gray-900">{item.key}</span>
+                                        <span className="shrink-0 text-xs font-black uppercase tracking-widest text-gray-500">{item.views} views · {item.uniques} daily uniques</span>
                                     </div>
                                 ))}
                             </div>
