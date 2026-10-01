@@ -2,13 +2,8 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { requirePermission } from '@/lib/auth-server';
 import { withActionUrls } from '@/lib/order-access';
-import { sendTwilioWhatsApp, twilioWhatsAppConfigured } from '@/lib/whatsapp-send';
-import {
-    buildWhatsAppPaymentMessage,
-    reminderBlockReason,
-    whatsAppDeliveryPlan,
-    whatsappDestination,
-} from '@/lib/whatsapp-order';
+import { notifyCustomer } from '@/lib/customer-notifications';
+import { customerPayPhone, paymentLinkSms, reminderBlockReason } from '@/lib/whatsapp-order';
 
 export async function POST(request: Request) {
     const actor = await requirePermission(request, 'orders.manage');
@@ -30,9 +25,11 @@ export async function POST(request: Request) {
 
     const order = { id: orderSnap.id, ...orderSnap.data() } as {
         id: string;
+        userId?: string;
         paymentStatus?: string;
         phone?: string;
         whatsappPhone?: string;
+        mpesaPhoneNumber?: string;
         userName?: string;
         total?: number;
         items?: Array<{ name?: string; quantity?: number }>;
@@ -42,13 +39,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: blocked }, { status: 409 });
     }
 
-    const destination = whatsappDestination(order);
-    if (!destination) {
+    const phone = customerPayPhone(order, body?.phoneNumber);
+    if (!phone) {
         return NextResponse.json({ success: false, message: 'Order has no phone number' }, { status: 400 });
     }
 
     const linked = await withActionUrls(order as any);
-    const text = buildWhatsAppPaymentMessage({
+    const text = paymentLinkSms({
         userName: order.userName,
         orderId: order.id,
         items: (order.items || []).map((item) => ({
@@ -58,47 +55,30 @@ export async function POST(request: Request) {
         total: Number(order.total) || 0,
         payUrl: linked.__actionUrls.pay,
     });
-    const plan = whatsAppDeliveryPlan(twilioWhatsAppConfigured(), destination, text);
+    const sent = await notifyCustomer({
+        userId: order.userId,
+        phone,
+        message: text,
+        orderId,
+    });
     const now = new Date().toISOString();
-
-    if (plan.mode === 'draft') {
-        await orderRef.update({
-            lastWhatsAppPromptAt: now,
-            lastWhatsAppPromptMode: 'draft',
-            lastWhatsAppPromptOk: true,
-            updatedAt: now,
-        });
-        return NextResponse.json({
-            success: true,
-            draft: true,
-            url: plan.url,
-            text: plan.message,
-            message: 'WhatsApp draft ready',
-        });
-    }
-
-    const sent = await sendTwilioWhatsApp(plan.to, plan.message);
     await orderRef.update({
-        lastWhatsAppPromptAt: now,
-        lastWhatsAppPromptMode: 'twilio',
-        lastWhatsAppPromptOk: sent.ok,
+        lastPaymentLinkSmsAt: now,
+        lastPaymentLinkSmsOk: sent.sms.ok,
         updatedAt: now,
     });
-    if (!sent.ok) {
-        const draft = whatsAppDeliveryPlan(false, destination, text);
+
+    if (!sent.sms.ok) {
         return NextResponse.json({
             success: false,
-            draft: false,
-            url: draft.mode === 'draft' ? draft.url : undefined,
             text,
-            message: sent.reason || 'WhatsApp could not be sent',
+            message: sent.sms.reason || 'Could not send the pay-link SMS',
         }, { status: 502 });
     }
 
     return NextResponse.json({
         success: true,
-        draft: false,
         text,
-        message: 'WhatsApp pay link sent',
+        message: 'Pay link sent by SMS',
     });
 }

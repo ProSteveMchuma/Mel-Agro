@@ -1,7 +1,6 @@
 import { hasAdminPermission, type AdminPermission } from './admin-permissions.ts';
 import { normalizeKenyanPhone } from './account-upgrade.ts';
 import { orderPhoneKey, phoneQueryVariants } from './phone-match.ts';
-import { getWhatsAppDirectUrl } from './whatsapp.ts';
 
 /** Stored on staff WhatsApp orders so the existing M-Pesa card, STK retry, and pay link apply. */
 export const WHATSAPP_STAFF_ORDER = {
@@ -99,7 +98,8 @@ export function shortOrderLabel(orderId?: string | null): string {
     return String(orderId || '').slice(0, 5).toUpperCase();
 }
 
-export function buildWhatsAppPaymentMessage(args: {
+/** SMS that carries the short pay link and the M-Pesa till. */
+export function paymentLinkSms(args: {
     userName?: string | null;
     orderId?: string | null;
     items: Array<{ name: string; quantity: number }>;
@@ -109,33 +109,12 @@ export function buildWhatsAppPaymentMessage(args: {
 }): string {
     const name = String(args.userName || 'Farmer').trim() || 'Farmer';
     const id = shortOrderLabel(args.orderId);
-    const lines = args.items.map((item) => `• ${item.name} x${item.quantity}`).join('\n');
+    const lines = args.items.map((item) => `${item.name} x${item.quantity}`).join(', ');
     const till = args.tillNumber || process.env.MPESA_TILL_NUMBER || process.env.NEXT_PUBLIC_MPESA_TILL_NUMBER || '3130847';
     const amount = Number(args.total) || 0;
-    return [
-        `Habari ${name}! Your Mel-Agri order #${id} is ready to pay.`,
-        '',
-        lines,
-        '',
-        `Total: KES ${amount.toLocaleString()}`,
-        `Pay here: ${args.payUrl}`,
-        `Or Lipa na M-Pesa → Buy Goods → Till ${till} → KES ${amount.toLocaleString()}.`,
-    ].join('\n');
+    return `Habari ${name}! Mel-Agri order #${id}${lines ? ` (${lines})` : ''} is KES ${amount.toLocaleString()}. Pay here: ${args.payUrl} or M-Pesa Till ${till}.`;
 }
 
-export function whatsAppDraftUrl(phone: string, message: string): string {
-    return getWhatsAppDirectUrl(promptPhone(phone), encodeURIComponent(message));
-}
-
-export function whatsAppDeliveryPlan(configured: boolean, phone: string, message: string):
-    | { mode: 'twilio'; to: string; message: string }
-    | { mode: 'draft'; url: string; message: string } {
-    if (configured) {
-        return { mode: 'twilio', to: promptPhone(phone), message };
-    }
-    return { mode: 'draft', url: whatsAppDraftUrl(phone, message), message };
-}
-
-export function whatsappDestination(order: { whatsappPhone?: string | null; phone?: string | null }): string {
-    return String(order.whatsappPhone || order.phone || '').trim();
+export function customerPayPhone(order: { whatsappPhone?: string | null; phone?: string | null; mpesaPhoneNumber?: string | null }, override?: string | null): string {
+    return String(override || order.phone || order.mpesaPhoneNumber || order.whatsappPhone || '').trim();
 }

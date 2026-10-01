@@ -459,7 +459,7 @@ export default function CreateOrderPage() {
                             className="mt-1 w-full min-h-11 px-4 py-3 rounded-xl border border-gray-200"
                         />
                     </label>
-                    <p className="text-xs text-gray-500">Defaults to the WhatsApp number. Change it only if the farmer wants the prompt on another line. The pay link still goes to the WhatsApp chat.</p>
+                    <p className="text-xs text-gray-500">Defaults to the WhatsApp number. Change it only if the farmer wants the prompt on another line. The pay link goes by SMS to that number.</p>
                     <div className="text-right space-y-1">
                         <div className="text-gray-600">Subtotal: KES {subtotal.toLocaleString()}</div>
                         <div className="text-gray-600">{fulfillment === 'pickup' ? 'Machakos collection' : shipping.zoneName}: KES {shipping.cost.toLocaleString()}</div>

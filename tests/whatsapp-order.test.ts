@@ -3,14 +3,13 @@ import assert from 'node:assert/strict';
 import { STAFF_PROFILES } from '../src/lib/admin-permissions.ts';
 import {
     WHATSAPP_STAFF_ORDER,
-    buildWhatsAppPaymentMessage,
     customerCreateBlock,
     customersMatchingPhone,
     mpesaControlVisibility,
+    paymentLinkSms,
     paymentPromptAccess,
     reminderBlockReason,
     stkRetryBody,
-    whatsAppDeliveryPlan,
 } from '../src/lib/whatsapp-order.ts';
 
 test('phone search matches an existing customer across Kenyan formats', () => {
@@ -52,8 +51,8 @@ test('STK retry is sent to the WhatsApp number', () => {
     assert.equal(stkRetryBody('order123', '254712345678').phoneNumber, '+254712345678');
 });
 
-test('WhatsApp pay message includes the order, link, and till', () => {
-    const message = buildWhatsAppPaymentMessage({
+test('pay-link SMS includes the order, short link, and till', () => {
+    const message = paymentLinkSms({
         userName: 'Amina',
         orderId: 'abcde12345',
         items: [{ name: 'DAP 50kg', quantity: 2 }],
@@ -67,16 +66,7 @@ test('WhatsApp pay message includes the order, link, and till', () => {
     assert.match(message, /5,400|5400/);
     assert.match(message, /https:\/\/www\.melagri\.com\/o\/pay12xyz/);
     assert.match(message, /Till 3130847/);
-});
-
-test('WhatsApp falls back to a wa.me draft when Twilio is unset', () => {
-    const plan = whatsAppDeliveryPlan(false, '0712345678', 'Habari Amina pay here');
-    assert.equal(plan.mode, 'draft');
-    if (plan.mode !== 'draft') return;
-    assert.match(plan.url, /^https:\/\/wa\.me\/254712345678\?text=/);
-    assert.match(decodeURIComponent(plan.url), /Habari Amina/);
-    const live = whatsAppDeliveryPlan(true, '0712345678', 'Habari');
-    assert.equal(live.mode, 'twilio');
+    assert.doesNotMatch(message, /wa\.me/);
 });
 
 test('payment reminder is rejected once the order is paid', () => {

@@ -40,9 +40,9 @@ export default function AdminOrderDetailsPage() {
     const [isVerifyModalOpen, setIsVerifyModalOpen] = useState(false);
     const [isReverseModalOpen, setIsReverseModalOpen] = useState(false);
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
-    const [reminderChannels, setReminderChannels] = useState<{ sms: boolean; email: boolean; whatsapp: boolean }>({ sms: true, email: false, whatsapp: true });
+    const [reminderChannels, setReminderChannels] = useState<{ sms: boolean; email: boolean }>({ sms: true, email: false });
     const [promptPhone, setPromptPhone] = useState('');
-    const [promptFeedback, setPromptFeedback] = useState<{ stkOk: boolean; stkMessage: string; waMessage: string; text: string; url: string; draft: boolean } | null>(null);
+    const [promptFeedback, setPromptFeedback] = useState<{ stkOk: boolean; stkMessage: string; smsMessage: string; smsOk: boolean } | null>(null);
     const seenOrderId = useRef('');
     const autoPrompted = useRef(false);
     const [verifyCode, setVerifyCode] = useState('');
@@ -126,7 +126,7 @@ export default function AdminOrderDetailsPage() {
             stkMessage = data.message || (stkOk ? 'Check the phone and enter the M-Pesa PIN' : 'M-Pesa prompt failed');
             if (res.status === 409) {
                 toast.error(data.message || 'Already paid', { id: notice });
-                setPromptFeedback({ stkOk: false, stkMessage: data.message || 'Already paid', waMessage: '', text: '', url: '', draft: false });
+                setPromptFeedback({ stkOk: false, stkMessage: data.message || 'Already paid', smsMessage: '', smsOk: false });
                 setMpesaActionLoading(null);
                 return;
             }
@@ -134,37 +134,33 @@ export default function AdminOrderDetailsPage() {
             stkMessage = error?.message || 'M-Pesa prompt failed';
         }
 
-        let wa: any = null;
-        let waMessage = '';
+        let sms: any = null;
+        let smsMessage = '';
+        let smsOk = false;
         try {
-            const res = await authedFetch('/api/admin/orders/whatsapp-prompt', { orderId: order.id });
-            wa = await res.json();
-            waMessage = wa.message || '';
+            const res = await authedFetch('/api/admin/orders/payment-sms', {
+                orderId: order.id,
+                phoneNumber: body.phoneNumber,
+            });
+            sms = await res.json();
+            smsOk = Boolean(sms.success);
+            smsMessage = sms.message || (smsOk ? 'Pay link sent by SMS' : 'Pay-link SMS failed');
             if (res.status === 409) {
-                toast.error(wa.message || 'Already paid', { id: notice });
+                toast.error(sms.message || 'Already paid', { id: notice });
                 setMpesaActionLoading(null);
                 return;
             }
-            if (wa?.url) window.open(wa.url, '_blank', 'noopener,noreferrer');
         } catch (error: any) {
-            waMessage = error?.message || 'WhatsApp could not be sent';
+            smsMessage = error?.message || 'Pay-link SMS could not be sent';
         }
 
-        setPromptFeedback({
-            stkOk,
-            stkMessage,
-            waMessage,
-            text: wa?.text || '',
-            url: wa?.url || '',
-            draft: Boolean(wa?.draft || wa?.message === 'WhatsApp draft ready'),
-        });
-        if (stkOk) {
-            toast.success(
-                wa?.draft ? 'Check the phone and enter the M-Pesa PIN. WhatsApp draft ready.' : 'Check the phone and enter the M-Pesa PIN.',
-                { id: notice, duration: 6000 },
-            );
+        setPromptFeedback({ stkOk, stkMessage, smsMessage, smsOk });
+        if (stkOk && smsOk) {
+            toast.success('Check the phone and enter the M-Pesa PIN. Pay link sent by SMS.', { id: notice, duration: 6000 });
+        } else if (stkOk) {
+            toast.success(`Check the phone and enter the M-Pesa PIN. ${smsMessage || 'Pay-link SMS failed.'}`, { id: notice, duration: 7000 });
         } else {
-            toast.error(stkMessage || 'M-Pesa prompt failed', { id: notice, duration: 7000 });
+            toast.error(`${stkMessage || 'M-Pesa prompt failed'}${smsMessage ? ` ${smsMessage}` : ''}`, { id: notice, duration: 7000 });
         }
         setMpesaActionLoading(null);
     };
@@ -261,10 +257,8 @@ export default function AdminOrderDetailsPage() {
                 channels,
             });
             const data = await res.json();
-            const whatsapp = data.results?.whatsapp;
-            if (whatsapp?.url) window.open(whatsapp.url, '_blank', 'noopener,noreferrer');
             if (data.success) {
-                toast.success(whatsapp?.draft ? `${data.message}. WhatsApp draft ready.` : data.message, { id: t, duration: 5000 });
+                toast.success(data.message, { id: t, duration: 5000 });
                 setIsReminderModalOpen(false);
             } else {
                 const reasons = data.results
@@ -928,23 +922,8 @@ export default function AdminOrderDetailsPage() {
                                             {promptFeedback ? (
                                                 <div className={`rounded-xl border p-3 text-xs ${promptFeedback.stkOk ? 'border-green-200 bg-green-50 text-green-900' : 'border-amber-200 bg-amber-50 text-amber-950'}`}>
                                                     <p>{promptFeedback.stkMessage}</p>
-                                                    {promptFeedback.waMessage ? <p className="mt-1">{promptFeedback.draft ? 'WhatsApp draft ready' : promptFeedback.waMessage}</p> : null}
-                                                    {promptFeedback.url ? (
-                                                        <a href={promptFeedback.url} target="_blank" rel="noopener noreferrer" className="mt-2 block font-bold underline">Open WhatsApp draft</a>
-                                                    ) : null}
-                                                    {promptFeedback.text ? (
-                                                        <button
-                                                            type="button"
-                                                            className="mt-2 font-bold underline"
-                                                            onClick={() => void navigator.clipboard.writeText(promptFeedback.text)}
-                                                        >
-                                                            Copy message
-                                                        </button>
-                                                    ) : null}
+                                                    {promptFeedback.smsMessage ? <p className="mt-1">{promptFeedback.smsMessage}</p> : null}
                                                 </div>
-                                            ) : null}
-                                            {order.lastWhatsAppPromptMode === 'draft' && !promptFeedback ? (
-                                                <p className="text-center text-[10px] font-bold uppercase tracking-widest text-green-700">WhatsApp draft ready</p>
                                             ) : null}
                                         </div>
                                     )}
@@ -1276,19 +1255,6 @@ export default function AdminOrderDetailsPage() {
                                     className="w-5 h-5 rounded accent-melagri-primary cursor-pointer"
                                 />
                             </label>
-                            <label className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${reminderChannels.whatsapp ? 'border-melagri-primary bg-green-50/50' : 'border-gray-100 hover:border-gray-200'} ${!(order.whatsappPhone || order.phone) ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                <div>
-                                    <p className="font-bold text-gray-900 text-sm">WhatsApp</p>
-                                    <p className="text-[10px] text-gray-500 mt-0.5">{order.whatsappPhone || order.phone || 'No phone on order'}</p>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    checked={reminderChannels.whatsapp}
-                                    disabled={!(order.whatsappPhone || order.phone)}
-                                    onChange={(e) => setReminderChannels(c => ({ ...c, whatsapp: e.target.checked }))}
-                                    className="w-5 h-5 rounded accent-melagri-primary cursor-pointer"
-                                />
-                            </label>
                             <label className={`flex items-center justify-between p-4 rounded-2xl border-2 cursor-pointer transition-all ${reminderChannels.email ? 'border-melagri-primary bg-green-50/50' : 'border-gray-100 hover:border-gray-200'} ${!order.userEmail ? 'opacity-50 cursor-not-allowed' : ''}`}>
                                 <div>
                                     <p className="font-bold text-gray-900 text-sm">Email</p>
@@ -1314,7 +1280,7 @@ export default function AdminOrderDetailsPage() {
                             </button>
                             <button
                                 onClick={handleSendReminder}
-                                disabled={mpesaActionLoading === 'reminder' || (!reminderChannels.sms && !reminderChannels.email && !reminderChannels.whatsapp)}
+                                disabled={mpesaActionLoading === 'reminder' || (!reminderChannels.sms && !reminderChannels.email)}
                                 className="flex-[1.5] py-5 text-[10px] font-black text-white bg-amber-600 hover:bg-amber-700 rounded-[1.5rem] transition-all shadow-xl shadow-amber-600/20 uppercase tracking-[0.2em] active:scale-95 disabled:opacity-60"
                             >
                                 {mpesaActionLoading === 'reminder' ? 'Sending...' : 'Send Now'}

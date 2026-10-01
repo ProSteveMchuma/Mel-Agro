@@ -6,15 +6,9 @@ import { CommunicationTemplates } from '@/lib/communication-templates';
 import { withActionUrls } from '@/lib/order-access';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { sendServerEmail } from '@/lib/server-notifications';
-import { sendTwilioWhatsApp, twilioWhatsAppConfigured } from '@/lib/whatsapp-send';
-import {
-    buildWhatsAppPaymentMessage,
-    reminderBlockReason,
-    whatsAppDeliveryPlan,
-    whatsappDestination,
-} from '@/lib/whatsapp-order';
+import { reminderBlockReason } from '@/lib/whatsapp-order';
 
-type Channel = 'sms' | 'email' | 'whatsapp';
+type Channel = 'sms' | 'email';
 
 export async function POST(request: Request) {
     const auth = await requirePermission(request, 'orders.manage');
@@ -26,7 +20,7 @@ export async function POST(request: Request) {
         const body = await request.json().catch(() => ({}));
         const orderId = body?.orderId as string | undefined;
         const requestedChannels = (Array.isArray(body?.channels) ? body.channels : ['sms']) as Channel[];
-        const channels: Channel[] = requestedChannels.filter(c => c === 'sms' || c === 'email' || c === 'whatsapp');
+        const channels: Channel[] = requestedChannels.filter(c => c === 'sms' || c === 'email');
 
         if (!orderId) {
             return NextResponse.json({ success: false, message: 'orderId is required' }, { status: 400 });
@@ -51,7 +45,7 @@ export async function POST(request: Request) {
         const linked = await withActionUrls(order);
         const tpl = CommunicationTemplates.getPaymentReminder(linked);
 
-        const results: Record<string, { ok: boolean; reason?: string; draft?: boolean; url?: string; text?: string }> = {};
+        const results: Record<string, { ok: boolean; reason?: string }> = {};
 
         if (channels.includes('sms')) {
             const phone = order.phone || order.mpesaPhoneNumber;
@@ -78,40 +72,6 @@ export async function POST(request: Request) {
                 results.email = { ok: false, reason: 'No email on order' };
             } else {
                 results.email = await sendServerEmail(email, tpl.subject, tpl.emailBody);
-            }
-        }
-
-        if (channels.includes('whatsapp')) {
-            const destination = whatsappDestination(order);
-            if (!destination) {
-                results.whatsapp = { ok: false, reason: 'No customer phone' };
-            } else {
-                const text = buildWhatsAppPaymentMessage({
-                    userName: order.userName,
-                    orderId: order.id,
-                    items: Array.isArray(order.items) ? order.items.map((item: { name?: string; quantity?: number }) => ({
-                        name: String(item.name || 'Item'),
-                        quantity: Number(item.quantity) || 1,
-                    })) : [],
-                    total: Number(order.total) || 0,
-                    payUrl: linked.__actionUrls.pay,
-                });
-                const plan = whatsAppDeliveryPlan(twilioWhatsAppConfigured(), destination, text);
-                if (plan.mode === 'draft') {
-                    results.whatsapp = { ok: true, reason: 'draft', draft: true, url: plan.url, text: plan.message };
-                } else {
-                    const sent = await sendTwilioWhatsApp(plan.to, plan.message);
-                    const draft = whatsAppDeliveryPlan(false, destination, text);
-                    results.whatsapp = sent.ok
-                        ? { ok: true, text: plan.message }
-                        : {
-                            ok: false,
-                            reason: sent.reason,
-                            draft: true,
-                            url: draft.mode === 'draft' ? draft.url : undefined,
-                            text: plan.message,
-                        };
-                }
             }
         }
 
