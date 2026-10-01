@@ -149,7 +149,7 @@ export default function IntelligencePage() {
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Customer Intelligence</h1>
                     <p className="text-gray-500 mt-1">Explainable customer value, repeat demand, and consent-aware opportunities.</p>
                 </div>
-                <div className="flex gap-2 print:hidden">
+                <div className="flex gap-2">
                     <ReportPrintButton disabled={segmentsLoading || Boolean(segmentsError)} label="Print report" />
                     <span className="px-4 py-2 bg-melagri-primary/10 text-melagri-primary text-xs font-black rounded-xl uppercase tracking-widest border border-melagri-primary/20">
                         {intelligentUsers.length} Predictive Profiles
@@ -160,6 +160,7 @@ export default function IntelligencePage() {
                 { label: "Segment", value: activeSegment === "all" ? "All customers" : activeSegment },
                 { label: "Sort", value: tableSort === "ltv" ? "Lifetime value" : tableSort === "frequency" ? "Order frequency" : "Recency" },
                 { label: "Rows", value: `Showing ${Math.min(visible.length, filtered.length)} of ${filtered.length}` },
+                { label: "Predictive profiles", value: String(intelligentUsers.length) },
             ]} />
 
             {todayReadout && <ShopTodayReadout readout={todayReadout} />}
