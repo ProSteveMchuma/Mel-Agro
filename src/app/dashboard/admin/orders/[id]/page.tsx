@@ -4,7 +4,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { toast } from "react-hot-toast";
+import { skipImageOptimizer } from "@/lib/product-image";
 import { getAuth } from "firebase/auth";
 import {
     fulfillmentStepsFor,
@@ -592,9 +594,19 @@ export default function AdminOrderDetailsPage() {
                         </div>
                         <div className="p-8">
                             <div className="space-y-6">
-                                {order.items.map((item: any) => (
+                                {order.items.map((item: any) => {
+                                    const photo = [item.selectedVariant?.image, item.image].find(
+                                        (value: unknown) => typeof value === "string" && value.trim().length > 0
+                                    ) as string | undefined;
+                                    return (
                                     <div key={item.id} className="flex items-center gap-6 p-4 rounded-2xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-100">
-                                        <div className="w-16 h-16 bg-gray-100 rounded-xl items-center justify-center flex text-xl">📦</div>
+                                        <div className="relative flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-100 text-xl">
+                                            {photo ? (
+                                                <Image src={photo} alt={item.name || ""} fill unoptimized={skipImageOptimizer(photo)} className="object-cover" />
+                                            ) : (
+                                                "📦"
+                                            )}
+                                        </div>
                                         <div className="flex-1">
                                             <p className="font-bold text-gray-900">{item.name}</p>
                                             <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Ref: {String(item.id).slice(0, 8)}</p>
@@ -613,7 +625,8 @@ export default function AdminOrderDetailsPage() {
                                             <p className="font-black text-gray-900">KES {(item.price * item.quantity).toLocaleString()}</p>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                             <div className="mt-12 pt-8 border-t border-gray-50 flex justify-end">
                                 <div className="w-full max-w-xs space-y-4">

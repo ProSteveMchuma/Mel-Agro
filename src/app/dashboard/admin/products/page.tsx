@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getAuth } from "firebase/auth";
 import Image from "next/image";
+import { skipImageOptimizer } from "@/lib/product-image";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import BulkUploadButton from "@/components/admin/BulkUploadButton";
@@ -239,6 +240,9 @@ export default function ProductManagement() {
                                 const isLowStock = totalStock <= (product.lowStockThreshold || 10);
                                 const isOutOfStock = totalStock === 0;
                                 const isSelected = selectedProducts.includes(String(product.id));
+                                const imageSrc = (typeof product.image === 'string' && product.image.startsWith('http'))
+                                    ? product.image
+                                    : "https://placehold.co/100x100?text=No+Image";
 
                                 return (
                                     <tr
@@ -258,11 +262,11 @@ export default function ProductManagement() {
                                             <div className="flex items-center gap-4">
                                                 <div className="w-10 h-10 bg-gray-100 rounded-lg relative overflow-hidden flex-shrink-0 border border-gray-200">
                                                     <Image
-                                                        src={(typeof product.image === 'string' && product.image.startsWith('http')) ? product.image : "https://placehold.co/100x100?text=No+Image"}
+                                                        src={imageSrc}
                                                         alt={product.name}
                                                         fill
                                                         className="object-cover"
-                                                        unoptimized={typeof product.image === 'string' && product.image.includes('firebasestorage')}
+                                                        unoptimized={skipImageOptimizer(imageSrc)}
                                                     />
                                                 </div>
                                                 <div>

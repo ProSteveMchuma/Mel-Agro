@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { skipImageOptimizer } from "@/lib/product-image";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import type { Order } from "@/types";
@@ -263,7 +264,7 @@ export default function FulfillmentPage() {
                           key={`${item.id}-${index}`}
                           className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gray-200 text-[10px] font-bold"
                         >
-                          {item.image ? <Image src={item.image} alt="" fill className="object-cover" /> : item.name?.[0] || "?"}
+                          {item.image ? <Image src={item.image} alt="" fill unoptimized={skipImageOptimizer(item.image)} className="object-cover" /> : item.name?.[0] || "?"}
                         </span>
                       ))}
                     </div>
