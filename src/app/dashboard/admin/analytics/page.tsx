@@ -13,6 +13,7 @@ import {
 } from "recharts";
 import { getAuth } from "firebase/auth";
 import AnalyticsWorkspaceControls from '@/components/admin/AnalyticsWorkspaceControls';
+import { salesByLandingPage } from '@/lib/shop-journey';
 
 const RANGES: Array<{ value: DateRange; label: string }> = [
     { value: '7d', label: 'Last 7 days' },
@@ -54,8 +55,8 @@ export default function AnalyticsPage() {
     const [storefront, setStorefront] = useState<{
         traffic: Array<{ date: string; totalVisits: number; uniqueVisitors: number }>;
         searches: Array<{ term: string; count: number }>;
-        products: Array<{ productId: string; views: number; addToCartCount: number; purchases: number }>;
-        funnel: { sampled: number; steps: Array<{ key: string; label: string; count: number; conversionFromStart: number }> };
+        products: Array<{ productId: string; name?: string; views: number; addToCartCount: number; purchases: number }>;
+        funnel: { sampled: number; steps: Array<{ key: string; label: string; count: number; conversionFromStart: number; dropOff?: number }> };
         pages?: Array<{ key: string; views: number; uniques: number }>;
         regions?: Array<{ key: string; views: number; uniques: number }>;
     } | null>(null);
@@ -95,6 +96,7 @@ export default function AnalyticsPage() {
     const dow = useMemo(() => ordersByDayOfWeek(ranged), [ranged]);
     const hourly = useMemo(() => ordersByHourOfDay(ranged), [ranged]);
     const paymentMix = useMemo(() => paymentMethodMix(ranged), [ranged]);
+    const landingSales = useMemo(() => salesByLandingPage(ranged), [ranged]);
 
     const noData = ranged.length === 0;
 
@@ -194,13 +196,13 @@ export default function AnalyticsPage() {
                             </div>
                         )}
                     </Card>
-                    <Card title="Checkout Funnel" subtitle={`${storefront.funnel.sampled} signed-in sessions`}>
+                    <Card title="Checkout Funnel" subtitle={`${storefront.funnel.sampled} signed-in sessions · one row per account, latest visit`}>
                         {storefront.funnel.steps.every(step => step.count === 0) ? <p className="text-gray-400 text-sm">Funnel fills after signed-in checkout starts.</p> : (
                             <div className="space-y-3">
                                 {storefront.funnel.steps.map(step => (
                                     <div key={step.key} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
                                         <span className="font-bold text-gray-900">{step.label}</span>
-                                        <span className="text-sm font-black text-gray-900">{step.count} <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{Math.round(step.conversionFromStart * 100)}%</span></span>
+                                        <span className="text-right text-sm font-black text-gray-900">{step.count} <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-400">{step.dropOff ? `${step.dropOff} did not continue` : `${Math.round(step.conversionFromStart * 100)}% from start`}</span></span>
                                     </div>
                                 ))}
                             </div>
@@ -223,6 +225,18 @@ export default function AnalyticsPage() {
                             </div>
                         )}
                     </Card>
+                    <Card title="Sales by landing page" subtitle="Paid orders in this range, by the first shop page opened that day. A path, not an address.">
+                        {landingSales.length === 0 ? <p className="text-gray-400 text-sm">No paid orders in this range.</p> : (
+                            <div className="space-y-3">
+                                {landingSales.map((item) => (
+                                    <div key={item.path} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
+                                        <span className="truncate font-bold text-gray-900">{item.path}</span>
+                                        <span className="shrink-0 text-xs font-black uppercase tracking-widest text-gray-500">{item.orders} paid · {fmtKES(item.revenue)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </Card>
                     <Card title="Visits by region" subtitle="City and country from the hosting network, not the delivery address.">
                         {(storefront.regions || []).length === 0 ? <p className="text-gray-400 text-sm">No region data yet. New visits fill this in.</p> : (
                             <div className="space-y-3">
@@ -236,6 +250,39 @@ export default function AnalyticsPage() {
                         )}
                     </Card>
                 </div>
+            )}
+
+            {storefront && (
+                <Card title="Shop journey" subtitle="Each row counts a different group. Use a gap as a clue, then check carts or orders before changing the shop.">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="space-y-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Pages and regions · anonymous browsers</p>
+                            <p className="text-sm text-gray-700">Busiest page: <span className="font-bold text-gray-900">{storefront.pages?.[0]?.key || 'None yet'}</span>{storefront.pages?.[0] ? ` · ${storefront.pages[0].views} views` : ''}</p>
+                            <p className="text-sm text-gray-700">Busiest region: <span className="font-bold text-gray-900">{storefront.regions?.[0]?.key || 'None yet'}</span>{storefront.regions?.[0] ? ` · ${storefront.regions[0].views} views` : ''}. Network city and country, not the delivery county. Unknown means the host sent no city.</p>
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 pt-2">Products · lifetime totals, not this date range</p>
+                            {storefront.products.length === 0 ? <p className="text-sm text-gray-400">No product views yet.</p> : storefront.products.map((item) => (
+                                <div key={item.productId} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
+                                    <span className="truncate font-bold text-gray-900">{item.name || item.productId}</span>
+                                    <span className="shrink-0 text-xs font-black uppercase tracking-widest text-gray-500">{item.views} views · {item.addToCartCount} adds · {item.purchases} purchases</span>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="space-y-3">
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Checkout · one row per account, latest visit</p>
+                            {storefront.funnel.steps.every((step) => step.count === 0) ? <p className="text-sm text-gray-400">Signed-in checkout has not started yet.</p> : storefront.funnel.steps.map((step) => (
+                                <div key={step.key} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
+                                    <span className="font-bold text-gray-900">{step.label}</span>
+                                    <span className="text-right text-sm font-black text-gray-900">{step.count}{step.dropOff ? <span className="block text-[10px] font-bold uppercase tracking-widest text-amber-700">{step.dropOff} did not continue</span> : null}</span>
+                                </div>
+                            ))}
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 pt-2">Paid orders · orders in this date range</p>
+                            <div className="rounded-xl bg-emerald-50 px-4 py-3">
+                                <p className="font-black text-gray-900">{kpis.paidCount.toLocaleString()} paid · {fmtKES(kpis.revenue)}</p>
+                                <p className="mt-1 text-xs text-emerald-900/80">These are orders, not the browsers in the page list. A new checkout replaces the previous steps, so the funnel is the latest visit.</p>
+                            </div>
+                        </div>
+                    </div>
+                </Card>
             )}
 
             <Card title="Revenue Trend" subtitle="Total paid revenue over time">

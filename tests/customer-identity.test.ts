@@ -14,3 +14,11 @@ test('guest and registered orders unify through normalized phone identity', () =
     assert.equal(profiles[0].paidOrderCount, 2);
     assert.equal(profiles[0].userId, 'account-uid');
 });
+
+test('a paid order with no line items still produces a profile', () => {
+    const broken = { ...makeOrder('3', 'farmer', '0700000000'), items: null } as unknown as Order;
+    const profiles = buildCustomerProfiles([broken]);
+    assert.equal(profiles.length, 1);
+    assert.equal(profiles[0].name, 'Farmer');
+    assert.equal(profiles[0].preferredCategory, undefined);
+});

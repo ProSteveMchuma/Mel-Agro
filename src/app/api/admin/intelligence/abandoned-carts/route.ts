@@ -5,6 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { scoreCartRecovery } from '@/lib/recovery-intelligence';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { SITE_URL } from '@/lib/site';
+import { latestCheckoutStep, shopPathTrail } from '@/lib/shop-journey';
 
 function isoDate(value: unknown): string | null {
     if (typeof value === 'string') {
@@ -44,9 +45,10 @@ export async function GET(request: Request) {
         const relatedOrders = orderSnapshot.docs.map(order => order.data()).filter(order => String(order.userId || '') === String(data.userId || doc.id));
         const purchasedAfterCart = relatedOrders.some(order => order.paymentStatus === 'Paid' && new Date(order.date || order.createdAt || '').getTime() > cartTime);
         const paymentAttempted = relatedOrders.some(order => ['Failed', 'Unpaid', 'Pending Verification'].includes(String(order.paymentStatus || '')) && new Date(order.date || order.createdAt || '').getTime() >= cartTime - 60 * 60 * 1000);
+        const checkoutStep = latestCheckoutStep(funnelData) || '';
         const recovery = scoreCartRecovery({
             total: Number(data.total || 0), idleMinutes: (Date.now() - cartTime) / 60_000,
-            checkoutStep: String(funnelData.lastStep || ''), paymentAttempted,
+            checkoutStep, paymentAttempted,
             hasPhone: Boolean(data.userPhone || userData.phone), consent: userData.cartRecoveryConsent === true,
             contactCount: Number(data.recoveryContactCount || 0),
             hoursSinceLastContact: lastContactAt ? (Date.now() - new Date(lastContactAt).getTime()) / 3_600_000 : null,
@@ -65,6 +67,9 @@ export async function GET(request: Request) {
             recovery,
             recoveryContactCount: Number(data.recoveryContactCount || 0),
             lastRecoveryContactAt: lastContactAt,
+            checkoutStep,
+            purchasedAfterCart,
+            pathTrail: shopPathTrail(funnelData.pathTrail),
         }];
     });
     carts.sort((a, b) => b.recovery.score - a.recovery.score || new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());

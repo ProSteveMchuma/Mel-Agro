@@ -114,6 +114,19 @@ function mostFrequent(values: string[]): string | undefined {
     return [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
 }
 
+function orderItems(order: Order): Order['items'] {
+    return Array.isArray(order.items) ? order.items : [];
+}
+
+function orderDate(value: unknown): string {
+    if (typeof value === 'string') return value;
+    if (value && typeof value === 'object' && 'toDate' in value && typeof (value as { toDate?: unknown }).toDate === 'function') {
+        const date = (value as { toDate: () => Date }).toDate();
+        return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+    }
+    return '';
+}
+
 export function buildCustomerProfiles(orders: Order[]): CustomerProfile[] {
     // Group paid orders by user.
     const paid = orders.filter(o => (o as any).paymentStatus === 'Paid');
@@ -132,13 +145,18 @@ export function buildCustomerProfiles(orders: Order[]): CustomerProfile[] {
     const monetaryVals: number[] = [];
 
     for (const [uid, list] of groups.entries()) {
-        const sorted = [...list].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const sorted = [...list].sort((a, b) => new Date(orderDate(a.date)).getTime() - new Date(orderDate(b.date)).getTime());
         const first = sorted[0];
         const last = sorted[sorted.length - 1];
+        const firstAt = orderDate(first.date);
+        const lastAt = orderDate(last.date);
         const totalRevenue = sorted.reduce((s, o) => s + (Number(o.total) || 0), 0);
-        const lastOrderTs = new Date(last.date).getTime();
-        const daysSinceLast = Math.max(0, Math.floor((now - lastOrderTs) / (1000 * 60 * 60 * 24)));
-        const lifetimeDays = Math.max(0, Math.floor((lastOrderTs - new Date(first.date).getTime()) / (1000 * 60 * 60 * 24)));
+        const lastOrderTs = new Date(lastAt).getTime();
+        const firstOrderTs = new Date(firstAt).getTime();
+        const daysSinceLast = Number.isFinite(lastOrderTs) ? Math.max(0, Math.floor((now - lastOrderTs) / (1000 * 60 * 60 * 24))) : 0;
+        const lifetimeDays = Number.isFinite(lastOrderTs) && Number.isFinite(firstOrderTs)
+            ? Math.max(0, Math.floor((lastOrderTs - firstOrderTs) / (1000 * 60 * 60 * 24)))
+            : 0;
 
         // Pull contact info from the most recent order (most up-to-date).
         const lastAny = last as any;
@@ -158,8 +176,8 @@ export function buildCustomerProfiles(orders: Order[]): CustomerProfile[] {
             name: lastAny.userName,
             email: lastAny.userEmail,
             phone: lastAny.phone,
-            firstOrderAt: first.date,
-            lastOrderAt: last.date,
+            firstOrderAt: firstAt,
+            lastOrderAt: lastAt,
             daysSinceLastOrder: daysSinceLast,
             paidOrderCount: sorted.length,
             totalRevenue,
@@ -167,7 +185,7 @@ export function buildCustomerProfiles(orders: Order[]): CustomerProfile[] {
             lifetimeDays,
             cancelledOrders: cancelled,
             refundedRevenue,
-            preferredCategory: mostFrequent(sorted.flatMap(order => (order.items || []).map(item => String((item as any).category || item.name || '')))),
+            preferredCategory: mostFrequent(sorted.flatMap(order => orderItems(order).map(item => String((item as any).category || item.name || '')))),
             preferredPaymentMethod: mostFrequent(sorted.map(order => String(order.paymentMethod || ''))),
             county: lastAny.shippingAddress?.county,
         });

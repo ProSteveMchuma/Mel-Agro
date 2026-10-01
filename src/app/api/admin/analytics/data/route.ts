@@ -6,6 +6,15 @@ import { summariseFunnels, type FunnelDoc } from "@/lib/storefront-analytics";
 import { rollupVisitBreakdown } from "@/lib/commerce-ops";
 
 const ranges = new Set<DateRange>(["7d", "30d", "90d", "12m", "all"]);
+
+async function namedProductCounts(rows: Array<{ productId: string; views: number; addToCartCount: number; purchases: number }>) {
+  const ids = rows.map((row) => row.productId).filter((id) => id && id.length <= 128 && !id.includes("/"));
+  const snaps = ids.length
+    ? await adminDb.getAll(...ids.map((id) => adminDb.collection("products").doc(id))).catch(() => [])
+    : [];
+  const names = new Map(snaps.map((snap) => [snap.id, String(snap.data()?.name || "").trim()]));
+  return rows.map((row) => ({ ...row, name: names.get(row.productId) || row.productId }));
+}
 export async function GET(request: Request) {
   const actor = await requirePermission(request, "analytics.view");
   if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 403 });
@@ -43,7 +52,7 @@ export async function GET(request: Request) {
         term: String(document.data().term || ""),
         count: Number(document.data().count || 0),
       })).filter((item) => item.term) : emptyStorefront.searches,
-      products: productSnap ? productSnap.docs.map((document) => {
+      products: productSnap ? await namedProductCounts(productSnap.docs.map((document) => {
         const data = document.data();
         return {
           productId: String(data.productId || document.id),
@@ -51,7 +60,7 @@ export async function GET(request: Request) {
           addToCartCount: Number(data.addToCartCount || 0),
           purchases: Number(data.purchases || 0),
         };
-      }) : emptyStorefront.products,
+      })) : emptyStorefront.products,
       funnel: funnelSnap ? summariseFunnels(funnelSnap.docs.map((document) => document.data() as FunnelDoc)) : emptyStorefront.funnel,
       pages: rollupVisitBreakdown(pageSnap ? pageSnap.docs.map((document) => ({
         key: String(document.data().path || ""),

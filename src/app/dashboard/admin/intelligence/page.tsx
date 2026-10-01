@@ -4,10 +4,13 @@ import { useUsers } from "@/context/UserContext";
 import { useOrders } from "@/context/OrderContext";
 import { CATEGORY_ICONS } from "@/components/SidebarCategories";
 import Link from "next/link";
-import { auth } from "@/lib/firebase";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import { segmentColor, segmentDescription, Segment, type CustomerProfile, type IntelKPIs, type SegmentSummary } from "@/lib/customer-intelligence";
+import { waitForAuthToken } from "@/lib/wait-for-auth-token";
+import { profileAccountId } from "@/lib/shop-journey";
+
+type CustomerVisit = { lastStep: string | null; pathTrail: string[]; openCart: boolean };
 
 const fmtKES = (n: number) => `KES ${Math.round(n).toLocaleString()}`;
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
@@ -27,6 +30,8 @@ export default function IntelligencePage() {
     const [reorderDueUserIds, setReorderDueUserIds] = useState<string[]>([]);
     const [segmentOrders, setSegmentOrders] = useState<number | null>(null);
     const [segmentsLoading, setSegmentsLoading] = useState(true);
+    const [segmentsError, setSegmentsError] = useState<string | null>(null);
+    const [visits, setVisits] = useState<Record<string, CustomerVisit>>({});
     const consentFor = (profile: { userId: string; phone?: string; email?: string }) => {
         const phone = String(profile.phone || '').replace(/\D/g, '').slice(-9);
         const email = String(profile.email || '').toLowerCase();
@@ -43,16 +48,20 @@ export default function IntelligencePage() {
     const visible = filtered.slice(0, 50);
 
     useEffect(() => {
-        const tokenPromise = auth.currentUser?.getIdToken();
-        if (!tokenPromise) return;
-        tokenPromise
-            .then(token => Promise.all([
-                fetch('/api/admin/intelligence/abandoned-carts', { headers: { Authorization: `Bearer ${token}` } }),
-                fetch('/api/admin/analytics/overview', { headers: { Authorization: `Bearer ${token}` } }),
-                fetch('/api/admin/intelligence/reorders', { headers: { Authorization: `Bearer ${token}` } }),
-                fetch('/api/admin/intelligence/customers', { headers: { Authorization: `Bearer ${token}` } }),
-            ]))
-            .then(async ([cartsResponse, overviewResponse, reorderResponse, customersResponse]) => {
+        const controller = new AbortController();
+        (async () => {
+            setSegmentsLoading(true);
+            setSegmentsError(null);
+            try {
+                const token = await waitForAuthToken();
+                if (!token) throw new Error('Admin session is unavailable.');
+                const headers = { Authorization: `Bearer ${token}` };
+                const [cartsResponse, overviewResponse, reorderResponse, customersResponse] = await Promise.all([
+                    fetch('/api/admin/intelligence/abandoned-carts', { headers, signal: controller.signal }),
+                    fetch('/api/admin/analytics/overview', { headers, signal: controller.signal }),
+                    fetch('/api/admin/intelligence/reorders', { headers, signal: controller.signal }),
+                    fetch('/api/admin/intelligence/customers', { headers, signal: controller.signal }),
+                ]);
                 const cartsData = cartsResponse.ok ? await cartsResponse.json() : null;
                 const overviewData = overviewResponse.ok ? await overviewResponse.json() : null;
                 const reorderData = reorderResponse.ok ? await reorderResponse.json() : null;
@@ -60,35 +69,33 @@ export default function IntelligencePage() {
                 setCartCount(Array.isArray(cartsData?.carts) ? cartsData.carts.length : null);
                 if (overviewData?.funnel?.steps) setFunnel(overviewData.funnel);
                 setServerReorders(Array.isArray(reorderData?.queue) ? reorderData.queue : []);
-                if (customersData?.profiles) {
-                    setProfiles(customersData.profiles);
-                    setSegments(customersData.segments || []);
-                    if (customersData.kpis) setKpis(customersData.kpis);
-                    setReorderDueUserIds(Array.isArray(customersData.reorderDueUserIds) ? customersData.reorderDueUserIds : []);
-                    setSegmentOrders(Number(customersData.scannedOrders) || 0);
+                if (!customersResponse.ok) throw new Error(customersData?.message || 'Could not load customer profiles.');
+                setProfiles(Array.isArray(customersData?.profiles) ? customersData.profiles : []);
+                setSegments(customersData?.segments || []);
+                if (customersData?.kpis) setKpis(customersData.kpis);
+                setReorderDueUserIds(Array.isArray(customersData?.reorderDueUserIds) ? customersData.reorderDueUserIds : []);
+                setSegmentOrders(Number(customersData?.scannedOrders) || 0);
+                setVisits(customersData?.visits && typeof customersData.visits === 'object' ? customersData.visits : {});
+            } catch (caught) {
+                if ((caught as Error).name !== 'AbortError') {
+                    setSegmentsError(caught instanceof Error ? caught.message : 'Could not load customer profiles.');
                 }
-            })
-            .catch(() => setCartCount(null))
-            .finally(() => setSegmentsLoading(false));
+            } finally {
+                if (!controller.signal.aborted) setSegmentsLoading(false);
+            }
+        })();
+        return () => controller.abort();
     }, []);
 
     const paidOrders = orders.filter(o => (o as any).paymentStatus === 'Paid').length;
-    const funnelColors = ['bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-violet-500', 'bg-melagri-primary'];
+    const funnelColors = ['bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-violet-500'];
     const liveFunnelSteps = funnel?.steps?.length
-        ? [
-            ...funnel.steps.map((step, index) => ({
-                label: step.label,
-                count: step.count,
-                conversion: funnel.steps[0].count > 0 ? `${Math.round(step.conversionFromStart * 100)}%` : '—',
-                color: funnelColors[index] || 'bg-gray-400',
-            })),
-            {
-                label: 'Order Paid',
-                count: paidOrders,
-                conversion: 'all-time',
-                color: 'bg-melagri-primary',
-            },
-        ]
+        ? funnel.steps.map((step, index) => ({
+            label: step.label,
+            count: step.count,
+            conversion: funnel.steps[0].count > 0 ? `${Math.round(step.conversionFromStart * 100)}%` : '—',
+            color: funnelColors[index] || 'bg-gray-400',
+        }))
         : null;
 
     // Filter to only show users with behavioral data
@@ -169,7 +176,7 @@ export default function IntelligencePage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 relative">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
                     {(liveFunnelSteps || []).map((step, i) => (
                         <div key={step.label} className="relative group">
                             <div className="h-24 bg-gray-50 rounded-2xl p-6 flex flex-col justify-center border border-gray-100 group-hover:border-melagri-primary/30 transition-all overflow-hidden">
@@ -190,11 +197,12 @@ export default function IntelligencePage() {
                         </div>
                     ))}
                     {!liveFunnelSteps && (
-                        <div className="md:col-span-5 rounded-2xl bg-gray-50 p-6 text-sm font-semibold text-gray-500">
-                            Checkout funnel data appears after signed-in customers reach checkout. Paid orders are already counted separately below.
+                        <div className="md:col-span-4 rounded-2xl bg-gray-50 p-6 text-sm font-semibold text-gray-500">
+                            Checkout steps appear after a signed-in customer reaches checkout.
                         </div>
                     )}
                 </div>
+                <p className="mt-6 text-sm font-semibold text-gray-600">Paid orders in the latest orders list: <span className="font-black text-gray-900">{paidOrders.toLocaleString()}</span>. This count is not the next step of the checkout sessions above.</p>
             </div>
 
             {/* CUSTOMER INTELLIGENCE — RFM segments + LTV */}
@@ -206,6 +214,11 @@ export default function IntelligencePage() {
 
                 {segmentsLoading ? (
                     <p className="rounded-2xl border border-gray-100 bg-white p-6 text-sm text-gray-500">Loading customer segments…</p>
+                ) : segmentsError ? (
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-red-800">
+                        <p className="font-black text-sm uppercase tracking-tight">Customer profiles did not load</p>
+                        <p className="text-xs mt-1">{segmentsError}</p>
+                    </div>
                 ) : kpis.totalCustomers === 0 ? (
                     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-amber-900">
                         <p className="font-black text-sm uppercase tracking-tight">No paying customers yet</p>
@@ -310,6 +323,7 @@ export default function IntelligencePage() {
                                             <th className="text-right px-6 py-3">AOV</th>
                                             <th className="text-right px-6 py-3">Last Order</th>
                                             <th className="text-left px-6 py-3">Contact</th>
+                                            <th className="text-left px-6 py-3">This visit</th>
                                             <th className="text-left px-6 py-3">Opportunity</th>
                                             <th className="text-right px-6 py-3">RFM</th>
                                         </tr>
@@ -317,9 +331,11 @@ export default function IntelligencePage() {
                                     <tbody className="divide-y divide-gray-50">
                                         {visible.map(p => {
                                             const contactUser = consentFor(p);
+                                            const visit = visits[p.userId];
+                                            const accountId = profileAccountId({ id: p.userId });
                                             return <tr key={p.identityKey} className="hover:bg-gray-50/50 transition-colors">
                                                 <td className="px-6 py-3">
-                                                    <div className="font-bold text-gray-900 truncate max-w-[200px]">{p.name || 'Anonymous'}</div>
+                                                    {accountId ? <Link href={`/dashboard/admin/users/${accountId}`} className="font-bold text-gray-900 truncate max-w-[200px] block hover:text-melagri-primary">{p.name || 'Customer'}</Link> : <div className="font-bold text-gray-900 truncate max-w-[200px]">{p.name || 'Customer'}</div>}
                                                     <div className="text-[10px] text-gray-500 truncate max-w-[200px]">{p.email || p.phone || p.userId.slice(0, 12)}</div>
                                                 </td>
                                                 <td className="px-6 py-3">
@@ -335,6 +351,7 @@ export default function IntelligencePage() {
                                                     {p.daysSinceLastOrder === 0 ? 'today' : `${p.daysSinceLastOrder}d ago`}
                                                 </td>
                                                 <td className="px-6 py-3"><span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase ${contactUser?.cartRecoveryConsent ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{contactUser?.cartRecoveryConsent ? 'Recovery allowed' : 'No recovery consent'}</span></td>
+                                                <td className="px-6 py-3"><span className="text-xs font-bold text-gray-800">{visit?.lastStep || (visit?.openCart ? 'Before checkout' : 'No checkout recorded')}</span>{visit?.openCart ? <span className="mt-1 block text-[10px] font-black uppercase tracking-widest text-amber-700">Open cart</span> : null}{visit?.pathTrail?.length ? <span className="mt-1 block max-w-56 text-[10px] text-gray-400">{visit.pathTrail.join(' → ')}</span> : null}<span className="mt-1 block text-[10px] text-gray-500">{p.paidOrderCount} paid order{p.paidOrderCount === 1 ? '' : 's'}</span></td>
                                                 <td className="px-6 py-3"><span className="text-xs font-bold text-gray-700">{reorderDueUserIds.includes(p.userId) ? 'Reorder due' : p.segment === 'At Risk' || p.segment === 'Big Spenders' ? 'Retention review' : p.segment === 'New' ? 'Onboarding' : 'Monitor'}</span><span className="block max-w-48 text-[10px] text-gray-400" title={p.segmentReason}>{p.segmentReason}</span></td>
                                                 <td className="px-6 py-3 text-right">
                                                     <span className="font-mono text-[10px] font-black text-gray-400">{p.recency}-{p.frequency}-{p.monetary}</span>
@@ -342,7 +359,7 @@ export default function IntelligencePage() {
                                             </tr>;
                                         })}
                                         {visible.length === 0 && (
-                                            <tr><td colSpan={9} className="px-6 py-8 text-center text-gray-400 text-sm">No customers in this segment.</td></tr>
+                                            <tr><td colSpan={10} className="px-6 py-8 text-center text-gray-400 text-sm">No customers in this segment.</td></tr>
                                         )}
                                     </tbody>
                                 </table>
@@ -363,19 +380,21 @@ export default function IntelligencePage() {
                     const topCategories = Object.entries(user.affinityIndex || {})
                         .sort(([, a], [, b]) => b - a)
                         .slice(0, 3);
+                    const displayName = user.name || 'Customer';
+                    const accountId = profileAccountId(user);
 
                     const intentLevel = totalScore > 50 ? 'High' : totalScore > 20 ? 'Medium' : 'Low';
                     const intentColor = intentLevel === 'High' ? 'text-green-600 bg-green-50' : intentLevel === 'Medium' ? 'text-yellow-600 bg-yellow-50' : 'text-gray-600 bg-gray-50';
 
                     return (
-                        <div key={user.uid} className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all group">
+                        <div key={accountId || displayName} className="bg-white rounded-3xl p-8 shadow-sm border border-gray-100 hover:shadow-xl transition-all group">
                             <div className="flex justify-between items-start mb-6">
                                 <div className="flex items-center gap-4">
                                     <div className="w-14 h-14 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center text-xl font-black text-gray-700 shadow-inner group-hover:from-melagri-primary group-hover:to-melagri-secondary group-hover:text-white transition-all duration-500">
-                                        {user.name.charAt(0)}
+                                        {displayName.charAt(0)}
                                     </div>
                                     <div>
-                                        <h3 className="text-lg font-bold text-gray-900">{user.name}</h3>
+                                        <h3 className="text-lg font-bold text-gray-900">{displayName}</h3>
                                         <p className="text-sm text-gray-500">{user.email || user.phone || 'No Contact'}</p>
                                     </div>
                                 </div>
@@ -402,12 +421,12 @@ export default function IntelligencePage() {
                                     <div className="text-gray-400 font-medium italic">
                                         Last Active: {user.lastBehavioralSync ? new Date(user.lastBehavioralSync).toLocaleString() : 'Recently'}
                                     </div>
-                                    <Link
-                                        href={`/dashboard/admin/users/${user.uid}`}
+                                    {accountId ? <Link
+                                        href={`/dashboard/admin/users/${accountId}`}
                                         className="text-melagri-primary font-bold hover:underline py-1"
                                     >
                                         Full Profile →
-                                    </Link>
+                                    </Link> : <span className="text-xs text-gray-400">No account id</span>}
                                 </div>
                             </div>
                         </div>

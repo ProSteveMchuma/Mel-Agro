@@ -44,7 +44,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
                 unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
                     const userList: User[] = [];
                     snapshot.forEach((doc: QueryDocumentSnapshot) => {
-                        userList.push({ ...doc.data(), id: doc.id } as User);
+                        const data = doc.data();
+                        userList.push({ ...data, id: doc.id, uid: String(data.uid || doc.id) } as User);
                     });
 
                     // Client-side sort
