@@ -15,6 +15,9 @@ import { getAuth } from "firebase/auth";
 import AnalyticsWorkspaceControls from '@/components/admin/AnalyticsWorkspaceControls';
 import ShopTodayReadout from '@/components/admin/ShopTodayReadout';
 import { pagesLosingBeforeSale, productsLosingBeforeSale, salesByLandingPage, todayShopReadout, type ProductCounter } from '@/lib/shop-journey';
+import { nairobiDateKey } from '@/lib/nairobi-time';
+import { ReportPrintButton } from '@/components/admin/ReportPrint';
+import AnalyticsPrintSheet from '@/components/admin/AnalyticsPrintSheet';
 
 const RANGES: Array<{ value: DateRange; label: string }> = [
     { value: '7d', label: 'Last 7 days' },
@@ -147,11 +150,11 @@ export default function AnalyticsPage() {
     const productLosers = useMemo(() => productsLosingBeforeSale(storefront?.products || []), [storefront]);
     const todayReadout = useMemo(() => {
         if (!pulse) return null;
-        const todayKey = new Date().toISOString().slice(0, 10);
+        const todayKey = nairobiDateKey();
         return todayShopReadout({
             ...pulse,
             textableCarts,
-            landingSales: salesByLandingPage(orders.filter((order) => String(order.date || '').slice(0, 10) === todayKey)),
+            landingSales: salesByLandingPage(orders.filter((order) => nairobiDateKey(order.date) === todayKey)),
             pageMinViews: 3,
         });
     }, [pulse, textableCarts, orders]);
@@ -159,13 +162,14 @@ export default function AnalyticsPage() {
     const noData = ranged.length === 0;
 
     return (
-        <div className="space-y-8 pb-12">
+        <div className="report-print space-y-8 pb-12">
             <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-black text-gray-900 tracking-tighter">Revenue Analytics</h1>
                     <p className="text-gray-500 text-sm mt-1">Live numbers from Firestore: paid orders, anonymous storefront visits by page and region, searches, and signed-in checkout sessions.</p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap print:hidden">
+                    <ReportPrintButton disabled={dataLoading || Boolean(dataError)} label="Print report" />
                     <select
                         value={range}
                         onChange={(e) => setRange(e.target.value as DateRange)}
@@ -187,6 +191,7 @@ export default function AnalyticsPage() {
                 </div>
             </div>
 
+            <div className="print:hidden space-y-8">
             <AnalyticsWorkspaceControls
                 range={range}
                 granularity={granularity}
@@ -463,7 +468,7 @@ export default function AnalyticsPage() {
                     </div>
                 </Card>
 
-                <Card title="Hour of Day" subtitle="Peak ordering hours (local time)">
+                <Card title="Hour of Day" subtitle="Peak ordering hours (Africa/Nairobi)">
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={hourly}>
@@ -508,6 +513,33 @@ export default function AnalyticsPage() {
                     </div>
                 )}
             </Card>
+            </div>
+            {!dataLoading && !dataError && (
+                <AnalyticsPrintSheet
+                    rangeLabel={RANGES.find((item) => item.value === range)?.label || range}
+                    granularity={granularity}
+                    kpis={kpis}
+                    series={series}
+                    products={products}
+                    categories={categories}
+                    counties={counties}
+                    segments={segments}
+                    dow={dow}
+                    hourly={hourly}
+                    paymentMix={paymentMix}
+                    truncated={dataTruncated}
+                    searches={storefront?.searches || []}
+                    funnel={(storefront?.funnel.steps || []).map((step) => ({
+                        label: step.label,
+                        count: step.count,
+                        note: step.dropOff ? `${step.dropOff} did not continue` : `${Math.round(step.conversionFromStart * 100)}% from start`,
+                    }))}
+                    pages={storefront?.pages || []}
+                    regions={storefront?.regions || []}
+                    landingSales={landingSales}
+                    traffic={storefront?.traffic || []}
+                />
+            )}
         </div>
     );
 }

@@ -1,8 +1,9 @@
 "use client";
 import { useState, useMemo } from 'react';
 import { Order } from '@/context/OrderContext';
-import { aggregateOrderData } from '@/lib/reports-service';
 import { SalesReportTemplate } from '@/components/documents/SalesReportTemplate';
+import { defaultNairobiRange, nairobiDateKey, shiftNairobiDay } from '@/lib/nairobi-time';
+import { formatKes, summarizeSalesReport } from '@/lib/sales-report';
 
 interface ReportsCenterProps {
     orders: Order[];
@@ -10,30 +11,22 @@ interface ReportsCenterProps {
 }
 
 export default function ReportsCenter({ orders, onClose }: ReportsCenterProps) {
-    const [startDate, setStartDate] = useState<string>('');
-    const [endDate, setEndDate] = useState<string>('');
+    const initialRange = defaultNairobiRange();
+    const [startDate, setStartDate] = useState<string>(initialRange.start);
+    const [endDate, setEndDate] = useState<string>(initialRange.end);
     const [isPreviewMode, setIsPreviewMode] = useState(false);
 
-    const stats = useMemo(() => {
-        const start = startDate ? new Date(startDate) : undefined;
-        const end = endDate ? new Date(endDate) : undefined;
-        if (end) end.setHours(23, 59, 59, 999);
-
-        return aggregateOrderData(orders, start, end);
-    }, [orders, startDate, endDate]);
-
     const filteredOrders = useMemo(() => {
-        const start = startDate ? new Date(startDate) : undefined;
-        const end = endDate ? new Date(endDate) : undefined;
-        if (end) end.setHours(23, 59, 59, 999);
-
-        return orders.filter(o => {
-            const date = new Date(o.date);
-            if (start && date < start) return false;
-            if (end && date > end) return false;
+        return orders.filter((order) => {
+            const key = nairobiDateKey(order.date);
+            if (!key) return false;
+            if (startDate && key < startDate) return false;
+            if (endDate && key > endDate) return false;
             return true;
         });
     }, [orders, startDate, endDate]);
+
+    const stats = useMemo(() => summarizeSalesReport(filteredOrders), [filteredOrders]);
 
     const handlePrint = () => {
         setIsPreviewMode(true);
@@ -44,7 +37,7 @@ export default function ReportsCenter({ orders, onClose }: ReportsCenterProps) {
 
     if (isPreviewMode) {
         return (
-            <div className="fixed inset-0 z-[200] bg-white overflow-auto print:overflow-visible">
+            <div className="fixed inset-0 z-[200] bg-white overflow-auto print:static print:inset-auto print:z-auto print:h-auto print:overflow-visible">
                 <div className="p-4 print:hidden flex justify-between items-center bg-gray-900 text-white sticky top-0">
                     <div className="flex items-center gap-4">
                         <button onClick={() => setIsPreviewMode(false)} className="p-2 hover:bg-gray-800 rounded-full transition-colors">
@@ -60,8 +53,8 @@ export default function ReportsCenter({ orders, onClose }: ReportsCenterProps) {
                 <div className="p-8 print:p-0">
                     <SalesReportTemplate
                         orders={filteredOrders}
-                        startDate={startDate ? new Date(startDate) : undefined}
-                        endDate={endDate ? new Date(endDate) : undefined}
+                        startDate={startDate || undefined}
+                        endDate={endDate || undefined}
                     />
                 </div>
             </div>
@@ -113,12 +106,12 @@ export default function ReportsCenter({ orders, onClose }: ReportsCenterProps) {
                         <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Live Preview ({filteredOrders.length} Orders)</h3>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-white p-4 rounded-xl shadow-sm">
-                                <div className="text-[10px] text-gray-400 font-bold uppercase">Revenue</div>
-                                <div className="text-lg font-black text-gray-900">KES {stats.totalRevenue.toLocaleString()}</div>
+                                <div className="text-[10px] text-gray-400 font-bold uppercase">Paid revenue</div>
+                                <div className="text-lg font-black text-gray-900">KES {formatKes(stats.paidRevenue)}</div>
                             </div>
                             <div className="bg-white p-4 rounded-xl shadow-sm">
-                                <div className="text-[10px] text-gray-400 font-bold uppercase">Avg Order</div>
-                                <div className="text-lg font-black text-gray-900">KES {stats.avgOrderValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                <div className="text-[10px] text-gray-400 font-bold uppercase">Avg paid order</div>
+                                <div className="text-lg font-black text-gray-900">KES {formatKes(stats.averagePaidOrder)}</div>
                             </div>
                         </div>
                     </div>
@@ -127,10 +120,9 @@ export default function ReportsCenter({ orders, onClose }: ReportsCenterProps) {
                     <div className="flex gap-3 mb-8">
                         <button
                             onClick={() => {
-                                const d = new Date();
-                                d.setDate(d.getDate() - 30);
-                                setStartDate(d.toISOString().split('T')[0]);
-                                setEndDate(new Date().toISOString().split('T')[0]);
+                                const range = defaultNairobiRange(30);
+                                setStartDate(range.start);
+                                setEndDate(range.end);
                             }}
                             className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-xs font-bold text-gray-600 transition-colors"
                         >
@@ -138,10 +130,9 @@ export default function ReportsCenter({ orders, onClose }: ReportsCenterProps) {
                         </button>
                         <button
                             onClick={() => {
-                                const d = new Date();
-                                d.setMonth(d.getMonth() - 3);
-                                setStartDate(d.toISOString().split('T')[0]);
-                                setEndDate(new Date().toISOString().split('T')[0]);
+                                const end = nairobiDateKey();
+                                setStartDate(shiftNairobiDay(end, -90));
+                                setEndDate(end);
                             }}
                             className="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg text-xs font-bold text-gray-600 transition-colors"
                         >

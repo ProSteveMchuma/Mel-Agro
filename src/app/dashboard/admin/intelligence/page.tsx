@@ -10,6 +10,8 @@ import { segmentColor, segmentDescription, Segment, type CustomerProfile, type I
 import { waitForAuthToken } from "@/lib/wait-for-auth-token";
 import { profileAccountId, salesByLandingPage, todayShopReadout, type ProductCounter } from "@/lib/shop-journey";
 import ShopTodayReadout from "@/components/admin/ShopTodayReadout";
+import { ReportFilterLine, ReportPrintButton } from "@/components/admin/ReportPrint";
+import { nairobiDateKey } from "@/lib/nairobi-time";
 
 type CustomerVisit = { lastStep: string | null; pathTrail: string[]; openCart: boolean };
 
@@ -113,11 +115,11 @@ export default function IntelligencePage() {
     const paidOrders = orders.filter(o => (o as any).paymentStatus === 'Paid').length;
     const todayReadout = useMemo(() => {
         if (!pulse) return null;
-        const todayKey = new Date().toISOString().slice(0, 10);
+        const todayKey = nairobiDateKey();
         return todayShopReadout({
             ...pulse,
             textableCarts,
-            landingSales: salesByLandingPage(orders.filter((order) => String(order.date || '').slice(0, 10) === todayKey)),
+            landingSales: salesByLandingPage(orders.filter((order) => nairobiDateKey(order.date) === todayKey)),
             pageMinViews: 3,
         });
     }, [pulse, textableCarts, orders]);
@@ -141,18 +143,25 @@ export default function IntelligencePage() {
         });
 
     return (
-        <div className="space-y-12">
-            <div className="flex justify-between items-end">
+        <div className="report-print space-y-12">
+            <div className="flex justify-between items-end gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Customer Intelligence</h1>
                     <p className="text-gray-500 mt-1">Explainable customer value, repeat demand, and consent-aware opportunities.</p>
                 </div>
                 <div className="flex gap-2">
+                    <ReportPrintButton disabled={segmentsLoading || Boolean(segmentsError)} label="Print report" />
                     <span className="px-4 py-2 bg-melagri-primary/10 text-melagri-primary text-xs font-black rounded-xl uppercase tracking-widest border border-melagri-primary/20">
                         {intelligentUsers.length} Predictive Profiles
                     </span>
                 </div>
             </div>
+            <ReportFilterLine items={[
+                { label: "Segment", value: activeSegment === "all" ? "All customers" : activeSegment },
+                { label: "Sort", value: tableSort === "ltv" ? "Lifetime value" : tableSort === "frequency" ? "Order frequency" : "Recency" },
+                { label: "Rows", value: `Showing ${Math.min(visible.length, filtered.length)} of ${filtered.length}` },
+                { label: "Predictive profiles", value: String(intelligentUsers.length) },
+            ]} />
 
             {todayReadout && <ShopTodayReadout readout={todayReadout} />}
 
@@ -397,6 +406,14 @@ export default function IntelligencePage() {
                                             <tr><td colSpan={10} className="px-6 py-8 text-center text-gray-400 text-sm">No customers in this segment.</td></tr>
                                         )}
                                     </tbody>
+                                    <tfoot>
+                                        <tr className="border-t border-gray-200 font-black">
+                                            <td className="px-6 py-3" colSpan={2}>Total on this list</td>
+                                            <td className="px-6 py-3 text-right">{fmtKES(visible.reduce((sum, profile) => sum + profile.totalRevenue, 0))}</td>
+                                            <td className="px-6 py-3 text-right">{visible.reduce((sum, profile) => sum + profile.paidOrderCount, 0)}</td>
+                                            <td colSpan={6} />
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
                         </div>

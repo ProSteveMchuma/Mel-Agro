@@ -255,7 +255,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             {/* Sidebar Backdrop (Mobile only) */}
             {isSidebarOpen && (
                 <div 
-                    className="fixed inset-0 bg-black/50 z-20 md:hidden backdrop-blur-sm transition-opacity"
+                    className="admin-sidebar-backdrop fixed inset-0 bg-black/50 z-20 md:hidden backdrop-blur-sm transition-opacity"
                     onClick={() => setIsSidebarOpen(false)}
                 />
             )}
@@ -334,9 +334,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </aside>
 
             {/* Main Content */}
-            <div className={`flex-1 flex flex-col transition-[margin] duration-300 ${isSidebarOpen ? 'md:ml-72' : 'md:ml-20'} ml-0 min-w-0`}>
+            <div className={`admin-content flex-1 flex flex-col transition-[margin] duration-300 ${isSidebarOpen ? 'md:ml-72' : 'md:ml-20'} ml-0 min-w-0`}>
                 {/* Topbar */}
-                <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 h-20 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">
+                <header className="admin-topbar bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 h-20 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">
                     <div className="flex items-center gap-4">
                         {/* Mobile Toggle */}
                         <button type="button" aria-label="Open admin navigation"
@@ -404,6 +404,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </div>
                 </header>
 
+                <style>{`@media print { @page { size: A4 landscape; margin: 10mm; } }`}</style>
                 <main className="p-4 md:p-8">
                     {canViewCurrentPage ? children : <div className="mx-auto max-w-xl rounded-3xl border border-amber-200 bg-white p-8 text-center shadow-sm"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-xl text-amber-800">!</div><h1 className="mt-4 text-2xl font-black text-gray-950">Access not assigned</h1><p className="mt-2 text-sm leading-6 text-gray-600">Your staff profile does not include <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">{currentPermission}</code>. Ask a super-admin to update your access if this is part of your role.</p><Link href="/dashboard/admin" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-gray-950 px-5 text-sm font-black text-white">Return to overview</Link></div>}
                 </main>

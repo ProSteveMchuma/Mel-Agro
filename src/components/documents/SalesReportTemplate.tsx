@@ -1,127 +1,176 @@
-import React from 'react';
-import { Order } from '@/context/OrderContext';
-import { useSettings } from '@/context/SettingsContext';
-import Logo from '../Logo';
+"use client";
+
+import React from "react";
+import { useSettings } from "@/context/SettingsContext";
+import { nairobiDateTimeStamp, nairobiDayLabel } from "@/lib/nairobi-time";
+import {
+    customerLabel,
+    formatKes,
+    refundAmountOf,
+    salesPeriodLabel,
+    summarizeSalesReport,
+    type SalesReportOrder,
+} from "@/lib/sales-report";
 
 interface SalesReportTemplateProps {
-    orders: Order[];
-    startDate?: Date;
-    endDate?: Date;
+    orders: SalesReportOrder[];
+    startDate?: string;
+    endDate?: string;
+    truncated?: boolean;
+    generatedAt?: string;
 }
 
-export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders, startDate, endDate }) => {
+export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({
+    orders,
+    startDate,
+    endDate,
+    truncated = false,
+    generatedAt,
+}) => {
     const { general } = useSettings();
-    const paidOrders = orders.filter(o => o.paymentStatus === 'Paid');
-    const totalSales = paidOrders.reduce((acc, order) => acc + order.total, 0);
-    const totalOrders = orders.length;
-    const averageOrderValue = paidOrders.length > 0 ? totalSales / paidOrders.length : 0;
-    const reportPeriod = startDate || endDate
-        ? `${startDate?.toLocaleDateString() || 'Beginning'} – ${endDate?.toLocaleDateString() || 'Present'}`
-        : 'All time';
-
-    // Group by status
-    const statusCounts = orders.reduce((acc, order) => {
-        acc[order.status] = (acc[order.status] || 0) + 1;
-        return acc;
-    }, {} as Record<string, number>);
+    const summary = summarizeSalesReport(orders);
+    const generated = nairobiDateTimeStamp(generatedAt || new Date().toISOString());
 
     return (
-        <div className="bg-white p-8 max-w-4xl mx-auto font-sans text-gray-900" id="sales-report-template">
-            {/* Branded Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start mb-12 border-b-4 border-gray-900 pb-8 gap-6 text-left">
-                <div>
-                    <h1 className="text-4xl font-black text-gray-900 mb-2 tracking-tighter uppercase">Sales Analytics</h1>
-                    <p className="text-gray-500 font-bold">Market Performance Report</p>
-                    <p className="text-xs text-gray-400 mt-2">Generated: {new Date().toLocaleString()}</p>
+        <div className="sales-report bg-white font-sans text-gray-950" id="sales-report-template">
+            <div className="flex items-start justify-between gap-6 border-b-2 border-gray-950 pb-4">
+                <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[.18em] text-green-800">Mel-Agri Kenya</p>
+                    <h2 className="mt-1 text-2xl font-black tracking-tight">Sales report</h2>
+                    <p className="mt-1 max-w-xl text-sm text-gray-600">Paid revenue, refunds, and every order in the selected dates.</p>
                 </div>
-                <div className="md:text-right flex flex-col items-end">
-                    <Logo className="mb-4 scale-125 origin-right" />
-                    <div className="text-xl font-black text-gray-900 mb-1">{general.companyName || "Mel-Agri Kenya"}</div>
-                    <p className="text-gray-500 text-xs">{general.supportEmail || "admin@Mel-Agri.com"}</p>
-                    <p className="text-gray-400 text-[10px] mt-1">Report period: {reportPeriod}</p>
+                <div className="shrink-0 text-right text-xs text-gray-700">
+                    <p className="font-black text-gray-950">{general.companyName || "Mel-Agri Kenya"}</p>
+                    <p>{general.supportEmail || "admin@melagri.com"}</p>
+                    <p className="mt-1">Generated {generated} Nairobi</p>
                 </div>
             </div>
 
-            {/* Executive Summary */}
-            <div className="mb-12">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 border-l-4 border-melagri-primary pl-4">Executive Summary</h2>
-                <div className="grid grid-cols-3 gap-6">
-                    <div className="bg-gray-50 p-6 rounded-xl text-center">
-                        <div className="text-sm text-gray-500 mb-1">Total Revenue (Paid)</div>
-                        <div className="text-2xl font-bold text-gray-900">KES {totalSales.toLocaleString()}</div>
-                    </div>
-                    <div className="bg-gray-50 p-6 rounded-xl text-center">
-                        <div className="text-sm text-gray-500 mb-1">Total Orders</div>
-                        <div className="text-2xl font-bold text-gray-900">{totalOrders}</div>
-                    </div>
-                    <div className="bg-gray-50 p-6 rounded-xl text-center">
-                        <div className="text-sm text-gray-500 mb-1">Avg. Order Value</div>
-                        <div className="text-2xl font-bold text-gray-900">KES {averageOrderValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
-                    </div>
-                </div>
-            </div>
+            <p className="mt-4 border border-gray-300 px-3 py-2 text-sm">
+                <span className="font-black">Filters. </span>
+                Start date: {startDate ? nairobiDayLabel(startDate) : "Beginning"}
+                {" · "}
+                End date: {endDate ? nairobiDayLabel(endDate) : "Present"}
+                {" · "}
+                Period: {salesPeriodLabel(startDate, endDate)}
+                {truncated ? " · Stopped at 5,000 orders. Shorten the dates for a complete copy." : ""}
+            </p>
 
-            {/* Order Status Breakdown */}
-            <div className="mb-12">
-                <h2 className="text-xl font-bold text-gray-900 mb-6 border-l-4 border-melagri-primary pl-4">Order Status Breakdown</h2>
-                <table className="w-full border border-gray-200">
-                    <thead className="bg-gray-100">
+            <table className="mt-4 w-full border-collapse text-sm">
+                <caption className="mb-2 text-left text-sm font-black">Totals</caption>
+                <thead>
+                    <tr className="bg-gray-100">
+                        <th className="border border-gray-300 px-2 py-2 text-left">Paid revenue</th>
+                        <th className="border border-gray-300 px-2 py-2 text-left">Refunds</th>
+                        <th className="border border-gray-300 px-2 py-2 text-left">Net paid revenue</th>
+                        <th className="border border-gray-300 px-2 py-2 text-left">Orders</th>
+                        <th className="border border-gray-300 px-2 py-2 text-left">Paid orders</th>
+                        <th className="border border-gray-300 px-2 py-2 text-left">Average paid order</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td className="border border-gray-300 px-2 py-2 font-black">KES {formatKes(summary.paidRevenue)}</td>
+                        <td className="border border-gray-300 px-2 py-2 font-black">KES {formatKes(summary.refundTotal)}</td>
+                        <td className="border border-gray-300 px-2 py-2 font-black">KES {formatKes(summary.netPaidRevenue)}</td>
+                        <td className="border border-gray-300 px-2 py-2">{summary.orderCount.toLocaleString("en-KE")}</td>
+                        <td className="border border-gray-300 px-2 py-2">{summary.paidCount.toLocaleString("en-KE")}</td>
+                        <td className="border border-gray-300 px-2 py-2">KES {formatKes(summary.averagePaidOrder)}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p className="mt-2 text-[11px] leading-relaxed text-gray-600">
+                Paid revenue is the gross order total where payment status is Paid. Refunds are the refund amount on reversed or refunded orders. Net paid revenue subtracts only refunds that are still inside paid revenue.
+            </p>
+
+            <table className="mt-6 w-full border-collapse text-sm">
+                <caption className="mb-2 text-left text-sm font-black">Fulfilment status</caption>
+                <thead>
+                    <tr className="bg-gray-100">
+                        <th className="border border-gray-300 px-2 py-2 text-left">Status</th>
+                        <th className="border border-gray-300 px-2 py-2 text-right">Orders</th>
+                        <th className="border border-gray-300 px-2 py-2 text-right">Share</th>
+                        <th className="border border-gray-300 px-2 py-2 text-right">Gross</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {summary.byStatus.length === 0 ? (
                         <tr>
-                            <th className="text-left py-3 px-4 font-bold text-gray-900">Status</th>
-                            <th className="text-right py-3 px-4 font-bold text-gray-900">Count</th>
-                            <th className="text-right py-3 px-4 font-bold text-gray-900">Percentage</th>
+                            <td colSpan={4} className="border border-gray-300 px-2 py-3 text-gray-500">No orders in this range.</td>
                         </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {Object.entries(statusCounts).map(([status, count]: [string, number]) => (
-                            <tr key={status}>
-                                <td className="py-3 px-4 text-gray-900">{status}</td>
-                                <td className="py-3 px-4 text-right text-gray-900">{count}</td>
-                                <td className="py-3 px-4 text-right text-gray-600">{((count / totalOrders) * 100).toFixed(1)}%</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+                    ) : summary.byStatus.map((row) => (
+                        <tr key={row.status}>
+                            <td className="border border-gray-300 px-2 py-2">{row.status}</td>
+                            <td className="border border-gray-300 px-2 py-2 text-right">{row.count.toLocaleString("en-KE")}</td>
+                            <td className="border border-gray-300 px-2 py-2 text-right">{row.percentage.toFixed(1)}%</td>
+                            <td className="border border-gray-300 px-2 py-2 text-right">KES {formatKes(row.gross)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+                <tfoot>
+                    <tr className="font-black">
+                        <td className="border border-gray-300 px-2 py-2">Total</td>
+                        <td className="border border-gray-300 px-2 py-2 text-right">{summary.orderCount.toLocaleString("en-KE")}</td>
+                        <td className="border border-gray-300 px-2 py-2 text-right">{summary.orderCount > 0 ? "100%" : "—"}</td>
+                        <td className="border border-gray-300 px-2 py-2 text-right">KES {formatKes(summary.grossTotal)}</td>
+                    </tr>
+                </tfoot>
+            </table>
 
-            {/* Recent Transactions & Audit Trail */}
-            <div>
-                <div className="flex justify-between items-center mb-6 border-l-4 border-melagri-primary pl-4">
-                    <h2 className="text-xl font-bold text-gray-900">Transaction Audit Trail</h2>
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Financial Transparency Mode</span>
-                </div>
-                <table className="w-full border border-gray-200 text-[11px]">
-                    <thead className="bg-gray-100">
+            <table className="mt-6 w-full border-collapse text-[11px] leading-snug">
+                <caption className="mb-2 text-left text-sm font-black">Orders</caption>
+                <colgroup>
+                    <col style={{ width: "14%" }} />
+                    <col style={{ width: "12%" }} />
+                    <col style={{ width: "16%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "12%" }} />
+                    <col style={{ width: "10%" }} />
+                    <col style={{ width: "12%" }} />
+                    <col style={{ width: "8%" }} />
+                    <col style={{ width: "6%" }} />
+                </colgroup>
+                <thead>
+                    <tr className="bg-gray-100">
+                        <th className="border border-gray-300 px-1.5 py-2 text-left">Date</th>
+                        <th className="border border-gray-300 px-1.5 py-2 text-left">Order</th>
+                        <th className="border border-gray-300 px-1.5 py-2 text-left">Customer</th>
+                        <th className="border border-gray-300 px-1.5 py-2 text-left">County</th>
+                        <th className="border border-gray-300 px-1.5 py-2 text-left">Method</th>
+                        <th className="border border-gray-300 px-1.5 py-2 text-left">Payment</th>
+                        <th className="border border-gray-300 px-1.5 py-2 text-left">Fulfilment</th>
+                        <th className="border border-gray-300 px-1.5 py-2 text-right">Gross</th>
+                        <th className="border border-gray-300 px-1.5 py-2 text-right">Refund</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {orders.length === 0 ? (
                         <tr>
-                            <th className="text-left py-3 px-4 font-bold text-gray-900 uppercase tracking-wider">Stamp</th>
-                            <th className="text-left py-3 px-4 font-bold text-gray-900 uppercase tracking-wider">Order ID</th>
-                            <th className="text-left py-3 px-4 font-bold text-gray-900 uppercase tracking-wider">Method</th>
-                            <th className="text-left py-3 px-4 font-bold text-gray-900 uppercase tracking-wider">Provenance</th>
-                            <th className="text-right py-3 px-4 font-bold text-gray-900 uppercase tracking-wider">Settlement</th>
+                            <td colSpan={9} className="border border-gray-300 px-2 py-3 text-gray-500">No orders in this range.</td>
                         </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {orders.slice(0, 30).map(order => (
-                            <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="py-2 px-4 text-gray-600">{new Date(order.date).toLocaleDateString()}</td>
-                                <td className="py-2 px-4 text-gray-900 font-black tracking-tight">#{order.id.slice(0, 8)}</td>
-                                <td className="py-2 px-4">
-                                    <span className="bg-gray-100 px-2 py-0.5 rounded text-[9px] font-bold text-gray-500 uppercase">
-                                        {order.paymentMethod || 'STK Push'}
-                                    </span>
-                                </td>
-                                <td className="py-2 px-4 italic text-gray-500">
-                                    {order.paymentMethod === 'M-Pesa' || order.paymentMethod === 'M-Pesa Checkout'
-                                        ? 'System Verified'
-                                        : (order.paymentStatus === 'Paid' ? 'Admin Recorded' : 'Pending Settlement')}
-                                </td>
-                                <td className="py-2 px-4 text-right font-black text-gray-900">KES {order.total.toLocaleString()}</td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-                <p className="text-center text-[10px] text-gray-400 mt-6 italic">This report contains sensitive financial data. Authorized Mel-Agri personnel only.</p>
-            </div>
+                    ) : orders.map((order) => (
+                        <tr key={order.id}>
+                            <td className="border border-gray-300 px-1.5 py-1.5">{nairobiDateTimeStamp(order.date) || "—"}</td>
+                            <td className="border border-gray-300 px-1.5 py-1.5 font-bold">#{order.id.slice(0, 10)}</td>
+                            <td className="border border-gray-300 px-1.5 py-1.5">{customerLabel(order)}</td>
+                            <td className="border border-gray-300 px-1.5 py-1.5">{order.shippingAddress?.county || "—"}</td>
+                            <td className="border border-gray-300 px-1.5 py-1.5">{order.paymentMethod || "—"}</td>
+                            <td className="border border-gray-300 px-1.5 py-1.5">{order.paymentStatus || "Unpaid"}</td>
+                            <td className="border border-gray-300 px-1.5 py-1.5">{order.status || "—"}</td>
+                            <td className="border border-gray-300 px-1.5 py-1.5 text-right">{formatKes(Number(order.total) || 0)}</td>
+                            <td className="border border-gray-300 px-1.5 py-1.5 text-right">{formatKes(refundAmountOf(order))}</td>
+                        </tr>
+                    ))}
+                </tbody>
+                <tfoot>
+                    <tr className="font-black">
+                        <td className="border border-gray-300 px-1.5 py-2" colSpan={7}>Total · {summary.orderCount.toLocaleString("en-KE")} orders · paid revenue KES {formatKes(summary.paidRevenue)} · net KES {formatKes(summary.netPaidRevenue)}</td>
+                        <td className="border border-gray-300 px-1.5 py-2 text-right">{formatKes(summary.grossTotal)}</td>
+                        <td className="border border-gray-300 px-1.5 py-2 text-right">{formatKes(summary.refundTotal)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+            <p className="mt-3 text-[10px] text-gray-500">Dates are Africa/Nairobi. Authorized Mel-Agri personnel only.</p>
         </div>
     );
 };

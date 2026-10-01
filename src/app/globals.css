@@ -147,3 +147,81 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow-x: clip;
 }
+
+@media print {
+  html,
+  body {
+    background: white !important;
+    overflow: visible !important;
+  }
+
+  aside[aria-label="Admin navigation"],
+  .admin-topbar,
+  .admin-sidebar-backdrop {
+    display: none !important;
+  }
+
+  .admin-content {
+    margin: 0 !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+  }
+
+  .admin-content > main {
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .report-print .overflow-hidden,
+  .report-print .overflow-x-auto,
+  .report-print .overflow-y-auto,
+  .report-print .overflow-auto,
+  .sales-report .overflow-hidden,
+  .sales-report .overflow-x-auto {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  .report-print .max-h-96,
+  .report-print .max-h-80 {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .sales-report table,
+  .report-print table {
+    width: 100%;
+    min-width: 0 !important;
+    border-collapse: collapse;
+    page-break-inside: auto;
+  }
+
+  .report-print .truncate,
+  .sales-report .truncate {
+    overflow: visible !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+    max-width: none !important;
+  }
+
+  .sales-report th,
+  .sales-report td,
+  .report-print th,
+  .report-print td {
+    overflow: visible;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .sales-report thead,
+  .report-print thead {
+    display: table-header-group;
+  }
+
+  .sales-report tr,
+  .report-print tr {
+    break-inside: avoid;
+  }
+}

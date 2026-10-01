@@ -2,19 +2,20 @@
 // Operate on the orders[] array streamed by OrderContext (already admin-scoped).
 
 import type { Order } from '@/types';
+import { nairobiDateKey, nairobiHour, nairobiMonthKey, nairobiWeekdayIndex, nairobiWeekStartKey } from './nairobi-time.ts';
 
 export type DateRange = '7d' | '30d' | '90d' | '12m' | 'all';
 export type Granularity = 'day' | 'week' | 'month';
 
-export function dateRangeCutoff(range: DateRange): Date | null {
+export function dateRangeCutoff(range: DateRange, now = Date.now()): Date | null {
     if (range === 'all') return null;
-    const now = new Date();
-    const d = new Date(now);
-    if (range === '7d') d.setDate(d.getDate() - 7);
-    else if (range === '30d') d.setDate(d.getDate() - 30);
-    else if (range === '90d') d.setDate(d.getDate() - 90);
-    else if (range === '12m') d.setFullYear(d.getFullYear() - 1);
-    return d;
+    if (range === '12m') {
+        const date = new Date(now);
+        date.setUTCFullYear(date.getUTCFullYear() - 1);
+        return date;
+    }
+    const days = range === '7d' ? 7 : range === '30d' ? 30 : 90;
+    return new Date(now - days * 86400000);
 }
 
 export function filterByRange(orders: Order[], range: DateRange): Order[] {
@@ -67,16 +68,9 @@ export function computeKPIs(orders: Order[]): KPISet {
 }
 
 function bucketKey(date: Date, granularity: Granularity): string {
-    if (granularity === 'day') {
-        return date.toISOString().slice(0, 10);
-    }
-    if (granularity === 'week') {
-        const d = new Date(date);
-        const day = d.getUTCDay() || 7;
-        d.setUTCDate(d.getUTCDate() - day + 1); // Monday-anchored
-        return d.toISOString().slice(0, 10);
-    }
-    return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+    if (granularity === 'day') return nairobiDateKey(date);
+    if (granularity === 'week') return nairobiWeekStartKey(date);
+    return nairobiMonthKey(date);
 }
 
 export interface SeriesPoint {
@@ -109,11 +103,12 @@ export function revenueSeries(orders: Order[], granularity: Granularity): Series
 
 function humanBucketLabel(bucket: string, granularity: Granularity): string {
     if (granularity === 'month') {
-        const [y, m] = bucket.split('-').map(Number);
-        return new Date(y, m - 1, 1).toLocaleDateString('en-KE', { month: 'short', year: '2-digit' });
+        const [year, month] = bucket.split('-').map(Number);
+        const date = new Date(Date.UTC(year, (month || 1) - 1, 1, 9, 0, 0));
+        return new Intl.DateTimeFormat('en-KE', { timeZone: 'Africa/Nairobi', month: 'short', year: '2-digit' }).format(date);
     }
-    const d = new Date(bucket);
-    return d.toLocaleDateString('en-KE', { day: 'numeric', month: 'short' });
+    const date = new Date(`${bucket}T12:00:00+03:00`);
+    return new Intl.DateTimeFormat('en-KE', { timeZone: 'Africa/Nairobi', day: 'numeric', month: 'short' }).format(date);
 }
 
 export interface TopItem {
@@ -210,7 +205,7 @@ export function ordersByDayOfWeek(orders: Order[]): PatternBucket[] {
     for (const o of paid) {
         const d = new Date(o.date);
         if (!Number.isFinite(d.getTime())) continue;
-        const idx = d.getDay();
+        const idx = nairobiWeekdayIndex(d);
         buckets[idx].orders += 1;
         buckets[idx].revenue += Number(o.total) || 0;
     }
@@ -227,7 +222,7 @@ export function ordersByHourOfDay(orders: Order[]): PatternBucket[] {
     for (const o of paid) {
         const d = new Date(o.date);
         if (!Number.isFinite(d.getTime())) continue;
-        const h = d.getHours();
+        const h = nairobiHour(d);
         buckets[h].orders += 1;
         buckets[h].revenue += Number(o.total) || 0;
     }
