@@ -5,7 +5,8 @@ import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
 
 const createSchema = z.object({ action: z.literal("create"), code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{3,30}$/), type: z.enum(["PERCENTAGE", "FIXED_AMOUNT"]), value: z.number().positive().max(1_000_000), minOrderValue: z.number().min(0).max(10_000_000), usageLimit: z.number().int().positive().max(1_000_000).nullable(), expiresAt: z.string().datetime() }).superRefine((data, context) => { if (data.type === "PERCENTAGE" && data.value > 100) context.addIssue({ code: "custom", message: "Percentage cannot exceed 100." }); });
-const mutationSchema = z.union([createSchema, z.object({ action: z.enum(["activate", "deactivate", "archive"]), discountId: z.string().min(1).max(100) })]);
+const updateSchema = z.object({ action: z.literal("update"), discountId: z.string().min(1).max(100), value: z.number().positive().max(1_000_000), minOrderValue: z.number().min(0).max(10_000_000), usageLimit: z.number().int().positive().max(1_000_000).nullable(), expiresAt: z.string().datetime() });
+const mutationSchema = z.union([createSchema, updateSchema, z.object({ action: z.enum(["activate", "deactivate", "archive"]), discountId: z.string().min(1).max(100) })]);
 type Cursor = { at: string; id: string };
 const encode = (value: Cursor) => Buffer.from(JSON.stringify(value)).toString("base64url");
 const decode = (value: string | null): Cursor | null => { try { const parsed = JSON.parse(Buffer.from(value || "", "base64url").toString()); return parsed && typeof parsed.at === "string" ? parsed : null; } catch { return null; } };
@@ -35,6 +36,23 @@ export async function POST(request: Request) {
     const ref = adminDb.collection("discounts").doc(input.code);
     try { await adminDb.runTransaction(async (transaction) => { const existing = await transaction.get(ref); if (existing.exists) throw new Error("DUPLICATE"); transaction.create(ref, { code: input.code, type: input.type, value: input.value, minOrderValue: input.minOrderValue, usageLimit: input.usageLimit, usedCount: 0, expiresAt: expiry, isActive: true, archived: false, createdAt: now, createdBy: actor.uid }); transaction.set(adminDb.collection("adminAuditLog").doc(), { action: "discount_created", actorId: actor.uid, actorEmail: actor.email || null, targetId: ref.id, after: { code: input.code, type: input.type, value: input.value, minOrderValue: input.minOrderValue, usageLimit: input.usageLimit, expiresAt: expiry.toISOString() }, createdAt: now.toISOString() }); }); }
     catch (error) { if (error instanceof Error && error.message === "DUPLICATE") return NextResponse.json({ success: false, message: "That discount code already exists." }, { status: 409 }); throw error; }
+    return NextResponse.json({ success: true });
+  }
+  if (input.action === "update") {
+    const ref = adminDb.collection("discounts").doc(input.discountId);
+    const snapshot = await ref.get();
+    if (!snapshot.exists || snapshot.data()?.archived === true) return NextResponse.json({ success: false, message: "Discount not found." }, { status: 404 });
+    const type = snapshot.data()?.type === "PERCENTAGE" ? "PERCENTAGE" : "FIXED_AMOUNT";
+    if (type === "PERCENTAGE" && input.value > 100) return NextResponse.json({ success: false, message: "Percentage cannot exceed 100." }, { status: 400 });
+    const expiry = new Date(input.expiresAt);
+    if (expiry <= now || expiry.getTime() > now.getTime() + 2 * 365 * 86400000) return NextResponse.json({ success: false, message: "Expiry must be in the future and within two years." }, { status: 400 });
+    const usedCount = Number(snapshot.data()?.usedCount || 0);
+    if (input.usageLimit != null && input.usageLimit < usedCount) return NextResponse.json({ success: false, message: "Usage limit cannot be below the number already used." }, { status: 409 });
+    const update = { value: input.value, minOrderValue: input.minOrderValue, usageLimit: input.usageLimit, expiresAt: expiry, updatedAt: now.toISOString() };
+    const batch = adminDb.batch();
+    batch.update(ref, update);
+    batch.set(adminDb.collection("adminAuditLog").doc(), { action: "discount_updated", actorId: actor.uid, actorEmail: actor.email || null, targetId: ref.id, before: { value: snapshot.data()?.value, minOrderValue: snapshot.data()?.minOrderValue, usageLimit: snapshot.data()?.usageLimit ?? null, expiresAt: iso(snapshot.data()?.expiresAt) }, after: { ...update, expiresAt: expiry.toISOString() }, createdAt: now.toISOString() });
+    await batch.commit();
     return NextResponse.json({ success: true });
   }
   const ref = adminDb.collection("discounts").doc(input.discountId); const snapshot = await ref.get();

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
 import type { Order } from "@/types";
+import { nairobiRangeUtc } from "@/lib/nairobi-range";
 
 const querySchema = z.object({
   start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -21,8 +22,7 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const parsed = querySchema.safeParse({ start: params.get("start"), end: params.get("end"), format: params.get("format") || "json" });
   if (!parsed.success) return NextResponse.json({ success: false, message: "Choose a valid report date range." }, { status: 400 });
-  const start = new Date(`${parsed.data.start}T00:00:00.000Z`);
-  const endExclusive = new Date(`${parsed.data.end}T00:00:00.000Z`); endExclusive.setUTCDate(endExclusive.getUTCDate() + 1);
+  const { start, endExclusive } = nairobiRangeUtc(parsed.data.start, parsed.data.end);
   if (start >= endExclusive) return NextResponse.json({ success: false, message: "The start date must be on or before the end date." }, { status: 400 });
   if (endExclusive.getTime() - start.getTime() > 366 * 86400000) return NextResponse.json({ success: false, message: "Reports are limited to a maximum of 366 days." }, { status: 400 });
   const snapshot = await adminDb.collection("orders").where("date", ">=", start.toISOString()).where("date", "<", endExclusive.toISOString()).orderBy("date", "desc").limit(5001).get();
@@ -34,5 +34,5 @@ export async function GET(request: Request) {
     const csv = [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
     return new NextResponse(`\uFEFF${csv}`, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="melagri-sales-${parsed.data.start}-to-${parsed.data.end}.csv"`, "X-Content-Type-Options": "nosniff" } });
   }
-  return NextResponse.json({ success: true, orders, truncated, generatedAt: new Date().toISOString(), definitions: { revenue: "Gross order total where paymentStatus is Paid", refunds: "refundAmount for reversed/refunded orders", timezone: "UTC date boundaries" } });
+  return NextResponse.json({ success: true, orders, truncated, generatedAt: new Date().toISOString(), definitions: { revenue: "Gross order total where paymentStatus is Paid", refunds: "refundAmount for reversed/refunded orders", timezone: "Africa/Nairobi date boundaries" } });
 }

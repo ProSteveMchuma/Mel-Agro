@@ -6,6 +6,7 @@ import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
 import { collapseBrandDisplays } from "@/lib/catalog-normalize";
 import { matchesBrandFilter, matchesPriceFilter, parsePriceBound } from "@/lib/admin-catalogue-filters";
 import { notifyBackInStock } from "@/lib/commerce-jobs";
+import { applyPackAdjustment, type PackStock } from "@/lib/inventory-stock";
 
 const PAGE_SIZE = 20;
 const SCAN_SIZE = 75;
@@ -97,7 +98,13 @@ export async function GET(request: Request) {
 
 const adjustmentSchema = z.union([
   z.object({ action: z.literal("receive"), productId: z.string().min(1).max(180) }),
-  z.object({ action: z.literal("adjust").optional(), productId: z.string().min(1).max(180), adjustment: z.number().int().min(-10000).max(10000).refine((value) => value !== 0), reason: z.string().trim().max(240).optional() }),
+  z.object({
+    action: z.literal("adjust").optional(),
+    productId: z.string().min(1).max(180),
+    adjustment: z.number().int().min(-10000).max(10000).refine((value) => value !== 0),
+    variantId: z.string().trim().min(1).max(80).optional(),
+    reason: z.string().trim().max(240).optional(),
+  }),
 ]);
 
 export async function POST(request: Request) {
@@ -118,8 +125,18 @@ export async function POST(request: Request) {
     const previousStock = Number(data.stockQuantity || 0);
     const incoming = Math.max(0, Number(data.incomingStock || 0));
     if (receiving && incoming <= 0) throw new Error("NOTHING_INCOMING");
-    const applied = receiving ? incoming : adjustment;
-    const newStock = previousStock + applied;
+    const variantId = input.action === "receive" ? undefined : input.variantId;
+    let applied = receiving ? incoming : adjustment;
+    let newStock = previousStock + applied;
+    let variantsUpdate: PackStock[] | undefined;
+    if (variantId) {
+      const packs = Array.isArray(data.variants) ? data.variants as PackStock[] : [];
+      if (packs.length === 0) throw new Error("VARIANT_NOT_FOUND");
+      const pack = applyPackAdjustment(packs, variantId, adjustment);
+      applied = pack.next - pack.previous;
+      newStock = pack.parentStock;
+      variantsUpdate = pack.packs;
+    }
     if (newStock < 0) throw new Error("NEGATIVE_STOCK");
     const now = new Date().toISOString();
     transaction.update(productRef, {
@@ -127,19 +144,22 @@ export async function POST(request: Request) {
       inStock: newStock > 0,
       updatedAt: now,
       ...(receiving ? { incomingStock: 0 } : {}),
+      ...(variantsUpdate ? { variants: variantsUpdate } : {}),
     });
-    transaction.set(adminDb.collection("inventory_history").doc(), { productId, productName: data.name || "Unknown product", previousStock, newStock, change: applied, type: receiving ? "goods_arrived" : "admin_adjustment", reason: reason || "Quick inventory adjustment", updatedBy: actor.email || actor.uid, updatedAt: now });
-    transaction.set(adminDb.collection("adminAuditLog").doc(), { action: receiving ? "inventory_received" : "inventory_adjusted", actorId: actor.uid, actorEmail: actor.email || null, targetId: productId, before: { stockQuantity: previousStock, incomingStock: incoming }, after: { stockQuantity: newStock, adjustment: applied, incomingStock: receiving ? 0 : incoming, reason: reason || null }, createdAt: now });
-    return { previousStock, newStock, name: String(data.name || "Product") };
+    transaction.set(adminDb.collection("inventory_history").doc(), { productId, productName: data.name || "Unknown product", previousStock, newStock, change: applied, type: receiving ? "goods_arrived" : "admin_adjustment", reason: variantId ? `${reason || "Quick inventory adjustment"} (${variantId})` : (reason || "Quick inventory adjustment"), updatedBy: actor.email || actor.uid, updatedAt: now, ...(variantId ? { variantId } : {}) });
+    transaction.set(adminDb.collection("adminAuditLog").doc(), { action: receiving ? "inventory_received" : "inventory_adjusted", actorId: actor.uid, actorEmail: actor.email || null, targetId: productId, before: { stockQuantity: previousStock, incomingStock: incoming }, after: { stockQuantity: newStock, adjustment: applied, incomingStock: receiving ? 0 : incoming, reason: reason || null, ...(variantId ? { variantId } : {}) }, createdAt: now });
+    return { previousStock, newStock, name: String(data.name || "Product"), ...(variantsUpdate ? { variants: variantsUpdate } : {}) };
   }).catch((error: Error) => {
     if (error.message === "PRODUCT_NOT_FOUND") return null;
     if (error.message === "NEGATIVE_STOCK") return { negative: true } as const;
     if (error.message === "NOTHING_INCOMING") return { emptyIncoming: true } as const;
+    if (error.message === "VARIANT_NOT_FOUND") return { missingPack: true } as const;
     throw error;
   });
   if (!result) return NextResponse.json({ success: false, message: "Product not found." }, { status: 404 });
   if ("negative" in result) return NextResponse.json({ success: false, message: "Adjustment would make stock negative." }, { status: 409 });
   if ("emptyIncoming" in result) return NextResponse.json({ success: false, message: "There is no incoming stock to receive." }, { status: 409 });
+  if ("missingPack" in result) return NextResponse.json({ success: false, message: "That pack is no longer on the product." }, { status: 404 });
   revalidateStorefrontCatalogue();
   let restockSms = 0;
   if (result.newStock > result.previousStock && result.newStock > 0) {

@@ -1021,7 +1021,7 @@ export default function AdminOrderDetailsPage() {
                                 </div>
                             ) : (
                                 <div className="mt-6 pt-6 border-t border-gray-50">
-                                    <p className="text-[10px] font-black text-gray-300 uppercase italic leading-loose">Waiting for dispatch payload integration...</p>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Not dispatched yet.</p>
                                 </div>
                             )}
                         </div>

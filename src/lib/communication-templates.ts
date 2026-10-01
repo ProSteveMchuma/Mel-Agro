@@ -258,3 +258,15 @@ export const CommunicationTemplates = {
         return { subject: emailSubject, emailBody: emailHtml, smsBody };
     },
 };
+
+/** Saved Settings → Notifications copy. Empty or missing `{orderId}` keeps the hardcoded confirmation SMS. */
+export function applyOrderConfirmationSms(order: Order, template?: string | null): string {
+    const fallback = CommunicationTemplates.getOrderConfirmation(order).smsBody;
+    const raw = String(template || "").trim();
+    if (!raw.includes("{orderId}")) return fallback;
+    const total = Number(order.total) || 0;
+    return raw
+        .replaceAll("{orderId}", shortOrderId(order))
+        .replaceAll("{total}", total.toLocaleString())
+        .replaceAll("{customerName}", order.userName || "Farmer");
+}

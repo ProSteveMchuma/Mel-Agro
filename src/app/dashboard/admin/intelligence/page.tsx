@@ -7,8 +7,7 @@ import Link from "next/link";
 import { auth } from "@/lib/firebase";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
-import { buildCustomerProfiles, summariseSegments, computeIntelKPIs, segmentColor, segmentDescription, Segment } from "@/lib/customer-intelligence";
-import { actionableReorders, buildReorderPredictions } from '@/lib/reorder-intelligence';
+import { segmentColor, segmentDescription, Segment, type CustomerProfile, type IntelKPIs, type SegmentSummary } from "@/lib/customer-intelligence";
 
 const fmtKES = (n: number) => `KES ${Math.round(n).toLocaleString()}`;
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
@@ -22,12 +21,12 @@ export default function IntelligencePage() {
     const [funnel, setFunnel] = useState<{ sampled: number; steps: Array<{ key: string; label: string; count: number; conversionFromStart: number }> } | null>(null);
     const [activeSegment, setActiveSegment] = useState<Segment | 'all'>('all');
     const [tableSort, setTableSort] = useState<'ltv' | 'frequency' | 'recency'>('ltv');
-
-    const profiles = useMemo(() => buildCustomerProfiles(orders), [orders]);
-    const segments = useMemo(() => summariseSegments(profiles), [profiles]);
-    const kpis = useMemo(() => computeIntelKPIs(profiles), [profiles]);
-    const reorderQueue = useMemo(() => actionableReorders(buildReorderPredictions(orders)).slice(0, 25), [orders]);
-    const reorderUsers = useMemo(() => new Set(reorderQueue.map(item => item.userId)), [reorderQueue]);
+    const [profiles, setProfiles] = useState<CustomerProfile[]>([]);
+    const [segments, setSegments] = useState<SegmentSummary[]>([]);
+    const [kpis, setKpis] = useState<IntelKPIs>({ totalCustomers: 0, avgLtv: 0, medianLtv: 0, repeatRate: 0, churnRiskCount: 0, newCustomers30d: 0, avgOrdersPerCustomer: 0 });
+    const [reorderDueUserIds, setReorderDueUserIds] = useState<string[]>([]);
+    const [segmentOrders, setSegmentOrders] = useState<number | null>(null);
+    const [segmentsLoading, setSegmentsLoading] = useState(true);
     const consentFor = (profile: { userId: string; phone?: string; email?: string }) => {
         const phone = String(profile.phone || '').replace(/\D/g, '').slice(-9);
         const email = String(profile.email || '').toLowerCase();
@@ -51,16 +50,26 @@ export default function IntelligencePage() {
                 fetch('/api/admin/intelligence/abandoned-carts', { headers: { Authorization: `Bearer ${token}` } }),
                 fetch('/api/admin/analytics/overview', { headers: { Authorization: `Bearer ${token}` } }),
                 fetch('/api/admin/intelligence/reorders', { headers: { Authorization: `Bearer ${token}` } }),
+                fetch('/api/admin/intelligence/customers', { headers: { Authorization: `Bearer ${token}` } }),
             ]))
-            .then(async ([cartsResponse, overviewResponse, reorderResponse]) => {
+            .then(async ([cartsResponse, overviewResponse, reorderResponse, customersResponse]) => {
                 const cartsData = cartsResponse.ok ? await cartsResponse.json() : null;
                 const overviewData = overviewResponse.ok ? await overviewResponse.json() : null;
                 const reorderData = reorderResponse.ok ? await reorderResponse.json() : null;
+                const customersData = customersResponse.ok ? await customersResponse.json() : null;
                 setCartCount(Array.isArray(cartsData?.carts) ? cartsData.carts.length : null);
                 if (overviewData?.funnel?.steps) setFunnel(overviewData.funnel);
                 setServerReorders(Array.isArray(reorderData?.queue) ? reorderData.queue : []);
+                if (customersData?.profiles) {
+                    setProfiles(customersData.profiles);
+                    setSegments(customersData.segments || []);
+                    if (customersData.kpis) setKpis(customersData.kpis);
+                    setReorderDueUserIds(Array.isArray(customersData.reorderDueUserIds) ? customersData.reorderDueUserIds : []);
+                    setSegmentOrders(Number(customersData.scannedOrders) || 0);
+                }
             })
-            .catch(() => setCartCount(null));
+            .catch(() => setCartCount(null))
+            .finally(() => setSegmentsLoading(false));
     }, []);
 
     const paidOrders = orders.filter(o => (o as any).paymentStatus === 'Paid').length;
@@ -192,10 +201,12 @@ export default function IntelligencePage() {
             <div className="space-y-8">
                 <div>
                     <h2 className="text-2xl font-black text-gray-900 tracking-tight">Customer Intelligence</h2>
-                    <p className="text-gray-500 text-sm mt-1">RFM segmentation across {kpis.totalCustomers.toLocaleString()} paying customer{kpis.totalCustomers === 1 ? '' : 's'}.</p>
+                    <p className="text-gray-500 text-sm mt-1">RFM segmentation across {kpis.totalCustomers.toLocaleString()} paying customer{kpis.totalCustomers === 1 ? '' : 's'}{segmentOrders != null ? `, from the latest ${segmentOrders.toLocaleString()} orders` : ''}.</p>
                 </div>
 
-                {kpis.totalCustomers === 0 ? (
+                {segmentsLoading ? (
+                    <p className="rounded-2xl border border-gray-100 bg-white p-6 text-sm text-gray-500">Loading customer segments…</p>
+                ) : kpis.totalCustomers === 0 ? (
                     <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-amber-900">
                         <p className="font-black text-sm uppercase tracking-tight">No paying customers yet</p>
                         <p className="text-xs text-amber-800 mt-1">Customer segments unlock once at least one order is marked Paid.</p>
@@ -324,7 +335,7 @@ export default function IntelligencePage() {
                                                     {p.daysSinceLastOrder === 0 ? 'today' : `${p.daysSinceLastOrder}d ago`}
                                                 </td>
                                                 <td className="px-6 py-3"><span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase ${contactUser?.cartRecoveryConsent ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>{contactUser?.cartRecoveryConsent ? 'Recovery allowed' : 'No recovery consent'}</span></td>
-                                                <td className="px-6 py-3"><span className="text-xs font-bold text-gray-700">{reorderUsers.has(p.userId) ? 'Reorder due' : p.segment === 'At Risk' || p.segment === 'Big Spenders' ? 'Retention review' : p.segment === 'New' ? 'Onboarding' : 'Monitor'}</span><span className="block max-w-48 text-[10px] text-gray-400" title={p.segmentReason}>{p.segmentReason}</span></td>
+                                                <td className="px-6 py-3"><span className="text-xs font-bold text-gray-700">{reorderDueUserIds.includes(p.userId) ? 'Reorder due' : p.segment === 'At Risk' || p.segment === 'Big Spenders' ? 'Retention review' : p.segment === 'New' ? 'Onboarding' : 'Monitor'}</span><span className="block max-w-48 text-[10px] text-gray-400" title={p.segmentReason}>{p.segmentReason}</span></td>
                                                 <td className="px-6 py-3 text-right">
                                                     <span className="font-mono text-[10px] font-black text-gray-400">{p.recency}-{p.frequency}-{p.monetary}</span>
                                                 </td>
