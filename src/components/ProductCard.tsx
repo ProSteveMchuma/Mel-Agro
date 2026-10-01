@@ -10,6 +10,7 @@ import { Product, ProductVariant } from "@/types";
 import { useBehavior } from "@/context/BehaviorContext";
 import { AnalyticsService } from "@/lib/analytics";
 import { productSeoPath } from '@/lib/seo';
+import { skipImageOptimizer } from '@/lib/product-image';
 import { useLiveProduct } from '@/context/ProductContext';
 
 interface ProductCardProps {
@@ -175,6 +176,7 @@ export default function ProductCard(props: ProductCardProps) {
                         alt={`Buy ${name} online at Mel-Agri ${category}`}
                         fill
                         sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                        unoptimized={skipImageOptimizer(imageSrc)}
                         className="object-contain p-2 md:p-3 group-hover:scale-110 transition-transform duration-700 ease-out"
                     />
 

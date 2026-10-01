@@ -23,6 +23,7 @@ import RecentlyViewed from '@/components/RecentlyViewed';
 import { getDeliveryCost, KENYAN_COUNTIES, FREE_SHIPPING_THRESHOLD } from '@/lib/delivery';
 import { recordRecentlyViewed } from '@/lib/recently-viewed';
 import { useBehavior } from '@/context/BehaviorContext';
+import { skipImageOptimizer } from '@/lib/product-image';
 
 interface ProductDetailsProps {
     id: string;
@@ -210,6 +211,7 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                         alt={`${product.name} - ${product.brand || 'Premium'} ${product.category} in Kenya | Mel-Agri`}
                                         fill
                                         sizes="(max-width: 1024px) 100vw, 50vw"
+                                        unoptimized={skipImageOptimizer(safeImage)}
                                         className="object-contain p-8 hover:scale-105 transition-transform duration-500"
                                         priority
                                     />
@@ -227,7 +229,7 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                         className={`w-16 h-16 flex-shrink-0 rounded-lg border-2 overflow-hidden transition-all ${selectedImage === img ? 'border-green-500 scale-110' : 'border-transparent hover:border-gray-200'}`}
                                     >
                                         <div className="relative w-full h-full bg-gray-50">
-                                            <Image src={img} alt={`${product.name} Image ${idx + 1}`} fill sizes="80px" className="object-cover" />
+                                            <Image src={img} alt={`${product.name} Image ${idx + 1}`} fill sizes="80px" unoptimized={skipImageOptimizer(img)} className="object-cover" />
                                         </div>
                                     </button>
                                 ))}

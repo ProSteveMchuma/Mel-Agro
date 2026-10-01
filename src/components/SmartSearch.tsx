@@ -10,6 +10,7 @@ import { useBehavior } from "@/context/BehaviorContext";
 import { searchProducts, didYouMean, getRecentSearches, saveRecentSearch, RecentSearch } from "@/lib/search";
 import { AnalyticsService } from "@/lib/analytics";
 import { productSeoPath, slugifySeoValue } from '@/lib/seo';
+import { skipImageOptimizer } from '@/lib/product-image';
 
 // Re-export for legacy imports (e.g. ProductsClient still uses fuzzySearch)
 export { searchProducts as fuzzySearch } from "@/lib/search";
@@ -373,7 +374,7 @@ export default function SmartSearch() {
                                                         alt={product.name}
                                                         fill
                                                         className="object-cover"
-                                                        unoptimized={typeof product.image === 'string' && product.image.includes('firebasestorage')}
+                                                        unoptimized={skipImageOptimizer(product.image)}
                                                     />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">No Img</div>

@@ -9,6 +9,7 @@ import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getAuth } from "firebase/auth";
 import Image from "next/image";
+import { skipImageOptimizer } from "@/lib/product-image";
 import Link from "next/link";
 import { useMessages } from "@/context/MessageContext";
 import { useWishlist } from "@/context/WishlistContext";
@@ -598,7 +599,7 @@ function UserDashboardInner() {
                             .map((item: any, i: number) => (
                                 <div key={i} className="group cursor-pointer" onClick={() => handleFrequentAdd(item)}>
                                     <div className="aspect-square bg-gray-50 rounded-xl relative overflow-hidden mb-2 border border-gray-100 group-hover:border-melagri-primary transition-colors">
-                                        {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
+                                        {item.image && <Image src={item.image} alt={item.name} fill unoptimized={skipImageOptimizer(item.image)} className="object-cover" />}
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
                                             <span className="text-white text-xs font-bold bg-melagri-primary px-3 py-1 rounded-full">+ Add</span>
                                         </div>
@@ -664,7 +665,7 @@ function UserDashboardInner() {
                                     {order.items.map((item: any, i: number) => (
                                         <div key={i} className="flex-shrink-0 w-20">
                                             <div className="aspect-square bg-gray-50 rounded-xl relative overflow-hidden mb-1 border border-gray-100">
-                                                {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
+                                                {item.image && <Image src={item.image} alt={item.name} fill unoptimized={skipImageOptimizer(item.image)} className="object-cover" />}
                                             </div>
                                             <p className="text-[10px] font-bold text-gray-800 truncate">{item.name}</p>
                                         </div>
@@ -757,7 +758,7 @@ function UserDashboardInner() {
                     {wishlist.map((product) => (
                         <div key={product.id} className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm group hover:shadow-xl transition-all">
                             <div className="aspect-square relative rounded-xl overflow-hidden mb-4 bg-gray-50">
-                                <Image src={product.image} alt={product.name} fill className="object-cover group-hover:scale-105 transition-transform" />
+                                <Image src={product.image} alt={product.name} fill unoptimized={skipImageOptimizer(product.image)} className="object-cover group-hover:scale-105 transition-transform" />
                                 <button onClick={() => removeFromWishlist(product.id)} className="absolute top-2 right-2 p-2 bg-white/80 backdrop-blur-md rounded-full text-red-500 hover:bg-red-50 transition-colors">
                                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z" /></svg>
                                 </button>
@@ -1017,7 +1018,7 @@ function UserDashboardInner() {
                                 {selectedOrder.items.map((item: any, i: number) => (
                                     <div key={i} className="flex gap-4 items-center">
                                         <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 rounded-lg relative overflow-hidden flex-shrink-0">
-                                            {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
+                                            {item.image && <Image src={item.image} alt={item.name} fill unoptimized={skipImageOptimizer(item.image)} className="object-cover" />}
                                         </div>
                                         <div className="flex-grow min-w-0">
                                             <p className="text-xs md:text-sm font-bold text-gray-900 truncate">{item.name}</p>

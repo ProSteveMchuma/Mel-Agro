@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import { useOrders, Order } from "@/context/OrderContext";
 import { useEffect, useState, Suspense } from "react";
 import Image from "next/image";
+import { skipImageOptimizer } from "@/lib/product-image";
 import confetti from 'canvas-confetti';
 import { motion } from 'framer-motion';
 import { InvoiceTemplate } from "@/components/documents/InvoiceTemplate";
@@ -285,7 +286,7 @@ function OrderSuccessContent() {
                                 {order.items.map((item: any, idx: number) => (
                                     <div key={idx} className="flex gap-4">
                                         <div className="w-16 h-16 bg-gray-200 rounded-lg relative overflow-hidden">
-                                            {item.image && <Image src={item.image} alt={item.name} fill className="object-cover" />}
+                                            {item.image && <Image src={item.image} alt={item.name} fill unoptimized={skipImageOptimizer(item.image)} className="object-cover" />}
                                         </div>
                                         <div className="flex-1">
                                             <p className="font-semibold text-gray-900">{item.name}</p>

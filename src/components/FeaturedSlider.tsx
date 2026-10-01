@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { useCart } from '@/context/CartContext';
 import { useLiveProduct } from '@/context/ProductContext';
 import { productSeoPath } from '@/lib/seo';
+import { skipImageOptimizer } from '@/lib/product-image';
 
 export default function FeaturedSlider({ products: initialProducts }: { products?: Product[] }) {
     const [products, setProducts] = useState<Product[]>(initialProducts || []);
@@ -57,6 +58,7 @@ export default function FeaturedSlider({ products: initialProducts }: { products
 
     if (products.length === 0) return null;
 
+    const featuredImage = currentProduct.image || "/assets/images/placeholder.png";
     const featuredVariant = currentProduct.variants?.length === 1 ? currentProduct.variants[0] : undefined;
     const requiresOptions = (currentProduct.variants?.length || 0) > 1;
     const featuredStock = Number(featuredVariant?.stockQuantity ?? currentProduct.stockQuantity ?? currentProduct.stock ?? 0);
@@ -76,9 +78,10 @@ export default function FeaturedSlider({ products: initialProducts }: { products
                     {/* Background Image with Overlay */}
                     <div className="absolute inset-0">
                         <Image
-                            src={currentProduct.image || "/assets/images/placeholder.png"}
+                            src={featuredImage}
                             alt={currentProduct.name}
                             fill
+                            unoptimized={skipImageOptimizer(featuredImage)}
                             className="object-cover object-center opacity-80 md:opacity-70 group-hover:scale-105 transition-all duration-[2s] ease-out"
                             priority
                         />
