@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { skipImageOptimizer } from "@/lib/product-image";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import type { Product } from "@/types";
+import { useAuth } from "@/context/AuthContext";
+import { hasAdminPermission } from "@/lib/admin-permissions";
+import { nairobiPlacedLabel } from "@/lib/order-admin";
+import { movementPackName, movementReason, type MovementRow } from "@/lib/inventory-movements";
 
 type InventoryProduct = Product & { totalSold30d: number; dailyVelocity: number };
 
 export default function InventoryManagement() {
-  const router = useRouter();
+  const { user } = useAuth();
+  const canEditProduct = hasAdminPermission(user?.role, user?.adminPermissions, "catalogue.manage");
   const [products, setProducts] = useState<InventoryProduct[]>([]);
   const [brands, setBrands] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -27,6 +32,10 @@ export default function InventoryManagement() {
   const [searchLimited, setSearchLimited] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [movements, setMovements] = useState<MovementRow[]>([]);
+  const [movementsLoading, setMovementsLoading] = useState(false);
+  const [movementsError, setMovementsError] = useState("");
 
   useEffect(() => {
     const controller = new AbortController();
@@ -66,6 +75,36 @@ export default function InventoryManagement() {
     };
   }, [searchTerm, risk, filterBrand, minPrice, maxPrice, cursor, refreshKey]);
 
+  useEffect(() => {
+    if (!openId) {
+      setMovements([]);
+      return;
+    }
+    const controller = new AbortController();
+    (async () => {
+      setMovementsLoading(true);
+      setMovementsError("");
+      try {
+        const token = await getAuth().currentUser?.getIdToken();
+        if (!token) throw new Error("Admin session is unavailable.");
+        const response = await fetch(`/api/admin/inventory?movements=${encodeURIComponent(openId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          signal: controller.signal,
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.message || "Could not load stock movements.");
+        setMovements(result.movements || []);
+      } catch (caught) {
+        if ((caught as Error).name !== "AbortError") {
+          setMovementsError(caught instanceof Error ? caught.message : "Could not load stock movements.");
+        }
+      } finally {
+        if (!controller.signal.aborted) setMovementsLoading(false);
+      }
+    })();
+    return () => controller.abort();
+  }, [openId, refreshKey]);
+
   function resetPage() {
     setCursor(null);
     setCursorHistory([]);
@@ -93,18 +132,18 @@ export default function InventoryManagement() {
     }
   }
 
-  async function adjustStock(product: InventoryProduct, adjustment: number, variantId?: string, packName?: string) {
+  async function adjustStock(product: InventoryProduct, adjustment: number, variantId?: string, packName?: string, reason?: string) {
     await postInventory(
       product,
       {
         action: "adjust",
         adjustment,
         ...(variantId ? { variantId } : {}),
-        reason: packName
+        reason: reason || (packName
           ? `Quick adjustment ${adjustment > 0 ? "+" : ""}${adjustment} (${packName})`
-          : `Quick adjustment ${adjustment > 0 ? "+" : ""}${adjustment}`,
+          : `Quick adjustment ${adjustment > 0 ? "+" : ""}${adjustment}`),
       },
-      packName ? `${packName} stock updated.` : "Stock updated.",
+      reason ? "Shelf count saved." : (packName ? `${packName} stock updated.` : "Stock updated."),
     );
   }
 
@@ -119,7 +158,7 @@ export default function InventoryManagement() {
       <header>
         <p className="mb-1 text-[10px] font-black uppercase tracking-[.18em] text-green-700">Catalogue operations</p>
         <h1 className="text-2xl font-black text-gray-950">Inventory management</h1>
-        <p className="mt-1 text-sm text-gray-500">Monitor stock cover and make atomic, audited adjustments.</p>
+        <p className="mt-1 text-sm text-gray-500">Open a product to read its movements and save a shelf count. Pack +/− stays on the row.</p>
       </header>
 
       <section className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -280,9 +319,9 @@ export default function InventoryManagement() {
                       ? product.image
                       : "https://placehold.co/100x100?text=No+Image";
                   return (
+                    <Fragment key={product.id}>
                     <tr
-                      key={product.id}
-                      onClick={() => router.push(`/dashboard/admin/products/edit/${product.id}`)}
+                      onClick={() => setOpenId((current) => current === String(product.id) ? null : String(product.id))}
                       className="cursor-pointer hover:bg-gray-50"
                     >
                       <td className="px-6 py-4">
@@ -390,6 +429,18 @@ export default function InventoryManagement() {
                         </div>
                       </td>
                     </tr>
+                    {openId === String(product.id) ? (
+                      <ProductDrawer
+                        product={product}
+                        canEditProduct={canEditProduct}
+                        movements={movements}
+                        loading={movementsLoading}
+                        error={movementsError}
+                        busy={busy}
+                        onCount={(adjustment, reason, variantId, packName) => adjustStock(product, adjustment, variantId, packName, reason)}
+                      />
+                    ) : null}
+                    </Fragment>
                   );
                 })}
             </tbody>
@@ -440,6 +491,112 @@ export default function InventoryManagement() {
         ) : null}
       </section>
     </div>
+  );
+}
+
+function ProductDrawer({
+  product,
+  canEditProduct,
+  movements,
+  loading,
+  error,
+  busy,
+  onCount,
+}: {
+  product: InventoryProduct;
+  canEditProduct: boolean;
+  movements: MovementRow[];
+  loading: boolean;
+  error: string;
+  busy: boolean;
+  onCount: (adjustment: number, reason: string, variantId?: string, packName?: string) => void;
+}) {
+  const packs = Array.isArray(product.variants) ? product.variants : [];
+  const [packId, setPackId] = useState(packs[0] ? String(packs[0].id) : "");
+  const [shelf, setShelf] = useState("");
+  const [reason, setReason] = useState("counted");
+  const pack = packs.find((item) => String(item.id) === packId);
+  const screen = pack ? Number(pack.stockQuantity ?? 0) : Number(product.stockQuantity || 0);
+  const shelfNumber = shelf.trim() === "" ? null : Math.floor(Number(shelf));
+  const difference = shelfNumber == null || !Number.isFinite(shelfNumber) ? null : shelfNumber - screen;
+  return (
+    <tr className="bg-gray-50">
+      <td colSpan={7} className="px-6 py-5">
+        <div className="grid gap-6 lg:grid-cols-2">
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-black uppercase tracking-wider text-gray-900">Stock movements</h2>
+              {canEditProduct ? (
+                <Link href={`/dashboard/admin/products/edit/${product.id}`} className="text-xs font-black text-green-700 hover:underline" onClick={(event) => event.stopPropagation()}>
+                  Edit product
+                </Link>
+              ) : null}
+            </div>
+            {loading ? <p className="text-sm text-gray-500">Loading movements…</p> : error ? <p className="text-sm text-red-700">{error}</p> : movements.length === 0 ? <p className="text-sm text-gray-500">No movements recorded for this product.</p> : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                    <tr><th className="py-2 pr-3">Nairobi time</th><th className="py-2 pr-3">Who</th><th className="py-2 pr-3">Pack</th><th className="py-2 pr-3">Change</th><th className="py-2">Reason</th></tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {movements.map((row, index) => {
+                      const change = Number(row.change) || 0;
+                      const packName = movementPackName(row, packs);
+                      return (
+                        <tr key={String((row as { id?: string }).id || index)}>
+                          <td className="py-2 pr-3 text-gray-700">{nairobiPlacedLabel(String((row as { updatedAt?: string }).updatedAt || ""))}</td>
+                          <td className="py-2 pr-3 text-gray-700">{String((row as { updatedBy?: string }).updatedBy || "—")}</td>
+                          <td className="py-2 pr-3 text-gray-700">{packName || "—"}</td>
+                          <td className="py-2 pr-3 font-black text-gray-900">{change > 0 ? `+${change}` : change}</td>
+                          <td className="py-2 text-gray-700">{movementReason(row)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+          <form
+            className="rounded-2xl border border-gray-200 bg-white p-4"
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (difference == null || difference === 0 || shelfNumber == null || shelfNumber < 0) return;
+              onCount(difference, reason, pack ? String(pack.id) : undefined, pack?.name);
+              setShelf("");
+            }}
+          >
+            <h2 className="text-sm font-black uppercase tracking-wider text-gray-900">Shelf count</h2>
+            <p className="mt-1 text-xs text-gray-500">Enter what you counted. The difference is saved with the adjustment that already exists.</p>
+            {packs.length > 0 ? (
+              <label className="mt-3 block text-[10px] font-black uppercase tracking-wider text-gray-400">
+                Pack
+                <select value={packId} onChange={(event) => setPackId(event.target.value)} className="mt-1 block min-h-11 w-full rounded-xl border border-gray-200 px-3 text-sm font-bold normal-case text-gray-900">
+                  {packs.map((item) => <option key={item.id} value={String(item.id)}>{item.name || "Pack"}</option>)}
+                </select>
+              </label>
+            ) : null}
+            <div className="mt-3 grid grid-cols-3 gap-3 text-sm">
+              <div><p className="text-[10px] font-black uppercase text-gray-400">Shelf</p><input inputMode="numeric" value={shelf} onChange={(event) => setShelf(event.target.value)} className="mt-1 min-h-11 w-full rounded-xl border border-gray-200 px-3 font-black" /></div>
+              <div><p className="text-[10px] font-black uppercase text-gray-400">Screen</p><p className="mt-3 font-black text-gray-950">{screen}</p></div>
+              <div><p className="text-[10px] font-black uppercase text-gray-400">Difference</p><p className="mt-3 font-black text-gray-950">{difference == null ? "—" : difference > 0 ? `+${difference}` : difference}</p></div>
+            </div>
+            <label className="mt-3 block text-[10px] font-black uppercase tracking-wider text-gray-400">
+              Reason
+              <select value={reason} onChange={(event) => setReason(event.target.value)} className="mt-1 block min-h-11 w-full rounded-xl border border-gray-200 px-3 text-sm font-bold normal-case text-gray-900">
+                <option value="counted">Counted</option>
+                <option value="damaged">Damaged</option>
+                <option value="received">Received</option>
+              </select>
+            </label>
+            <button type="submit" disabled={busy || difference == null || difference === 0 || (shelfNumber != null && shelfNumber < 0)} className="mt-4 min-h-11 rounded-xl bg-green-700 px-4 text-sm font-black text-white disabled:opacity-40">
+              Save count
+            </button>
+          </form>
+        </div>
+      </td>
+    </tr>
   );
 }
 

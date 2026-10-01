@@ -8,6 +8,8 @@ import { withActionUrls } from "@/lib/order-access";
 import { notifyCustomer } from "@/lib/customer-notifications";
 import { linesFromOrderItems, writeStockIncrease } from "@/lib/stock-restore";
 import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
+import { nairobiRangeUtc } from "@/lib/nairobi-range";
+import { returnedPacks, type ReturnSummaryOrder } from "@/lib/returns-summary";
 
 const PAGE_SIZE = 20;
 const RETURN_STATUSES = ["Requested", "Approved", "Rejected"] as const;
@@ -72,6 +74,24 @@ export async function GET(request: Request) {
 
   const page = matches.slice(0, PAGE_SIZE);
   const last = page.at(-1);
+  const startParam = params.get("start") || "";
+  const endParam = params.get("end") || "";
+  let returned: ReturnType<typeof returnedPacks> = [];
+  if (/^\d{4}-\d{2}-\d{2}$/.test(startParam) && /^\d{4}-\d{2}-\d{2}$/.test(endParam)) {
+    try {
+      const { start, endExclusive } = nairobiRangeUtc(startParam, endParam);
+      if (start < endExclusive) {
+        const approved = await adminDb.collection("orders").where("returnStatus", "==", "Approved").limit(500).get();
+        const inRange = approved.docs.map((document) => ({ id: document.id, ...document.data() }) as ReturnSummaryOrder).filter((order) => {
+          const stamp = Date.parse(String(order.returnReviewedAt || order.returnRequestedAt || ""));
+          return Number.isFinite(stamp) && stamp >= start.getTime() && stamp < endExclusive.getTime();
+        });
+        returned = returnedPacks(inRange);
+      }
+    } catch {
+      returned = [];
+    }
+  }
   const [requested, approved, rejected] = await Promise.all([
     adminDb.collection("orders").where("returnStatus", "==", "Requested").count().get(),
     adminDb.collection("orders").where("returnStatus", "==", "Approved").count().get(),
@@ -91,6 +111,7 @@ export async function GET(request: Request) {
       rejected: rejected.data().count,
     },
     searchLimited: Boolean(search && scanned >= 600),
+    returned,
   });
 }
 

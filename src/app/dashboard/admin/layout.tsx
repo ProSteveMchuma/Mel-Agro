@@ -9,7 +9,7 @@ import { toast } from 'react-hot-toast';
 import Logo from '@/components/Logo';
 import AdminNotificationsPopover from '@/components/admin/AdminNotificationsPopover';
 import AdminCommandCentre from '@/components/admin/AdminCommandCentre';
-import { hasAdminPermission, permissionForAdminPath } from '@/lib/admin-permissions';
+import { canAdjustInventory, hasAdminPermission, permissionForAdminPath } from '@/lib/admin-permissions';
 import AdminHelpDrawer from '@/components/admin/AdminHelpDrawer';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -232,7 +232,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const navGroup = (href: string) => {
         if (href === '/dashboard/admin' || href.includes('action-centre')) return 'Overview';
         if (/orders|payments|fulfillment|returns/.test(href)) return 'Commerce';
-        if (/products|inventory|discounts|reviews/.test(href)) return 'Catalogue';
+        if (/inventory/.test(href)) return 'Operations';
+        if (/products|discounts|reviews/.test(href)) return 'Catalogue';
         if (/newsletter|messages|users/.test(href)) return 'Customers';
         if (/analytics|reports|intelligence/.test(href) && !href.includes('intelligence-health')) return 'Intelligence';
         if (/logistics|operations/.test(href)) return 'Operations';
@@ -240,12 +241,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     };
     const isActive = (href: string) => href === '/dashboard/admin' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
     const groupOrder = ['Overview', 'Commerce', 'Catalogue', 'Customers', 'Intelligence', 'Operations', 'System'];
-    const groupedMenuItems = menuItems.filter((item) => {
-        const permission = permissionForAdminPath(item.href);
+    const canOpen = (href: string) => {
+        if (/\/admin\/inventory(\/|$)/.test(href)) return canAdjustInventory(user?.role, user?.adminPermissions);
+        const permission = permissionForAdminPath(href);
         return !permission || hasAdminPermission(user?.role, user?.adminPermissions, permission);
-    }).sort((a, b) => groupOrder.indexOf(navGroup(a.href)) - groupOrder.indexOf(navGroup(b.href)));
+    };
+    const groupedMenuItems = menuItems.filter((item) => canOpen(item.href)).sort((a, b) => groupOrder.indexOf(navGroup(a.href)) - groupOrder.indexOf(navGroup(b.href)));
     const currentPermission = permissionForAdminPath(pathname);
-    const canViewCurrentPage = !currentPermission || hasAdminPermission(user?.role, user?.adminPermissions, currentPermission);
+    const canViewCurrentPage = canOpen(pathname);
     const closeSidebarOnMobile = () => {
         if (window.innerWidth < 768) setIsSidebarOpen(false);
     };
@@ -405,7 +408,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </header>
 
                 <main className="p-4 md:p-8">
-                    {canViewCurrentPage ? children : <div className="mx-auto max-w-xl rounded-3xl border border-amber-200 bg-white p-8 text-center shadow-sm"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-xl text-amber-800">!</div><h1 className="mt-4 text-2xl font-black text-gray-950">Access not assigned</h1><p className="mt-2 text-sm leading-6 text-gray-600">Your staff profile does not include <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">{currentPermission}</code>. Ask a super-admin to update your access if this is part of your role.</p><Link href="/dashboard/admin" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-gray-950 px-5 text-sm font-black text-white">Return to overview</Link></div>}
+                    {canViewCurrentPage ? children : <div className="mx-auto max-w-xl rounded-3xl border border-amber-200 bg-white p-8 text-center shadow-sm"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-xl text-amber-800">!</div><h1 className="mt-4 text-2xl font-black text-gray-950">Access not assigned</h1><p className="mt-2 text-sm leading-6 text-gray-600">Your staff profile does not include <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">{/\/admin\/inventory(\/|$)/.test(pathname) ? "inventory adjustments" : currentPermission}</code>. Ask a super-admin to update your access if this is part of your role.</p><Link href="/dashboard/admin" className="mt-6 inline-flex min-h-11 items-center justify-center rounded-xl bg-gray-950 px-5 text-sm font-black text-white">Return to overview</Link></div>}
                 </main>
             </div>
         </div>

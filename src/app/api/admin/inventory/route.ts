@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
-import { requirePermission } from "@/lib/auth-server";
+import { requireAdmin } from "@/lib/auth-server";
+import { canAdjustInventory } from "@/lib/admin-permissions";
 import { revalidateStorefrontCatalogue } from "@/lib/revalidate-catalogue";
 import { collapseBrandDisplays } from "@/lib/catalog-normalize";
 import { matchesBrandFilter, matchesPriceFilter, parsePriceBound } from "@/lib/admin-catalogue-filters";
@@ -56,10 +57,30 @@ function matchesRisk(stock: number, threshold: number, risk: string) {
   return true;
 }
 
+async function requireInventory(request: Request) {
+  const actor = await requireAdmin(request);
+  if (!actor.ok) return actor;
+  if (!canAdjustInventory(actor.role, actor.permissions)) {
+    return { ...actor, ok: false, message: "Inventory access is not on this profile." };
+  }
+  return actor;
+}
+
 export async function GET(request: Request) {
-  const actor = await requirePermission(request, "catalogue.manage");
-  if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 401 });
+  const actor = await requireInventory(request);
+  if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: actor.uid ? 403 : 401 });
   const params = new URL(request.url).searchParams;
+  const movementsFor = (params.get("movements") || "").trim().slice(0, 180);
+  if (movementsFor) {
+    const historyQuery = adminDb.collection("inventory_history").where("productId", "==", movementsFor);
+    const history = await historyQuery.orderBy("updatedAt", "desc").limit(40).get().catch(() => historyQuery.limit(200).get());
+    const movements = history.docs
+      .map((document) => ({ id: document.id, ...(serialize(document.data()) as Record<string, unknown>) }) as { id: string; updatedAt?: unknown })
+      .sort((a, b) => String(a.updatedAt || "").localeCompare(String(b.updatedAt || "")))
+      .reverse()
+      .slice(0, 40);
+    return NextResponse.json({ success: true, movements });
+  }
   const queryText = (params.get("q") || "").trim().toLowerCase().slice(0, 120);
   const risk = params.get("risk") || "all";
   const brand = (params.get("brand") || "").trim().slice(0, 120);
@@ -108,8 +129,8 @@ const adjustmentSchema = z.union([
 ]);
 
 export async function POST(request: Request) {
-  const actor = await requirePermission(request, "catalogue.manage");
-  if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 401 });
+  const actor = await requireInventory(request);
+  if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: actor.uid ? 403 : 401 });
   const parsed = adjustmentSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ success: false, message: "Invalid stock adjustment." }, { status: 400 });
   const input = parsed.data;
