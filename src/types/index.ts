@@ -117,6 +117,8 @@ export interface Order {
     returnReviewedBy?: string;
     returnReviewNote?: string;
     internalNotes?: string;
+    /** First shop page this browser opened on the day the order was placed. A path, not an address. */
+    entryPath?: string;
     internalHistory?: {
         date: string;
         note: string;

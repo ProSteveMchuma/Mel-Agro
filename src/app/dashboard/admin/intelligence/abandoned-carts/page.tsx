@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getAuth } from "firebase/auth";
 import Link from "next/link";
 import { toast } from "react-hot-toast";
+import { checkoutStepLabel } from "@/lib/shop-journey";
 
 interface AbandonedCart {
     id: string;
@@ -17,6 +18,9 @@ interface AbandonedCart {
     status: string;
     recovery: { score: number; priority: 'high' | 'medium' | 'low'; reasons: string[]; contactEligible: boolean; blockedReason?: string };
     recoveryContactCount: number;
+    checkoutStep?: string;
+    purchasedAfterCart?: boolean;
+    pathTrail?: string[];
 }
 
 export default function AbandonedCartsPage() {
@@ -103,12 +107,20 @@ export default function AbandonedCartsPage() {
                             {carts.map(cart => {
                                 const idleMins = Math.floor((new Date().getTime() - new Date(cart.updatedAt).getTime()) / (1000 * 60));
                                 const idleStr = idleMins > 1440 ? `${Math.floor(idleMins / 1440)}d ago` : (idleMins > 60 ? `${Math.floor(idleMins / 60)}h ago` : `${idleMins}m ago`);
+                                const stepLabel = checkoutStepLabel(cart.checkoutStep);
+                                const stopLine = cart.purchasedAfterCart
+                                    ? 'Already paid after this cart.'
+                                    : stepLabel
+                                        ? `Stopped at ${stepLabel}.`
+                                        : 'Left before checkout.';
 
                                 return (
                                     <tr key={cart.id} className="hover:bg-gray-50/50 transition-colors group">
                                         <td className="px-8 py-6">
                                             <div>
-                                                <div className="font-bold text-gray-900 group-hover:text-melagri-primary transition-colors">{cart.userName}</div>
+                                                <p className={`text-xs font-black ${cart.purchasedAfterCart ? 'text-emerald-700' : 'text-gray-900'}`}>{stopLine}</p>
+                                                {cart.pathTrail && cart.pathTrail.length > 0 && <p className="mt-1 max-w-56 text-[10px] text-gray-400">{cart.pathTrail.join(' → ')}</p>}
+                                                <div className="mt-1 font-bold text-gray-900 group-hover:text-melagri-primary transition-colors">{cart.userName}</div>
                                                 <div className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">{cart.userPhone || cart.userEmail}</div>
                                             </div>
                                         </td>
@@ -127,9 +139,9 @@ export default function AbandonedCartsPage() {
                                         </td>
                                         <td className="px-8 py-6"><span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${cart.recovery.priority === 'high' ? 'bg-red-100 text-red-700' : cart.recovery.priority === 'medium' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'}`}>{cart.recovery.score}/100 {cart.recovery.priority}</span><p className="mt-2 max-w-48 text-[10px] text-gray-400">{cart.recovery.reasons.slice(0, 2).join(' · ')}</p></td>
                                         <td className="px-8 py-6 text-right">
-                                            <div className="flex flex-col items-end gap-2"><button
+                                            <div className="flex flex-col items-end gap-2">                                            <button
                                                 onClick={() => handleNudge(cart)}
-                                                disabled={!cart.recovery.contactEligible}
+                                                disabled={!cart.recovery.contactEligible || cart.purchasedAfterCart}
                                                 title={cart.recovery.blockedReason}
                                                 className="bg-emerald-700 hover:bg-emerald-800 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 float-right disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-500 disabled:shadow-none"
                                             >

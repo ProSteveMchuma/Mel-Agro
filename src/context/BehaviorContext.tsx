@@ -7,6 +7,7 @@ import { useAuth } from './AuthContext';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { whatsAppUrl } from '@/lib/site';
+import { appendShopPath, checkoutSessionReplaces } from '@/lib/shop-journey';
 
 interface BehaviorContextType {
     trackAction: (action: string, metadata?: any) => void;
@@ -25,6 +26,8 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [affinityIndex, setAffinityIndex] = useState<Record<string, number>>({});
     const [personalizationEnabled, setPersonalizationState] = useState(true);
     const inactivityTimer = useRef<NodeJS.Timeout | null>(null);
+    const pathTrailRef = useRef<string[]>([]);
+    const pathTrailDayRef = useRef('');
     // Internal state to track patterns
     const [searchFailures, setSearchFailures] = useState(0);
     const [hasShownCheckoutHelp, setHasShownCheckoutHelp] = useState(false);
@@ -209,17 +212,37 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (!user?.uid) return;
         try {
             const funnelRef = doc(db, 'analytics_funnels', user.uid);
-            await setDoc(funnelRef, {
+            const payload = {
                 userId: user.uid,
                 lastStep: step,
                 timestamp: serverTimestamp(),
-                steps: {
-                    [step]: serverTimestamp()
-                }
-            }, { merge: true });
+                steps: { [step]: serverTimestamp() },
+                pathTrail: pathTrailRef.current,
+            };
+            if (checkoutSessionReplaces(step)) {
+                await setDoc(funnelRef, { ...payload, sessionStartedAt: serverTimestamp() });
+                return;
+            }
+            await setDoc(funnelRef, payload, { merge: true });
         } catch (e) {
             console.error("Failed to log funnel event", e);
         }
+    };
+
+    const rememberShopPath = (path: string) => {
+        const today = new Date().toISOString().slice(0, 10);
+        if (pathTrailDayRef.current !== today) {
+            pathTrailDayRef.current = today;
+            pathTrailRef.current = [];
+        }
+        const next = appendShopPath(pathTrailRef.current, path);
+        if (next === pathTrailRef.current) return;
+        pathTrailRef.current = next;
+        if (!user?.uid || next.length === 0) return;
+        setDoc(doc(db, 'analytics_funnels', user.uid), {
+            userId: user.uid,
+            pathTrail: next,
+        }, { merge: true }).catch(() => undefined);
     };
 
     const getTopAffinity = () => {
@@ -236,6 +259,7 @@ export const BehaviorProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     const handlePathnameChange = useEffectEvent(() => {
+        if (pathname) rememberShopPath(pathname);
         trackAction('page_view', { path: pathname });
         if (pathname === '/checkout') {
             resetInactivityTimer(120000);
