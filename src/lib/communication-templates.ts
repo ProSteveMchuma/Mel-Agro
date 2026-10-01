@@ -174,6 +174,19 @@ export const CommunicationTemplates = {
         };
     },
 
+    getPartialDispatch: (order: Order, summary: string) => {
+        const id = shortOrderId(order);
+        const userName = order.userName || 'Farmer';
+        const link = actionUrl(order, 'view');
+        const sent = summary || 'part of your order';
+        const smsBody = `Habari ${userName}, we sent ${sent} from Mel-Agri order #${id}. The rest is still being packed. Track: ${link}`;
+        return {
+            subject: `Part of your order is on the way - Mel-Agri #${id}`,
+            smsBody,
+            emailBody: `<p>Habari ${userName}, we sent ${sent} from order #${id}. The rest is still being packed.</p><p><a href="${link}">Track order</a></p>`,
+        };
+    },
+
     getReturnRequested: (order: Order) => {
         const id = shortOrderId(order);
         const userName = order.userName || 'Farmer';

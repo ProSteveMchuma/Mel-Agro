@@ -122,6 +122,14 @@ export interface Order {
         note: string;
         author: string;
     }[];
+    deliveries?: Array<{
+        at?: string;
+        by?: string;
+        method?: 'courier' | 'pickup' | 'shortfall';
+        shortfall?: boolean;
+        tracking?: { carrier?: string; trackingNumber?: string } | null;
+        lines?: Array<{ productId: string; variantId?: string | null; name?: string; quantity: number }>;
+    }>;
 }
 
 export interface OrderItem {

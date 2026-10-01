@@ -414,6 +414,11 @@ export async function POST(request: Request) {
                 notificationPreferences: ['sms'],
                 date,
                 createdAt: date,
+                statusHistory: [{
+                    status: staffMeta ? WHATSAPP_STAFF_ORDER.status : payment.status,
+                    at: date,
+                    by: staffMeta?.actorEmail || 'checkout',
+                }],
                 stockReservationStatus: inventoryCommitted ? 'committed' : 'active',
                 ...(inventoryCommitted ? {} : { stockReservationExpiresAt: reservationExpiresAt }),
             };

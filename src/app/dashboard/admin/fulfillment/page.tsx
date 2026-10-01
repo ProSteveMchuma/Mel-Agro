@@ -7,6 +7,7 @@ import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import type { Order } from "@/types";
 import { isPickupOrder, nextFulfillmentStatus, PICKUP_STORE } from "@/lib/pickup";
+import { lineBalances, nairobiPlacedLabel, partialBlocksCompletion, partSent } from "@/lib/order-admin";
 
 type Stats = { processing: number; shipped: number; readyPickup: number; stockAlerts: number };
 
@@ -140,6 +141,7 @@ export default function FulfillmentPage() {
 
   const selectedPickup = selectedOrder ? isPickupOrder(selectedOrder) : false;
   const selectedNext = selectedOrder ? nextFulfillmentStatus(selectedOrder) : null;
+  const selectedBlocked = selectedOrder ? partialBlocksCompletion(selectedOrder) : false;
 
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
@@ -226,7 +228,7 @@ export default function FulfillmentPage() {
                       <p className="font-black text-gray-950">Order #{order.id.slice(0, 8)}</p>
                       <p className="mt-1 text-xs text-gray-500">
                         {order.userName || order.userEmail || order.phone || "Guest customer"} ·{" "}
-                        {new Date(order.date).toLocaleString()}
+                        {nairobiPlacedLabel(order.date)}
                       </p>
                     </div>
                     <div className="flex flex-col items-end gap-1">
@@ -244,6 +246,9 @@ export default function FulfillmentPage() {
                       }`}>
                         {order.status}
                       </span>
+                      {partSent(order) ? (
+                        <span className="rounded-full bg-violet-100 px-3 py-1 text-[10px] font-black uppercase text-violet-800">Part sent</span>
+                      ) : null}
                     </div>
                   </div>
                   <p className="mt-3 text-sm text-gray-600">
@@ -339,7 +344,7 @@ export default function FulfillmentPage() {
                   </div>
                 ) : null}
 
-                {selectedNext ? (
+                {selectedNext && !selectedBlocked ? (
                   <button
                     type="button"
                     disabled={pending}
@@ -354,6 +359,8 @@ export default function FulfillmentPage() {
                           ? "Dispatch / mark shipped"
                           : "Confirm delivered"}
                   </button>
+                ) : selectedBlocked ? (
+                  <p className="mt-3 text-sm text-amber-900">Some units are still in the store. Record what went out, or close the shortfall.</p>
                 ) : (
                   <p className="mt-3 text-sm text-gray-500">No further fulfillment step for this status.</p>
                 )}
@@ -373,6 +380,35 @@ export default function FulfillmentPage() {
                   Invoice
                 </Link>
               </div>
+
+              {(selectedOrder.status === "Processing" || selectedOrder.status === "Shipped") && (
+                <PartialDispatch
+                  order={selectedOrder}
+                  pickup={selectedPickup}
+                  pending={pending}
+                  carrier={carrier}
+                  trackingNumber={trackingNumber}
+                  showTracking={!selectedPickup && selectedNext !== "Shipped"}
+                  onCarrier={setCarrier}
+                  onTracking={setTrackingNumber}
+                  onSubmit={async (body) => {
+                    setPending(true);
+                    const notice = toast.loading(body.action === "shortfall" ? "Closing the shortfall…" : "Recording what went out…");
+                    try {
+                      await mutate({ ...body, orderId: selectedOrder.id });
+                      toast.success(body.action === "shortfall" ? "Shortfall closed" : "Recorded what went out", { id: notice });
+                      setCarrier("");
+                      setTrackingNumber("");
+                      setSelectedOrder(null);
+                      setRefreshKey((value) => value + 1);
+                    } catch (caught) {
+                      toast.error(caught instanceof Error ? caught.message : "Could not update order", { id: notice });
+                    } finally {
+                      setPending(false);
+                    }
+                  }}
+                />
+              )}
 
               <InternalNotes
                 order={selectedOrder}
@@ -429,6 +465,101 @@ function StatCard({
 
 function QueueMessage({ children }: { children: React.ReactNode }) {
   return <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-10 text-center text-sm text-gray-500">{children}</div>;
+}
+
+function PartialDispatch({
+  order,
+  pickup,
+  pending,
+  carrier,
+  trackingNumber,
+  onCarrier,
+  onTracking,
+  showTracking,
+  onSubmit,
+}: {
+  order: Order;
+  pickup: boolean;
+  pending: boolean;
+  carrier: string;
+  trackingNumber: string;
+  onCarrier: (value: string) => void;
+  onTracking: (value: string) => void;
+  showTracking: boolean;
+  onSubmit: (body: Record<string, unknown>) => Promise<void>;
+}) {
+  const balances = lineBalances(order).filter((row) => row.remaining > 0);
+  const [qty, setQty] = useState<Record<string, string>>({});
+  useEffect(() => { setQty({}); }, [order.id]);
+  if (balances.length === 0) return null;
+  const lines = balances
+    .map((row) => ({
+      productId: row.productId,
+      ...(row.variantId ? { variantId: row.variantId } : {}),
+      quantity: Math.floor(Number(qty[`${row.productId}::${row.variantId}`] || 0)),
+    }))
+    .filter((line) => line.quantity > 0);
+  return (
+    <div className="space-y-3 rounded-xl border border-gray-200 p-4">
+      <p className="text-xs font-black uppercase tracking-wider text-gray-400">What went out</p>
+      <ul className="space-y-2">
+        {lineBalances(order).map((row) => (
+          <li key={`${row.productId}::${row.variantId}`} className="text-sm text-gray-700">
+            <span className="font-bold text-gray-950">{row.name}</span>
+            <span className="block text-xs text-gray-500">{row.remaining} still here · {row.sent} sent{row.shortfall ? ` · ${row.shortfall} closed` : ""}</span>
+            {row.remaining > 0 ? (
+              <input
+                type="number"
+                min={0}
+                max={row.remaining}
+                value={qty[`${row.productId}::${row.variantId}`] || ""}
+                onChange={(event) => setQty((current) => ({ ...current, [`${row.productId}::${row.variantId}`]: event.target.value }))}
+                placeholder={`Qty, up to ${row.remaining}`}
+                className="mt-1 min-h-10 w-full rounded-lg border border-gray-200 px-3 text-sm"
+              />
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {showTracking ? (
+        <div className="space-y-2">
+          <input value={carrier} onChange={(event) => onCarrier(event.target.value)} placeholder="Carrier e.g. G4S" className="min-h-11 w-full rounded-xl border border-gray-200 px-3 text-sm" />
+          <input value={trackingNumber} onChange={(event) => onTracking(event.target.value)} placeholder="Tracking / reference" className="min-h-11 w-full rounded-xl border border-gray-200 px-3 font-mono text-sm" />
+        </div>
+      ) : null}
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          if (lines.length === 0) {
+            toast.error("Enter a quantity for at least one line.");
+            return;
+          }
+          void onSubmit({
+            action: "partial",
+            lines,
+            ...(!pickup ? { tracking: { carrier: carrier.trim(), trackingNumber: trackingNumber.trim() } } : {}),
+          });
+        }}
+        className="min-h-11 w-full rounded-xl bg-gray-950 text-sm font-black text-white disabled:opacity-50"
+      >
+        Record what went out
+      </button>
+      {partSent(order) ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            if (!window.confirm("Close the unsent units? Those units go back on the shelf. This does not refund the customer.")) return;
+            void onSubmit({ action: "shortfall" });
+          }}
+          className="min-h-11 w-full rounded-xl border border-gray-200 text-sm font-bold text-gray-800 disabled:opacity-50"
+        >
+          Close shortfall
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 function InternalNotes({

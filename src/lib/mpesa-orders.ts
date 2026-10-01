@@ -44,6 +44,7 @@ export async function markOrderPaidWithReceipt(args: {
     const now = new Date().toISOString();
     const orderRef = adminDb.collection('orders').doc(args.orderId);
     const amountPaid = Number(args.amountPaid ?? args.order.total) || 0;
+    const startedProcessing = args.order.status === 'Pending Payment' || !args.order.status;
 
     await orderRef.update({
         paymentStatus: 'Paid',
@@ -53,8 +54,15 @@ export async function markOrderPaidWithReceipt(args: {
         ...(args.phone ? { mpesaPhoneNumber: args.phone } : {}),
         ...(args.transactionDate ? { mpesaTransactionDate: args.transactionDate } : {}),
         amountPaid,
-        status: args.order.status === 'Pending Payment' || !args.order.status ? 'Processing' : args.order.status,
+        status: startedProcessing ? 'Processing' : args.order.status,
         processingAt: args.order.processingAt || now,
+        ...(startedProcessing ? {
+            statusHistory: FieldValue.arrayUnion({
+                status: 'Processing',
+                at: now,
+                by: args.recordedBy,
+            }),
+        } : {}),
         stockReservationStatus: 'committed',
         paidAt: now,
         updatedAt: now,
