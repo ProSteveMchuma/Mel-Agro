@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { skipImageOptimizer } from "@/lib/product-image";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import type { Product } from "@/types";
@@ -274,6 +275,10 @@ export default function InventoryManagement() {
                       ? new Date(Date.now() + daysRemaining * 86400000).toLocaleDateString()
                       : "Stable";
                   const busy = pendingId === String(product.id);
+                  const imageSrc =
+                    typeof product.image === "string" && product.image.startsWith("http")
+                      ? product.image
+                      : "https://placehold.co/100x100?text=No+Image";
                   return (
                     <tr
                       key={product.id}
@@ -284,14 +289,11 @@ export default function InventoryManagement() {
                         <div className="flex items-center gap-4">
                           <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
                             <Image
-                              src={
-                                typeof product.image === "string" && product.image.startsWith("http")
-                                  ? product.image
-                                  : "https://placehold.co/100x100?text=No+Image"
-                              }
+                              src={imageSrc}
                               alt={product.name}
                               fill
                               className="object-cover"
+                              unoptimized={skipImageOptimizer(imageSrc)}
                             />
                           </div>
                           <div>

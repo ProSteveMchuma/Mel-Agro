@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { skipImageOptimizer } from "@/lib/product-image";
 import { getAuth } from "firebase/auth";
 import type { DemandSpike, PaymentFailureCluster, RefundWatch, SlaBreach, StockAlert } from "@/lib/operational-alerts";
 
@@ -212,7 +213,7 @@ export default function OperationsPage() {
                                             <div className="flex items-center gap-3">
                                                 {s.image && (
                                                     <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
-                                                        <Image src={s.image} alt={s.name} fill sizes="40px" className="object-cover" />
+                                                        <Image src={s.image} alt={s.name} fill sizes="40px" unoptimized={skipImageOptimizer(s.image)} className="object-cover" />
                                                     </div>
                                                 )}
                                                 <div>
@@ -247,7 +248,7 @@ export default function OperationsPage() {
                                 <div key={String(s.productId)} className="flex items-center gap-3 p-3 rounded-xl border border-purple-100 bg-purple-50/30">
                                     {s.image && (
                                         <div className="w-12 h-12 bg-white rounded-lg overflow-hidden flex-shrink-0 relative">
-                                            <Image src={s.image} alt={s.name} fill sizes="48px" className="object-cover" />
+                                            <Image src={s.image} alt={s.name} fill sizes="48px" unoptimized={skipImageOptimizer(s.image)} className="object-cover" />
                                         </div>
                                     )}
                                     <div className="flex-1 min-w-0">
@@ -333,7 +334,7 @@ export default function OperationsPage() {
                                 <li key={String(p.productId)} className="py-3 flex items-center gap-3">
                                     {p.image && (
                                         <div className="w-10 h-10 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative">
-                                            <Image src={p.image} alt={p.name} fill sizes="40px" className="object-cover" />
+                                            <Image src={p.image} alt={p.name} fill sizes="40px" unoptimized={skipImageOptimizer(p.image)} className="object-cover" />
                                         </div>
                                     )}
                                     <div className="flex-1 min-w-0">
