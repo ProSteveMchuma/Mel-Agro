@@ -8,6 +8,7 @@ import { CommunicationTemplates } from '@/lib/communication-templates';
 import { withActionUrls } from '@/lib/order-access';
 import { notifyCustomer } from '@/lib/customer-notifications';
 import { adminOrderMutationSchema } from '@/lib/admin-order-mutations';
+import { orderPhoneKey, phoneQueryVariants } from '@/lib/phone-match';
 
 const PAGE_SIZE = 20;
 const statusValues = new Set(['Pending Payment', 'Processing', 'Shipped', 'Delivered', 'Ready for Collection', 'Collected', 'Cancelled']);
@@ -15,7 +16,32 @@ const paymentValues = new Set(['Paid', 'Unpaid', 'Failed']);
 type Cursor = { value: string | number; id: string };
 const encode = (cursor: Cursor) => Buffer.from(JSON.stringify(cursor)).toString('base64url');
 const decode = (value: string | null): Cursor | null => { try { const parsed = JSON.parse(Buffer.from(value || '', 'base64url').toString()); return parsed && typeof parsed.id === 'string' ? parsed : null; } catch { return null; } };
-const includes = (data: Record<string, unknown>, id: string, term: string) => [id, data.userId, data.userName, data.userEmail, data.phone, data.transactionId].some((value) => String(value || '').toLowerCase().includes(term));
+const includes = (data: Record<string, unknown>, id: string, term: string) => {
+  const key = orderPhoneKey(term);
+  const storedKey = String(data.phoneKey || orderPhoneKey(String(data.phone || '')));
+  if (key && storedKey === key) return true;
+  return [id, data.userId, data.userName, data.userEmail, data.phone, data.phoneKey, data.transactionId].some((value) => String(value || '').toLowerCase().includes(term));
+};
+
+async function indexedOrderHits(raw: string) {
+  const found = new Map<string, { id: string; [key: string]: unknown }>();
+  const add = (id: string, data: Record<string, unknown>) => {
+    if (!found.has(id)) found.set(id, { id, ...data });
+  };
+  const direct = await adminDb.collection('orders').doc(raw).get();
+  if (direct.exists) add(direct.id, (direct.data() || {}) as Record<string, unknown>);
+  const key = orderPhoneKey(raw);
+  if (key) {
+    const byKey = await adminDb.collection('orders').where('phoneKey', '==', key).limit(25).get();
+    byKey.docs.forEach((doc) => add(doc.id, doc.data() as Record<string, unknown>));
+  }
+  const variants = phoneQueryVariants(raw).slice(0, 10);
+  if (variants.length > 0) {
+    const byPhone = await adminDb.collection('orders').where('phone', 'in', variants).limit(25).get();
+    byPhone.docs.forEach((doc) => add(doc.id, doc.data() as Record<string, unknown>));
+  }
+  return [...found.values()];
+}
 
 export async function GET(request: Request) {
   const actor = await requirePermission(request, 'orders.manage');
@@ -23,14 +49,29 @@ export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const status = statusValues.has(params.get('status') || '') ? params.get('status') : null;
   const payment = paymentValues.has(params.get('payment') || '') ? params.get('payment') : null;
-  const search = (params.get('q') || '').trim().toLowerCase().slice(0, 120);
+  const rawSearch = (params.get('q') || '').trim().slice(0, 120);
+  const search = rawSearch.toLowerCase();
   const view = ['attention', 'unfulfilled', 'unpaid', 'completed'].includes(params.get('view') || '') ? params.get('view') : 'all';
   const sort = ['oldest', 'highest', 'lowest'].includes(params.get('sort') || '') ? params.get('sort')! : 'newest';
   const field = sort === 'highest' || sort === 'lowest' ? 'total' : 'date';
   const direction = sort === 'oldest' || sort === 'lowest' ? 'asc' : 'desc';
   let cursor = decode(params.get('cursor'));
   const matches: Array<{ id: string; [key: string]: unknown }> = [];
-  let scanned = 0; let exhausted = false;
+  const seen = new Set<string>();
+  const rowMatches = (data: Record<string, unknown>, id: string) => {
+    const paymentMatches = !payment || (payment === 'Unpaid' ? data.paymentStatus !== 'Paid' : data.paymentStatus === payment);
+    const viewMatches = view === 'all' || (view === 'attention' && (data.status === 'Pending Payment' || data.paymentStatus === 'Failed')) || (view === 'unfulfilled' && (data.status === 'Processing' || data.status === 'Ready for Collection' || data.status === 'Shipped')) || (view === 'unpaid' && data.paymentStatus !== 'Paid') || (view === 'completed' && (data.status === 'Delivered' || data.status === 'Collected'));
+    return viewMatches && (!status || data.status === status) && paymentMatches && (!search || includes(data, id, search));
+  };
+  if (rawSearch && !cursor) {
+    for (const row of await indexedOrderHits(rawSearch)) {
+      if (!rowMatches(row, row.id)) continue;
+      matches.push(row);
+      seen.add(row.id);
+      if (matches.length > PAGE_SIZE) break;
+    }
+  }
+  let scanned = 0; let exhausted = matches.length > PAGE_SIZE;
   while (matches.length <= PAGE_SIZE && scanned < 500 && !exhausted) {
     let query = adminDb.collection('orders').orderBy(field, direction as 'asc' | 'desc').orderBy(FieldPath.documentId(), direction as 'asc' | 'desc').limit(75);
     if (cursor) query = query.startAfter(cursor.value, cursor.id);
@@ -40,9 +81,8 @@ export async function GET(request: Request) {
     for (const doc of snapshot.docs) {
       const data = doc.data(); const value = field === 'total' ? Number(data.total || 0) : String(data.date || '');
       cursor = { value, id: doc.id };
-      const paymentMatches = !payment || (payment === 'Unpaid' ? data.paymentStatus !== 'Paid' : data.paymentStatus === payment);
-      const viewMatches = view === 'all' || (view === 'attention' && (data.status === 'Pending Payment' || data.paymentStatus === 'Failed')) || (view === 'unfulfilled' && (data.status === 'Processing' || data.status === 'Ready for Collection' || data.status === 'Shipped')) || (view === 'unpaid' && data.paymentStatus !== 'Paid') || (view === 'completed' && (data.status === 'Delivered' || data.status === 'Collected'));
-      if (viewMatches && (!status || data.status === status) && paymentMatches && (!search || includes(data, doc.id, search))) matches.push({ id: doc.id, ...data });
+      if (seen.has(doc.id)) continue;
+      if (rowMatches(data, doc.id)) { seen.add(doc.id); matches.push({ id: doc.id, ...data }); }
       if (matches.length > PAGE_SIZE) break;
     }
     exhausted = exhausted || snapshot.size < 75;

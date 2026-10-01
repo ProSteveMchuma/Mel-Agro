@@ -14,6 +14,7 @@ import {
 } from "@/lib/pickup";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { mpesaControlVisibility, paymentPromptAccess, stkRetryBody } from "@/lib/whatsapp-order";
+import { lineBalances, nairobiPlacedLabel, orderTimeline, partialBlocksCompletion, partSent } from "@/lib/order-admin";
 
 async function authedFetch(url: string, body: any) {
     const token = await getAuth().currentUser?.getIdToken();
@@ -28,7 +29,7 @@ async function authedFetch(url: string, body: any) {
 }
 
 export default function AdminOrderDetailsPage() {
-    const { orders, updateOrderStatus, updateOrderPaymentStatus, updateReturnStatus } = useOrders();
+    const { orders, updateOrderPaymentStatus, updateReturnStatus } = useOrders();
     const { user } = useAuth();
     const params = useParams();
     const router = useRouter();
@@ -51,6 +52,8 @@ export default function AdminOrderDetailsPage() {
     const [returnActionLoading, setReturnActionLoading] = useState<string | null>(null);
     const [returnReviewNote, setReturnReviewNote] = useState('');
     const [trackingInfo, setTrackingInfo] = useState({ carrier: '', trackingNumber: '' });
+    const [staffNote, setStaffNote] = useState('');
+    const [partialQty, setPartialQty] = useState<Record<string, string>>({});
     const [paymentRecord, setPaymentRecord] = useState({
         amount: 0,
         reference: '',
@@ -68,6 +71,8 @@ export default function AdminOrderDetailsPage() {
                     seenOrderId.current = foundOrder.id;
                     setPromptPhone(foundOrder.phone || '');
                     setPromptFeedback(null);
+                    setStaffNote(foundOrder.internalNotes || '');
+                    setPartialQty({});
                 }
             }
         }
@@ -332,6 +337,24 @@ export default function AdminOrderDetailsPage() {
         }
     };
 
+    const postJson = async (url: string, body: Record<string, unknown>) => {
+        const res = await authedFetch(url, body);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok || data.success === false) throw new Error(data.message || 'Could not update the order');
+        return data;
+    };
+
+    const moveFulfillment = async (status: string, tracking?: { carrier: string; trackingNumber: string }) => {
+        if (!order) return;
+        await postJson('/api/admin/fulfillment', {
+            action: 'status',
+            orderId: order.id,
+            status,
+            ...(tracking ? { tracking } : {}),
+        });
+        setOrder({ ...order, status, ...(tracking ? { tracking } : {}) });
+    };
+
     const handleDispatch = async () => {
         if (!order) return;
         const pickup = isPickupOrder(order);
@@ -346,22 +369,52 @@ export default function AdminOrderDetailsPage() {
 
         const t = toast.loading(pickup ? 'Marking ready for collection…' : 'Marking as shipped…');
         try {
-            await updateOrderStatus(
-                order.id,
-                next as any,
+            await moveFulfillment(
+                next,
                 !pickup && next === 'Shipped'
-                    ? { tracking: { carrier: trackingInfo.carrier, trackingNumber: trackingInfo.trackingNumber } }
+                    ? { carrier: trackingInfo.carrier, trackingNumber: trackingInfo.trackingNumber }
                     : undefined,
             );
-            setOrder({
-                ...order,
-                status: next,
-                ...(!pickup ? { tracking: trackingInfo } : {}),
-            });
             setIsDispatchModalOpen(false);
             toast.success(pickup ? 'Ready for Machakos collection' : 'Order marked as shipped', { id: t });
         } catch (err: any) {
             toast.error(err?.message || 'Could not update order', { id: t });
+        }
+    };
+
+    const handleFinish = async (status: 'Collected' | 'Delivered') => {
+        if (!order) return;
+        const t = toast.loading(status === 'Collected' ? 'Confirming collection…' : 'Confirming delivery…');
+        try {
+            await moveFulfillment(status);
+            toast.success(status === 'Collected' ? 'Order collected' : 'Order delivered', { id: t });
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not update order', { id: t });
+        }
+    };
+
+    const handleStartPacking = async () => {
+        if (!order) return;
+        const t = toast.loading('Starting packing…');
+        try {
+            await postJson('/api/admin/orders', { action: 'start_processing', orderId: order.id });
+            setOrder({ ...order, status: 'Processing' });
+            toast.success('Packing started', { id: t });
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not start packing', { id: t });
+        }
+    };
+
+    const handleCancelOrder = async () => {
+        if (!order) return;
+        if (!window.confirm('Cancel this unpaid order? Reserved stock goes back on the shelf.')) return;
+        const t = toast.loading('Cancelling order…');
+        try {
+            await postJson('/api/orders/cancel', { orderId: order.id });
+            setOrder({ ...order, status: 'Cancelled' });
+            toast.success('Order cancelled', { id: t });
+        } catch (err: any) {
+            toast.error(err?.message || 'Could not cancel order', { id: t });
         }
     };
 
@@ -373,6 +426,11 @@ export default function AdminOrderDetailsPage() {
     const steps = [...fulfillmentStepsFor(order)];
     const currentStepIndex = Math.max(0, steps.indexOf(order.status));
     const isCancelled = order.status === 'Cancelled';
+    const blocked = partialBlocksCompletion(order);
+    const canCancel = order.paymentStatus !== 'Paid' && ['Pending Payment', 'Processing'].includes(order.status);
+    const canStartPacking = order.paymentStatus === 'Paid' && order.status === 'Pending Payment';
+    const balances = lineBalances(order);
+    const timeline = orderTimeline(order);
 
     return (
         <div className="relative space-y-6 pb-28 md:pb-20">
@@ -390,7 +448,7 @@ export default function AdminOrderDetailsPage() {
                             <span className="px-2 py-0.5 bg-green-50 text-[10px] font-black text-green-700 rounded-md uppercase tracking-widest border border-green-200">WhatsApp</span>
                         ) : null}
                     </div>
-                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Placed on {new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}</p>
+                    <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Placed {nairobiPlacedLabel(order.date)} Nairobi</p>
                     {order.staffOrderAlert?.ok ? (
                         <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Staff alert sent</p>
                     ) : canPrompt ? (
@@ -435,45 +493,43 @@ export default function AdminOrderDetailsPage() {
             <div className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 p-3 shadow-[0_-8px_30px_rgba(15,23,42,.12)] backdrop-blur md:hidden">
                 <div className="mx-auto flex max-w-lg items-center gap-2">
                     <Link href={`tel:${order.phone || ''}`} aria-disabled={!order.phone} className={`flex min-h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-gray-200 text-lg ${order.phone ? 'text-gray-700' : 'pointer-events-none opacity-40'}`} aria-label="Call customer">☎</Link>
-                    {order.status === 'Processing' && (
+                    {canStartPacking && (
+                        <button type="button" onClick={handleStartPacking} className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white">
+                            Start packing
+                        </button>
+                    )}
+                    {order.status === 'Processing' && !blocked && (
                         <button type="button" onClick={() => setIsDispatchModalOpen(true)} className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white">
                             {pickup ? 'Ready for collection' : 'Dispatch order'}
                         </button>
                     )}
-                    {(order.status === 'Ready for Collection' || (pickup && order.status === 'Shipped')) && (
+                    {!blocked && (order.status === 'Ready for Collection' || (pickup && order.status === 'Shipped')) && (
                         <button
                             type="button"
-                            onClick={async () => {
+                            onClick={() => {
                                 if (!window.confirm('Confirm the customer collected this order?')) return;
-                                try {
-                                    await updateOrderStatus(order.id, 'Collected');
-                                    setOrder({ ...order, status: 'Collected' });
-                                    toast.success('Order collected');
-                                } catch {
-                                    toast.error('Could not update order');
-                                }
+                                void handleFinish('Collected');
                             }}
                             className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white"
                         >
                             Confirm collected
                         </button>
                     )}
-                    {!pickup && order.status === 'Shipped' && (
+                    {!pickup && !blocked && order.status === 'Shipped' && (
                         <button
                             type="button"
-                            onClick={async () => {
+                            onClick={() => {
                                 if (!window.confirm('Confirm this order was delivered?')) return;
-                                try {
-                                    await updateOrderStatus(order.id, 'Delivered');
-                                    setOrder({ ...order, status: 'Delivered' });
-                                    toast.success('Order delivered');
-                                } catch {
-                                    toast.error('Could not update order');
-                                }
+                                void handleFinish('Delivered');
                             }}
                             className="min-h-12 flex-1 rounded-xl bg-green-700 px-4 text-sm font-black text-white"
                         >
                             Confirm delivered
+                        </button>
+                    )}
+                    {canCancel && (
+                        <button type="button" onClick={handleCancelOrder} className="min-h-12 flex-1 rounded-xl border border-red-200 px-4 text-sm font-black text-red-700">
+                            Cancel order
                         </button>
                     )}
                     {(order.status === 'Pending Payment' || order.paymentStatus !== 'Paid') && (
@@ -513,6 +569,16 @@ export default function AdminOrderDetailsPage() {
                             );
                         })}
                     </div>
+                    {timeline.length > 0 && (
+                        <ol className="mx-auto mt-8 max-w-4xl space-y-2 border-t border-gray-50 pt-6">
+                            {timeline.map((row) => (
+                                <li key={`${row.label}-${row.at}`} className="flex flex-wrap items-baseline justify-between gap-2 text-xs">
+                                    <span className="font-black uppercase tracking-widest text-gray-500">{row.label}</span>
+                                    <span className="font-semibold text-gray-700">{nairobiPlacedLabel(row.at)}{row.by ? ` · ${row.by}` : ''}</span>
+                                </li>
+                            ))}
+                        </ol>
+                    )}
                 </div>
             )}
 
@@ -536,6 +602,11 @@ export default function AdminOrderDetailsPage() {
                                         <div className="text-center px-4">
                                             <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Qty</p>
                                             <p className="font-black text-gray-900">{item.quantity}</p>
+                                            {(() => {
+                                                const row = balances.find((balance) => balance.productId === String(item.id) && balance.variantId === String(item.selectedVariant?.id || ''));
+                                                if (!row || !(order.deliveries || []).length) return null;
+                                                return <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">{row.remaining} left</p>;
+                                            })()}
                                         </div>
                                         <div className="text-right">
                                             <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Total</p>
@@ -562,6 +633,151 @@ export default function AdminOrderDetailsPage() {
                             </div>
                         </div>
                     </div>
+
+                    <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
+                        <h2 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-6">What went out</h2>
+                        {(order.deliveries || []).length === 0 ? (
+                            <p className="text-sm text-gray-500">Nothing has been sent in parts. The whole order still moves together.</p>
+                        ) : (
+                            <ul className="space-y-4">
+                                {(order.deliveries || []).map((delivery: any, index: number) => (
+                                    <li key={`${delivery.at || index}`} className="rounded-2xl border border-gray-100 p-4">
+                                        <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                                            {delivery.method === 'shortfall' ? 'Shortfall closed' : delivery.method === 'pickup' ? 'Collection batch' : 'Courier batch'} · {nairobiPlacedLabel(delivery.at)}
+                                            {delivery.by ? ` · ${delivery.by}` : ''}
+                                        </p>
+                                        <p className="mt-2 text-sm font-semibold text-gray-800">
+                                            {(delivery.lines || []).map((line: any) => `${line.quantity} ${line.name || 'item'}`).join(', ')}
+                                        </p>
+                                        {delivery.tracking?.trackingNumber ? (
+                                            <p className="mt-1 text-xs text-gray-500">{delivery.tracking.carrier} · {delivery.tracking.trackingNumber}</p>
+                                        ) : null}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        {order.paymentStatus === 'Paid' && ['Processing', 'Shipped'].includes(order.status) && balances.some((row) => row.remaining > 0) && (
+                            <div className="mt-6 space-y-3 border-t border-gray-50 pt-6">
+                                {balances.filter((row) => row.remaining > 0).map((row) => (
+                                    <label key={`${row.productId}::${row.variantId}`} className="block text-sm">
+                                        <span className="font-bold text-gray-900">{row.name}</span>
+                                        <span className="ml-2 text-xs text-gray-400">{row.remaining} outstanding</span>
+                                        <input
+                                            type="number"
+                                            min={0}
+                                            max={row.remaining}
+                                            value={partialQty[`${row.productId}::${row.variantId}`] || ''}
+                                            onChange={(event) => setPartialQty((current) => ({ ...current, [`${row.productId}::${row.variantId}`]: event.target.value }))}
+                                            placeholder={`Up to ${row.remaining}`}
+                                            className="mt-1 w-full rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm outline-none focus:border-melagri-primary focus:bg-white"
+                                        />
+                                    </label>
+                                ))}
+                                {!pickup && (
+                                    <div className="grid gap-2 sm:grid-cols-2">
+                                        <input value={trackingInfo.carrier} onChange={(event) => setTrackingInfo((current) => ({ ...current, carrier: event.target.value }))} placeholder="Carrier" className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm" />
+                                        <input value={trackingInfo.trackingNumber} onChange={(event) => setTrackingInfo((current) => ({ ...current, trackingNumber: event.target.value }))} placeholder="Tracking" className="rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm" />
+                                    </div>
+                                )}
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={async () => {
+                                            const lines = balances
+                                                .filter((row) => row.remaining > 0)
+                                                .map((row) => ({
+                                                    productId: row.productId,
+                                                    ...(row.variantId ? { variantId: row.variantId } : {}),
+                                                    quantity: Math.floor(Number(partialQty[`${row.productId}::${row.variantId}`] || 0)),
+                                                }))
+                                                .filter((line) => line.quantity > 0);
+                                            if (!lines.length) {
+                                                toast.error('Enter a quantity for at least one line.');
+                                                return;
+                                            }
+                                            const t = toast.loading('Recording what went out…');
+                                            try {
+                                                await postJson('/api/admin/fulfillment', {
+                                                    action: 'partial',
+                                                    orderId: order.id,
+                                                    lines,
+                                                    ...(!pickup ? { tracking: { carrier: trackingInfo.carrier.trim(), trackingNumber: trackingInfo.trackingNumber.trim() } } : {}),
+                                                });
+                                                setPartialQty({});
+                                                toast.success('Recorded what went out', { id: t });
+                                            } catch (err: any) {
+                                                toast.error(err?.message || 'Could not record the send', { id: t });
+                                            }
+                                        }}
+                                        className="rounded-xl bg-gray-950 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-white"
+                                    >
+                                        Record what went out
+                                    </button>
+                                    {partSent(order) && (
+                                        <button
+                                            type="button"
+                                            onClick={async () => {
+                                                if (!window.confirm('Close the unsent units? Those units go back on the shelf. This does not refund the customer.')) return;
+                                                const t = toast.loading('Closing the shortfall…');
+                                                try {
+                                                    await postJson('/api/admin/fulfillment', { action: 'shortfall', orderId: order.id });
+                                                    toast.success('Shortfall closed', { id: t });
+                                                } catch (err: any) {
+                                                    toast.error(err?.message || 'Could not close the shortfall', { id: t });
+                                                }
+                                            }}
+                                            className="rounded-xl border border-gray-200 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-700"
+                                        >
+                                            Close shortfall
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8">
+                        <h2 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-4">Internal note</h2>
+                        {(order.internalHistory || []).length > 0 && (
+                            <ul className="mb-4 space-y-2">
+                                {(order.internalHistory || []).map((entry: any, index: number) => (
+                                    <li key={`${entry.date || index}`} className="text-sm text-gray-700">
+                                        <span className="block text-[10px] font-black uppercase tracking-widest text-gray-400">{nairobiPlacedLabel(entry.date)}{entry.author ? ` · ${entry.author}` : ''}</span>
+                                        {entry.note}
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                        <textarea
+                            value={staffNote}
+                            onChange={(event) => setStaffNote(event.target.value)}
+                            rows={3}
+                            placeholder="Visible to staff only"
+                            className="w-full rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm outline-none focus:border-melagri-primary focus:bg-white"
+                        />
+                        <button
+                            type="button"
+                            disabled={!staffNote.trim()}
+                            onClick={async () => {
+                                const note = staffNote.trim();
+                                const t = toast.loading('Saving note…');
+                                try {
+                                    await postJson('/api/admin/fulfillment', { action: 'note', orderId: order.id, note });
+                                    setOrder({
+                                        ...order,
+                                        internalNotes: note,
+                                        internalHistory: [...(order.internalHistory || []), { date: new Date().toISOString(), note, author: user?.email || 'Staff' }],
+                                    });
+                                    toast.success('Note saved', { id: t });
+                                } catch (err: any) {
+                                    toast.error(err?.message || 'Could not save the note', { id: t });
+                                }
+                            }}
+                            className="mt-3 rounded-xl border border-gray-200 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-gray-800 disabled:opacity-50"
+                        >
+                            Save note
+                        </button>
+                    </div>
                 </div>
 
                 {/* Sidebar Info */}
@@ -578,6 +794,9 @@ export default function AdminOrderDetailsPage() {
                             }`}>
                                 {order.status}
                             </span>
+                            {partSent(order) && (
+                                <span className="ml-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-violet-100 text-violet-800">Part sent</span>
+                            )}
                             {pickup && (
                                 <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">
                                     Machakos collection · {PICKUP_STORE.label}
@@ -586,7 +805,16 @@ export default function AdminOrderDetailsPage() {
                         </div>
 
                         <div className="space-y-3">
-                            {order.status === 'Processing' && (
+                            {canStartPacking && (
+                                <button
+                                    type="button"
+                                    onClick={handleStartPacking}
+                                    className="w-full bg-melagri-primary text-white py-4 rounded-2xl hover:bg-melagri-secondary transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-500/10 active:scale-95"
+                                >
+                                    Start packing
+                                </button>
+                            )}
+                            {order.status === 'Processing' && !blocked && (
                                 <button
                                     onClick={() => setIsDispatchModalOpen(true)}
                                     className="w-full bg-melagri-primary text-white py-4 rounded-2xl hover:bg-melagri-secondary transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-500/10 active:scale-95"
@@ -595,17 +823,11 @@ export default function AdminOrderDetailsPage() {
                                 </button>
                             )}
 
-                            {(order.status === 'Ready for Collection' || (pickup && order.status === 'Shipped')) && (
+                            {!blocked && (order.status === 'Ready for Collection' || (pickup && order.status === 'Shipped')) && (
                                 <button
-                                    onClick={async () => {
+                                    onClick={() => {
                                         if (!window.confirm('Confirm the customer collected this order?')) return;
-                                        try {
-                                            await updateOrderStatus(order.id, 'Collected');
-                                            setOrder({ ...order, status: 'Collected' });
-                                            toast.success('Order collected');
-                                        } catch {
-                                            toast.error('Could not update order');
-                                        }
+                                        void handleFinish('Collected');
                                     }}
                                     className="w-full bg-green-600 text-white py-4 rounded-2xl hover:bg-green-700 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-600/10 active:scale-95"
                                 >
@@ -613,53 +835,29 @@ export default function AdminOrderDetailsPage() {
                                 </button>
                             )}
 
-                            {!pickup && order.status === 'Shipped' && (
+                            {!pickup && !blocked && order.status === 'Shipped' && (
                                 <button
-                                    onClick={async () => {
-                                        try {
-                                            await updateOrderStatus(order.id, 'Delivered');
-                                            setOrder({ ...order, status: 'Delivered' });
-                                            toast.success('Order delivered');
-                                        } catch {
-                                            toast.error('Could not update order');
-                                        }
+                                    onClick={() => {
+                                        if (!window.confirm('Confirm this order was delivered?')) return;
+                                        void handleFinish('Delivered');
                                     }}
                                     className="w-full bg-green-600 text-white py-4 rounded-2xl hover:bg-green-700 transition-all font-black uppercase text-[10px] tracking-widest shadow-lg shadow-green-600/10 active:scale-95"
                                 >
                                     Mark as Delivered
                                 </button>
                             )}
-
-                            <div className="relative pt-4 mt-4 border-t border-gray-50">
-                                <label className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-3 block">Override Status</label>
-                                <select
-                                    value={order.status}
-                                    onChange={async (e) => {
-                                        const next = e.target.value;
-                                        try {
-                                            await updateOrderStatus(order.id, next as any);
-                                            setOrder({ ...order, status: next });
-                                        } catch {
-                                            toast.error('Could not update order');
-                                        }
-                                    }}
-                                    className="w-full p-4 rounded-xl bg-gray-50 border border-gray-100 text-[10px] font-black uppercase tracking-widest text-gray-600 focus:bg-white focus:border-melagri-primary outline-none transition-all"
+                            {blocked && (
+                                <p className="text-xs font-semibold text-amber-800">Some units are still outstanding. Record what went out, or close the shortfall, before finishing this order.</p>
+                            )}
+                            {canCancel && (
+                                <button
+                                    type="button"
+                                    onClick={handleCancelOrder}
+                                    className="w-full border border-red-200 text-red-700 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest"
                                 >
-                                    <option value="Processing">Processing</option>
-                                    {pickup ? (
-                                        <>
-                                            <option value="Ready for Collection">Ready for Collection</option>
-                                            <option value="Collected">Collected</option>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <option value="Shipped">Shipped</option>
-                                            <option value="Delivered">Delivered</option>
-                                        </>
-                                    )}
-                                    <option value="Cancelled">Cancelled</option>
-                                </select>
-                            </div>
+                                    Cancel unpaid order
+                                </button>
+                            )}
                         </div>
                     </div>
 

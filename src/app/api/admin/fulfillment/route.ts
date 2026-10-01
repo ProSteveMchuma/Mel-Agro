@@ -1,4 +1,4 @@
-import { FieldPath, FieldValue, type DocumentReference, type DocumentSnapshot } from "firebase-admin/firestore";
+import { FieldPath, FieldValue, type DocumentReference, type DocumentSnapshot, type Transaction } from "firebase-admin/firestore";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
@@ -14,6 +14,8 @@ import {
   nextFulfillmentStatus,
 } from "@/lib/pickup";
 import { pointsEarnedForOrderTotal } from "@/lib/loyalty";
+import { lineBalances, outstandingQuantity, partialBlocksCompletion, partialSmsSummary } from "@/lib/order-admin";
+import { orderPhoneKey } from "@/lib/phone-match";
 
 const PAGE_SIZE = 20;
 type Cursor = { date: string; id: string };
@@ -63,11 +65,14 @@ export async function GET(request: Request) {
           data.userName,
           data.userEmail,
           data.phone,
+          data.phoneKey,
           data.shippingAddress?.county,
           data.shippingMethod,
           orderMethod,
         ].map((value) => String(value || "").toLowerCase()).join(" ");
-        if (!haystack.includes(search)) continue;
+        const key = orderPhoneKey(search);
+        const storedKey = String(data.phoneKey || orderPhoneKey(String(data.phone || "")));
+        if (!haystack.includes(search) && !(key && storedKey === key)) continue;
       }
       orders.push({ id: document.id, ...data, fulfillmentMethod: orderMethod });
       if (orders.length > PAGE_SIZE) break;
@@ -122,7 +127,121 @@ const mutationSchema = z.discriminatedUnion("action", [
     orderId: z.string().min(1).max(200),
     note: z.string().trim().min(1).max(1000),
   }),
+  z.object({
+    action: z.literal("partial"),
+    orderId: z.string().min(1).max(200),
+    lines: z.array(z.object({
+      productId: z.string().trim().min(1).max(200),
+      variantId: z.string().trim().max(120).optional(),
+      quantity: z.number().int().positive().max(10000),
+    })).min(1).max(40),
+    tracking: z.object({
+      carrier: z.string().trim().min(1).max(80),
+      trackingNumber: z.string().trim().min(1).max(120),
+    }).optional(),
+  }),
+  z.object({
+    action: z.literal("shortfall"),
+    orderId: z.string().min(1).max(200),
+  }),
 ]);
+
+function numberOrZero(value: unknown) {
+  const result = Number(value);
+  return Number.isFinite(result) ? result : 0;
+}
+
+async function loyaltyReader(transaction: Transaction, order: Record<string, any>) {
+  if (order.loyaltyAwarded || !order.userId) return { userRef: null as DocumentReference | null, userSnapshot: null as DocumentSnapshot | null };
+  const userRef = adminDb.collection("users").doc(String(order.userId));
+  return { userRef, userSnapshot: await transaction.get(userRef) };
+}
+
+function writeRestoredStock(
+  transaction: Transaction,
+  snaps: DocumentSnapshot[],
+  lines: Array<{ productId: string; variantId?: string; quantity: number; name?: string }>,
+  orderId: string,
+  actorName: string,
+  now: string,
+) {
+  for (const snapshot of snaps) {
+    if (!snapshot.exists) continue;
+    const product: any = snapshot.data();
+    const productLines = lines.filter((line) => line.productId === snapshot.id);
+    const quantity = productLines.reduce((sum, line) => sum + line.quantity, 0);
+    if (quantity <= 0) continue;
+    const previousStock = numberOrZero(product.stockQuantity);
+    const nextStock = previousStock + quantity;
+    const variants = Array.isArray(product.variants) ? product.variants.map((variant: any) => {
+      const restored = productLines
+        .filter((line) => String(line.variantId || "") === String(variant.id))
+        .reduce((sum, line) => sum + line.quantity, 0);
+      return restored > 0
+        ? { ...variant, stockQuantity: numberOrZero(variant.stockQuantity ?? variant.stock) + restored }
+        : variant;
+    }) : undefined;
+    transaction.update(snapshot.ref, {
+      stockQuantity: nextStock,
+      inStock: nextStock > 0,
+      ...(variants ? { variants } : {}),
+    });
+    transaction.set(adminDb.collection("inventory_history").doc(), {
+      productId: snapshot.id,
+      productName: String(product.name || productLines[0]?.name || "Product"),
+      previousStock,
+      newStock: nextStock,
+      change: quantity,
+      updatedBy: `Staff shortfall (${actorName})`,
+      updatedAt: now,
+      orderId,
+    });
+  }
+}
+
+function writeFinishedOrder(
+  transaction: Transaction,
+  args: {
+    orderRef: DocumentReference;
+    order: Record<string, any>;
+    actor: { uid: string; email?: string | null };
+    now: string;
+    pickup: boolean;
+    deliveries: unknown[];
+    userRef: DocumentReference | null;
+    userSnapshot: DocumentSnapshot | null;
+  },
+) {
+  const status = args.pickup ? "Collected" : "Delivered";
+  const update: Record<string, unknown> = {
+    status,
+    deliveries: args.deliveries,
+    updatedAt: args.now,
+    statusHistory: FieldValue.arrayUnion({ status, at: args.now, by: args.actor.email || args.actor.uid }),
+    ...(args.pickup ? { collectedAt: args.now } : { deliveredAt: args.now }),
+  };
+  if (!args.order.loyaltyAwarded && args.userRef && args.userSnapshot?.exists) {
+    const points = pointsEarnedForOrderTotal(Number(args.order.total || 0));
+    transaction.update(args.userRef, { loyaltyPoints: FieldValue.increment(points) });
+    update.loyaltyAwarded = true;
+    update.loyaltyAwardedAmount = points;
+    update.loyaltyAwardedAt = args.now;
+  }
+  transaction.update(args.orderRef, update);
+  transaction.set(adminDb.collection("adminAuditLog").doc(), {
+    action: "fulfillment_status_changed",
+    actorId: args.actor.uid,
+    actorEmail: args.actor.email || null,
+    targetId: args.orderRef.id,
+    before: { status: args.order.status },
+    after: { status, closedRemainder: true },
+    createdAt: args.now,
+  });
+  return {
+    status,
+    order: { id: args.orderRef.id, ...args.order, status, deliveries: args.deliveries } as Record<string, unknown>,
+  };
+}
 
 export async function POST(request: Request) {
   const actor = await requirePermission(request, "orders.manage");
@@ -159,6 +278,86 @@ export async function POST(request: Request) {
 
       if (order.paymentStatus !== "Paid") throw new Error("PAYMENT_REQUIRED");
 
+      if (input.action === "partial" || input.action === "shortfall") {
+        if (!["Processing", "Shipped"].includes(String(order.status || ""))) throw new Error("INVALID_TRANSITION");
+        const pickup = isPickupOrder(order as any);
+        const balances = lineBalances(order as any);
+        const actorName = actor.email || actor.uid || "staff";
+        const staffActor = { uid: actor.uid || "staff", email: actor.email || null };
+
+        if (input.action === "shortfall") {
+          const lines = balances.filter((row) => row.remaining > 0).map((row) => ({
+            productId: row.productId,
+            ...(row.variantId ? { variantId: row.variantId } : {}),
+            name: row.name,
+            quantity: row.remaining,
+          }));
+          if (lines.length === 0) throw new Error("NOTHING_OUTSTANDING");
+          const sentAlready = (Array.isArray(order.deliveries) ? order.deliveries : []).some((delivery: { shortfall?: boolean; method?: string; lines?: Array<{ quantity?: number }> }) =>
+            !delivery.shortfall && delivery.method !== "shortfall" && (delivery.lines || []).some((line) => Number(line.quantity) > 0),
+          );
+          if (!sentAlready) throw new Error("NOTHING_SENT");
+          const productIds = [...new Set(lines.map((line) => line.productId))];
+          const productSnaps = await transaction.getAll(...productIds.map((id) => adminDb.collection("products").doc(id)));
+          const loyalty = await loyaltyReader(transaction, order);
+          writeRestoredStock(transaction, productSnaps, lines, input.orderId, actorName, now);
+          const entry = { at: now, by: actorName, method: "shortfall" as const, shortfall: true, lines };
+          const deliveries = [...(Array.isArray(order.deliveries) ? order.deliveries : []), entry];
+          const finished = writeFinishedOrder(transaction, {
+            orderRef, order, actor: staffActor, now, pickup, deliveries, ...loyalty,
+          });
+          return { kind: "status" as const, order: finished.order, status: finished.status };
+        }
+
+        if (!pickup && (!input.tracking?.carrier || !input.tracking?.trackingNumber)) throw new Error("TRACKING_REQUIRED");
+        const requested = new Map<string, number>();
+        for (const line of input.lines) {
+          const key = `${line.productId}::${line.variantId || ""}`;
+          requested.set(key, (requested.get(key) || 0) + line.quantity);
+        }
+        const lines = [...requested.entries()].map(([key, quantity]) => {
+          const row = balances.find((balance) => `${balance.productId}::${balance.variantId}` === key);
+          if (!row) throw new Error("UNKNOWN_LINE");
+          if (quantity > row.remaining) throw new Error("QUANTITY");
+          return {
+            productId: row.productId,
+            ...(row.variantId ? { variantId: row.variantId } : {}),
+            name: row.name,
+            quantity,
+          };
+        });
+        const entry = {
+          at: now,
+          by: actorName,
+          method: pickup ? "pickup" as const : "courier" as const,
+          lines,
+          ...(input.tracking ? { tracking: input.tracking } : {}),
+        };
+        const deliveries = [...(Array.isArray(order.deliveries) ? order.deliveries : []), entry];
+        const remaining = outstandingQuantity({ ...order, deliveries } as any);
+        if (remaining === 0) {
+          const loyalty = await loyaltyReader(transaction, order);
+          const finished = writeFinishedOrder(transaction, {
+            orderRef, order, actor: staffActor, now, pickup, deliveries, ...loyalty,
+          });
+          return { kind: "status" as const, order: finished.order, status: finished.status };
+        }
+        transaction.update(orderRef, { deliveries, updatedAt: now });
+        transaction.set(adminDb.collection("adminAuditLog").doc(), {
+          action: "partial_delivery_recorded",
+          actorId: actor.uid,
+          actorEmail: actor.email || null,
+          targetId: input.orderId,
+          after: { lines, remaining },
+          createdAt: now,
+        });
+        return {
+          kind: "partial" as const,
+          summary: partialSmsSummary(lines),
+          order: { id: input.orderId, ...order, deliveries } as Record<string, unknown>,
+        };
+      }
+
       const expectedNext = nextFulfillmentStatus(order as any);
       // Allow explicit next OR legacy pickup that used Shipped → Collected
       const allowed =
@@ -170,6 +369,9 @@ export async function POST(request: Request) {
         || (isPickupOrder(order as any) && order.status === "Ready for Collection" && input.status === "Collected");
 
       if (!allowed) throw new Error("INVALID_TRANSITION");
+      if ((input.status === "Delivered" || input.status === "Collected") && partialBlocksCompletion(order as any)) {
+        throw new Error("OUTSTANDING");
+      }
 
       if (input.status === "Shipped" && !isPickupOrder(order as any)) {
         if (!input.tracking?.carrier || !input.tracking?.trackingNumber) {
@@ -228,9 +430,12 @@ export async function POST(request: Request) {
       };
     });
 
-    if (outcome.kind === "status") {
+    if (outcome.kind === "status" || outcome.kind === "partial") {
       try {
-        const tpl = CommunicationTemplates.getStatusUpdate(await withActionUrls(outcome.order as any), outcome.status);
+        const linked = await withActionUrls(outcome.order as any);
+        const tpl = outcome.kind === "partial"
+          ? CommunicationTemplates.getPartialDispatch(linked, outcome.summary)
+          : CommunicationTemplates.getStatusUpdate(linked, outcome.status);
         await notifyCustomer({
           userId: String(outcome.order.userId || ""),
           phone: String(outcome.order.mpesaPhoneNumber || outcome.order.phone || ""),
@@ -241,13 +446,21 @@ export async function POST(request: Request) {
         console.warn("Fulfillment customer notification failed (non-fatal):", error);
       }
     }
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      message: outcome.kind === "partial" ? "Recorded what went out" : "Fulfillment updated",
+    });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     if (code === "ORDER_NOT_FOUND") return NextResponse.json({ success: false, message: "Order not found." }, { status: 404 });
     if (code === "INVALID_TRANSITION") return NextResponse.json({ success: false, message: "The order changed elsewhere. Refresh before continuing." }, { status: 409 });
     if (code === "PAYMENT_REQUIRED") return NextResponse.json({ success: false, message: "Only paid orders can enter fulfillment." }, { status: 409 });
     if (code === "TRACKING_REQUIRED") return NextResponse.json({ success: false, message: "Enter carrier and tracking number before dispatch." }, { status: 400 });
+    if (code === "QUANTITY") return NextResponse.json({ success: false, message: "That quantity is more than what is still outstanding." }, { status: 400 });
+    if (code === "UNKNOWN_LINE") return NextResponse.json({ success: false, message: "That line is not on this order." }, { status: 400 });
+    if (code === "NOTHING_OUTSTANDING") return NextResponse.json({ success: false, message: "Nothing is left to close." }, { status: 409 });
+    if (code === "NOTHING_SENT") return NextResponse.json({ success: false, message: "Record what went out before closing the rest. Unpaid orders can still be cancelled." }, { status: 409 });
+    if (code === "OUTSTANDING") return NextResponse.json({ success: false, message: "Some units are still outstanding. Record what went out, or close the shortfall, before marking this finished." }, { status: 409 });
     throw error;
   }
 }
