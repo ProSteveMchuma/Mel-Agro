@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
+import { parseStaffOrderAlertPhone } from "@/lib/staff-order-alert";
 
 const generalSchema = z.object({
   companyName: z.string().trim().min(2).max(100),
@@ -13,7 +14,20 @@ const generalSchema = z.object({
   websiteUrl: z.string().url().max(300),
 });
 const taxSchema = z.object({ taxRate: z.number().min(0).max(100), taxId: z.union([z.literal(""), z.string().trim().regex(/^[AP][0-9]{9}[A-Z]$/i, "Enter a valid KRA PIN.")]), enabled: z.boolean() });
-const notificationsSchema = z.object({ emailEnabled: z.boolean(), smsEnabled: z.boolean(), orderConfirmationTemplate: z.string().trim().min(10).max(1000).refine((value) => value.includes("{orderId}"), "Order template must include {orderId}."), shippingNotificationTemplate: z.string().trim().min(10).max(1000).refine((value) => value.includes("{orderId}"), "Shipping template must include {orderId}.") });
+const notificationsSchema = z.object({
+  emailEnabled: z.boolean(),
+  smsEnabled: z.boolean(),
+  staffOrderAlertPhone: z.string().trim().min(9).max(20).transform((value, ctx) => {
+    try {
+      return parseStaffOrderAlertPhone(value);
+    } catch (error) {
+      ctx.addIssue({ code: "custom", message: error instanceof Error ? error.message : "Enter a valid Kenyan phone number." });
+      return z.NEVER;
+    }
+  }),
+  orderConfirmationTemplate: z.string().trim().min(10).max(1000).refine((value) => value.includes("{orderId}"), "Order template must include {orderId}."),
+  shippingNotificationTemplate: z.string().trim().min(10).max(1000).refine((value) => value.includes("{orderId}"), "Shipping template must include {orderId}."),
+});
 const documentsSchema = z.object({ invoiceTitle: z.string().trim().min(2).max(60), footerText: z.string().trim().max(300), terms: z.string().trim().max(1500), showLogo: z.boolean(), primaryColor: z.string().regex(/^#[0-9a-f]{6}$/i, "Choose a valid document colour.") });
 const schemas = { general: generalSchema, tax: taxSchema, notifications: notificationsSchema, documents: documentsSchema } as const;
 type Section = keyof typeof schemas;
