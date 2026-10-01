@@ -67,7 +67,7 @@
 
   .partners-track {
     @apply flex w-max;
-    animation: scroll-partners 28s linear infinite;
+    animation: scroll-partners 42s linear infinite;
     will-change: transform;
   }
 
