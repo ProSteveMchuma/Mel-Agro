@@ -2,6 +2,7 @@
 import { useWishlist } from '@/context/WishlistContext';
 import { useCart } from '@/context/CartContext';
 import Image from 'next/image';
+import { skipImageOptimizer } from '@/lib/product-image';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -44,6 +45,7 @@ export default function WishlistPage() {
                                         src={product.image}
                                         alt={product.name}
                                         fill
+                                        unoptimized={skipImageOptimizer(product.image)}
                                         className="object-cover group-hover:scale-105 transition-transform duration-500"
                                     />
                                     <button

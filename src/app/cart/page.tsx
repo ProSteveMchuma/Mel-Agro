@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useCart } from "@/context/CartContext";
 import { useRouter } from 'next/navigation';
 import Image from "next/image";
+import { skipImageOptimizer } from "@/lib/product-image";
 
 export default function CartPage() {
     const { cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
@@ -45,7 +46,7 @@ export default function CartPage() {
                                         <div key={item.cartItemId} className="bg-white p-4 sm:p-6 rounded-2xl shadow-sm flex flex-col sm:flex-row items-center gap-4 sm:gap-6 border border-gray-100">
                                             <div className="w-24 h-24 bg-gray-100 rounded-xl flex-shrink-0 overflow-hidden relative border border-gray-200">
                                                 {item.image ? (
-                                                    <Image src={item.image} alt={item.name} fill className="object-cover" />
+                                                    <Image src={item.image} alt={item.name} fill unoptimized={skipImageOptimizer(item.image)} className="object-cover" />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center text-gray-300">
                                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">

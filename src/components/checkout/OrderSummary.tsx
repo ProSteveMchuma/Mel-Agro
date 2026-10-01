@@ -2,6 +2,7 @@
 
 import { useCart } from "@/context/CartContext";
 import Image from "next/image";
+import { skipImageOptimizer } from "@/lib/product-image";
 
 interface OrderSummaryProps {
     shippingCost: number;
@@ -40,7 +41,7 @@ export default function OrderSummary({
                     <div key={item.id} className="flex gap-3">
                         <div className="w-12 h-12 bg-gray-100 rounded-lg relative overflow-hidden flex-shrink-0">
                             {item.image ? (
-                                <Image src={item.image} alt={item.name} fill className="object-cover" />
+                                <Image src={item.image} alt={item.name} fill unoptimized={skipImageOptimizer(item.image)} className="object-cover" />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">No Img</div>
                             )}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef } from "react";
 import { FREE_SHIPPING_THRESHOLD } from '@/lib/delivery';
+import { skipImageOptimizer } from '@/lib/product-image';
 
 export default function CartDrawer() {
     const { isCartOpen, toggleCart, cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
@@ -98,7 +99,7 @@ export default function CartDrawer() {
                             <div key={item.cartItemId} className="flex gap-3 sm:gap-4">
                                 <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden relative border border-gray-200">
                                     {item.image ? (
-                                        <Image src={item.image} alt={item.name} fill className="object-cover" />
+                                        <Image src={item.image} alt={item.name} fill unoptimized={skipImageOptimizer(item.image)} className="object-cover" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-gray-300">
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
