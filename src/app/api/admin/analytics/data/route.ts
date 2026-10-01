@@ -12,8 +12,14 @@ async function namedProductCounts(rows: Array<{ productId: string; views: number
   const snaps = ids.length
     ? await adminDb.getAll(...ids.map((id) => adminDb.collection("products").doc(id))).catch(() => [])
     : [];
-  const names = new Map(snaps.map((snap) => [snap.id, String(snap.data()?.name || "").trim()]));
-  return rows.map((row) => ({ ...row, name: names.get(row.productId) || row.productId }));
+  const catalogue = new Map(snaps.filter((snap) => snap.exists).map((snap) => [snap.id, snap.data() || {}]));
+  return rows.map((row) => {
+    const data = catalogue.get(row.productId);
+    const qty = data ? Number(data.stockQuantity ?? data.stock ?? 0) : null;
+    const stockQuantity = qty != null && Number.isFinite(qty) ? qty : null;
+    const inStock = data ? data.inStock !== false && (stockQuantity ?? 0) > 0 : null;
+    return { ...row, name: String(data?.name || "").trim() || row.productId, stockQuantity, inStock };
+  });
 }
 export async function GET(request: Request) {
   const actor = await requirePermission(request, "analytics.view");

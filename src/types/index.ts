@@ -119,6 +119,8 @@ export interface Order {
     internalNotes?: string;
     /** First shop page this browser opened on the day the order was placed. A path, not an address. */
     entryPath?: string;
+    /** Last product, category, or brand page that browser opened that day. One path, not an address. */
+    salePath?: string;
     internalHistory?: {
         date: string;
         note: string;

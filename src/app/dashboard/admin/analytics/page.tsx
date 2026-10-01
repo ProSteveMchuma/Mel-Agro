@@ -13,7 +13,8 @@ import {
 } from "recharts";
 import { getAuth } from "firebase/auth";
 import AnalyticsWorkspaceControls from '@/components/admin/AnalyticsWorkspaceControls';
-import { salesByLandingPage } from '@/lib/shop-journey';
+import ShopTodayReadout from '@/components/admin/ShopTodayReadout';
+import { pagesLosingBeforeSale, productsLosingBeforeSale, salesByLandingPage, todayShopReadout, type ProductCounter } from '@/lib/shop-journey';
 
 const RANGES: Array<{ value: DateRange; label: string }> = [
     { value: '7d', label: 'Last 7 days' },
@@ -38,9 +39,9 @@ function Kpi({ label, value, sub, accent = 'text-melagri-primary' }: { label: st
     );
 }
 
-function Card({ title, subtitle, children, className = '' }: { title: string; subtitle?: string; children: React.ReactNode; className?: string }) {
+function Card({ title, subtitle, children, className = '', id }: { title: string; subtitle?: string; children: React.ReactNode; className?: string; id?: string }) {
     return (
-        <div className={`bg-white rounded-3xl p-6 md:p-8 border border-gray-100 shadow-sm ${className}`}>
+        <div id={id} className={`bg-white rounded-3xl p-6 md:p-8 border border-gray-100 shadow-sm ${className}`}>
             <div className="mb-6">
                 <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">{title}</h3>
                 {subtitle && <p className="text-xs text-gray-400 font-medium mt-1">{subtitle}</p>}
@@ -55,7 +56,7 @@ export default function AnalyticsPage() {
     const [storefront, setStorefront] = useState<{
         traffic: Array<{ date: string; totalVisits: number; uniqueVisitors: number }>;
         searches: Array<{ term: string; count: number }>;
-        products: Array<{ productId: string; name?: string; views: number; addToCartCount: number; purchases: number }>;
+        products: ProductCounter[];
         funnel: { sampled: number; steps: Array<{ key: string; label: string; count: number; conversionFromStart: number; dropOff?: number }> };
         pages?: Array<{ key: string; views: number; uniques: number }>;
         regions?: Array<{ key: string; views: number; uniques: number }>;
@@ -65,6 +66,15 @@ export default function AnalyticsPage() {
     const [dataTruncated, setDataTruncated] = useState(false);
     const [range, setRange] = useState<DateRange>('30d');
     const [granularity, setGranularity] = useState<Granularity>('day');
+    const [pulse, setPulse] = useState<{
+        visits: number;
+        paidOrders: number;
+        checkoutStarted: number;
+        checkoutCompleted: number;
+        pages: Array<{ key: string; views: number }>;
+        products: ProductCounter[];
+    } | null>(null);
+    const [textableCarts, setTextableCarts] = useState(0);
 
     useEffect(() => {
         const controller = new AbortController();
@@ -85,6 +95,42 @@ export default function AnalyticsPage() {
         return () => controller.abort();
     }, [range]);
 
+    useEffect(() => {
+        const controller = new AbortController();
+        (async () => {
+            try {
+                const token = await getAuth().currentUser?.getIdToken();
+                if (!token) return;
+                const headers = { Authorization: `Bearer ${token}` };
+                const [overviewResponse, cartsResponse] = await Promise.all([
+                    fetch('/api/admin/analytics/overview', { headers, signal: controller.signal }),
+                    fetch('/api/admin/intelligence/abandoned-carts', { headers, signal: controller.signal }),
+                ]);
+                const overview = overviewResponse.ok ? await overviewResponse.json() : null;
+                const carts = cartsResponse.ok ? await cartsResponse.json() : null;
+                const steps = Array.isArray(overview?.funnel?.steps) ? overview.funnel.steps : [];
+                const stepCount = (key: string) => Number(steps.find((step: { key?: string; count?: number }) => step.key === key)?.count || 0);
+                if (overview?.success) {
+                    setPulse({
+                        visits: Number(overview.traffic?.today?.totalVisits || 0),
+                        paidOrders: Number(overview.paidToday || 0),
+                        checkoutStarted: stepCount('start'),
+                        checkoutCompleted: stepCount('complete'),
+                        pages: Array.isArray(overview.todayPages) ? overview.todayPages : [],
+                        products: Array.isArray(overview.products) ? overview.products : [],
+                    });
+                }
+                const textable = Array.isArray(carts?.carts)
+                    ? carts.carts.filter((cart: { recovery?: { contactEligible?: boolean }; purchasedAfterCart?: boolean }) => cart.recovery?.contactEligible && !cart.purchasedAfterCart).length
+                    : 0;
+                setTextableCarts(textable);
+            } catch (caught) {
+                if ((caught as Error).name !== 'AbortError') setTextableCarts(0);
+            }
+        })();
+        return () => controller.abort();
+    }, []);
+
     const ranged = useMemo(() => filterByRange(orders, range), [orders, range]);
 
     const kpis = useMemo(() => computeKPIs(ranged), [ranged]);
@@ -97,6 +143,18 @@ export default function AnalyticsPage() {
     const hourly = useMemo(() => ordersByHourOfDay(ranged), [ranged]);
     const paymentMix = useMemo(() => paymentMethodMix(ranged), [ranged]);
     const landingSales = useMemo(() => salesByLandingPage(ranged), [ranged]);
+    const pageLosers = useMemo(() => pagesLosingBeforeSale(storefront?.pages || [], landingSales), [storefront, landingSales]);
+    const productLosers = useMemo(() => productsLosingBeforeSale(storefront?.products || []), [storefront]);
+    const todayReadout = useMemo(() => {
+        if (!pulse) return null;
+        const todayKey = new Date().toISOString().slice(0, 10);
+        return todayShopReadout({
+            ...pulse,
+            textableCarts,
+            landingSales: salesByLandingPage(orders.filter((order) => String(order.date || '').slice(0, 10) === todayKey)),
+            pageMinViews: 3,
+        });
+    }, [pulse, textableCarts, orders]);
 
     const noData = ranged.length === 0;
 
@@ -156,6 +214,8 @@ export default function AnalyticsPage() {
                 </p>
             </div>
 
+            {todayReadout && <ShopTodayReadout readout={todayReadout} />}
+
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <Kpi label="Revenue" value={fmtKES(kpis.revenue)} accent="text-melagri-primary" />
                 <Kpi label="Paid Orders" value={kpis.paidCount.toLocaleString()} sub={`${kpis.orderCount.toLocaleString()} total`} accent="text-gray-900" />
@@ -196,7 +256,7 @@ export default function AnalyticsPage() {
                             </div>
                         )}
                     </Card>
-                    <Card title="Checkout Funnel" subtitle={`${storefront.funnel.sampled} signed-in sessions · one row per account, latest visit`}>
+                    <Card id="shop-checkout" title="Checkout Funnel" subtitle={`${storefront.funnel.sampled} signed-in sessions · one row per account, latest visit`}>
                         {storefront.funnel.steps.every(step => step.count === 0) ? <p className="text-gray-400 text-sm">Funnel fills after signed-in checkout starts.</p> : (
                             <div className="space-y-3">
                                 {storefront.funnel.steps.map(step => (
@@ -225,13 +285,16 @@ export default function AnalyticsPage() {
                             </div>
                         )}
                     </Card>
-                    <Card title="Sales by landing page" subtitle="Paid orders in this range, by the first shop page opened that day. A path, not an address.">
+                    <Card title="Sales by landing page" subtitle="Paid orders in this range. A product, category, or brand page they opened is used when it was stored. Older one-product orders use that product page and are marked. A path, not an address.">
                         {landingSales.length === 0 ? <p className="text-gray-400 text-sm">No paid orders in this range.</p> : (
                             <div className="space-y-3">
                                 {landingSales.map((item) => (
                                     <div key={item.path} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
                                         <span className="truncate font-bold text-gray-900">{item.path}</span>
-                                        <span className="shrink-0 text-xs font-black uppercase tracking-widest text-gray-500">{item.orders} paid · {fmtKES(item.revenue)}</span>
+                                        <span className="shrink-0 text-right text-xs font-black uppercase tracking-widest text-gray-500">
+                                            {item.orders} paid · {fmtKES(item.revenue)}
+                                            {item.fromOrderProduct > 0 ? <span className="mt-1 block font-bold normal-case tracking-normal text-amber-700">{item.fromOrderProduct === item.orders ? 'Product on the order' : `${item.fromOrderProduct} from the product on the order`}</span> : null}
+                                        </span>
                                     </div>
                                 ))}
                             </div>
@@ -263,7 +326,20 @@ export default function AnalyticsPage() {
                             {storefront.products.length === 0 ? <p className="text-sm text-gray-400">No product views yet.</p> : storefront.products.map((item) => (
                                 <div key={item.productId} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-4 py-3">
                                     <span className="truncate font-bold text-gray-900">{item.name || item.productId}</span>
-                                    <span className="shrink-0 text-xs font-black uppercase tracking-widest text-gray-500">{item.views} views · {item.addToCartCount} adds · {item.purchases} purchases</span>
+                                    <span className="shrink-0 text-xs font-black uppercase tracking-widest text-gray-500">{item.views} views · {item.addToCartCount} adds · {item.purchases} purchases{item.inStock === false ? ' · out of stock' : ''}</span>
+                                </div>
+                            ))}
+                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 pt-2">Loses people before a sale</p>
+                            {pageLosers.length === 0 ? <p className="text-sm text-gray-500">No page in this range has enough views and zero paid orders from that page.</p> : pageLosers.map((item) => (
+                                <div key={item.path} className="rounded-xl bg-amber-50 px-4 py-3">
+                                    <p className="truncate font-bold text-gray-900">{item.path}</p>
+                                    <p className="text-xs font-semibold text-amber-800">{item.views} views · no paid order names this page</p>
+                                </div>
+                            ))}
+                            {productLosers.length === 0 ? <p className="text-sm text-gray-500">No product is clearly losing people before a purchase.</p> : productLosers.map((item) => (
+                                <div key={item.productId} className="rounded-xl bg-amber-50 px-4 py-3">
+                                    <p className="truncate font-bold text-gray-900">{item.name}</p>
+                                    <p className="text-xs font-semibold text-amber-800">{item.reason === 'out of stock' ? 'Out of stock' : item.reason === 'looked, not added' ? 'Looked at, not added' : 'Added, not bought'} · {item.views} views · {item.adds} adds · {item.purchases} purchases</p>
                                 </div>
                             ))}
                         </div>

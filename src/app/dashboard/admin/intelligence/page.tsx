@@ -8,7 +8,8 @@ import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import { segmentColor, segmentDescription, Segment, type CustomerProfile, type IntelKPIs, type SegmentSummary } from "@/lib/customer-intelligence";
 import { waitForAuthToken } from "@/lib/wait-for-auth-token";
-import { profileAccountId } from "@/lib/shop-journey";
+import { profileAccountId, salesByLandingPage, todayShopReadout, type ProductCounter } from "@/lib/shop-journey";
+import ShopTodayReadout from "@/components/admin/ShopTodayReadout";
 
 type CustomerVisit = { lastStep: string | null; pathTrail: string[]; openCart: boolean };
 
@@ -32,6 +33,15 @@ export default function IntelligencePage() {
     const [segmentsLoading, setSegmentsLoading] = useState(true);
     const [segmentsError, setSegmentsError] = useState<string | null>(null);
     const [visits, setVisits] = useState<Record<string, CustomerVisit>>({});
+    const [textableCarts, setTextableCarts] = useState(0);
+    const [pulse, setPulse] = useState<{
+        visits: number;
+        paidOrders: number;
+        checkoutStarted: number;
+        checkoutCompleted: number;
+        pages: Array<{ key: string; views: number }>;
+        products: ProductCounter[];
+    } | null>(null);
     const consentFor = (profile: { userId: string; phone?: string; email?: string }) => {
         const phone = String(profile.phone || '').replace(/\D/g, '').slice(-9);
         const email = String(profile.email || '').toLowerCase();
@@ -67,7 +77,20 @@ export default function IntelligencePage() {
                 const reorderData = reorderResponse.ok ? await reorderResponse.json() : null;
                 const customersData = customersResponse.ok ? await customersResponse.json() : null;
                 setCartCount(Array.isArray(cartsData?.carts) ? cartsData.carts.length : null);
+                setTextableCarts(Array.isArray(cartsData?.carts) ? cartsData.carts.filter((cart: { recovery?: { contactEligible?: boolean }; purchasedAfterCart?: boolean }) => cart.recovery?.contactEligible && !cart.purchasedAfterCart).length : 0);
                 if (overviewData?.funnel?.steps) setFunnel(overviewData.funnel);
+                if (overviewData?.success) {
+                    const steps = Array.isArray(overviewData.funnel?.steps) ? overviewData.funnel.steps : [];
+                    const stepCount = (key: string) => Number(steps.find((step: { key?: string; count?: number }) => step.key === key)?.count || 0);
+                    setPulse({
+                        visits: Number(overviewData.traffic?.today?.totalVisits || 0),
+                        paidOrders: Number(overviewData.paidToday || 0),
+                        checkoutStarted: stepCount('start'),
+                        checkoutCompleted: stepCount('complete'),
+                        pages: Array.isArray(overviewData.todayPages) ? overviewData.todayPages : [],
+                        products: Array.isArray(overviewData.products) ? overviewData.products : [],
+                    });
+                }
                 setServerReorders(Array.isArray(reorderData?.queue) ? reorderData.queue : []);
                 if (!customersResponse.ok) throw new Error(customersData?.message || 'Could not load customer profiles.');
                 setProfiles(Array.isArray(customersData?.profiles) ? customersData.profiles : []);
@@ -88,6 +111,16 @@ export default function IntelligencePage() {
     }, []);
 
     const paidOrders = orders.filter(o => (o as any).paymentStatus === 'Paid').length;
+    const todayReadout = useMemo(() => {
+        if (!pulse) return null;
+        const todayKey = new Date().toISOString().slice(0, 10);
+        return todayShopReadout({
+            ...pulse,
+            textableCarts,
+            landingSales: salesByLandingPage(orders.filter((order) => String(order.date || '').slice(0, 10) === todayKey)),
+            pageMinViews: 3,
+        });
+    }, [pulse, textableCarts, orders]);
     const funnelColors = ['bg-blue-500', 'bg-indigo-500', 'bg-purple-500', 'bg-violet-500'];
     const liveFunnelSteps = funnel?.steps?.length
         ? funnel.steps.map((step, index) => ({
@@ -120,6 +153,8 @@ export default function IntelligencePage() {
                     </span>
                 </div>
             </div>
+
+            {todayReadout && <ShopTodayReadout readout={todayReadout} />}
 
             <section className="rounded-[2.5rem] border border-emerald-100 bg-white p-8 shadow-sm" aria-labelledby="reorder-opportunities">
                 <div className="flex flex-wrap items-end justify-between gap-4">

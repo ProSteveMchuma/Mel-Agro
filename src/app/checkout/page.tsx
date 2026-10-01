@@ -33,7 +33,7 @@ import { Textarea } from '@/components/ui/form/Textarea';
 import AddressSearchField from '@/components/checkout/AddressSearchField';
 import { matchKenyanCounty, type GeocodeSuggestion } from '@/lib/geocode';
 import type { Order } from '@/types';
-import { readStoredEntryPath } from '@/lib/shop-journey';
+import { readStoredEntryPath, readStoredSalePath } from '@/lib/shop-journey';
 
 const LocationPicker = dynamic(() => import('../../components/checkout/LocationPicker'), {
     ssr: false,
@@ -524,6 +524,7 @@ export default function CheckoutPage() {
                     couponCode: appliedCoupon?.code,
                     redeemPoints: usePoints,
                     entryPath: readStoredEntryPath() || undefined,
+                    salePath: readStoredSalePath() || undefined,
                 }),
             });
             const createResult = await createResponse.json();
