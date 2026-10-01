@@ -1,5 +1,5 @@
 import { normalizeKenyanPhone } from './account-upgrade.ts';
-import { phoneAccessKey } from './order-access.ts';
+import { phoneAccessKey } from './phone-key.ts';
 
 /** Phone strings commonly stored on Mel-Agri orders / user docs. */
 export function phoneQueryVariants(raw: string): string[] {

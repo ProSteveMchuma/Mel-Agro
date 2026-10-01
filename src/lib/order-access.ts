@@ -1,5 +1,8 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { SITE_URL } from './site.ts';
+import { phoneAccessKey } from './phone-key.ts';
+
+export { phoneAccessKey };
 
 export type OrderAccessAction = 'view' | 'pay' | 'return' | 'rs';
 
@@ -18,12 +21,6 @@ function accessSecret(): string {
         process.env.FIREBASE_PRIVATE_KEY ||
         'melagri-order-access-dev'
     ).slice(0, 120);
-}
-
-export function phoneAccessKey(raw?: string | null): string {
-    const digits = String(raw || '').replace(/\D/g, '');
-    if (digits.length < 9) return '';
-    return digits.slice(-9);
 }
 
 function sign(payload: string): string {
