@@ -6,6 +6,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { DELIVERY_ZONES, DeliveryZone } from "@/lib/delivery";
 import { DEFAULT_DOCUMENT_SETTINGS, type DocumentTemplateSettings } from "@/lib/document-branding";
+import { DEFAULT_STAFF_ORDER_ALERT_PHONE } from "@/lib/staff-order-alert";
 
 export interface GeneralSettings {
     companyName: string;
@@ -26,6 +27,7 @@ export interface TaxSettings {
 export interface NotificationSettings {
     emailEnabled: boolean;
     smsEnabled: boolean;
+    staffOrderAlertPhone: string;
     orderConfirmationTemplate: string;
     shippingNotificationTemplate: string;
 }
@@ -67,6 +69,7 @@ const defaultTax: TaxSettings = {
 const defaultNotifications: NotificationSettings = {
     emailEnabled: true,
     smsEnabled: true,
+    staffOrderAlertPhone: DEFAULT_STAFF_ORDER_ALERT_PHONE,
     orderConfirmationTemplate: "Thank you for your order {orderId}. Total: {total}",
     shippingNotificationTemplate: "Your order {orderId} has been shipped."
 };

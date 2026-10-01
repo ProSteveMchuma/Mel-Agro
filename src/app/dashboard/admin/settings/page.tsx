@@ -182,6 +182,18 @@ export default function SettingsPage() {
                                 />
                                 <label htmlFor="smsEnabled" className="text-sm font-medium text-gray-900">Enable SMS Notifications</label>
                             </div>
+                            <div>
+                                <label htmlFor="staffOrderAlertPhone" className="block text-sm font-medium text-gray-700 mb-1">Staff order alert number</label>
+                                <input
+                                    id="staffOrderAlertPhone"
+                                    type="tel"
+                                    value={notifForm.staffOrderAlertPhone}
+                                    onChange={(e) => setNotifForm({ ...notifForm, staffOrderAlertPhone: e.target.value })}
+                                    placeholder="+254 714 657108"
+                                    className="w-full p-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-melagri-primary/50 outline-none"
+                                />
+                                <p className="text-xs text-gray-500 mt-1">Kenyan mobile. Each new order texts this number as well as the customer.</p>
+                            </div>
                         </div>
 
                         <div className="pt-6 border-t border-gray-100">

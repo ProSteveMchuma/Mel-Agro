@@ -273,6 +273,22 @@ export default function AdminOrderDetailsPage() {
         }
     };
 
+    const handleResendStaffAlert = async () => {
+        if (!order || !canPrompt) return;
+        setMpesaActionLoading('staff-alert');
+        const t = toast.loading('Sending staff alert...');
+        try {
+            const res = await authedFetch('/api/admin/orders/staff-alert', { orderId: order.id });
+            const data = await res.json();
+            if (data.success) toast.success(data.message, { id: t });
+            else toast.error(data.message || 'Staff alert failed', { id: t, duration: 7000 });
+        } catch (e: any) {
+            toast.error(e?.message || 'Staff alert failed', { id: t });
+        } finally {
+            setMpesaActionLoading(null);
+        }
+    };
+
     const handleResendPaymentSms = async () => {
         if (!order) return;
         setMpesaActionLoading('resend-sms');
@@ -375,6 +391,21 @@ export default function AdminOrderDetailsPage() {
                         ) : null}
                     </div>
                     <p className="text-gray-400 text-xs font-bold uppercase tracking-widest">Placed on {new Date(order.date).toLocaleDateString()} at {new Date(order.date).toLocaleTimeString()}</p>
+                    {order.staffOrderAlert?.ok ? (
+                        <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-green-700">Staff alert sent</p>
+                    ) : canPrompt ? (
+                        <div className="mt-2 flex flex-wrap items-center gap-3">
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700">{order.staffOrderAlert?.reason || 'Staff alert was not sent'}</p>
+                            <button
+                                type="button"
+                                onClick={handleResendStaffAlert}
+                                disabled={mpesaActionLoading === 'staff-alert'}
+                                className="text-[10px] font-black uppercase tracking-widest text-melagri-primary underline disabled:opacity-60"
+                            >
+                                {mpesaActionLoading === 'staff-alert' ? 'Sending…' : 'Resend staff alert'}
+                            </button>
+                        </div>
+                    ) : null}
                 </div>
                 <div className="flex flex-wrap gap-3">
                     <Link

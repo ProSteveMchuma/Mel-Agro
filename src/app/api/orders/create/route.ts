@@ -12,6 +12,7 @@ import { CommunicationTemplates } from '@/lib/communication-templates';
 import { withActionUrls, withActionUrlsSync } from '@/lib/order-access';
 import { orderPhoneKey } from '@/lib/phone-match';
 import { notifyCustomer } from '@/lib/customer-notifications';
+import { sendStaffOrderAlert } from '@/lib/staff-order-alert-server';
 import { enforceRateLimit } from '@/lib/request-guard';
 import { revalidateStorefrontCatalogue } from '@/lib/revalidate-catalogue';
 
@@ -559,6 +560,8 @@ export async function POST(request: Request) {
                 console.warn('Order confirmation notification failed (non-fatal):', notificationError);
             }
         }
+
+        await sendStaffOrderAlert(order.id, order);
 
         revalidateStorefrontCatalogue();
         return NextResponse.json({ success: true, order }, { status: 201 });
