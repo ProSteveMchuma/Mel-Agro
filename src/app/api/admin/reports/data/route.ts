@@ -4,17 +4,13 @@ import { adminDb } from "@/lib/firebase-admin";
 import { requirePermission } from "@/lib/auth-server";
 import type { Order } from "@/types";
 import { nairobiRangeUtc } from "@/lib/nairobi-range";
+import { buildSalesBook, salesBookCsv, type SalesBookOrder } from "@/lib/sales-book";
 
 const querySchema = z.object({
   start: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   end: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   format: z.enum(["json", "csv"]).default("json"),
 });
-function csvCell(value: unknown) {
-  let text = String(value ?? "");
-  if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
-  return `"${text.replace(/"/g, '""')}"`;
-}
 
 export async function GET(request: Request) {
   const actor = await requirePermission(request, "analytics.view");
@@ -29,9 +25,14 @@ export async function GET(request: Request) {
   const truncated = snapshot.size > 5000;
   const orders = snapshot.docs.slice(0, 5000).map((document) => ({ id: document.id, ...document.data() })) as Array<Order & { userId?: string; refundStatus?: string; refundAmount?: number }>;
   if (parsed.data.format === "csv") {
-    const header = ["Order ID", "Date", "Customer", "County", "Payment method", "Payment status", "Fulfillment status", "Gross total", "Refund status", "Refund amount"];
-    const rows = orders.map((order) => [order.id, order.date, order.userName || order.userEmail || order.userId || "Guest", order.shippingAddress?.county || "", order.paymentMethod || "", order.paymentStatus || "Unpaid", order.status || "", order.total || 0, order.refundStatus || "", order.refundAmount || 0]);
-    const csv = [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");
+    const taxSnap = await adminDb.collection("settings").doc("tax").get();
+    const taxData = taxSnap.data() || {};
+    const tax = {
+      enabled: taxData.enabled === undefined ? true : Boolean(taxData.enabled),
+      taxRate: taxData.taxRate === undefined ? 16 : Number(taxData.taxRate) || 0,
+    };
+    const bookOrders = orders as SalesBookOrder[];
+    const csv = salesBookCsv(bookOrders, buildSalesBook(bookOrders, tax));
     return new NextResponse(`\uFEFF${csv}`, { headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="melagri-sales-${parsed.data.start}-to-${parsed.data.end}.csv"`, "X-Content-Type-Options": "nosniff" } });
   }
   return NextResponse.json({ success: true, orders, truncated, generatedAt: new Date().toISOString(), definitions: { revenue: "Gross order total where paymentStatus is Paid", refunds: "refundAmount for reversed/refunded orders", timezone: "Africa/Nairobi date boundaries" } });
