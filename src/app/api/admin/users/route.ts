@@ -104,7 +104,14 @@ export async function POST(request: Request) {
   const ref = adminDb.collection("users").doc(input.userId);
   const snapshot = await ref.get();
   if (!snapshot.exists) return NextResponse.json({ success: false, message: "User not found." }, { status: 404 });
-  if (snapshot.data()?.role === "super-admin") return NextResponse.json({ success: false, message: "Super-admin accounts cannot be changed from this screen." }, { status: 403 });
+  const targetRole = String(snapshot.data()?.role || 'user');
+  if (targetRole === 'super-admin') {
+    return NextResponse.json({ success: false, message: 'Super-admin accounts cannot be changed from this screen.' }, { status: 403 });
+  }
+  // Only super-admins may delete/suspend/status other staff (admin role).
+  if ((targetRole === 'admin') && (input.action === 'delete' || input.action === 'status') && actor.role !== 'super-admin') {
+    return NextResponse.json({ success: false, message: 'Only a super-admin can delete or suspend staff accounts.' }, { status: 403 });
+  }
 
   if (input.action === "permissions" && actor.role !== "super-admin") {
     return NextResponse.json({ success: false, message: "Only a super-admin can delegate staff permissions." }, { status: 403 });

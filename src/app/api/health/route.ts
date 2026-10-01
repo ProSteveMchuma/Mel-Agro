@@ -3,7 +3,17 @@ import { getEnvironmentReadiness } from '@/lib/env-readiness';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+/**
+ * Ops readiness probe. Requires CRON_SECRET so public scanners cannot map
+ * which integrations are misconfigured.
+ */
+export async function GET(request: Request) {
+    const expected = process.env.CRON_SECRET;
+    const provided = request.headers.get('authorization');
+    if (!expected || provided !== `Bearer ${expected}`) {
+        return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
+    }
+
     const production = process.env.NODE_ENV === 'production';
     const readiness = getEnvironmentReadiness(process.env, production);
 

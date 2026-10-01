@@ -11,6 +11,10 @@ export interface AdminAuthResult {
     message?: string;
 }
 
+function isSuspended(userData: Record<string, unknown> | undefined): boolean {
+    return String(userData?.status || '').toLowerCase() === 'suspended';
+}
+
 async function verifyAdminFromIdToken(token: string | null | undefined): Promise<AdminAuthResult> {
     if (!token) return { ok: false, message: 'Missing Authorization token' };
 
@@ -18,6 +22,9 @@ async function verifyAdminFromIdToken(token: string | null | undefined): Promise
         const decoded = await admin.auth().verifyIdToken(token);
         const userSnap = await adminDb.collection('users').doc(decoded.uid).get();
         const userData = userSnap.data();
+        if (isSuspended(userData as Record<string, unknown> | undefined)) {
+            return { ok: false, message: 'Account suspended' };
+        }
         const role = userData?.role || (decoded as { role?: string }).role;
         if (role !== 'admin' && role !== 'super-admin') {
             return { ok: false, message: 'Admin access required' };
@@ -67,6 +74,9 @@ export async function requirePermissionFromSessionCookie(
         const decoded = await admin.auth().verifySessionCookie(decodeURIComponent(sessionCookie), true);
         const userSnap = await adminDb.collection('users').doc(decoded.uid).get();
         const userData = userSnap.data();
+        if (isSuspended(userData as Record<string, unknown> | undefined)) {
+            return { ok: false, message: 'Account suspended' };
+        }
         const role = userData?.role || (decoded as { role?: string }).role;
         if (role !== 'admin' && role !== 'super-admin') {
             return { ok: false, message: 'Admin access required' };
@@ -88,6 +98,10 @@ export async function requireUser(request: Request): Promise<AdminAuthResult> {
 
     try {
         const decoded = await admin.auth().verifyIdToken(token);
+        const userSnap = await adminDb.collection('users').doc(decoded.uid).get();
+        if (isSuspended(userSnap.data() as Record<string, unknown> | undefined)) {
+            return { ok: false, message: 'Account suspended' };
+        }
         return { ok: true, uid: decoded.uid, email: decoded.email };
     } catch (e: any) {
         return { ok: false, message: e?.message || 'Invalid token' };
@@ -106,7 +120,11 @@ export async function requireOrderOwnerOrAdmin(
     if (!userResult.ok) return userResult;
 
     const userSnap = await adminDb.collection('users').doc(userResult.uid!).get();
-    const role = userSnap.data()?.role;
+    const userData = userSnap.data() as Record<string, unknown> | undefined;
+    if (isSuspended(userData)) {
+        return { ok: false, message: 'Account suspended' };
+    }
+    const role = userData?.role as string | undefined;
     const isAdmin = role === 'admin' || role === 'super-admin';
 
     if (isAdmin) {

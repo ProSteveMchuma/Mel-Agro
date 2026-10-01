@@ -6,14 +6,23 @@ export async function isClaimableGuestUid(uid: string): Promise<boolean> {
     if (!uid) return false;
     const snap = await adminDb.collection('users').doc(uid).get();
     if (snap.exists && snap.data()?.mergedInto) return true;
+    if (snap.exists && snap.data()?.isAnonymous === true) return true;
 
     try {
         const authUser = await adminAuth.getUser(uid);
         if (!authUser.providerData.length) return true;
         return authUser.providerData.every((provider) => provider.providerId === 'anonymous');
-    } catch {
-        // Auth user deleted / missing — still allow reclaim of orphaned orders.
-        return true;
+    } catch (error: unknown) {
+        const code = typeof error === 'object' && error && 'code' in error
+            ? String((error as { code?: string }).code || '')
+            : '';
+        // Only treat explicit auth/user-not-found as reclaimable when Firestore
+        // already marked the profile as a guest merge orphan — never reclaim
+        // orders owned by a deleted real account solely because Auth is gone.
+        if (code === 'auth/user-not-found' && snap.exists && snap.data()?.isAnonymous === true) {
+            return true;
+        }
+        return false;
     }
 }
 

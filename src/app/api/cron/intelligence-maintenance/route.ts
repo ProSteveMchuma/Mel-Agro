@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { INTELLIGENCE_RETENTION_DAYS } from '@/lib/experimentation';
 import { runAutomations } from '@/lib/automation-engine';
 import { reconcilePaidPurchases } from '@/lib/purchase-analytics';
+import { expireStockReservations } from '@/lib/expire-stock-reservations';
 
 const MAX_DELETIONS_PER_COLLECTION = 400;
 
@@ -32,5 +33,14 @@ export async function GET(request: Request) {
     };
     const purchases = await reconcilePaidPurchases(100);
     const automations = await runAutomations('scheduled:intelligence-maintenance');
-    return NextResponse.json({ success: true, deleted, purchases, automations, maxPerCollection: MAX_DELETIONS_PER_COLLECTION, completedAt: new Date().toISOString() });
+    const stockReservations = await expireStockReservations();
+    return NextResponse.json({
+        success: true,
+        deleted,
+        purchases,
+        automations,
+        stockReservations,
+        maxPerCollection: MAX_DELETIONS_PER_COLLECTION,
+        completedAt: new Date().toISOString(),
+    });
 }

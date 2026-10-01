@@ -8,12 +8,18 @@ test('keeps product writes restricted to catalogue-capable administrators', () =
     assert.match(rules, /match \/products\/\{productId\}[\s\S]*?allow read: if true;[\s\S]*?allow write: if hasPermission\('catalogue\.manage'\);/);
 });
 
-test('enforces granular capabilities while preserving legacy administrators', () => {
+test('enforces granular capabilities with default-deny for missing permissions', () => {
     assert.match(rules, /function hasPermission\(permission\)/);
-    assert.match(rules, /!account\.keys\(\)\.hasAny\(\['adminPermissions'\]\)/);
+    assert.match(rules, /account\.keys\(\)\.hasAny\(\['adminPermissions'\]\)/);
+    assert.doesNotMatch(rules, /!account\.keys\(\)\.hasAny\(\['adminPermissions'\]\)/);
     assert.match(rules, /permission in account\.adminPermissions/);
     assert.match(rules, /match \/orders\/\{orderId\}[\s\S]*?allow create: if hasPermission\('orders\.manage'\)/);
     assert.match(rules, /match \/users\/\{userId\}[\s\S]*?hasPermission\('customers\.manage'\)/);
+});
+
+test('blocks client writes to transactions and public discount dumps', () => {
+    assert.match(rules, /match \/transactions\/\{id\}[\s\S]*?allow create, update, delete: if false;/);
+    assert.match(rules, /match \/discounts\/\{id\}[\s\S]*?allow read: if isAdmin\(\);/);
 });
 
 test('blocks client escalation of staff privilege fields on users', () => {

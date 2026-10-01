@@ -45,3 +45,12 @@ test('treats SMS as ready when Africa\'s Talking is configured instead of Advant
     assert.equal(result.ready, true);
     assert.deepEqual(result.missingByService.sms, []);
 });
+
+test('accepts OTP_PEPPER as order-access secret fallback', () => {
+    const env = completeEnvironment();
+    delete env.ORDER_ACCESS_SECRET;
+    env.OTP_PEPPER = 'configured-otp-pepper';
+    const result = getEnvironmentReadiness(env, true);
+    assert.equal(result.ready, true);
+    assert.deepEqual(result.missingByService.orderAccess, []);
+});

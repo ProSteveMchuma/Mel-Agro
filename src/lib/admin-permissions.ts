@@ -17,7 +17,9 @@ export const STAFF_PROFILES: Record<StaffProfile, { label: string; permissions: 
 export function hasAdminPermission(role: string | undefined, permissions: string[] | undefined, permission: AdminPermission) {
   if (role === "super-admin") return true;
   if (role !== "admin") return false;
-  return !Array.isArray(permissions) || permissions.includes(permission);
+  // Default-deny: admins without an explicit permissions array get nothing.
+  // Assign a staff profile (or super-admin) before granting access.
+  return Array.isArray(permissions) && permissions.includes(permission);
 }
 
 /** True when this staff member may open an admin href (Sidebar / Command Centre / Overview). */
@@ -33,7 +35,7 @@ export function canAccessAdminPath(
 }
 
 export function profileForPermissions(permissions: string[] | undefined): StaffProfile | "custom" {
-  if (!Array.isArray(permissions)) return "full";
+  if (!Array.isArray(permissions)) return "custom";
   const normalized = [...permissions].sort().join("|");
   const match = Object.entries(STAFF_PROFILES).find(([, profile]) => [...profile.permissions].sort().join("|") === normalized);
   return (match?.[0] as StaffProfile | undefined) || "custom";

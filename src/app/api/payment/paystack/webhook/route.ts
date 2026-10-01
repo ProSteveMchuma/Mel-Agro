@@ -36,101 +36,148 @@ export async function POST(request: Request) {
         const eventId = event?.data?.id ? String(event.data.id) : event?.id;
         const eventType = event?.event || 'unknown';
 
-        if (eventId) {
-            const dedupRef = adminDb.collection('paystackWebhookEvents').doc(String(eventId));
-            const dedupSnap = await dedupRef.get();
-            if (dedupSnap.exists) {
-                console.log(`Paystack Webhook: idempotent skip — event ${eventId} already processed`);
-                return NextResponse.json({ status: 'already_processed' });
+        if (event.event !== 'charge.success') {
+            if (eventId) {
+                await adminDb.collection('paystackWebhookEvents').doc(String(eventId)).set({
+                    eventId: String(eventId),
+                    eventType,
+                    receivedAt: new Date().toISOString(),
+                    status: 'ignored',
+                }, { merge: true });
             }
-            await dedupRef.set({
-                eventId: String(eventId),
-                eventType,
-                receivedAt: new Date().toISOString(),
-            });
+            return NextResponse.json({ status: 'ignored' });
         }
 
-        if (event.event === 'charge.success') {
-            const { metadata, reference, id, amount, customer } = event.data || {};
-            const orderId = metadata?.orderId;
+        const { metadata, reference, id, amount, customer } = event.data || {};
+        const orderId = metadata?.orderId;
+        if (!orderId) {
+            return NextResponse.json({ status: 'missing_order' }, { status: 400 });
+        }
 
-            if (orderId) {
-                const orderRef = adminDb.collection('orders').doc(orderId);
-                const orderDoc = await orderRef.get();
+        const orderRef = adminDb.collection('orders').doc(orderId);
+        const dedupRef = eventId
+            ? adminDb.collection('paystackWebhookEvents').doc(String(eventId))
+            : null;
+        const amountPaid = Number(amount) / 100;
+        const receipt = String(reference || id || '');
 
-                if (!orderDoc.exists) {
-                    console.warn(`Paystack Webhook: Order ${orderId} not found`);
-                    return NextResponse.json({ status: 'order_not_found' });
+        const outcome = await adminDb.runTransaction(async (transaction) => {
+            if (dedupRef) {
+                const dedupSnap = await transaction.get(dedupRef);
+                if (dedupSnap.exists && dedupSnap.data()?.status === 'applied') {
+                    return { kind: 'already_processed' as const };
                 }
+            }
 
-                if (orderDoc.data()?.paymentStatus === 'Paid') {
-                    console.log(`Paystack Webhook: order ${orderId} already Paid — idempotent skip`);
-                    return NextResponse.json({ status: 'already_paid' });
+            const orderDoc = await transaction.get(orderRef);
+            if (!orderDoc.exists) {
+                return { kind: 'order_not_found' as const };
+            }
+
+            const order = orderDoc.data() || {};
+            if (order.paymentStatus === 'Paid') {
+                if (dedupRef) {
+                    transaction.set(dedupRef, {
+                        eventId: String(eventId),
+                        eventType,
+                        orderId,
+                        receivedAt: new Date().toISOString(),
+                        status: 'applied',
+                        note: 'order_already_paid',
+                    }, { merge: true });
                 }
+                return { kind: 'already_paid' as const, order };
+            }
 
-                const orderTotal = Number(orderDoc.data()?.total || 0);
-                const amountPaid = Number(amount) / 100;
-                if (!orderTotal || Math.abs(amountPaid - orderTotal) > 1) {
-                    await orderRef.update({
-                        paymentStatus: 'Pending Verification',
-                        status: 'Pending Payment',
-                        amountPaid,
-                        paystackReference: reference,
-                        paymentFailureReason: `Amount mismatch: received KES ${amountPaid}, expected KES ${orderTotal}`,
-                        updatedAt: new Date().toISOString(),
-                    });
-                    console.warn(`Paystack amount mismatch for order ${orderId}: received ${amountPaid}, expected ${orderTotal}`);
-                    return NextResponse.json({ status: 'amount_mismatch' });
-                }
-
-                await orderRef.update({
-                    paymentStatus: 'Paid',
-                    processingAt: new Date().toISOString(),
-                    paymentMethod: 'Card',
-                    paystackReference: reference,
-                    paystackId: String(id),
-                    transactionId: reference,
+            const orderTotal = Number(order.total || 0);
+            if (!orderTotal || Math.abs(amountPaid - orderTotal) > 1) {
+                transaction.update(orderRef, {
+                    paymentStatus: 'Pending Verification',
+                    status: 'Pending Payment',
                     amountPaid,
-                    status: 'Processing',
-                    stockReservationStatus: 'committed',
-                    paidAt: new Date().toISOString(),
+                    paystackReference: reference,
+                    paymentFailureReason: `Amount mismatch: received KES ${amountPaid}, expected KES ${orderTotal}`,
                     updatedAt: new Date().toISOString(),
-                    history: admin.firestore.FieldValue.arrayUnion({
-                        status: 'Paid',
-                        timestamp: new Date().toISOString(),
-                        message: `Payment of ${amountPaid} KES confirmed via Paystack (Ref: ${reference})`,
-                    }),
                 });
+                if (dedupRef) {
+                    transaction.set(dedupRef, {
+                        eventId: String(eventId),
+                        eventType,
+                        orderId,
+                        receivedAt: new Date().toISOString(),
+                        status: 'amount_mismatch',
+                    }, { merge: true });
+                }
+                return { kind: 'amount_mismatch' as const };
+            }
 
-                await adminDb.collection('transactions').add({
+            const now = new Date().toISOString();
+            transaction.update(orderRef, {
+                paymentStatus: 'Paid',
+                processingAt: now,
+                paymentMethod: 'Card',
+                paystackReference: reference,
+                paystackId: String(id),
+                transactionId: reference,
+                amountPaid,
+                status: 'Processing',
+                stockReservationStatus: 'committed',
+                paidAt: now,
+                updatedAt: now,
+                history: admin.firestore.FieldValue.arrayUnion({
+                    status: 'Paid',
+                    timestamp: now,
+                    message: `Payment of ${amountPaid} KES confirmed via Paystack (Ref: ${reference})`,
+                }),
+            });
+
+            if (receipt) {
+                transaction.set(adminDb.collection('transactions').doc(`PAYSTACK_${receipt}`.slice(0, 150)), {
                     orderId,
-                    userId: orderDoc.data()?.userId || null,
+                    userId: order.userId || null,
                     amount: amountPaid,
-                    receipt: reference,
+                    receipt,
                     method: 'Card (Paystack)',
-                    date: new Date().toISOString(),
+                    date: now,
                     status: 'Success',
                     recordedBy: 'System (Paystack Webhook)',
                     customerEmail: customer?.email || null,
-                });
-
-                void notifyCustomerPaymentReceived({
-                    orderId,
-                    order: {
-                        ...orderDoc.data(),
-                        amountPaid,
-                        paymentMethod: 'Card (Paystack)',
-                        transactionId: reference,
-                    },
-                    receipt: reference,
-                    method: 'Card (Paystack)',
-                });
-
-                console.log(`Paystack Webhook: order ${orderId} marked Paid`);
+                }, { merge: true });
             }
+
+            if (dedupRef) {
+                transaction.set(dedupRef, {
+                    eventId: String(eventId),
+                    eventType,
+                    orderId,
+                    receivedAt: now,
+                    status: 'applied',
+                }, { merge: true });
+            }
+
+            return { kind: 'paid' as const, order };
+        });
+
+        if (outcome.kind === 'paid') {
+            void notifyCustomerPaymentReceived({
+                orderId,
+                order: {
+                    ...outcome.order,
+                    amountPaid,
+                    paymentMethod: 'Card (Paystack)',
+                    transactionId: reference,
+                },
+                receipt,
+                method: 'Card (Paystack)',
+            });
+            console.log(`Paystack Webhook: order ${orderId} marked Paid`);
         }
 
-        return NextResponse.json({ status: 'success' });
+        if (outcome.kind === 'order_not_found') {
+            return NextResponse.json({ status: 'order_not_found' }, { status: 404 });
+        }
+
+        return NextResponse.json({ status: outcome.kind === 'paid' ? 'success' : outcome.kind });
     } catch (error: any) {
         console.error('Paystack Webhook Critical Error:', error);
         void reportIncident({

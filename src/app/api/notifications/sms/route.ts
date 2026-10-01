@@ -1,53 +1,27 @@
 import { NextResponse } from 'next/server';
-import { requireUser } from '@/lib/auth-server';
+import { requirePermission } from '@/lib/auth-server';
 import { enforceRateLimit } from '@/lib/request-guard';
-import { reportIncident } from '@/lib/incident-reporting';
-import { sendServerSms } from '@/lib/server-notifications';
 
+/**
+ * Public notification relays are sealed. Customer messaging must go through
+ * server-only helpers (`notifyCustomer` / `sendServerSms`) which pick the
+ * destination from an order or verified contact — never from an arbitrary client body.
+ */
 export async function POST(request: Request) {
-    const limited = enforceRateLimit(request, 'notification-sms', 30, 60_000);
+    const limited = enforceRateLimit(request, 'notification-sms', 10, 60_000);
     if (limited) return limited;
 
-    const auth = await requireUser(request);
+    // Even staff must not use this open relay — use order/admin flows instead.
+    const auth = await requirePermission(request, 'orders.manage');
     if (!auth.ok) {
-        return NextResponse.json({ success: false, message: auth.message }, { status: 401 });
+        return NextResponse.json({ success: false, message: auth.message }, { status: 403 });
     }
 
-    try {
-        const { to, message } = await request.json();
-
-        if (!to || !message) {
-            return NextResponse.json({ success: false, message: 'To (phone number) and Message are required' }, { status: 400 });
-        }
-
-        const result = await sendServerSms(to, message);
-        if (result.ok) {
-            return NextResponse.json({ success: true, message: 'SMS sent successfully' });
-        }
-
-        const unconfigured = result.reason === 'SMS provider is not configured'
-            || result.reason === 'Advanta credentials not configured'
-            || result.reason === 'Advanta sender ID not configured';
-
-        if (unconfigured) {
-            return NextResponse.json({ success: false, message: result.reason }, { status: 503 });
-        }
-
-        void reportIncident({
-            type: 'notification_failure',
-            severity: 'warning',
-            source: 'advanta-sms',
-            message: result.reason || 'SMS provider rejected message',
-        });
-        return NextResponse.json({ success: false, message: result.reason || 'Failed to send SMS via provider' }, { status: 500 });
-    } catch (error) {
-        console.error('SMS API Error:', error);
-        void reportIncident({
-            type: 'notification_failure',
-            severity: 'warning',
-            source: 'advanta-sms',
-            message: error instanceof Error ? error.message : 'SMS delivery failed',
-        });
-        return NextResponse.json({ success: false, message: 'Internal Server Error' }, { status: 500 });
-    }
+    return NextResponse.json(
+        {
+            success: false,
+            message: 'Direct SMS relay is disabled. Use order or admin notification flows.',
+        },
+        { status: 410 },
+    );
 }

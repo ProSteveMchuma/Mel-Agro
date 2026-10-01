@@ -19,8 +19,9 @@ test('super-admin retains every administrative capability', () => {
   for (const permission of ADMIN_PERMISSIONS) assert.equal(hasAdminPermission('super-admin', [], permission), true);
 });
 
-test('legacy admins remain compatible until a profile is assigned', () => {
-  for (const permission of ADMIN_PERMISSIONS) assert.equal(hasAdminPermission('admin', undefined, permission), true);
+test('admins without an explicit permissions array are denied (default-deny)', () => {
+  for (const permission of ADMIN_PERMISSIONS) assert.equal(hasAdminPermission('admin', undefined, permission), false);
+  assert.equal(hasAdminPermission('admin', [], 'orders.manage'), false);
 });
 
 test('restricted staff receive only their assigned capabilities', () => {
@@ -38,6 +39,7 @@ test('customers never receive admin capabilities', () => {
 test('staff profiles are deterministically recognized', () => {
   assert.equal(profileForPermissions([...STAFF_PROFILES.operations.permissions].reverse()), 'operations');
   assert.equal(profileForPermissions(['orders.manage']), 'custom');
+  assert.equal(profileForPermissions(undefined), 'custom');
 });
 
 test('admin routes map to their required capability', () => {
