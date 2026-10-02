@@ -129,6 +129,10 @@ service cloud.firestore {
       allow read, delete: if isAdmin();
       allow write: if false;
     }
+    match /analytics_visit_clock/{id} {
+      allow read, delete: if isAdmin();
+      allow write: if false;
+    }
     match /analytics_funnels/{id} {
       allow read, delete: if isAdmin();
       allow create, update: if request.auth != null && request.auth.uid == id;

@@ -6,6 +6,7 @@ import { requireUser } from '@/lib/auth-server';
 import { checkRateLimit, getClientAddress } from '@/lib/rate-limit';
 import { ANALYTICS_SCHEMA_VERSION } from '@/lib/storefront-analytics';
 import { normalizeAnalyticsPath, visitRegionLabel } from '@/lib/commerce-ops';
+import { nairobiClock } from '@/lib/nairobi-clock';
 import { recordPaidPurchase } from '@/lib/purchase-analytics';
 
 type AnalyticsEvent = 'search' | 'view' | 'add_to_cart' | 'visit' | 'purchase' | 'recommendation_impression' | 'recommendation_click' | 'recommendation_add_to_cart';
@@ -103,6 +104,8 @@ export async function POST(request: Request) {
             const trafficRef = adminDb.collection('analytics_traffic').doc(today);
             const pageRef = adminDb.collection('analytics_pages').doc(pageId);
             const regionRef = adminDb.collection('analytics_regions').doc(regionId);
+            const clock = nairobiClock(new Date());
+            const clockRef = clock ? adminDb.collection('analytics_visit_clock').doc(clock.date) : null;
             await adminDb.runTransaction(async transaction => {
                 const existing = await transaction.get(visitRef);
                 const pageVisitor = await transaction.get(pageVisitorRef);
@@ -134,6 +137,14 @@ export async function POST(request: Request) {
                 if (!existing.exists) transaction.set(visitRef, { date: today, createdAt: FieldValue.serverTimestamp() });
                 if (!pageVisitor.exists) transaction.set(pageVisitorRef, { date: today, createdAt: FieldValue.serverTimestamp() });
                 if (!regionVisitor.exists) transaction.set(regionVisitorRef, { date: today, createdAt: FieldValue.serverTimestamp() });
+                if (clock && clockRef) {
+                    transaction.set(clockRef, {
+                        schemaVersion: ANALYTICS_SCHEMA_VERSION,
+                        date: clock.date,
+                        weekday: clock.weekday,
+                        [`hours.${clock.hourKey}`]: FieldValue.increment(1),
+                    }, { merge: true });
+                }
             });
         } else {
             const auth = await requireUser(request);

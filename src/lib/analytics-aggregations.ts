@@ -1,7 +1,8 @@
 // Pure aggregation helpers for the admin Revenue Analytics dashboard.
 // Operate on the orders[] array streamed by OrderContext (already admin-scoped).
 
-import type { Order } from '@/types';
+import type { Order } from '../types/index.ts';
+import { nairobiClock, WEEKDAY_LABELS } from './nairobi-clock.ts';
 
 export type DateRange = '7d' | '30d' | '90d' | '12m' | 'all';
 export type Granularity = 'day' | 'week' | 'month';
@@ -205,14 +206,12 @@ export interface PatternBucket { label: string; orders: number; revenue: number;
 
 export function ordersByDayOfWeek(orders: Order[]): PatternBucket[] {
     const paid = paidOnly(orders);
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const buckets: PatternBucket[] = days.map(d => ({ label: d, orders: 0, revenue: 0 }));
+    const buckets: PatternBucket[] = WEEKDAY_LABELS.map(d => ({ label: d, orders: 0, revenue: 0 }));
     for (const o of paid) {
-        const d = new Date(o.date);
-        if (!Number.isFinite(d.getTime())) continue;
-        const idx = d.getDay();
-        buckets[idx].orders += 1;
-        buckets[idx].revenue += Number(o.total) || 0;
+        const clock = nairobiClock(o.date);
+        if (!clock) continue;
+        buckets[clock.weekdayIndex].orders += 1;
+        buckets[clock.weekdayIndex].revenue += Number(o.total) || 0;
     }
     return buckets.map(b => ({ ...b, revenue: Math.round(b.revenue) }));
 }
@@ -225,11 +224,10 @@ export function ordersByHourOfDay(orders: Order[]): PatternBucket[] {
         revenue: 0,
     }));
     for (const o of paid) {
-        const d = new Date(o.date);
-        if (!Number.isFinite(d.getTime())) continue;
-        const h = d.getHours();
-        buckets[h].orders += 1;
-        buckets[h].revenue += Number(o.total) || 0;
+        const clock = nairobiClock(o.date);
+        if (!clock) continue;
+        buckets[clock.hour].orders += 1;
+        buckets[clock.hour].revenue += Number(o.total) || 0;
     }
     return buckets.map(b => ({ ...b, revenue: Math.round(b.revenue) }));
 }
