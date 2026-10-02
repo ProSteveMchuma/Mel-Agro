@@ -225,6 +225,10 @@ service cloud.firestore {
       allow read: if isAdmin();
       allow write: if false;
     }
+    // Custom staff roles are managed by the Admin SDK (super-admin API only).
+    match /staffRoles/{id} {
+      allow read, write: if false;
+    }
     match /automationRules/{id} {
       allow read, write: if false;
     }
