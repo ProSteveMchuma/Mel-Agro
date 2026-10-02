@@ -108,7 +108,11 @@ function LoginForm() {
                 }
                 const stored = window.localStorage.getItem('postLoginRedirect');
                 if (stored) window.localStorage.removeItem('postLoginRedirect');
-                router.push(stored || callbackUrl);
+                if (!result.user.phoneNumber) {
+                    router.push('/dashboard/user?tab=profile&linkPhone=1');
+                } else {
+                    router.push(stored || callbackUrl);
+                }
             } catch (err: any) {
                 if (!cancelled) {
                     console.error('Google redirect result error:', err);
@@ -260,12 +264,17 @@ function LoginForm() {
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
 
-        const finish = async (uid: string, displayName: string | null, email: string | null) => {
+        const finish = async (uid: string, displayName: string | null, email: string | null, phoneNumber?: string | null) => {
             // Profile merge is best-effort — Auth already succeeded; AuthContext creates the user doc.
             try {
                 await mergeGoogleProfile(uid, displayName, email);
             } catch (profileErr) {
                 console.warn('Google profile merge failed (non-fatal):', profileErr);
+            }
+            // New Google accounts without a phone → prompt to link phone (prevents a later phone duplicate).
+            if (!phoneNumber) {
+                router.push('/dashboard/user?tab=profile&linkPhone=1');
+                return;
             }
             router.push(callbackUrl);
         };
@@ -279,13 +288,13 @@ function LoginForm() {
                     const guestToken = await current.getIdToken();
                     sessionStorage.setItem('melagri_guest_id_token', guestToken);
                     const linked = await linkWithPopup(current, provider);
-                    await finish(linked.user.uid, linked.user.displayName, linked.user.email);
+                    await finish(linked.user.uid, linked.user.displayName, linked.user.email, linked.user.phoneNumber);
                     return;
                 } catch (linkErr: any) {
                     const linkCode = linkErr?.code as string | undefined;
                     if (linkCode === 'auth/credential-already-in-use' || linkCode === 'auth/email-already-in-use') {
                         const cred = await signInWithPopup(auth, provider);
-                        await finish(cred.user.uid, cred.user.displayName, cred.user.email);
+                        await finish(cred.user.uid, cred.user.displayName, cred.user.email, cred.user.phoneNumber);
                         return;
                     }
                     if (shouldFallbackToRedirect(linkCode)) {
@@ -297,9 +306,31 @@ function LoginForm() {
                 }
             }
 
+            // Already signed in (e.g. phone OTP): attach Google to THIS uid instead of creating another.
+            if (current && !current.isAnonymous) {
+                const hasGoogle = current.providerData.some((p) => p.providerId === 'google.com');
+                if (!hasGoogle) {
+                    try {
+                        const linked = await linkWithPopup(current, provider);
+                        await finish(linked.user.uid, linked.user.displayName, linked.user.email, linked.user.phoneNumber);
+                        return;
+                    } catch (linkErr: any) {
+                        const linkCode = linkErr?.code as string | undefined;
+                        if (linkCode === 'auth/credential-already-in-use' || linkCode === 'auth/email-already-in-use') {
+                            setError(
+                                'That Google account is already tied to another Mel-Agri login. Sign out, sign in with Google, then add this phone under Account → Sign-in methods.',
+                            );
+                            setGoogleBusy(false);
+                            return;
+                        }
+                        throw linkErr;
+                    }
+                }
+            }
+
             try {
                 const cred = await signInWithPopup(auth, provider);
-                await finish(cred.user.uid, cred.user.displayName, cred.user.email);
+                await finish(cred.user.uid, cred.user.displayName, cred.user.email, cred.user.phoneNumber);
             } catch (popupErr: any) {
                 if (shouldFallbackToRedirect(popupErr?.code)) {
                     window.localStorage.setItem('postLoginRedirect', callbackUrl);

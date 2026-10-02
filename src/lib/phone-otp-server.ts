@@ -127,3 +127,86 @@ export async function verifyLoginOtp(rawPhone: string, code: string): Promise<{
 
     return { ok: true, token, message: 'Verified' };
 }
+
+/**
+ * Attach a verified Kenyan phone number to the currently signed-in Auth user.
+ * Used when a Google/email account wants to add phone without creating a second UID.
+ *
+ * If the phone already belongs to a different Auth user, returns `conflict` so the
+ * client can guide them to sign in with that phone and link Google from there (Phase 2 merge).
+ */
+export async function linkPhoneToAuthenticatedUser(
+    uid: string,
+    rawPhone: string,
+    code: string,
+): Promise<{ ok: boolean; conflict?: boolean; message: string }> {
+    let phone: string;
+    try {
+        phone = normalizeKenyanPhone(rawPhone);
+    } catch {
+        return { ok: false, message: 'Please enter a valid Kenyan phone number.' };
+    }
+
+    const ref = challengeRef(phone);
+    const snap = await ref.get();
+    const challenge = snap.data() as OtpChallenge | undefined;
+    const result = assertCanVerifyOtp(challenge, phone, String(code || '').trim(), otpPepper());
+
+    if (!result.ok) {
+        if (challenge?.codeHash && result.message.startsWith('Invalid OTP')) {
+            await ref.set({
+                attempts: (Number(challenge.attempts) || 0) + 1,
+                updatedAt: new Date().toISOString(),
+            }, { merge: true });
+        }
+        return { ok: false, message: result.message };
+    }
+
+    let phoneOwner: { uid: string } | null = null;
+    try {
+        phoneOwner = await adminAuth.getUserByPhoneNumber(phone);
+    } catch (error: any) {
+        if (error?.code !== 'auth/user-not-found') throw error;
+    }
+
+    if (phoneOwner && phoneOwner.uid !== uid) {
+        return {
+            ok: false,
+            conflict: true,
+            message:
+                'This phone is already on another Mel-Agri account. Sign in with that phone number, then connect Google from Account → Sign-in methods.',
+        };
+    }
+
+    const current = await adminAuth.getUser(uid);
+    if (current.phoneNumber && current.phoneNumber !== phone) {
+        return {
+            ok: false,
+            message: `This account already uses ${current.phoneNumber}. Contact support to change it.`,
+        };
+    }
+
+    if (!current.phoneNumber) {
+        try {
+            await adminAuth.updateUser(uid, { phoneNumber: phone });
+        } catch (error: any) {
+            if (error?.code === 'auth/phone-number-already-exists') {
+                return {
+                    ok: false,
+                    conflict: true,
+                    message:
+                        'This phone is already on another Mel-Agri account. Sign in with that phone, then connect Google from Account → Sign-in methods.',
+                };
+            }
+            throw error;
+        }
+    }
+
+    await adminDb.collection('users').doc(uid).set({
+        phone,
+        updatedAt: new Date().toISOString(),
+    }, { merge: true });
+
+    await ref.delete().catch(() => undefined);
+    return { ok: true, message: 'Phone linked to your account.' };
+}
