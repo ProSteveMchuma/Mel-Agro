@@ -4,7 +4,7 @@ import ProductsClient from "./ProductsClient";
 import { getProductsPage } from "@/lib/products";
 import { getUniqueBrandsCached, getUniqueCategoriesCached } from "@/lib/products-server";
 import { absoluteUrl } from '@/lib/site';
-import { productSeoPath } from '@/lib/seo';
+import { catalogueListingMeta, productSeoPath } from '@/lib/seo';
 
 type Props = {
     searchParams: Promise<{ category?: string; brand?: string; search?: string }>;
@@ -14,11 +14,11 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     const { category, brand, search } = await searchParams;
     
     let title = "Buy Agricultural Inputs, Seeds & Fertilizers Online Kenya";
-    let description = "Order certified high-quality agricultural inputs online at Mel-Agri Kenya. Shop hybrid seeds, fertilizers, crop protection chemicals, and farm tools with fast farm delivery.";
+    let description = "Order certified seeds, fertilizers, and crop protection from Mel-Agri in Machakos, with delivery across Kenya.";
     let keywords = ["buy agricultural inputs", "agrovet online Kenya", "certified seeds supplier", "fertilizer price Kenya", "farm tools online", "Mel-Agri"];
     // Catalogue stays on /products for filter UX; SEO landings own category/brand URLs.
-    const canonical = '/products';
-    const isFiltered = Boolean(category || brand || search);
+    const listing = catalogueListingMeta({ category, brand, search });
+    const canonical = listing.canonical;
     
     if (category) {
         title = `Buy Premium ${category} Online Kenya - Fast Farm Delivery`;
@@ -40,13 +40,13 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
         keywords: keywords.map(k => k.toLowerCase()),
         alternates: { canonical },
         // Prefer /categories and /brands landings for indexation; filtered catalogue is a tool.
-        robots: isFiltered ? { index: false, follow: true } : { index: true, follow: true },
+        robots: listing.index ? { index: true, follow: true } : { index: false, follow: true },
         openGraph: {
             title,
             description,
             url: absoluteUrl(canonical),
             type: 'website',
-            images: ['/images/kenyan-farmer-banner.png'],
+            images: ['/images/melagri-social.jpg'],
         },
     };
 }

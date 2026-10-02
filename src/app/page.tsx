@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import JsonLd from "@/components/JsonLd";
@@ -18,6 +19,10 @@ import {
   resolveQuickShopTiles,
   type MarketingBlocksPage,
 } from '@/lib/cms-marketing';
+
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+};
 
 // Server Component
 export default async function Home() {

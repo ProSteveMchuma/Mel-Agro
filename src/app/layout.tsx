@@ -19,7 +19,7 @@ import { BehaviorProvider } from "@/context/BehaviorContext";
 import TrafficTracker from "@/components/TrafficTracker";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { SITE_SOCIAL_IMAGE, SITE_URL } from '@/lib/site';
+import { SITE_DESCRIPTION, SITE_SOCIAL_IMAGE, SITE_URL } from '@/lib/site';
 import ServiceWorkerCleanup from '@/components/ServiceWorkerCleanup';
 
 
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     default: "Mel-Agri | Buy Premium Agricultural Inputs & Seeds Online Kenya",
     template: "%s | Mel-Agri"
   },
-  description: "Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests. Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection with fast nationwide delivery.",
+  description: SITE_DESCRIPTION,
   keywords: [
     "buy agricultural inputs online kenya",
     "online agrovet near me",
@@ -76,9 +76,6 @@ export const metadata: Metadata = {
       { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
     ],
   },
-  alternates: {
-    canonical: '/',
-  },
   robots: {
     index: true,
     follow: true,
@@ -95,21 +92,21 @@ export const metadata: Metadata = {
     locale: 'en_KE',
     url: SITE_URL,
     title: 'Mel-Agri | Buy Premium Agricultural Inputs & Seeds Online Kenya',
-    description: 'Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests. Shop certified hybrid seeds, high-yield fertilizers, and precision crop protection with fast nationwide delivery.',
+    description: SITE_DESCRIPTION,
     siteName: 'Mel-Agri',
     images: [
       {
         url: SITE_SOCIAL_IMAGE,
-        width: 640,
-        height: 640,
-        alt: 'Mel-Agri — Premium Agricultural Inputs in Kenya',
+        width: 1200,
+        height: 630,
+        alt: 'Mel-Agri — farm inputs from Machakos, Kenya',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Mel-Agri | Buy Premium Agricultural Inputs & Seeds Online Kenya',
-    description: 'Bringing Quality Agricultural Inputs Online in Kenya. Trusted by Farmers for better Harvests.',
+    description: SITE_DESCRIPTION,
     images: [SITE_SOCIAL_IMAGE],
   },
   verification: {

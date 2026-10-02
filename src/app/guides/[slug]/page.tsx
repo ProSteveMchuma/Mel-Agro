@@ -28,10 +28,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     }
 
     const canonical = `/guides/${guide.slug}`;
-    const imageUrl = guide.image?.startsWith('http') ? guide.image : `${SITE_URL}${guide.image || '/images/kenyan-farmer-banner.png'}`;
+    const imageUrl = guide.image?.startsWith('http') ? guide.image : `${SITE_URL}${guide.image || '/images/kenyan-farmer-banner.jpg'}`;
 
     return {
-        title: `${guide.title} | Farmer's Knowledge Base`,
+        title: guide.title,
         description: guide.description,
         alternates: { canonical },
         openGraph: {
@@ -111,7 +111,7 @@ export default async function GuidePage({ params }: Props) {
         notFound();
     }
 
-    const guideImageUrl = guide.image?.startsWith('http') ? guide.image : `${SITE_URL}${guide.image || '/images/kenyan-farmer-banner.png'}`;
+    const guideImageUrl = guide.image?.startsWith('http') ? guide.image : `${SITE_URL}${guide.image || '/images/kenyan-farmer-banner.jpg'}`;
 
     // 1. Article JSON-LD for Standard SEO
     const articleJsonLd = {

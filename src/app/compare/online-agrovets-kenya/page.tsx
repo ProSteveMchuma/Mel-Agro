@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     description: 'Compare Mel-Agri with Farmers Trend Virtual Agrovet, MyAgroVet, AgroDuka and Lukenya Agrovet using price, stock, delivery, payment, returns and support checks.',
     alternates: { canonical: '/compare/online-agrovets-kenya' },
     keywords: ['Mel-Agri', 'Farmers Trend Virtual Agrovet', 'MyAgroVet Kenya', 'AgroDuka Kenya', 'Lukenya Agrovet', 'online agrovet Kenya comparison', 'AgroDuka alternative', 'MyAgroVet alternative'],
-    openGraph: { title: 'How to Compare Online Agrovets in Kenya', description: 'A transparent checklist for comparing farm-input shops before ordering.', url: '/compare/online-agrovets-kenya', type: 'article', images: ['/images/kenyan-farmer-banner.png'] },
+    openGraph: { title: 'How to Compare Online Agrovets in Kenya', description: 'A transparent checklist for comparing farm-input shops before ordering.', url: '/compare/online-agrovets-kenya', type: 'article', images: ['/images/melagri-social.jpg'] },
 };
 
 const factors = [

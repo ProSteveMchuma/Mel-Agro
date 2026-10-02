@@ -25,7 +25,7 @@ export default function HeroPreview({ banners }: { banners: HomepageBanner[] }) 
       : [
           {
             id: "shamba-ready",
-            image: "/images/kenyan-farmer-banner.png",
+            image: "/images/kenyan-farmer-banner.jpg",
             tag: "WEEKLY OFFER",
             title: "Prepare Your Shamba For The Long Rains",
             description: "Get certified hybrid maize seeds and planting fertilizers today.",
@@ -64,7 +64,8 @@ export default function HeroPreview({ banners }: { banners: HomepageBanner[] }) 
                   alt={slides[currentSlide].title}
                   fill
                   priority
-                  sizes="100vw"
+                  unoptimized
+                  sizes="(max-width: 768px) 100vw, 1200px"
                   className="object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent" />

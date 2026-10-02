@@ -38,7 +38,8 @@ test('product form gallery and variant previews stay off the optimizer', () => {
 test('hero and partner images are not retargeted by the admin photo fix', () => {
   const hero = source('src/components/Hero.tsx');
   const partners = source('src/components/Partners.tsx');
-  assert.match(hero, /kenyan-farmer-banner\.png/);
+  assert.match(hero, /kenyan-farmer-banner\.jpg/);
+  assert.match(hero, /unoptimized/);
   assert.doesNotMatch(hero, /skipImageOptimizer/);
   assert.match(partners, /unoptimized/);
   assert.doesNotMatch(partners, /skipImageOptimizer/);

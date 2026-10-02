@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const canonical = `/categories/${slugifySeoValue(category)}`;
     const title = `${category} in Kenya — Compare Products & Prices`;
     const description = editorial.summary.slice(0, 158);
-    return { title, description, alternates: { canonical }, openGraph: { title, description, type: 'website', url: canonical, images: ['/images/kenyan-farmer-banner.png'] } };
+    return { title, description, alternates: { canonical }, openGraph: { title, description, type: 'website', url: canonical, images: ['/images/melagri-social.jpg'] } };
 }
 
 export default async function CategoryPage({ params }: Props) {

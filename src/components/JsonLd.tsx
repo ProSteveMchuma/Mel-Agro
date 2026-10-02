@@ -1,4 +1,4 @@
-import { SITE_LOGO, SITE_SOCIAL_IMAGE, SITE_URL, SUPPORT_PHONE_E164 } from '@/lib/site';
+import { COMPANY_LOCALITY, COMPANY_POSTAL_CODE, COMPANY_REGION, COMPANY_STREET, SITE_DESCRIPTION, SITE_LOGO, SITE_SOCIAL_IMAGE, SITE_URL, SUPPORT_PHONE_E164 } from '@/lib/site';
 
 export default function JsonLd() {
     const storeId = `${SITE_URL}/#store`;
@@ -10,7 +10,7 @@ export default function JsonLd() {
                 '@id': storeId,
                 name: 'Mel-Agri',
                 alternateName: ['Mel Agro', 'Melagri'],
-                description: "Kenya's online agrovet for certified seeds, fertilizers, crop protection products, and farm tools with nationwide delivery.",
+                description: SITE_DESCRIPTION,
                 url: SITE_URL,
                 logo: {
                     '@type': 'ImageObject',
@@ -33,23 +33,26 @@ export default function JsonLd() {
                 },
                 address: {
                     '@type': 'PostalAddress',
-                    streetAddress: 'Makamithi Towers, 4th Floor, Ngong Road',
-                    addressLocality: 'Nairobi',
-                    addressRegion: 'Nairobi County',
-                    postalCode: '00100',
+                    streetAddress: COMPANY_STREET,
+                    addressLocality: COMPANY_LOCALITY,
+                    addressRegion: COMPANY_REGION,
+                    postalCode: COMPANY_POSTAL_CODE,
                     addressCountry: 'KE',
                 },
-                geo: {
-                    '@type': 'GeoCoordinates',
-                    latitude: -1.3005,
-                    longitude: 36.7869,
-                },
-                openingHoursSpecification: {
-                    '@type': 'OpeningHoursSpecification',
-                    dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-                    opens: '08:00',
-                    closes: '18:00',
-                },
+                openingHoursSpecification: [
+                    {
+                        '@type': 'OpeningHoursSpecification',
+                        dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+                        opens: '08:00',
+                        closes: '18:00',
+                    },
+                    {
+                        '@type': 'OpeningHoursSpecification',
+                        dayOfWeek: 'Saturday',
+                        opens: '09:00',
+                        closes: '16:00',
+                    },
+                ],
                 hasMerchantReturnPolicy: {
                     '@type': 'MerchantReturnPolicy',
                     '@id': `${SITE_URL}/#return-policy`,

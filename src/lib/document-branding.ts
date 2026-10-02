@@ -28,7 +28,7 @@ export function resolveDocumentBranding(input: DocumentBrandingInput = {}) {
     const website = String(input.websiteUrl || '').replace(/^https?:\/\//i, '').replace(/\/$/, '') || 'melagri.com';
     return {
         companyName: input.companyName || 'Mel-Agri Kenya',
-        address: input.address || 'Nairobi, Kenya',
+        address: input.address || 'Makamithi House, Industrial Area, Machakos',
         supportPhone: input.supportPhone || '0788 970757',
         supportEmail: input.supportEmail || 'support@Mel-Agri.com',
         websiteUrl: website,
