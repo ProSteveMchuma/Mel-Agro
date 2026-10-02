@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useCart } from "@/context/CartContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
@@ -23,9 +24,8 @@ export default function Header() {
   const accountRef = useRef<HTMLDivElement>(null);
   const helpRef = useRef<HTMLDivElement>(null);
 
-  const userLink = user
-    ? (isAdmin ? "/dashboard/admin" : "/dashboard/user")
-    : "/auth/login";
+  const closeAccountMenu = () => setIsAccountOpen(false);
+  const toggleAccountMenu = () => setIsAccountOpen((open) => !open);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -44,10 +44,10 @@ export default function Header() {
       }
     }
 
-    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("click", handleClickOutside);
     document.addEventListener("keydown", handleEscape);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("click", handleClickOutside);
       document.removeEventListener("keydown", handleEscape);
     };
   }, []);
@@ -91,13 +91,14 @@ export default function Header() {
           {/* Action Icons */}
           <div className="flex items-center gap-2 sm:gap-4 md:gap-6 shrink-0">
             {/* Account Dropdown */}
-            <div className="relative" ref={accountRef}>
+            <div className="relative z-[60]" ref={accountRef}>
               <button
                 type="button"
                 className="hidden lg:flex items-center gap-2 group rounded-xl text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20"
-                onClick={() => setIsAccountOpen(!isAccountOpen)}
+                onClick={toggleAccountMenu}
                 aria-expanded={isAccountOpen}
                 aria-controls="account-menu"
+                aria-haspopup="menu"
               >
                 <div className="p-2 bg-gray-50 rounded-full group-hover:bg-gray-100 transition-colors">
                   <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
@@ -111,44 +112,61 @@ export default function Header() {
                 </div>
               </button>
 
-              {/* Account Dropdown Menu */}
+              <button
+                type="button"
+                className="lg:hidden inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-gray-50 p-2 transition-colors hover:bg-gray-100 touch-manipulation focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20"
+                onClick={toggleAccountMenu}
+                aria-expanded={isAccountOpen}
+                aria-controls="account-menu"
+                aria-haspopup="menu"
+                aria-label="Account menu"
+              >
+                <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              </button>
+
               {isAccountOpen && (
-                <div id="account-menu" className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-1 animate-in fade-in slide-in-from-top-2 z-50">
+                <div id="account-menu" role="menu" aria-label="Account" className="absolute right-0 z-50 mt-2 w-48 max-w-[calc(100vw-1.5rem)] rounded-xl border border-gray-100 bg-white py-1 shadow-lg animate-in fade-in slide-in-from-top-2">
                   {user ? (
                     <>
                       <Link
                         href="/dashboard/user"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium"
-                        onClick={() => setIsAccountOpen(false)}
+                        role="menuitem"
+                        className="flex min-h-11 items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium lg:min-h-0"
+                        onClick={closeAccountMenu}
                       >
                         Dashboard
                       </Link>
                       <Link
                         href="/dashboard/user?tab=orders"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium"
-                        onClick={() => setIsAccountOpen(false)}
+                        role="menuitem"
+                        className="flex min-h-11 items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium lg:min-h-0"
+                        onClick={closeAccountMenu}
                       >
                         My Orders
                       </Link>
                       <Link
                         href="/dashboard/user?tab=wishlist"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium"
-                        onClick={() => setIsAccountOpen(false)}
+                        role="menuitem"
+                        className="flex min-h-11 items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium lg:min-h-0"
+                        onClick={closeAccountMenu}
                       >
                         Wishlist
                       </Link>
                       {isAdmin && (
                         <Link
                           href="/dashboard/admin"
-                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium border-t border-gray-50"
-                          onClick={() => setIsAccountOpen(false)}
+                          role="menuitem"
+                          className="flex min-h-11 items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium border-t border-gray-50 lg:min-h-0"
+                          onClick={closeAccountMenu}
                         >
                           Admin Panel
                         </Link>
                       )}
                       <button
-                        onClick={() => { handleLogout(); setIsAccountOpen(false); }}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 font-bold border-t border-gray-50 mt-1"
+                        type="button"
+                        role="menuitem"
+                        onClick={() => { handleLogout(); closeAccountMenu(); }}
+                        className="mt-1 flex min-h-11 w-full items-center border-t border-gray-50 px-4 py-2 text-left text-sm font-bold text-red-600 hover:bg-red-50 lg:min-h-0"
                       >
                         Sign Out
                       </button>
@@ -157,15 +175,17 @@ export default function Header() {
                     <>
                       <Link
                         href="/auth/login"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium"
-                        onClick={() => setIsAccountOpen(false)}
+                        role="menuitem"
+                        className="flex min-h-11 items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium lg:min-h-0"
+                        onClick={closeAccountMenu}
                       >
                         Sign In
                       </Link>
                       <Link
                         href="/auth/login"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium"
-                        onClick={() => setIsAccountOpen(false)}
+                        role="menuitem"
+                        className="flex min-h-11 items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-melagri-primary font-medium lg:min-h-0"
+                        onClick={closeAccountMenu}
                       >
                         Create Account
                       </Link>
@@ -175,10 +195,16 @@ export default function Header() {
               )}
             </div>
 
-            {/* Mobile Account Icon (Visible only on mobile) */}
-            <Link href={userLink} aria-label={user ? "Open your account" : "Sign in or create an account"} className="lg:hidden p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-green-600/20">
-              <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-            </Link>
+            {isAccountOpen && typeof document !== "undefined" && createPortal(
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label="Dismiss account menu"
+                className="fixed inset-0 z-40 cursor-default border-0 bg-transparent p-0 lg:hidden"
+                onClick={closeAccountMenu}
+              />,
+              document.body
+            )}
 
             {/* Guides Link */}
             <Link href="/guides" className="hidden lg:flex items-center gap-2 group hover:text-[#22c55e] transition-colors">
