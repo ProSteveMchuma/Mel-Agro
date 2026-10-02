@@ -3,6 +3,7 @@ import ProductDetails from '@/components/ProductDetails';
 import { getAllProductsServerCached, getProductByIdServerCached, getRelatedProductsCached, getSafeCoPurchaseProductsCached } from '@/lib/products-server';
 import { absoluteUrl, SITE_URL } from '@/lib/site';
 import { notFound, permanentRedirect } from 'next/navigation';
+import { kenyaOfferShippingDetails } from '@/lib/shipping-schema';
 import { productIdFromRouteParam, productSeoPath, productSeoSlug } from '@/lib/seo';
 
 type Props = {
@@ -144,15 +145,7 @@ export default async function Page({ params }: Props) {
         ...(sku ? { sku } : {}),
         seller: { '@id': `${SITE_URL}/#store` },
         hasMerchantReturnPolicy: { '@id': `${SITE_URL}/#return-policy` },
-        shippingDetails: {
-            '@type': 'OfferShippingDetails',
-            shippingDestination: { '@type': 'DefinedRegion', addressCountry: 'KE' },
-            deliveryTime: {
-                '@type': 'ShippingDeliveryTime',
-                handlingTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 1, unitCode: 'DAY' },
-                transitTime: { '@type': 'QuantitativeValue', minValue: 0, maxValue: 5, unitCode: 'DAY' },
-            },
-        },
+        shippingDetails: kenyaOfferShippingDetails(),
     });
     const productOffers = product.variants?.length
         ? product.variants.map(variant => offerFor(Number(variant.price ?? product.price), Number(variant.stockQuantity) > 0, variant.sku, variant.id))

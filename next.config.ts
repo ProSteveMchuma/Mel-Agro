@@ -4,6 +4,17 @@ const nextConfig: NextConfig = {
   turbopack: {},
   redirects: async () => [
     {
+      source: '/images/kenyan-farmer-banner.png',
+      destination: '/images/kenyan-farmer-banner.jpg',
+      permanent: true,
+    },
+    {
+      source: '/:path*',
+      has: [{ type: 'host', value: 'melagri.com' }],
+      destination: 'https://www.melagri.com/:path*',
+      permanent: true,
+    },
+    {
       source: '/:path*',
       has: [{ type: 'host', value: 'melagri.co.ke' }],
       destination: 'https://www.melagri.com/:path*',

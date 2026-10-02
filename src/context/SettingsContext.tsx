@@ -56,7 +56,7 @@ const defaultGeneral: GeneralSettings = {
     supportEmail: "support@Mel-Agri.com",
     supportPhone: "0788 970757",
     currency: "KES",
-    address: "Nairobi, Kenya",
+    address: "Makamithi House, Industrial Area, Machakos",
     websiteUrl: "https://Mel-Agri.com"
 };
 

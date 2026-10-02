@@ -402,7 +402,7 @@ const DEFAULTS: Record<MarketingPageSlug, MarketingBlock[]> = {
       type: 'prose',
       data: {
         heading: 'Visit & reach us',
-        body: 'Our team supports farmers from Makamithi Towers in Nairobi. Use the form on this page, call, WhatsApp, or email — we reply as soon as we can during support hours.',
+        body: 'Our team is at Makamithi House, Industrial Area (next to KIE), Machakos. The main shop is Mbitini House, Mbolu Malu Road. Use the form on this page, call, WhatsApp, or email.',
       },
     },
   ],

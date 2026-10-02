@@ -25,6 +25,17 @@ export function productIdFromRouteParam(param: string): string {
     return decodeURIComponent(separator >= 0 ? param.slice(separator + 2) : param);
 }
 
+/** Indexable landings own category and brand URLs. Filtered catalogue pages point at them. */
+export function catalogueListingMeta(filters: { category?: string; brand?: string; search?: string }) {
+    const category = filters.category?.trim();
+    const brand = filters.brand?.trim();
+    const search = filters.search?.trim();
+    if (category) return { canonical: `/categories/${slugifySeoValue(category)}`, index: false as const };
+    if (brand) return { canonical: `/brands/${slugifySeoValue(brand)}`, index: false as const };
+    if (search) return { canonical: `/products?search=${encodeURIComponent(search)}`, index: false as const };
+    return { canonical: '/products', index: true as const };
+}
+
 type CategoryEditorial = {
     eyebrow: string;
     summary: string;

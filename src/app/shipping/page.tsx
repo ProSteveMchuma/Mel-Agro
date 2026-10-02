@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 
 /** Legacy URL — content lives on /delivery. */
 export default function ShippingPage() {
-    redirect('/delivery');
+    permanentRedirect('/delivery');
 }

@@ -83,7 +83,6 @@ export default function FeaturedSlider({ products: initialProducts }: { products
                             fill
                             unoptimized={skipImageOptimizer(featuredImage)}
                             className="object-cover object-center opacity-80 md:opacity-70 group-hover:scale-105 transition-all duration-[2s] ease-out"
-                            priority
                         />
                         {/* Improved Gradient for text readability */}
                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/40 to-transparent md:bg-gradient-to-r" />

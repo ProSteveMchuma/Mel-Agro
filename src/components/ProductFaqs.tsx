@@ -16,7 +16,6 @@ export default function ProductFaqs({ product }: ProductFaqsProps) {
     // Generate dynamic FAQs based on product attributes
     const name = product.name;
     const price = product.price.toLocaleString();
-    const category = product.category || "agricultural input";
     const brand = product.brand || "authorized manufacturers";
 
     const faqsList = [
@@ -30,33 +29,14 @@ export default function ProductFaqs({ product }: ProductFaqsProps) {
         },
         {
             question: `How does Mel-Agri deliver ${name} to Nakuru, Eldoret, and other counties?`,
-            answer: `We deliver across Kenya. Orders of KES 10,000 or more get free delivery. Below that, the fee depends on your county (about KES 200 in Nairobi up to KES 750 upcountry). You see the exact amount at checkout. Machakos pickup is free.`
+            answer: `Mel-Agri delivers across Kenya from Machakos. Orders of KES 10,000 or more get free delivery. Below that, the fee depends on your county (about KES 200 in the Nairobi and Machakos zone, up to KES 750 elsewhere). You see the exact amount at checkout. Machakos pickup is free.`
         }
     ];
 
-    // Category-specific high-value questions for AI search answering
-    const catLower = category.toLowerCase();
-    if (catLower.includes('seed') || catLower.includes('seedling')) {
-        faqsList.push({
-            question: `What is the best spacing and planting depth for ${name}?`,
-            answer: `For planting ${name}, follow certified seeds standards: generally space row-to-row at 75cm and plant-to-plant at 25cm, placing the seed about 2-5cm deep. Ensure the soil has sufficient moisture at planting and apply basal fertilizer (like NPK or DAP) to stimulate early root development.`
-        });
-    } else if (catLower.includes('fertilizer') || catLower.includes('npk') || catLower.includes('dap') || catLower.includes('urea') || catLower.includes('can')) {
-        faqsList.push({
-            question: `How and when should I apply ${name} to maximize crop yield?`,
-            answer: `Apply ${name} based on crop growth stages. Basal fertilizers (such as DAP or NPK) should be applied at planting and mixed well with soil to prevent seed burning. Top-dressing fertilizers (like CAN or Urea) should be applied during vegetative growth or split-applied before flowering. Ensure soil is moist to facilitate nutrient absorption.`
-        });
-    } else if (catLower.includes('pesticide') || catLower.includes('fungicide') || catLower.includes('insecticide') || catLower.includes('herbicide') || catLower.includes('spray') || catLower.includes('chemical')) {
-        faqsList.push({
-            question: `What is the dilution rate and safety protocol for spraying ${name}?`,
-            answer: `Refer to the container label for precise dosage. Typically, agrochemical sprays range from 20ml to 50ml per 20 Liters of water (one knapsack sprayer). Always spray early in the morning or late in the evening to avoid evaporation and drift. Wear full personal protective equipment (PPE) including overalls, masks, and gloves.`
-        });
-    } else {
-        faqsList.push({
-            question: `What crops or livestock is ${name} recommended for?`,
-            answer: `This product is recommended for general agricultural and farming use. For specific crop schedules, feed formulations, or dosage guidelines, please contact Mel-Agri's agronomy support team via WhatsApp or call our support lines.`
-        });
-    }
+    faqsList.push({
+        question: `How should I use ${name}?`,
+        answer: `Follow the directions on the registered pack label for ${name}. This page does not give a dosage, dilution, or spacing rate. Ask a qualified agronomist or veterinarian when the label does not cover your crop, animal, or county.`
+    });
 
     // Build the schema markup
     const faqSchema = {

@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const canonical = `/brands/${slugifySeoValue(brand)}`;
     const title = `${brand} Agricultural Products in Kenya`;
     const description = `Compare ${brand} agricultural products available from Mel-Agri, including current prices, pack options, stock status, and delivery across Kenya.`;
-    return { title, description, alternates: { canonical }, openGraph: { title, description, url: canonical, type: 'website', images: ['/images/kenyan-farmer-banner.png'] } };
+    return { title, description, alternates: { canonical }, openGraph: { title, description, url: canonical, type: 'website', images: ['/images/melagri-social.jpg'] } };
 }
 
 export default async function BrandPage({ params }: Props) {

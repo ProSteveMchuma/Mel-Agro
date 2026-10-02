@@ -2,20 +2,20 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import type { Metadata } from 'next';
-import { whatsAppUrl, SUPPORT_PHONE_E164, SUPPORT_PHONE_DISPLAY } from '@/lib/site';
+import { COMPANY_MAIN_SHOP, COMPANY_PO_BOX, COMPANY_STREET, whatsAppUrl, SUPPORT_PHONE_E164, SUPPORT_PHONE_DISPLAY } from '@/lib/site';
 import ContactForm from '@/components/ContactForm';
 import MarketingPageView from '@/components/cms/MarketingPageView';
 import { getLiveCmsPage } from '@/lib/cms-pages-server';
 import type { MarketingBlocksPage } from '@/lib/cms-marketing';
 
 export const metadata: Metadata = {
-    title: 'Agrovet Customer Support & Location in Nairobi',
+    title: 'Agrovet Customer Support & Location in Machakos',
     description:
-        'Get in touch with Mel-Agri for inquiries about crop fertilizers, hybrid seeds, and bulk farm orders. Reach our agronomy support team in Nairobi via Phone, Email or WhatsApp.',
+        'Contact Mel-Agri in Machakos by phone, WhatsApp, or email. Head office: Makamithi House, Industrial Area, next to KIE.',
     alternates: { canonical: '/contact' },
     openGraph: {
-        title: 'Contact Mel-Agri | Agrovet Customer Support & Location Nairobi',
-        description: 'Reach our agronomy team in Nairobi — phone, WhatsApp, email. Located at Makamithi Towers.',
+        title: 'Contact Mel-Agri | Agrovet Support in Machakos',
+        description: 'Phone, WhatsApp, or email. Head office at Makamithi House, Industrial Area, Machakos.',
         url: '/contact',
     },
 };
@@ -52,8 +52,9 @@ export default async function ContactPage() {
                                     </div>
                                     <div>
                                         <p className="text-sm font-bold uppercase text-gray-500">Address</p>
-                                        <p className="font-semibold text-gray-900">Makamithi Towers, 4th Floor</p>
-                                        <p className="font-semibold text-gray-900">Ngong Road, Nairobi, Kenya</p>
+                                        <p className="font-semibold text-gray-900">{COMPANY_STREET}</p>
+                                        <p className="font-semibold text-gray-900">{COMPANY_PO_BOX}, Machakos, Kenya</p>
+                                        <p className="mt-2 text-sm text-gray-600">Main shop: {COMPANY_MAIN_SHOP}</p>
                                     </div>
                                 </div>
                                 <div className="mt-8 space-y-3">

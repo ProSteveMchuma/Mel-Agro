@@ -20,7 +20,7 @@ export type ThermalReceiptLine =
 
 const DEFAULT_BRANDING: Required<ReceiptBranding> = {
     companyName: 'Mel-Agri Kenya',
-    address: 'Nairobi, Kenya',
+    address: 'Makamithi House, Industrial Area, Machakos',
     supportPhone: '0788 970757',
     websiteUrl: 'melagri.com',
     tagline: 'Premium Agricultural Solutions',

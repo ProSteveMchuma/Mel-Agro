@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import ProductCard from '@/components/ProductCard';
+import CatalogProductCard from '@/components/seo/CatalogProductCard';
 import type { Product } from '@/types';
 
 type Props = {
@@ -50,7 +50,7 @@ export default function CatalogLandingPage({
 
             <section className="container-custom pb-12 pt-4 md:pb-16">
                 {products.length ? <div className="grid grid-cols-2 gap-3 md:gap-6 lg:grid-cols-4">
-                    {products.map(product => <ProductCard key={String(product.id)} {...product} id={product.id} />)}
+                    {products.map(product => <CatalogProductCard key={String(product.id)} product={product} />)}
                 </div> : <div className="rounded-3xl border border-amber-200 bg-amber-50 p-8"><h3 className="font-black text-amber-950">No products are listed here yet</h3><p className="mt-2 text-sm text-amber-900">Browse the full catalogue or contact Mel-Agri for current availability.</p></div>}
             </section>
 
