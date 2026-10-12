@@ -60,6 +60,8 @@ export default function AnalyticsPage() {
         funnel: { sampled: number; steps: Array<{ key: string; label: string; count: number; conversionFromStart: number; dropOff?: number }> };
         pages?: Array<{ key: string; views: number; uniques: number }>;
         regions?: Array<{ key: string; views: number; uniques: number }>;
+        visitHours?: Array<{ label: string; visits: number }>;
+        visitWeekdays?: Array<{ label: string; visits: number }>;
     } | null>(null);
     const [dataLoading, setDataLoading] = useState(true);
     const [dataError, setDataError] = useState<string | null>(null);
@@ -141,6 +143,9 @@ export default function AnalyticsPage() {
     const segments = useMemo(() => newVsRepeat(ranged), [ranged]);
     const dow = useMemo(() => ordersByDayOfWeek(ranged), [ranged]);
     const hourly = useMemo(() => ordersByHourOfDay(ranged), [ranged]);
+    const visitHours = storefront?.visitHours ?? [];
+    const visitWeekdays = storefront?.visitWeekdays ?? [];
+    const countedVisitHours = visitHours.reduce((sum, bucket) => sum + Number(bucket.visits || 0), 0);
     const paymentMix = useMemo(() => paymentMethodMix(ranged), [ranged]);
     const landingSales = useMemo(() => salesByLandingPage(ranged), [ranged]);
     const pageLosers = useMemo(() => pagesLosingBeforeSale(storefront?.pages || [], landingSales), [storefront, landingSales]);
@@ -449,7 +454,7 @@ export default function AnalyticsPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card title="Day of Week" subtitle="When customers buy">
+                <Card title="Day of Week" subtitle="When customers buy · Africa/Nairobi" className="lg:col-span-2">
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={dow}>
@@ -463,7 +468,7 @@ export default function AnalyticsPage() {
                     </div>
                 </Card>
 
-                <Card title="Hour of Day" subtitle="Peak ordering hours (local time)">
+                <Card title="Hour of Day" subtitle="Peak ordering hours · Africa/Nairobi">
                     <div className="h-64">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={hourly}>
@@ -475,6 +480,35 @@ export default function AnalyticsPage() {
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
+                </Card>
+
+                <Card title="Visits by hour" subtitle="Africa/Nairobi. Older daily totals are not split into hours.">
+                    {countedVisitHours === 0 ? (
+                        <p className="text-sm text-gray-500">New visits fill this in. Older daily totals stay on Storefront Traffic.</p>
+                    ) : (
+                        <>
+                            <div className="h-64">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart data={visitHours}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                        <XAxis dataKey="label" stroke="#9ca3af" fontSize={9} interval={2} />
+                                        <YAxis stroke="#9ca3af" fontSize={11} allowDecimals={false} />
+                                        <Tooltip formatter={(v: any) => [v, 'Visits']} />
+                                        <Bar dataKey="visits" name="Visits" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                            <p className="mt-4 text-[10px] font-black uppercase tracking-widest text-gray-400">Visit weekday · Africa/Nairobi</p>
+                            <div className="mt-2 grid grid-cols-7 gap-2">
+                                {visitWeekdays.map((bucket) => (
+                                    <div key={bucket.label} className="rounded-xl bg-gray-50 px-1 py-2 text-center">
+                                        <p className="text-[10px] font-black uppercase text-gray-400">{bucket.label}</p>
+                                        <p className="text-sm font-black text-gray-900">{bucket.visits}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
+                    )}
                 </Card>
             </div>
 
