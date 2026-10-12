@@ -7,6 +7,7 @@ import { NotificationService } from '@/lib/notifications';
 import { CommunicationTemplates } from '@/lib/communication-templates';
 import { getAuth } from 'firebase/auth';
 import { usePathname } from 'next/navigation';
+import { needsCustomerOrders, needsNotificationStream } from '@/lib/shop-listeners';
 
 import { Order, OrderItem } from '@/types';
 export type { Order, OrderItem };
@@ -59,8 +60,11 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
             // recent N orders, and pulling thousands wastes memory on every admin session.
             // Older orders remain accessible via direct order detail pages and reports.
             q = query(collection(db, 'orders'), orderBy('date', 'desc'), limit(500));
-        } else {
+        } else if (needsCustomerOrders(pathname)) {
             q = query(collection(db, 'orders'), where('userId', '==', user.uid));
+        } else {
+            setOrders([]);
+            return;
         }
 
         const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
@@ -80,7 +84,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
 
     // Fetch Notifications
     useEffect(() => {
-        if (!user) {
+        if (!user || !needsNotificationStream(pathname)) {
             setNotifications([]);
             return;
         }
@@ -105,7 +109,7 @@ export function OrderProvider({ children }: { children: React.ReactNode }) {
         });
 
         return () => unsubscribe();
-    }, [user]);
+    }, [pathname, user]);
 
     const addOrder = async (orderData: Omit<Order, 'id' | 'date' | 'status'>, pointsToRedeem: number = 0) => {
         const orderId = doc(collection(db, "orders")).id;

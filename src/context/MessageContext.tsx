@@ -1,9 +1,8 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { db } from '@/lib/firebase';
-import { collection, addDoc, doc, query, orderBy, onSnapshot, setDoc, serverTimestamp, limit } from 'firebase/firestore';
+import { collection, addDoc, doc, query, orderBy, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useAuth } from './AuthContext';
-import { usePathname } from 'next/navigation';
 
 export interface ChatMessage {
     id: string;
@@ -40,49 +39,12 @@ const MessageContext = createContext<MessageContextType | undefined>(undefined);
 
 export function MessageProvider({ children }: { children: React.ReactNode }) {
     const { user } = useAuth();
-    const pathname = usePathname();
-    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [conversations] = useState<Conversation[]>([]);
     const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading] = useState(false);
 
-    // 1. Listen to Conversations (Admin View) or My Conversation (User View)
-    useEffect(() => {
-        if (!user) {
-            setConversations([]);
-            setLoading(false);
-            return;
-        }
-
-        let unsubscribe: () => void;
-
-        if (user.role === 'admin' || user.role === 'super-admin') {
-            if (pathname === '/dashboard/admin/messages') { setConversations([]); setLoading(false); return; }
-            // Admin sees the most recent conversations. Older threads remain in Firestore but
-            // aren't streamed live; if needed, the messages page can paginate further on demand.
-            const q = query(collection(db, 'conversations'), orderBy('lastMessageAt', 'desc'), limit(100));
-            unsubscribe = onSnapshot(q, (snapshot) => {
-                const convs = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                })) as Conversation[];
-                setConversations(convs);
-                setLoading(false);
-            });
-        } else {
-            // User context: we don't strictly need a list of conversations since they only have one.
-            // But checking if one exists is good.
-            // For now, we auto-set their active conversation ID to their own UID.
-            setActiveConversationId(user.uid);
-            setLoading(false);
-        }
-
-        return () => {
-            if (unsubscribe) unsubscribe();
-        };
-    }, [pathname, user]);
-
-    // 2. Listen to Messages for Active Conversation
+    // The support inbox loads its own list. Do not stream conversations or threads on the shop.
     useEffect(() => {
         if (!activeConversationId) {
             setMessages([]);

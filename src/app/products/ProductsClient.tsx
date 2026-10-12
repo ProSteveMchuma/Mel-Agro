@@ -6,10 +6,8 @@ import Footer from "@/components/Footer";
 import Sidebar from "@/components/Sidebar";
 import ProductCard from "@/components/ProductCard";
 import { Product, getProductsPage } from "@/lib/products";
-import { fuzzySearch } from "@/components/SmartSearch";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useProducts } from "@/context/ProductContext";
 import { SITE_URL } from '@/lib/site';
 import { productSeoPath } from '@/lib/seo';
 import { brandKeyFrom } from '@/lib/catalog-normalize';
@@ -383,7 +381,6 @@ export default function ProductsClient({ initialProducts, initialBrands, initial
 }
 
 function ProductsGrid({ category, priceRange, selectedBrands, sortBy, initialProducts }: { category: string, priceRange: [number, number], selectedBrands: string[], sortBy: 'newest' | 'price-low' | 'price-high', initialProducts: Product[] }) {
-    const { products: allProducts } = useProducts();
     // Only use initialProducts if they match the current category filter (simple check)
     // Actually, on mount, category should match what page.tsx used. 
     // But if user changes category, we discard initialProducts.
@@ -478,19 +475,37 @@ function ProductsGrid({ category, priceRange, selectedBrands, sortBy, initialPro
     }, [category, selectedBrands, sortBy]);
 
     const searchQuery = searchParams.get("search");
+    const [searchHits, setSearchHits] = useState<Product[]>([]);
+    const [searchLoading, setSearchLoading] = useState(false);
+
+    useEffect(() => {
+        const term = (searchQuery || '').trim();
+        if (term.length < 2) {
+            setSearchHits([]);
+            setSearchLoading(false);
+            return;
+        }
+        const controller = new AbortController();
+        setSearchLoading(true);
+        fetch(`/api/catalogue/search?q=${encodeURIComponent(term)}&limit=48`, { signal: controller.signal })
+            .then((res) => res.json())
+            .then((data) => setSearchHits(data.suggestions || []))
+            .catch((error: { name?: string }) => {
+                if (error?.name !== 'AbortError') setSearchHits([]);
+            })
+            .finally(() => {
+                if (!controller.signal.aborted) setSearchLoading(false);
+            });
+        return () => controller.abort();
+    }, [searchQuery]);
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
     }, [searchQuery, category, selectedBrands, sortBy]);
 
     const filteredProducts = useMemo(() => {
-        const searchQuery = searchParams.get("search");
-        let baseProducts = searchQuery ? allProducts : products;
-        let filtered = [...baseProducts];
-
-        if (searchQuery) {
-            filtered = fuzzySearch(filtered, searchQuery);
-        }
+        const searchQuery = (searchParams.get("search") || "").trim();
+        let filtered = [...(searchQuery.length >= 2 ? searchHits : products)];
 
         if (priceRange) {
             filtered = filtered.filter(p => p.price >= priceRange[0] && p.price <= priceRange[1]);
@@ -517,9 +532,11 @@ function ProductsGrid({ category, priceRange, selectedBrands, sortBy, initialPro
         }
 
         return filtered;
-    }, [products, allProducts, searchParams, priceRange, selectedBrands, category, sortBy]);
+    }, [products, searchHits, searchParams, priceRange, selectedBrands, category, sortBy]);
 
-    if (isLoading && products.length === 0) return (
+    const activeSearch = (searchParams.get("search") || "").trim().length >= 2;
+
+    if ((isLoading && products.length === 0) || (activeSearch && searchLoading)) return (
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
                 <div key={i} className="bg-white rounded-2xl h-80 animate-pulse border border-gray-100 shadow-sm"></div>
@@ -527,7 +544,7 @@ function ProductsGrid({ category, priceRange, selectedBrands, sortBy, initialPro
         </div>
     );
 
-    if (products.length === 0 && !isLoading) return (
+    if ((activeSearch ? filteredProducts.length === 0 : products.length === 0) && !isLoading && !searchLoading) return (
         <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl border border-dashed border-gray-200">
             <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
                 <svg className="w-10 h-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>

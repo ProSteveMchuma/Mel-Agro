@@ -2,12 +2,11 @@
 
 import { useState, useEffect, useRef, useMemo, KeyboardEvent } from "react";
 import { useRouter } from "next/navigation";
-import { useProducts } from "@/context/ProductContext";
 import Image from "next/image";
 import Link from "next/link";
 import { useLanguage } from "@/context/LanguageContext";
 import { useBehavior } from "@/context/BehaviorContext";
-import { searchProducts, didYouMean, getRecentSearches, saveRecentSearch, RecentSearch } from "@/lib/search";
+import { getRecentSearches, saveRecentSearch, RecentSearch } from "@/lib/search";
 import { AnalyticsService } from "@/lib/analytics";
 import { productSeoPath, slugifySeoValue } from '@/lib/seo';
 import { skipImageOptimizer } from '@/lib/product-image';
@@ -15,24 +14,7 @@ import { skipImageOptimizer } from '@/lib/product-image';
 // Re-export for legacy imports (e.g. ProductsClient still uses fuzzySearch)
 export { searchProducts as fuzzySearch } from "@/lib/search";
 
-const INTENT_MAP: Record<string, string[]> = {
-    "Crop Protection": ["kill", "pest", "insect", "weed", "disease", "fungus", "spray", "herbicide", "insecticide", "fungicide", "protection", "poison"],
-    "Animal Feeds": ["cow", "cattle", "chicken", "poultry", "pig", "dairy", "animal", "feed", "livestock", "dog", "cat", "nutrition"],
-    "Veterinary Products": ["vet", "medicine", "vaccine", "treatment", "sick", "wound", "injection", "animal health"],
-    "Seeds": ["seed", "maize", "bean", "grow", "yield", "hybrid", "planting", "crop"],
-    "Fertilizers": ["fertilizer", "soil", "nutrient", "npk", "manure", "dap", "can", "top dress", "booster"],
-    "Farm Tools": ["tool", "equipment", "jembes", "panga", "shovels", "sprayer", "pump"],
-};
-
-function detectIntents(searchTerm: string): string[] {
-    const lowTerm = searchTerm.toLowerCase();
-    return Object.entries(INTENT_MAP)
-        .filter(([, keywords]) => keywords.some(keyword => lowTerm.includes(keyword)))
-        .map(([cat]) => cat);
-}
-
 export default function SmartSearch() {
-    const { products } = useProducts();
     const router = useRouter();
     const { t } = useLanguage();
     const { trackAction } = useBehavior();
@@ -60,39 +42,42 @@ export default function SmartSearch() {
     }, []);
 
     const trimmed = query.trim();
+    const [suggestions, setSuggestions] = useState<Array<{ id: string | number; name: string; image?: string; price?: number; category?: string }>>([]);
+    const [intents, setIntents] = useState<string[]>([]);
+    const [matchedBrands, setMatchedBrands] = useState<string[]>([]);
+    const [corrections, setCorrections] = useState<Array<{ correctedTerm: string }>>([]);
 
-    const { suggestions, intents, matchedBrands, corrections } = useMemo(() => {
+    useEffect(() => {
         if (trimmed.length < 2) {
-            return { suggestions: [], intents: [], matchedBrands: [], corrections: [] };
+            setSuggestions([]);
+            setIntents([]);
+            setMatchedBrands([]);
+            setCorrections([]);
+            return;
         }
-
-        const detectedIntents = detectIntents(trimmed);
-        const queryLower = trimmed.toLowerCase();
-
-        const brandMatches = Array.from(new Set(
-            products
-                .filter(p => p.brand && p.brand.toLowerCase().includes(queryLower))
-                .map(p => p.brand as string)
-        )).slice(0, 3);
-
-        let matches = searchProducts(products, trimmed).slice(0, 5);
-
-        if (matches.length < 3 && detectedIntents.length > 0) {
-            const intentProducts = products
-                .filter(p => detectedIntents.includes(p.category) && !matches.find(m => m.id === p.id))
-                .slice(0, 5 - matches.length);
-            matches = [...matches, ...intentProducts];
-        }
-
-        const corrections = matches.length === 0 ? didYouMean(products, trimmed, 3) : [];
-
-        return {
-            suggestions: matches,
-            intents: detectedIntents,
-            matchedBrands: brandMatches,
-            corrections,
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => {
+            fetch(`/api/catalogue/search?q=${encodeURIComponent(trimmed)}&limit=5`, { signal: controller.signal })
+                .then((res) => res.json())
+                .then((data) => {
+                    setSuggestions(data.suggestions || []);
+                    setIntents(data.intents || []);
+                    setMatchedBrands(data.brands || []);
+                    setCorrections(data.corrections || []);
+                })
+                .catch((error: { name?: string }) => {
+                    if (error?.name === 'AbortError') return;
+                    setSuggestions([]);
+                    setIntents([]);
+                    setMatchedBrands([]);
+                    setCorrections([]);
+                });
+        }, 180);
+        return () => {
+            window.clearTimeout(timer);
+            controller.abort();
         };
-    }, [trimmed, products]);
+    }, [trimmed]);
 
     useEffect(() => {
         if (trimmed.length >= 2) {

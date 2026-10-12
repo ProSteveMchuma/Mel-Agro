@@ -6,6 +6,7 @@ import { getAuth } from 'firebase/auth';
 import { usePathname } from 'next/navigation';
 import { Product } from '@/types';
 import { applyLiveCatalogueProduct } from '@/lib/live-product';
+import { needsLiveProductStream } from '@/lib/shop-listeners';
 export type { Product };
 
 interface ProductContextType {
@@ -27,14 +28,13 @@ export function ProductProvider({ children }: { children: React.ReactNode }) {
 
 
     useEffect(() => {
-        const adminProductRoutes = ['/dashboard/admin', '/dashboard/admin/products', '/dashboard/admin/inventory', '/dashboard/admin/fulfillment', '/dashboard/admin/operations', '/dashboard/admin/messages', '/dashboard/admin/orders/create'];
-        const usesServerProductFeed = pathname === '/dashboard/admin/products' || pathname === '/dashboard/admin/inventory' || pathname === '/dashboard/admin/fulfillment' || pathname === '/dashboard/admin/messages';
-        if (usesServerProductFeed || (pathname.startsWith('/dashboard/admin') && !adminProductRoutes.some((route) => pathname === route || (route !== '/dashboard/admin' && pathname.startsWith(`${route}/`))))) {
-            setProducts([]); setArchivedProducts([]); return;
+        if (!needsLiveProductStream(pathname)) {
+            setProducts([]);
+            setArchivedProducts([]);
+            return;
         }
-        // Cap the live stream to keep first-paint payload bounded. Stores beyond this size
-        // should rely on the paginated /products page (which uses getProductsPage) rather
-        // than the global context. The catalog page itself already paginates server-side.
+        // Admin home, order create, and product edit still read this list.
+        // The shop itself uses the server catalogue and /api/catalogue/search.
         const q = query(collection(db, "products"), limit(500));
         const unsubscribe = onSnapshot(q, (snapshot: any) => {
             const productList: Product[] = [];
