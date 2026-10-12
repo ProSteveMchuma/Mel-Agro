@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Product } from "@/types";
-import { uploadImage } from "@/lib/storage";
+import { prepareCatalogueImage, uploadImage } from "@/lib/storage";
 import { getUniqueBrands, getUniqueCategories } from "@/lib/products";
 import { brandKeyFrom, findNearDuplicateBrand, normalizeDisplayField } from "@/lib/catalog-normalize";
 import Image from "next/image";
@@ -87,7 +87,7 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
         try {
             const uploadedUrls: string[] = [];
             for (let i = 0; i < files.length; i++) {
-                const file = files[i];
+                const file = await prepareCatalogueImage(files[i]);
                 if (file.size > 2 * 1024 * 1024) {
                     alert(`File ${file.name} is too large (>2MB)`);
                     continue;
@@ -110,11 +110,12 @@ export default function ProductForm({ initialData, onSubmit, isSubmitting, title
     };
 
     const handleVariantImageUpload = async (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
+        const picked = e.target.files?.[0];
+        if (!picked) return;
 
         setVariantUploading(index);
         try {
+            const file = await prepareCatalogueImage(picked);
             if (file.size > 2 * 1024 * 1024) {
                 alert(`File ${file.name} is too large (>2MB)`);
                 return;

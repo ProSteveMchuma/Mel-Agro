@@ -27,8 +27,8 @@ import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { profileSchema, ProfileFormData } from '@/lib/schemas';
 import { Input } from '@/components/ui/form/Input';
-import { useProducts } from '@/context/ProductContext';
 import { actionableReorders, buildReorderPredictions, ReorderPrediction } from '@/lib/reorder-intelligence';
+import type { Product } from '@/types';
 import { AnalyticsService } from '@/lib/analytics';
 import { whatsAppUrl } from '@/lib/site';
 import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
@@ -67,7 +67,6 @@ function UserDashboardInner() {
     const { user, isLoading, logout, updateProfile } = useAuth();
     const { orders, requestReturn, updateOrderStatus } = useOrders();
     const { addToCart, cartCount } = useCart();
-    const { products } = useProducts();
     const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
     const { wishlist, removeFromWishlist } = useWishlist();
     const { general, tax, documents } = useSettings();
@@ -171,12 +170,21 @@ function UserDashboardInner() {
         }
     };
 
+    const catalogueByIds = async (ids: Array<string | number>) => {
+        const unique = [...new Set(ids.map((id) => String(id)).filter(Boolean))].slice(0, 24);
+        if (!unique.length) return [] as Product[];
+        const res = await fetch(`/api/catalogue/lookup?ids=${encodeURIComponent(unique.join(','))}`);
+        const data = await res.json();
+        return (data.products || []) as Product[];
+    };
+
     const handleReorder = async (order: Order) => {
         try {
             let added = 0;
             let skipped = 0;
+            const listed = await catalogueByIds(order.items.map((item) => item.id));
             for (const item of order.items) {
-                const product = products.find((p) => String(p.id) === String(item.id));
+                const product = listed.find((p) => String(p.id) === String(item.id));
                 if (!product) {
                     skipped += 1;
                     continue;
@@ -200,8 +208,9 @@ function UserDashboardInner() {
         }
     };
 
-    const handleFrequentAdd = (item: { id: string | number; name: string; quantity?: number; selectedVariant?: any }) => {
-        const product = products.find((p) => String(p.id) === String(item.id));
+    const handleFrequentAdd = async (item: { id: string | number; name: string; quantity?: number; selectedVariant?: any }) => {
+        const listed = await catalogueByIds([item.id]);
+        const product = listed.find((p) => String(p.id) === String(item.id));
         if (!product) {
             toast.error(`${item.name} is no longer in the catalogue.`);
             return;
@@ -210,8 +219,9 @@ function UserDashboardInner() {
         if (!ok) return;
     };
 
-    const handlePredictedReorder = (prediction: ReorderPrediction) => {
-        const product = products.find(item => String(item.id) === prediction.productId);
+    const handlePredictedReorder = async (prediction: ReorderPrediction) => {
+        const listed = await catalogueByIds([prediction.productId]);
+        const product = listed.find(item => String(item.id) === prediction.productId);
         if (!product || !product.inStock || Number(product.stockQuantity ?? product.stock ?? 0) < prediction.recommendedQuantity) {
             toast.error('This product does not currently have enough stock.');
             return;

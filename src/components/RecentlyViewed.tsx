@@ -19,12 +19,28 @@ export default function RecentlyViewed({
     const { personalizationEnabled } = useBehavior();
     const { products: liveProducts } = useProducts();
     const [ids, setIds] = useState<string[]>([]);
+    const [fetched, setFetched] = useState<Product[]>([]);
 
     useEffect(() => {
         setIds(readRecentlyViewed().map((entry) => entry.id));
     }, []);
 
-    const catalog = liveProducts.length ? liveProducts : (seedProducts || []);
+    useEffect(() => {
+        if (liveProducts.length || !ids.length) {
+            setFetched([]);
+            return;
+        }
+        const controller = new AbortController();
+        fetch(`/api/catalogue/lookup?ids=${encodeURIComponent(ids.slice(0, 8).join(','))}`, { signal: controller.signal })
+            .then((res) => res.json())
+            .then((data) => setFetched(data.products || []))
+            .catch((error: { name?: string }) => {
+                if (error?.name !== 'AbortError') setFetched([]);
+            });
+        return () => controller.abort();
+    }, [ids, liveProducts.length]);
+
+    const catalog = liveProducts.length ? liveProducts : (fetched.length ? fetched : (seedProducts || []));
 
     const items = useMemo(() => {
         if (!personalizationEnabled || !ids.length) return [];

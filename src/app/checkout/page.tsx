@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { useOrders } from '@/context/OrderContext';
-import { useProducts } from '@/context/ProductContext';
+import type { Product } from '@/types';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
@@ -61,7 +61,7 @@ export default function CheckoutPage() {
     const isGuest = !user || user.isAnonymous;
     const { orders: userOrders } = useOrders();
     const { trackAction } = useBehavior();
-    const { products: catalog } = useProducts();
+    const [catalog, setCatalog] = useState<Product[]>([]);
 
     const [currentStep, setCurrentStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review
     const [isProcessing, setIsProcessing] = useState(false);
@@ -211,8 +211,23 @@ export default function CheckoutPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [currentStep]);
 
-    // Stock revalidation — re-check the catalog for any cart items now under-stocked or removed.
-    // The cart can sit idle for days; ProductContext is streamed via onSnapshot so this stays fresh.
+    const stockIds = cartItems.map((item) => String(item.id)).filter(Boolean).join(',');
+    useEffect(() => {
+        if (!stockIds) {
+            setCatalog([]);
+            return;
+        }
+        const controller = new AbortController();
+        fetch(`/api/catalogue/lookup?ids=${encodeURIComponent(stockIds)}`, { signal: controller.signal })
+            .then((res) => res.json())
+            .then((data) => setCatalog(data.products || []))
+            .catch((error: { name?: string }) => {
+                if (error?.name !== 'AbortError') setCatalog([]);
+            });
+        return () => controller.abort();
+    }, [stockIds]);
+
+    // Stock revalidation — the cart can sit for days, so check the products in it, not the whole catalogue.
     const stockIssues = (() => {
         if (catalog.length === 0) return [] as Array<{ cartItem: any; available: number; reason: 'oos' | 'low' | 'gone' }>;
         const out: Array<{ cartItem: any; available: number; reason: 'oos' | 'low' | 'gone' }> = [];
