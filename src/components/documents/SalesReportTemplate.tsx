@@ -2,6 +2,7 @@ import React from 'react';
 import { Order } from '@/context/OrderContext';
 import { useSettings } from '@/context/SettingsContext';
 import Logo from '../Logo';
+import { buildSalesBook, type SalesBookOrder } from '@/lib/sales-book';
 
 interface SalesReportTemplateProps {
     orders: Order[];
@@ -10,7 +11,7 @@ interface SalesReportTemplateProps {
 }
 
 export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders, startDate, endDate }) => {
-    const { general } = useSettings();
+    const { general, tax } = useSettings();
     const paidOrders = orders.filter(o => o.paymentStatus === 'Paid');
     const totalSales = paidOrders.reduce((acc, order) => acc + order.total, 0);
     const totalOrders = orders.length;
@@ -18,6 +19,8 @@ export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders
     const reportPeriod = startDate || endDate
         ? `${startDate?.toLocaleDateString() || 'Beginning'} – ${endDate?.toLocaleDateString() || 'Present'}`
         : 'All time';
+    const book = buildSalesBook(orders as SalesBookOrder[], tax);
+    const kes = (value: number) => `KES ${Math.round(value).toLocaleString()}`;
 
     // Group by status
     const statusCounts = orders.reduce((acc, order) => {
@@ -59,6 +62,84 @@ export const SalesReportTemplate: React.FC<SalesReportTemplateProps> = ({ orders
                         <div className="text-2xl font-bold text-gray-900">KES {averageOrderValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
                     </div>
                 </div>
+            </div>
+
+            <div className="mb-12">
+                <h2 className="text-xl font-bold text-gray-900 mb-2 border-l-4 border-melagri-primary pl-4">Books</h2>
+                <p className="mb-6 pl-5 text-xs text-gray-500">VAT estimate is already included in merchandise prices. It is not an extra charge. Refunds stay on the order.</p>
+                <table className="w-full border border-gray-200 mb-8">
+                    <tbody className="divide-y divide-gray-200">
+                        {[
+                            ['Goods after discount', book.goodsAfterDiscount],
+                            ['Delivery fees', book.deliveryFees],
+                            ['Discounts given', book.discountsGiven],
+                            ['Refunds', book.refunds],
+                            ['Net', book.net],
+                            ['VAT estimate', book.vatEstimate],
+                        ].map(([label, amount]) => (
+                            <tr key={String(label)}>
+                                <td className="py-3 px-4 font-bold text-gray-900">{label}</td>
+                                <td className="py-3 px-4 text-right font-black text-gray-900">{kes(Number(amount))}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <h3 className="mb-3 text-sm font-black uppercase tracking-wider text-gray-500">Payment methods</h3>
+                <table className="w-full border border-gray-200 mb-8 text-sm">
+                    <thead className="bg-gray-100"><tr><th className="text-left py-2 px-4">Method</th><th className="text-right py-2 px-4">Orders</th><th className="text-right py-2 px-4">Total</th></tr></thead>
+                    <tbody className="divide-y divide-gray-200">
+                        {[
+                            ['M-Pesa Express', book.methods.stk],
+                            ['Till 3130847', book.methods.till],
+                            ['Cash on delivery', book.methods.cod],
+                            ['Card', book.methods.card],
+                        ].map(([label, row]) => (
+                            <tr key={String(label)}>
+                                <td className="py-2 px-4">{String(label)}</td>
+                                <td className="py-2 px-4 text-right">{(row as { count: number }).count}</td>
+                                <td className="py-2 px-4 text-right font-bold">{kes((row as { total: number }).total)}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+                <h3 className="mb-3 text-sm font-black uppercase tracking-wider text-gray-500">Products</h3>
+                {book.products.length === 0 ? <p className="mb-8 text-sm text-gray-500">No paid units in this range.</p> : (
+                    <table className="w-full border border-gray-200 mb-8 text-sm">
+                        <thead className="bg-gray-100"><tr><th className="text-left py-2 px-4">Product</th><th className="text-left py-2 px-4">Pack</th><th className="text-right py-2 px-4">Paid units</th><th className="text-right py-2 px-4">Paid amount</th></tr></thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {book.products.map((row) => (
+                                <tr key={`${row.name}-${row.pack}`}>
+                                    <td className="py-2 px-4">{row.name}</td>
+                                    <td className="py-2 px-4">{row.pack}</td>
+                                    <td className="py-2 px-4 text-right">{row.units}</td>
+                                    <td className="py-2 px-4 text-right font-bold">{kes(row.amount)}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+                <h3 className="mb-3 text-sm font-black uppercase tracking-wider text-gray-500">Discount codes</h3>
+                {book.codes.length === 0 ? <p className="mb-8 text-sm text-gray-500">No discount codes in this range.</p> : (
+                    <table className="w-full border border-gray-200 mb-8 text-sm">
+                        <thead className="bg-gray-100"><tr><th className="text-left py-2 px-4">Code</th><th className="text-right py-2 px-4">Times used</th><th className="text-right py-2 px-4">KES given away</th></tr></thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {book.codes.map((row) => (
+                                <tr key={row.code}><td className="py-2 px-4 font-bold">{row.code}</td><td className="py-2 px-4 text-right">{row.times}</td><td className="py-2 px-4 text-right font-bold">{kes(row.amount)}</td></tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+                <h3 className="mb-3 text-sm font-black uppercase tracking-wider text-gray-500">Delivery fees by zone</h3>
+                {book.zones.length === 0 ? <p className="mb-8 text-sm text-gray-500">No delivery fees in this range.</p> : (
+                    <table className="w-full border border-gray-200 text-sm">
+                        <thead className="bg-gray-100"><tr><th className="text-left py-2 px-4">Zone</th><th className="text-right py-2 px-4">Delivery fees</th></tr></thead>
+                        <tbody className="divide-y divide-gray-200">
+                            {book.zones.map((row) => (
+                                <tr key={row.zone}><td className="py-2 px-4">{row.zone}</td><td className="py-2 px-4 text-right font-bold">{kes(row.amount)}</td></tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
             </div>
 
             {/* Order Status Breakdown */}

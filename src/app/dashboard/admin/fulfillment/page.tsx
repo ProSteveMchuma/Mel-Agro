@@ -9,16 +9,18 @@ import { toast } from "react-hot-toast";
 import type { Order } from "@/types";
 import { isPickupOrder, nextFulfillmentStatus, PICKUP_STORE } from "@/lib/pickup";
 import { lineBalances, nairobiPlacedLabel, partialBlocksCompletion, partSent } from "@/lib/order-admin";
+import { hoursSincePackableLabel, type QueueFacts } from "@/lib/fulfillment-age";
 
-type Stats = { processing: number; shipped: number; readyPickup: number; stockAlerts: number };
+type Stats = { processing: number; shipped: number; readyPickup: number; stockAlerts: number; late: number };
+type QueueOrder = Order & { queue?: QueueFacts };
 
 export default function FulfillmentPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [orders, setOrders] = useState<QueueOrder[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<QueueOrder | null>(null);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [method, setMethod] = useState<"all" | "delivery" | "pickup">("all");
-  const [stats, setStats] = useState<Stats>({ processing: 0, shipped: 0, readyPickup: 0, stockAlerts: 0 });
+  const [stats, setStats] = useState<Stats>({ processing: 0, shipped: 0, readyPickup: 0, stockAlerts: 0, late: 0 });
   const [cursor, setCursor] = useState<string | null>(null);
   const [history, setHistory] = useState<Array<string | null>>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -51,10 +53,10 @@ export default function FulfillmentPage() {
         if (!response.ok) throw new Error(result.message || "Could not load fulfillment queue.");
         setOrders(result.orders || []);
         setNextCursor(result.nextCursor || null);
-        setStats(result.stats || { processing: 0, shipped: 0, readyPickup: 0, stockAlerts: 0 });
+        setStats(result.stats || { processing: 0, shipped: 0, readyPickup: 0, stockAlerts: 0, late: 0 });
         setSearchLimited(Boolean(result.searchLimited));
         setSelectedOrder((current) =>
-          current ? (result.orders || []).find((order: Order) => order.id === current.id) || null : null,
+          current ? (result.orders || []).find((order: QueueOrder) => order.id === current.id) || null : null,
         );
       } catch (caught) {
         if ((caught as Error).name !== "AbortError") {
@@ -88,10 +90,26 @@ export default function FulfillmentPage() {
     if (!response.ok) throw new Error(result.message || "Fulfillment update failed.");
   }
 
-  async function advanceOrder(order: Order) {
+  async function markWaiting(order: QueueOrder, reason: string) {
+    setPending(true);
+    const notice = toast.loading(reason ? "Marking as waiting…" : "Clearing the wait…");
+    try {
+      await mutate(reason
+        ? { action: "wait", orderId: order.id, reason }
+        : { action: "clear-wait", orderId: order.id });
+      toast.success(reason ? "Marked waiting" : "Wait cleared", { id: notice });
+      setSelectedOrder(null);
+      setRefreshKey((value) => value + 1);
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Could not update the wait", { id: notice });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function advanceOrder(order: QueueOrder) {
     const next = nextFulfillmentStatus(order);
     if (!next) return;
-    const pickup = isPickupOrder(order);
 
     if (next === "Shipped") {
       if (!carrier.trim() || !trackingNumber.trim()) {
@@ -150,9 +168,14 @@ export default function FulfillmentPage() {
         <p className="mb-1 text-[10px] font-black uppercase tracking-[.18em] text-green-700">Order operations</p>
         <h1 className="text-2xl font-black text-gray-950">Fulfillment queue</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Delivery dispatch and Machakos store collection in one audited queue.
+          Delivery and Machakos pickup, oldest first. Late orders are listed before the rest. A wait is not counted late.
         </p>
       </header>
+      {stats.late > 0 && (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
+          {stats.late} late. Pack or dispatch those first.
+        </p>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Processing" value={stats.processing} tone="blue" />
@@ -215,6 +238,7 @@ export default function FulfillmentPage() {
           ) : (
             orders.map((order) => {
               const pickup = isPickupOrder(order);
+              const queue = order.queue;
               return (
                 <button
                   key={order.id}
@@ -250,13 +274,27 @@ export default function FulfillmentPage() {
                       {partSent(order) ? (
                         <span className="rounded-full bg-violet-100 px-3 py-1 text-[10px] font-black uppercase text-violet-800">Part sent</span>
                       ) : null}
+                      {queue?.late ? (
+                        <span className="rounded-full bg-red-100 px-3 py-1 text-[10px] font-black uppercase text-red-700">Late</span>
+                      ) : null}
+                      {queue?.waiting ? (
+                        <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-black uppercase text-slate-700">Waiting</span>
+                      ) : null}
                     </div>
                   </div>
-                  <p className="mt-3 text-sm text-gray-600">
-                    {pickup
-                      ? `${PICKUP_STORE.label} · ${PICKUP_STORE.etaText}`
-                      : `${order.shippingAddress?.county || "No county"} · ${order.shippingAddress?.details || "No delivery address"}`}
+                  <p className="mt-3 text-sm text-gray-700">
+                    {queue ? hoursSincePackableLabel(queue.hours) : nairobiPlacedLabel(order.date)}
+                    {" · "}
+                    {queue?.methodLabel || (pickup ? "Machakos pickup" : "Delivery")}
+                    {" · "}
+                    {queue?.place || (pickup ? "Machakos pickup" : order.shippingAddress?.county || "No county")}
                   </p>
+                  <p className="mt-1 text-sm text-gray-500">{queue?.etaText || (pickup ? PICKUP_STORE.etaText : "Zone promise")}</p>
+                  {queue?.waiting ? (
+                    <p className="mt-2 text-xs font-semibold text-slate-600">
+                      Waiting: {queue.waiting.reason} · {queue.waiting.by}
+                    </p>
+                  ) : null}
                   <div className="mt-4 flex items-center justify-between rounded-xl bg-gray-50 p-3">
                     <div className="flex -space-x-2">
                       {order.items.slice(0, 3).map((item, index) => (
@@ -411,6 +449,13 @@ export default function FulfillmentPage() {
                 />
               )}
 
+              <WaitingControl
+                order={selectedOrder}
+                pending={pending}
+                onWait={(reason) => markWaiting(selectedOrder, reason)}
+                onClear={() => markWaiting(selectedOrder, "")}
+              />
+
               <InternalNotes
                 order={selectedOrder}
                 mutate={mutate}
@@ -559,6 +604,58 @@ function PartialDispatch({
           Close shortfall
         </button>
       ) : null}
+    </div>
+  );
+}
+
+function WaitingControl({
+  order,
+  pending,
+  onWait,
+  onClear,
+}: {
+  order: QueueOrder;
+  pending: boolean;
+  onWait: (reason: string) => void;
+  onClear: () => void;
+}) {
+  const [reason, setReason] = useState("");
+  useEffect(() => { setReason(""); }, [order.id]);
+  const waiting = order.queue?.waiting;
+  return (
+    <div className="rounded-xl border border-gray-200 p-4">
+      <p className="text-xs font-black uppercase tracking-wider text-gray-400">Waiting</p>
+      {waiting ? (
+        <>
+          <p className="mt-2 text-sm text-gray-800">{waiting.reason}</p>
+          <p className="mt-1 text-xs text-gray-500">Set by {waiting.by}</p>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={onClear}
+            className="mt-3 min-h-10 w-full rounded-xl border border-gray-200 text-xs font-bold hover:bg-gray-50 disabled:opacity-50"
+          >
+            Clear waiting
+          </button>
+        </>
+      ) : (
+        <>
+          <input
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="Customer asked us to hold"
+            className="mt-2 min-h-11 w-full rounded-xl border border-gray-200 px-3 text-sm"
+          />
+          <button
+            type="button"
+            disabled={pending || !reason.trim()}
+            onClick={() => onWait(reason.trim())}
+            className="mt-2 min-h-10 w-full rounded-xl border border-gray-200 text-xs font-bold hover:bg-gray-50 disabled:opacity-50"
+          >
+            Mark waiting
+          </button>
+        </>
+      )}
     </div>
   );
 }

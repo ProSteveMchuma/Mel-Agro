@@ -20,6 +20,23 @@ export function hasAdminPermission(role: string | undefined, permissions: string
   return !Array.isArray(permissions) || permissions.includes(permission);
 }
 
+/**
+ * Inventory counts and pack adjustments.
+ * Catalogue staff keep this through catalogue.manage.
+ * Operations staff pack and take payment, so they can correct a count
+ * without gaining product, price, or discount-code editing.
+ */
+export function canAdjustInventory(role: string | undefined, permissions: string[] | undefined): boolean {
+  if (role !== "admin" && role !== "super-admin") return false;
+  if (role === "super-admin" || !Array.isArray(permissions)) return true;
+  if (permissions.includes("catalogue.manage")) return true;
+  return permissions.includes("orders.manage") && permissions.includes("payments.manage");
+}
+
+function isInventoryPath(path: string): boolean {
+  return /\/admin\/inventory(\/|$)/.test(path);
+}
+
 /** True when this staff member may open an admin href (Sidebar / Command Centre / Overview). */
 export function canAccessAdminPath(
   role: string | undefined,
@@ -27,6 +44,7 @@ export function canAccessAdminPath(
   path: string,
 ): boolean {
   if (role !== "admin" && role !== "super-admin") return false;
+  if (isInventoryPath(path)) return canAdjustInventory(role, permissions);
   const needed = permissionForAdminPath(path);
   if (!needed) return true;
   return hasAdminPermission(role, permissions, needed);

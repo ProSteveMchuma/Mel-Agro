@@ -17,6 +17,9 @@ import { lineBalances, outstandingQuantity, partialBlocksCompletion, partialSmsS
 import { orderPhoneKey } from "@/lib/phone-match";
 import { canPackOrder, cashSettlementOnFinish } from "@/lib/commerce-ops";
 import { notifyCustomerPaymentReceived } from "@/lib/payment-notifications";
+import { DELIVERY_ZONES, type DeliveryZone } from "@/lib/delivery";
+import { normalizeZoneInput } from "@/lib/shipping-zones-admin";
+import { fulfillmentQueueFacts, type QueueFacts } from "@/lib/fulfillment-age";
 
 const PAGE_SIZE = 20;
 type Cursor = { date: string; id: string };
@@ -32,6 +35,38 @@ const decode = (value: string | null): Cursor | null => {
 
 const ACTIVE_STATUSES = ["Processing", "Shipped", "Ready for Collection"];
 
+async function loadZones(): Promise<DeliveryZone[]> {
+  try {
+    const snapshot = await adminDb.collection("shipping_zones").orderBy("order", "asc").limit(40).get();
+    const zones = snapshot.docs
+      .map((document, index) => normalizeZoneInput({ id: document.id, ...document.data() }, index))
+      .filter((zone) => zone.name.trim() && zone.etaText.trim());
+    return zones.length ? zones : DELIVERY_ZONES;
+  } catch {
+    return DELIVERY_ZONES;
+  }
+}
+
+function withQueue<T extends { id: string }>(order: T, zones: DeliveryZone[], now: number) {
+  return { ...order, queue: fulfillmentQueueFacts(order as Parameters<typeof fulfillmentQueueFacts>[0], zones, now) };
+}
+
+function compareQueue(a: { id: string; queue: QueueFacts }, b: { id: string; queue: QueueFacts }) {
+  if (a.queue.late !== b.queue.late) return a.queue.late ? -1 : 1;
+  const age = String(a.queue.packableAt || "").localeCompare(String(b.queue.packableAt || ""));
+  if (age !== 0) return age;
+  return a.id.localeCompare(b.id);
+}
+
+function decodeOffset(value: string | null): number {
+  try {
+    const parsed = JSON.parse(Buffer.from(value || "", "base64url").toString());
+    return Number.isInteger(parsed?.offset) && parsed.offset >= 0 ? parsed.offset : 0;
+  } catch {
+    return 0;
+  }
+}
+
 export async function GET(request: Request) {
   const actor = await requirePermission(request, "orders.manage");
   if (!actor.ok) return NextResponse.json({ success: false, message: actor.message }, { status: 403 });
@@ -41,6 +76,56 @@ export async function GET(request: Request) {
   const status = ACTIVE_STATUSES.includes(statusParam) ? statusParam : null;
   const methodParam = params.get("method") || "all";
   const method = ["pickup", "delivery", "all"].includes(methodParam) ? methodParam : "all";
+  const zones = await loadZones();
+  const now = Date.now();
+  const queueStats = async (late: number) => {
+    const [processing, shipped, readyPickup, stockAlerts] = await Promise.all([
+      adminDb.collection("orders").where("status", "==", "Processing").count().get(),
+      adminDb.collection("orders").where("status", "==", "Shipped").count().get(),
+      adminDb.collection("orders").where("status", "==", "Ready for Collection").count().get(),
+      adminDb.collection("products").where("stockQuantity", "==", 0).count().get(),
+    ]);
+    return {
+      processing: processing.data().count,
+      shipped: shipped.data().count,
+      readyPickup: readyPickup.data().count,
+      stockAlerts: stockAlerts.data().count,
+      late,
+    };
+  };
+
+  if (!search) {
+    const statuses = status ? [status] : ACTIVE_STATUSES;
+    const snapshots = await Promise.all(statuses.map((value) =>
+      adminDb.collection("orders").where("status", "==", value).limit(200).get(),
+    ));
+    const matches: Array<{ id: string; queue: QueueFacts; [key: string]: unknown }> = [];
+    let capped = snapshots.some((snapshot) => snapshot.size >= 200);
+    for (const snapshot of snapshots) {
+      for (const document of snapshot.docs) {
+        const data = document.data();
+        if (!canPackOrder(data as any)) continue;
+        const orderMethod = fulfillmentMethodOf(data as any);
+        if (method !== "all" && orderMethod !== method) continue;
+        matches.push(withQueue({ id: document.id, ...data, fulfillmentMethod: orderMethod }, zones, now));
+      }
+    }
+    matches.sort(compareQueue);
+    const offset = decodeOffset(params.get("cursor"));
+    const page = matches.slice(offset, offset + PAGE_SIZE);
+    const late = matches.filter((order) => order.queue.late).length;
+    const nextOffset = offset + PAGE_SIZE;
+    return NextResponse.json({
+      success: true,
+      orders: page,
+      nextCursor: nextOffset < matches.length
+        ? Buffer.from(JSON.stringify({ offset: nextOffset })).toString("base64url")
+        : null,
+      stats: await queueStats(late),
+      searchLimited: capped,
+    });
+  }
+
   let cursor = decode(params.get("cursor"));
   const orders: Array<{ id: string; [key: string]: unknown }> = [];
   let scanned = 0;
@@ -81,27 +166,16 @@ export async function GET(request: Request) {
     exhausted = snapshot.size < 75;
   }
 
-  const page = orders.slice(0, PAGE_SIZE);
-  const last = page.at(-1);
-  const [processing, shipped, readyPickup, stockAlerts] = await Promise.all([
-    adminDb.collection("orders").where("status", "==", "Processing").count().get(),
-    adminDb.collection("orders").where("status", "==", "Shipped").count().get(),
-    adminDb.collection("orders").where("status", "==", "Ready for Collection").count().get(),
-    adminDb.collection("products").where("stockQuantity", "==", 0).count().get(),
-  ]);
-
+  const datePage = orders.slice(0, PAGE_SIZE);
+  const page = datePage.map((order) => withQueue(order, zones, now)).sort(compareQueue);
+  const last = datePage.at(-1);
   return NextResponse.json({
     success: true,
     orders: page,
     nextCursor: last && (orders.length > PAGE_SIZE || !exhausted)
-      ? encode({ date: String(last.date || ""), id: last.id })
+      ? encode({ date: String(last.date || ""), id: String(last.id) })
       : null,
-    stats: {
-      processing: processing.data().count,
-      shipped: shipped.data().count,
-      readyPickup: readyPickup.data().count,
-      stockAlerts: stockAlerts.data().count,
-    },
+    stats: await queueStats(page.filter((order) => order.queue.late).length),
     searchLimited: Boolean(search && scanned >= 600),
   });
 }
@@ -143,6 +217,15 @@ const mutationSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("shortfall"),
+    orderId: z.string().min(1).max(200),
+  }),
+  z.object({
+    action: z.literal("wait"),
+    orderId: z.string().min(1).max(200),
+    reason: z.string().trim().min(1).max(160),
+  }),
+  z.object({
+    action: z.literal("clear-wait"),
     orderId: z.string().min(1).max(200),
   }),
 ]);
@@ -304,6 +387,31 @@ export async function POST(request: Request) {
           actorEmail: actor.email || null,
           targetId: input.orderId,
           after: { note: input.note },
+          createdAt: now,
+        });
+        return { kind: "note" as const };
+      }
+
+      if (input.action === "wait" || input.action === "clear-wait") {
+        if (!canPackOrder(order as any)) throw new Error("PAYMENT_REQUIRED");
+        const actorName = actor.email || actor.uid || "staff";
+        if (input.action === "wait") {
+          transaction.update(orderRef, {
+            fulfillmentWait: { reason: input.reason, by: actorName, at: now },
+            updatedAt: now,
+          });
+        } else {
+          transaction.update(orderRef, {
+            fulfillmentWait: FieldValue.delete(),
+            updatedAt: now,
+          });
+        }
+        transaction.set(adminDb.collection("adminAuditLog").doc(), {
+          action: input.action === "wait" ? "fulfillment_wait_set" : "fulfillment_wait_cleared",
+          actorId: actor.uid,
+          actorEmail: actor.email || null,
+          targetId: input.orderId,
+          after: input.action === "wait" ? { reason: input.reason, by: actorName } : { waiting: false },
           createdAt: now,
         });
         return { kind: "note" as const };

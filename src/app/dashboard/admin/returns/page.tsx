@@ -7,6 +7,8 @@ import { skipImageOptimizer } from "@/lib/product-image";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import type { Order } from "@/types";
+import { nairobiDayKey } from "@/lib/day-book";
+import type { ReturnedPackRow } from "@/lib/returns-summary";
 
 type Stats = { requested: number; approved: number; rejected: number };
 
@@ -25,6 +27,9 @@ export default function ReturnsDeskPage() {
   const [pending, setPending] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [reviewNote, setReviewNote] = useState("");
+  const today = nairobiDayKey(new Date()) || new Date().toISOString().slice(0, 10);
+  const [range, setRange] = useState({ start: nairobiDayKey(Date.now() - 30 * 86400000) || today, end: today });
+  const [returned, setReturned] = useState<ReturnedPackRow[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -38,6 +43,8 @@ export default function ReturnsDeskPage() {
         if (search.trim()) params.set("q", search.trim());
         if (status) params.set("status", status);
         if (cursor) params.set("cursor", cursor);
+        if (range.start) params.set("start", range.start);
+        if (range.end) params.set("end", range.end);
         const response = await fetch(`/api/admin/returns?${params}`, {
           headers: { Authorization: `Bearer ${token}` },
           signal: controller.signal,
@@ -48,6 +55,7 @@ export default function ReturnsDeskPage() {
         setNextCursor(result.nextCursor || null);
         setStats(result.stats || { requested: 0, approved: 0, rejected: 0 });
         setSearchLimited(Boolean(result.searchLimited));
+        setReturned(result.returned || []);
         setSelectedOrder((current) =>
           current ? (result.orders || []).find((order: Order) => order.id === current.id) || null : null,
         );
@@ -63,7 +71,7 @@ export default function ReturnsDeskPage() {
       window.clearTimeout(timer);
       controller.abort();
     };
-  }, [search, status, cursor, refreshKey]);
+  }, [search, status, cursor, refreshKey, range.start, range.end]);
 
   useEffect(() => {
     setReviewNote("");
@@ -124,6 +132,45 @@ export default function ReturnsDeskPage() {
         <StatCard label="Approved" value={stats.approved} tone="green" />
         <StatCard label="Rejected" value={stats.rejected} tone="red" />
       </div>
+
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-black uppercase tracking-wider text-gray-900">What came back</h2>
+            <p className="mt-1 text-xs text-gray-500">Approved returns in this Nairobi range. Refund money stays on Payments. Approving a return does not refund the customer.</p>
+          </div>
+          <div className="flex gap-2">
+            <label className="text-[10px] font-black uppercase tracking-wider text-gray-500">Start
+              <input type="date" value={range.start} onChange={(event) => setRange((current) => ({ ...current, start: event.target.value }))} className="mt-1 block min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold normal-case" />
+            </label>
+            <label className="text-[10px] font-black uppercase tracking-wider text-gray-500">End
+              <input type="date" value={range.end} onChange={(event) => setRange((current) => ({ ...current, end: event.target.value }))} className="mt-1 block min-h-11 rounded-xl border border-gray-200 px-3 text-sm font-semibold normal-case" />
+            </label>
+          </div>
+        </div>
+        {returned.length === 0 ? (
+          <p className="text-sm text-gray-500">No approved returns in this range.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="text-[10px] font-black uppercase tracking-wider text-gray-400">
+                <tr><th className="py-2 pr-3">Product</th><th className="py-2 pr-3">Pack</th><th className="py-2 pr-3 text-right">Units</th><th className="py-2 pr-3">Reason</th><th className="py-2 text-right">Refund</th></tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {returned.map((row) => (
+                  <tr key={`${row.product}-${row.pack}-${row.reason}`}>
+                    <td className="py-2 pr-3 font-bold text-gray-900">{row.product}</td>
+                    <td className="py-2 pr-3 text-gray-700">{row.pack}</td>
+                    <td className="py-2 pr-3 text-right font-black">{row.units}</td>
+                    <td className="py-2 pr-3 text-gray-700">{row.reason}</td>
+                    <td className="py-2 text-right font-bold text-gray-900">{row.refundAmount == null ? "—" : `KES ${row.refundAmount.toLocaleString()}`}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <section className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm md:flex-row">
         <label className="relative flex-1">
