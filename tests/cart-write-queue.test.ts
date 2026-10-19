@@ -56,6 +56,12 @@ test('CartContext serialises cloud writes and converts via clearCart', () => {
 
 test('checkout converts cart through clearCart instead of a racing setDoc', () => {
     const source = readFileSync(join(process.cwd(), 'src/app/checkout/page.tsx'), 'utf8');
+    assert.match(source, /customerCanOpenOrder/);
     assert.match(source, /clearCart\(\{\s*status:\s*'converted'/);
+    assert.match(source, /Your cart is unchanged/);
     assert.doesNotMatch(source, /setDoc\(doc\(db,\s*'carts'/);
+    const createAt = source.indexOf('const newOrder = createResult.order as Order;');
+    const openableAt = source.indexOf('customerCanOpenOrder(newOrder, ownerUid)', createAt);
+    const clearAt = source.indexOf('clearCart({ status: \'converted\'', createAt);
+    assert.ok(createAt > 0 && openableAt > createAt && clearAt > openableAt);
 });
