@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { initiateSTKPush } from '@/lib/mpesa-server';
+import { isDarajaSuccessCode } from '@/lib/mpesa';
 import { checkoutRequestFields } from '@/lib/mpesa-orders';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 import { enforceRateLimit } from '@/lib/request-guard';
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
             transactionDesc: `Mel-Agri Order ${String(orderId).slice(0, 8)} (retry)`,
         });
 
-        if (stkData.ResponseCode === '0' && stkData.CheckoutRequestID) {
+        if (isDarajaSuccessCode(stkData.ResponseCode) && stkData.CheckoutRequestID) {
             await orderSnap.ref.update({
                 ...checkoutRequestFields(stkData.CheckoutRequestID),
                 merchantRequestId: stkData.MerchantRequestID || null,
