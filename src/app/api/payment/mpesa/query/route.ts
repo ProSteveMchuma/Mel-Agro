@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { DocumentReference } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { querySTKStatus } from '@/lib/mpesa-server';
 import { checkoutIdsToQuery, decideMpesaQueryWrite, getMpesaErrorMessage, resolveStkQueryProbes } from '@/lib/mpesa';
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
         }
 
         let order: any = null;
-        let orderRef: any = null;
+        let orderRef: DocumentReference | null = null;
         let crid = checkoutRequestID as string | undefined;
 
         if (orderId) {
