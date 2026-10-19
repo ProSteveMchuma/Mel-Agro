@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 import { useAuth } from "@/context/AuthContext";
 import { useOrders, Order, Notification } from "@/context/OrderContext";
 import { useCart } from "@/context/CartContext";
-import React, { useEffect, useState, Suspense } from "react";
+import React, { useEffect, useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getAuth } from "firebase/auth";
 import Image from "next/image";
@@ -34,9 +34,28 @@ import { whatsAppUrl } from '@/lib/site';
 import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
 import { fulfillmentStepsFor, isPickupOrder, statusLabelForOrder } from '@/lib/pickup';
 import PhoneOrderReclaimCard from '@/components/dashboard/PhoneOrderReclaimCard';
+import { sumPaidSpend } from '@/lib/customer-spend';
+import {
+    accountHomeOrder,
+    isRetryableMpesaOrder,
+    mergeCustomerOrders,
+    ordersWithReturn,
+    readRememberedOrder,
+    storedPaymentLabel,
+} from '@/lib/customer-orders';
+import { mpesaControlVisibility } from '@/lib/whatsapp-order';
 
-type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses' | 'payments';
-const TABS: Tab[] = ['dashboard', 'orders', 'returns', 'notifications', 'profile', 'support', 'wishlist', 'addresses', 'payments'];
+type Tab = 'dashboard' | 'orders' | 'returns' | 'notifications' | 'profile' | 'support' | 'wishlist' | 'addresses';
+const TABS: Tab[] = ['dashboard', 'orders', 'returns', 'notifications', 'profile', 'support', 'wishlist', 'addresses'];
+
+function paymentBadgeClass(status?: string | null) {
+    const label = storedPaymentLabel(status);
+    if (label === 'Paid') return 'bg-green-100 text-green-700';
+    if (label === 'Failed') return 'bg-red-100 text-red-700';
+    if (label === 'Refunded') return 'bg-gray-100 text-gray-600';
+    if (label === 'Pending Verification' || label === 'Pending WhatsApp') return 'bg-amber-100 text-amber-800';
+    return 'bg-amber-50 text-amber-800';
+}
 
 function isReturnEligible(order: Order) {
     if (order.returnStatus) return false;
@@ -65,10 +84,10 @@ export default function UserDashboard() {
 
 function UserDashboardInner() {
     const { user, isLoading, logout, updateProfile } = useAuth();
-    const { orders, requestReturn, updateOrderStatus } = useOrders();
+    const { orders: listenerOrders, requestReturn, updateOrderStatus, notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
     const { addToCart, cartCount } = useCart();
     const { products } = useProducts();
-    const { notifications, markNotificationRead, unreadNotificationsCount } = useOrders();
+    const [serverOrders, setServerOrders] = useState<Order[]>([]);
     const { wishlist, removeFromWishlist } = useWishlist();
     const { general, tax, documents } = useSettings();
     const router = useRouter();
@@ -98,6 +117,36 @@ function UserDashboardInner() {
     const [returningId, setReturningId] = useState<string | null>(null);
     const [cancellingOrderId, setCancellingOrderId] = useState<string | null>(null);
     const searchParams = useSearchParams();
+    const rememberedOrder = useMemo(() => readRememberedOrder<Order>(user?.uid), [user?.uid]);
+    const orders = useMemo(
+        () => mergeCustomerOrders(listenerOrders, serverOrders, rememberedOrder, user?.uid),
+        [listenerOrders, serverOrders, rememberedOrder, user?.uid],
+    );
+
+    useEffect(() => {
+        if (!user?.uid) return;
+        let cancelled = false;
+        (async () => {
+            try {
+                const token = await getAuth().currentUser?.getIdToken();
+                if (!token || cancelled) return;
+                const headers = { Authorization: `Bearer ${token}` };
+                const res = await fetch('/api/orders/mine', { headers });
+                const data = await res.json().catch(() => ({}));
+                let rows: Order[] = res.ok && Array.isArray(data.orders) ? data.orders : [];
+                const orderId = new URLSearchParams(window.location.search).get('orderId');
+                if (orderId && !rows.some((order) => order.id === orderId)) {
+                    const one = await fetch(`/api/orders/mine?orderId=${encodeURIComponent(orderId)}`, { headers });
+                    const oneData = await one.json().catch(() => ({}));
+                    if (one.ok && Array.isArray(oneData.orders)) rows = [...oneData.orders, ...rows];
+                }
+                if (!cancelled) setServerOrders(rows);
+            } catch (error) {
+                console.error('Could not load saved orders', error);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [user?.uid]);
 
     useEffect(() => {
         // Smart Profile Prompt: Only annoy user if they have NEITHER phone nor email
@@ -342,15 +391,10 @@ function UserDashboardInner() {
     const statsData = [
         { label: "Total Orders", value: orders.length.toString(), icon: "📦", color: "bg-blue-50 text-blue-600" },
         { label: "Loyalty Points", value: (user?.loyaltyPoints || 0).toString(), icon: "⭐", color: "bg-purple-50 text-purple-600" },
-        { label: "Total Spent", value: `KES ${orders.reduce((acc: number, curr: Order) => acc + curr.total, 0).toLocaleString()}`, icon: "💰", color: "bg-green-50 text-green-600" }
+        { label: "Total Spent", value: `KES ${sumPaidSpend(orders).toLocaleString()}`, icon: "💰", color: "bg-green-50 text-green-600" }
     ];
 
-    const retryableOrders = orders.filter((o: Order) => {
-        const m = ((o as any).paymentMethod || '').toLowerCase();
-        const isStkMpesa = m === 'm-pesa' || m === 'mpesa';
-        const isRetryable = ['Unpaid', 'Failed'].includes((o as any).paymentStatus || '') && o.status !== 'Cancelled';
-        return isStkMpesa && isRetryable;
-    });
+    const retryableOrders = orders.filter((o: Order) => isRetryableMpesaOrder(o));
     const reorderPredictions = actionableReorders(buildReorderPredictions(orders)).filter(prediction => prediction.userId === user.uid).slice(0, 4);
 
     const renderDashboard = () => (
@@ -456,8 +500,11 @@ function UserDashboardInner() {
                 </div>
             )}
 
-            {/* Active Order Progress - Difference Maker */}
-            {orders.filter(o => o.status === 'Processing' || o.status === 'Shipped').slice(0, 1).map(activeOrder => (
+            {/* Active Order Progress - includes an order still waiting for payment */}
+            {(() => {
+                const activeOrder = accountHomeOrder(orders);
+                if (!activeOrder) return null;
+                return (
                 <div key={activeOrder.id} className="bg-white rounded-3xl p-5 sm:p-8 border border-melagri-primary/20 shadow-xl shadow-melagri-primary/5 animate-in slide-in-from-bottom-4 duration-700">
                     <div className="flex justify-between items-center mb-6">
                         <div>
@@ -468,7 +515,8 @@ function UserDashboardInner() {
                     </div>
                     <OrderTimeline order={activeOrder} />
                 </div>
-            ))}
+                );
+            })()}
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 {statsData.map((stat, idx) => (
@@ -571,8 +619,8 @@ function UserDashboardInner() {
                                     </div>
                                     <div className="text-right">
                                         <div className="flex flex-col items-end gap-1">
-                                            <p className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
-                                                {order.paymentStatus || 'Unpaid'}
+                                            <p className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-tighter ${paymentBadgeClass(order.paymentStatus)}`}>
+                                                {storedPaymentLabel(order.paymentStatus)}
                                             </p>
                                             <p className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${order.status === 'Delivered' || order.status === 'Collected' ? 'bg-green-100 text-green-700' : order.status === 'Cancelled' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{statusLabelForOrder(order.status, order)}</p>
                                         </div>
@@ -594,7 +642,7 @@ function UserDashboardInner() {
                 <div className="bg-white rounded-2xl p-8 border border-gray-200 shadow-sm">
                     <h3 className="font-bold text-gray-900 mb-6">Frequently Ordered Items</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-4">
-                        {Array.from(new Map(orders.flatMap(o => o.items).map(item => [item.id, item])).values())
+                        {Array.from(new Map(orders.flatMap(o => o.items || []).map(item => [item.id, item])).values())
                             .slice(0, 6)
                             .map((item: any, i: number) => (
                                 <div key={i} className="group cursor-pointer" onClick={() => handleFrequentAdd(item)}>
@@ -638,8 +686,8 @@ function UserDashboardInner() {
                                                 }`}>
                                                 {statusLabelForOrder(order.status, order)}
                                             </span>
-                                            <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${order.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'}`}>
-                                                {order.paymentStatus || 'Unpaid'}
+                                            <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-widest ${paymentBadgeClass(order.paymentStatus)}`}>
+                                                {storedPaymentLabel(order.paymentStatus)}
                                             </span>
                                         </div>
                                         <p className="text-xs text-gray-400 font-medium tracking-tight">Placed on {new Date(order.date).toLocaleDateString()}</p>
@@ -662,7 +710,7 @@ function UserDashboardInner() {
                                     </div>
                                 </div>
                                 <div className="flex gap-4 overflow-x-auto pb-2">
-                                    {order.items.map((item: any, i: number) => (
+                                    {(order.items || []).map((item: any, i: number) => (
                                         <div key={i} className="flex-shrink-0 w-20">
                                             <div className="aspect-square bg-gray-50 rounded-xl relative overflow-hidden mb-1 border border-gray-100">
                                                 {item.image && <Image src={item.image} alt={item.name} fill unoptimized={skipImageOptimizer(item.image)} className="object-cover" />}
@@ -681,7 +729,7 @@ function UserDashboardInner() {
 
 
     const renderReturns = () => {
-        const returnedOrders = orders.filter((o: Order) => o.status === 'Cancelled' || o.returnStatus);
+        const returnedOrders = ordersWithReturn(orders);
         return (
             <div className="space-y-6">
                 <h2 className="text-2xl font-bold text-gray-900">Returns & Refunds</h2>
@@ -699,8 +747,8 @@ function UserDashboardInner() {
                                         <p className="font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
                                         <p className="text-xs text-gray-400">{new Date(order.date).toLocaleDateString()}</p>
                                     </div>
-                                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${order.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                        {order.returnStatus || 'Processing'}
+                                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${order.returnStatus === 'Approved' ? 'bg-green-100 text-green-700' : order.returnStatus === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
+                                        {order.returnStatus}
                                     </span>
                                 </div>
                                 <p className="text-sm text-gray-600 mb-4">Reason: {order.returnReason || 'N/A'}</p>
@@ -780,6 +828,14 @@ function UserDashboardInner() {
         if (isPickupOrder(order)) {
             if (status === 'Shipped') status = 'Ready for Collection';
             if (status === 'Delivered') status = 'Collected';
+        }
+        if (status === 'Pending Payment') {
+            return (
+                <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center">
+                    <p className="text-sm font-black uppercase tracking-widest text-amber-950">{statusLabelForOrder(status, order)}</p>
+                    <p className="mt-1 text-xs text-amber-800">Payment is {storedPaymentLabel(order.paymentStatus)}. Packing starts after it is paid.</p>
+                </div>
+            );
         }
         const currentStepIndex = steps.indexOf(status);
         if (currentStepIndex === -1 && status !== 'Cancelled') return null;
@@ -1015,7 +1071,7 @@ function UserDashboardInner() {
                                 </div>
                             ) : null}
                             <div className="space-y-4 mb-8">
-                                {selectedOrder.items.map((item: any, i: number) => (
+                                {(selectedOrder.items || []).map((item: any, i: number) => (
                                     <div key={i} className="flex gap-4 items-center">
                                         <div className="w-10 h-10 md:w-12 md:h-12 bg-gray-100 rounded-lg relative overflow-hidden flex-shrink-0">
                                             {item.image && <Image src={item.image} alt={item.name} fill unoptimized={skipImageOptimizer(item.image)} className="object-cover" />}
@@ -1029,12 +1085,12 @@ function UserDashboardInner() {
                                 ))}
                             </div>
                             {(() => {
-                                const m = ((selectedOrder as any).paymentMethod || '').toLowerCase();
-                                const isStkMpesa = m === 'm-pesa' || m === 'mpesa' || m.includes('till') || m.includes('paybill');
-                                const status = (selectedOrder as any).paymentStatus;
-                                const needsPayment = isStkMpesa && ['Unpaid', 'Failed', 'Pending Verification'].includes(status || '') && selectedOrder.status !== 'Cancelled';
-                                if (!needsPayment) return null;
+                                const { isStk } = mpesaControlVisibility((selectedOrder as any).paymentMethod);
+                                const status = storedPaymentLabel((selectedOrder as any).paymentStatus);
+                                const needsStk = isStk && ['Unpaid', 'Failed'].includes(status) && selectedOrder.status !== 'Cancelled';
                                 const isPendingVerification = status === 'Pending Verification';
+                                const needsPayment = (needsStk || isPendingVerification) && selectedOrder.status !== 'Cancelled';
+                                if (!needsPayment) return null;
                                 return (
                                     <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
                                         <div className="flex items-center justify-between gap-3 flex-wrap">

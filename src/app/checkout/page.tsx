@@ -34,6 +34,7 @@ import AddressSearchField from '@/components/checkout/AddressSearchField';
 import { matchKenyanCounty, type GeocodeSuggestion } from '@/lib/geocode';
 import type { Order } from '@/types';
 import { readStoredEntryPath, readStoredSalePath } from '@/lib/shop-journey';
+import { customerCanOpenOrder, rememberOpenableOrder } from '@/lib/customer-orders';
 
 const LocationPicker = dynamic(() => import('../../components/checkout/LocationPicker'), {
     ssr: false,
@@ -73,6 +74,8 @@ export default function CheckoutPage() {
     const [showOtherPayments, setShowOtherPayments] = useState(false);
     const [quickCheckoutDismissed, setQuickCheckoutDismissed] = useState(false);
     const [paymentFailure, setPaymentFailure] = useState<{ orderId: string; message: string } | null>(null);
+    /** Set only after the saved order belongs to this signed-in customer. */
+    const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
     const [showValidationErrors, setShowValidationErrors] = useState(false);
 
     // Name-capture gate — phone-OTP signups land here without a real name
@@ -196,12 +199,15 @@ export default function CheckoutPage() {
         }
     };
 
-    // Redirect away if cart is empty (defense in depth for the submit guard)
+    // Redirect away if cart is empty (defense in depth for the submit guard).
+    // A saved order that is still unpaid must keep this page — clearing the cart
+    // used to send the customer to an empty cart and hide the order.
     useEffect(() => {
-        if (!isProcessing && cartItems.length === 0) {
+        if (isProcessing || paymentFailure || stkWait || placedOrder) return;
+        if (cartItems.length === 0) {
             router.replace('/cart');
         }
-    }, [cartItems.length, isProcessing, router]);
+    }, [cartItems.length, isProcessing, paymentFailure, stkWait, placedOrder, router]);
 
     useEffect(() => {
         if (currentStep === 1) trackAction('checkout_start');
@@ -306,8 +312,11 @@ export default function CheckoutPage() {
             const data = await res.json();
             if (data.success) {
                 toast.success("STK Push sent — check your phone, then complete from your dashboard.", { id: t, duration: 7000 });
-                clearCart();
-                router.push(`/dashboard/user?orderId=${paymentFailure.orderId}`);
+                if (placedOrder && customerCanOpenOrder(placedOrder, getAuth().currentUser?.uid)) {
+                    rememberOpenableOrder(placedOrder as unknown as Record<string, unknown>);
+                    clearCart({ status: 'converted', lastOrderId: placedOrder.id });
+                }
+                router.push(`/dashboard/user?tab=orders&orderId=${paymentFailure.orderId}`);
             } else {
                 toast.error(data.message || "Couldn't re-send the prompt.", { id: t });
                 setIsProcessing(false);
@@ -319,26 +328,25 @@ export default function CheckoutPage() {
     };
 
     const handleFailureSwitchToTill = () => {
-        setValue('paymentMethod', 'manual_mpesa');
-        setShowOtherPayments(true);
-        setPaymentFailure(null);
-        setCurrentStep(2);
-        toast("Switched to manual Buy Goods. Pay via your M-Pesa menu, then enter the receipt code.", { duration: 6000 });
+        toast("This order is already saved. Enter the M-Pesa receipt below, or open the order to pay Buy Goods there.", { duration: 6000 });
     };
 
     const handleFailureSwitchToCod = () => {
-        setValue('paymentMethod', 'cod');
-        setShowOtherPayments(true);
-        setPaymentFailure(null);
-        setCurrentStep(3);
-        toast.success("Switched to Cash on Delivery. Confirm to place the order.", { duration: 5000 });
+        if (!paymentFailure) return;
+        if (placedOrder) rememberOpenableOrder(placedOrder as unknown as Record<string, unknown>);
+        toast("Cancel this unpaid order from your orders, then come back — your cart is still here for cash on delivery.", { duration: 7000 });
+        router.push(`/dashboard/user?tab=orders&orderId=${paymentFailure.orderId}`);
     };
 
     const handlePayLater = () => {
         if (!paymentFailure) return;
-        toast("Order saved as unpaid. Resume payment from your dashboard.", { duration: 5000 });
-        clearCart();
-        router.push(`/dashboard/user?orderId=${paymentFailure.orderId}`);
+        const ownerUid = getAuth().currentUser?.uid;
+        if (placedOrder && customerCanOpenOrder(placedOrder, ownerUid)) {
+            rememberOpenableOrder(placedOrder as unknown as Record<string, unknown>);
+            clearCart({ status: 'converted', lastOrderId: placedOrder.id });
+        }
+        toast("Order saved as unpaid. Resume payment from your orders.", { duration: 5000 });
+        router.push(`/dashboard/user?tab=orders&orderId=${paymentFailure.orderId}`);
     };
 
     // Sync shipping data with user profile when user loads.
@@ -505,6 +513,12 @@ export default function CheckoutPage() {
             // between guest order creation and M-Pesa initiation.
             const checkoutIdToken = await getAuth().currentUser?.getIdToken(true);
             if (!checkoutIdToken) throw new Error('Your checkout session expired. Please try again.');
+            const ownerUid = getAuth().currentUser?.uid || null;
+            if (placedOrder && customerCanOpenOrder(placedOrder, ownerUid)) {
+                toast.error('This order is already saved. Open it below, or cancel it from your orders before placing another.');
+                setIsProcessing(false);
+                return;
+            }
 
             // Prices, delivery fees, discounts, loyalty points and stock are all
             // calculated and committed by the server. The browser only submits intent.
@@ -534,10 +548,14 @@ export default function CheckoutPage() {
 
             const newOrder = createResult.order as Order;
             const authoritativeTotal = Number(newOrder.total);
-
-            // Clear through CartContext so the write is serialised behind any
-            // in-flight persist — a stale "active" write must not resurrect lines.
-            clearCart({ status: 'converted', lastOrderId: newOrder.id });
+            const savedForThisCustomer = customerCanOpenOrder(newOrder, ownerUid);
+            if (!savedForThisCustomer) {
+                toast.error('We saved an order, but this account cannot open it. Your cart is unchanged.');
+                setIsProcessing(false);
+                return;
+            }
+            setPlacedOrder(newOrder);
+            rememberOpenableOrder(newOrder as unknown as Record<string, unknown>);
 
             if (data.paymentMethod === 'mpesa') {
 
@@ -556,7 +574,9 @@ export default function CheckoutPage() {
                 const resData = await response.json();
 
                 if (!resData.success) {
-                    toast.error(resData.message || "Failed to initiate M-Pesa.", { id: loadingToast });
+                    const failMessage = resData.message || 'Failed to initiate M-Pesa.';
+                    toast.error(failMessage, { id: loadingToast });
+                    setPaymentFailure({ orderId: newOrder.id, message: failMessage });
                     setIsProcessing(false);
                     return;
                 }
@@ -594,7 +614,8 @@ export default function CheckoutPage() {
 
                     if (status === 'paid') {
                         toast.success("Payment Received! Order #" + newOrder.id.slice(0, 5));
-                        clearCart();
+                        rememberOpenableOrder({ ...newOrder, paymentStatus: 'Paid' } as unknown as Record<string, unknown>);
+                        clearCart({ status: 'converted', lastOrderId: newOrder.id });
                         router.push(`/checkout/success?orderId=${newOrder.id}`);
                     } else if (status === 'failed') {
                         const friendlyMsg = friendly(msg || 'Unknown error', code);
@@ -661,8 +682,9 @@ export default function CheckoutPage() {
             }
 
             // COD and Buy Goods (receipt already claimed during create) land here.
+            // The order is already attached to this account, and success opens it.
             trackAction('checkout_complete', { orderId: newOrder.id });
-            clearCart();
+            clearCart({ status: 'converted', lastOrderId: newOrder.id });
             toast.success("Order placed successfully!");
             router.push(`/checkout/success?orderId=${newOrder.id}`);
 
@@ -1407,7 +1429,7 @@ export default function CheckoutPage() {
                                                         <div className="flex-1">
                                                             <p className="font-black text-red-900 text-sm uppercase tracking-tight">M-Pesa payment didn&apos;t go through</p>
                                                             <p className="text-sm text-red-700 mt-1">{paymentFailure.message}</p>
-                                                            <p className="text-xs text-red-600 mt-2">Don&apos;t worry — your order is saved. Pick how you&apos;d like to pay:</p>
+                                                            <p className="text-xs text-red-600 mt-2">Your order is saved and your cart is still here. Open the order to pay, or pick another way below.</p>
                                                         </div>
                                                     </div>
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1447,7 +1469,10 @@ export default function CheckoutPage() {
                                                     <MpesaReceiptClaim
                                                         orderId={paymentFailure.orderId}
                                                         onPaid={() => {
-                                                            clearCart();
+                                                            if (placedOrder && customerCanOpenOrder(placedOrder, getAuth().currentUser?.uid)) {
+                                                                rememberOpenableOrder({ ...placedOrder, paymentStatus: 'Paid' } as unknown as Record<string, unknown>);
+                                                                clearCart({ status: 'converted', lastOrderId: placedOrder.id });
+                                                            }
                                                             setPaymentFailure(null);
                                                             router.push(`/checkout/success?orderId=${paymentFailure.orderId}`);
                                                         }}
@@ -1465,7 +1490,7 @@ export default function CheckoutPage() {
                                                     ← Back
                                                 </button>
                                                 <button
-                                                    onClick={handleSubmit(onSubmit, handleInvalidSubmit)}
+                                                    onClick={placedOrder && !isProcessing ? handlePayLater : handleSubmit(onSubmit, handleInvalidSubmit)}
                                                     disabled={isProcessing}
                                                     type="button"
                                                     className="flex-1 bg-melagri-primary hover:bg-melagri-secondary text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
@@ -1478,6 +1503,8 @@ export default function CheckoutPage() {
                                                             </svg>
                                                             Processing...
                                                         </>
+                                                    ) : placedOrder ? (
+                                                        'Open saved order'
                                                     ) : (
                                                         paymentMethod === 'mpesa' ? 'Send M-Pesa Prompt' :
                                                             paymentMethod === 'manual_mpesa' ? 'Submit Payment for Verification' :
