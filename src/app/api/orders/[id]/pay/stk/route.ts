@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { initiateSTKPush } from '@/lib/mpesa-server';
+import { isDarajaSuccessCode } from '@/lib/mpesa';
 import { checkoutRequestFields } from '@/lib/mpesa-orders';
 import { enforceRateLimit } from '@/lib/request-guard';
 import { authorizeOrderAction } from '@/lib/order-access-server';
@@ -62,7 +63,7 @@ export async function POST(
             transactionDesc: `Mel-Agri Order ${String(orderId).slice(0, 8)}`,
         });
 
-        if (stkData.ResponseCode === '0' && stkData.CheckoutRequestID) {
+        if (isDarajaSuccessCode(stkData.ResponseCode) && stkData.CheckoutRequestID) {
             await auth.order.ref.update({
                 ...checkoutRequestFields(stkData.CheckoutRequestID),
                 paymentInitiatedAt: new Date().toISOString(),

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { getMpesaErrorMessage } from '@/lib/mpesa';
+import { decideMpesaCallback, getMpesaErrorMessage, isMpesaPaidCode } from '@/lib/mpesa';
 import { findOrderByCheckoutRequestId } from '@/lib/mpesa-orders';
 import { verifySafaricomCallback } from '@/lib/safaricom-ips';
 import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
@@ -38,9 +38,9 @@ export async function POST(request: Request) {
             return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
         }
 
-        const orderData = orderDoc.data();
+        const orderData = orderDoc.data() || {};
         const orderRef = orderDoc.ref;
-        const items = (CallbackMetadata?.Item || []) as Array<{ Name: string; Value: any }>;
+        const items = callbackItems(CallbackMetadata);
         const findVal = (name: string) => items.find(i => i.Name === name)?.Value;
         const mpesaReceiptNumber = String(findVal('MpesaReceiptNumber') || '');
         const amountPaid = Number(findVal('Amount') || 0);
@@ -48,113 +48,97 @@ export async function POST(request: Request) {
         const transactionDate = String(findVal('TransactionDate') || '');
 
         const callbackEventId = `${CheckoutRequestID}-${ResultCode}`;
-        if (orderData.lastCallbackEventId === callbackEventId) {
-            if (String(ResultCode) === '0' && !orderData.paymentSmsSentAt) {
-                void notifyCustomerPaymentReceived({
-                    orderId: orderDoc.id,
-                    order: orderData,
-                    receipt: mpesaReceiptNumber || orderData.mpesaReceiptNumber,
-                    phone: phoneNumber || orderData.phone,
-                    method: 'M-Pesa',
-                });
-            }
-            console.log(`Idempotent skip — duplicate callback for ${callbackEventId}`);
-            return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
-        }
+        const paidCode = isMpesaPaidCode(ResultCode);
+        const now = new Date().toISOString();
+        const applied = await adminDb.runTransaction(async (tx) => {
+            const freshSnap = await tx.get(orderRef);
+            const fresh = freshSnap.data() || orderData;
+            const decision = decideMpesaCallback({
+                order: fresh,
+                checkoutRequestId: CheckoutRequestID,
+                resultCode: ResultCode,
+                callbackEventId,
+                amountPaid,
+                receipt: mpesaReceiptNumber,
+            });
 
-        if (orderData.paymentStatus === 'Paid') {
-            if (ResultCode === 0 && mpesaReceiptNumber && !orderData.mpesaReceiptNumber) {
-                await orderRef.update({
+            if (decision.action === 'mark-paid') {
+                const startedProcessing = fresh.status === 'Pending Payment' || !fresh.status;
+                tx.update(orderRef, {
+                    paymentStatus: 'Paid',
+                    paymentMethod: 'M-Pesa',
+                    transactionId: mpesaReceiptNumber,
                     mpesaReceiptNumber,
-                    transactionId: orderData.transactionId || mpesaReceiptNumber,
-                    mpesaPhoneNumber: orderData.mpesaPhoneNumber || phoneNumber,
-                    mpesaTransactionDate: orderData.mpesaTransactionDate || transactionDate,
-                    amountPaid: orderData.amountPaid || amountPaid,
+                    mpesaPhoneNumber: phoneNumber,
+                    mpesaTransactionDate: transactionDate,
+                    amountPaid,
+                    status: startedProcessing ? 'Processing' : fresh.status,
+                    processingAt: fresh.processingAt || now,
+                    stockReservationStatus: 'committed',
                     lastCallbackEventId: callbackEventId,
-                    updatedAt: new Date().toISOString(),
+                    paidAt: now,
+                    updatedAt: now,
+                    paymentFailureReason: null,
+                    paymentFailureCode: null,
+                    paymentFailureMessage: null,
+                    paymentResolvedVia: 'STK_CALLBACK',
                 });
-            }
-            if (ResultCode === 0 && !orderData.paymentSmsSentAt) {
-                void notifyCustomerPaymentReceived({
+                tx.set(adminDb.collection('transactions').doc(), {
                     orderId: orderDoc.id,
-                    order: {
-                        ...orderData,
-                        mpesaReceiptNumber: mpesaReceiptNumber || orderData.mpesaReceiptNumber,
-                    },
-                    receipt: mpesaReceiptNumber || orderData.mpesaReceiptNumber,
-                    phone: phoneNumber || orderData.phone,
+                    userId: fresh.userId || null,
+                    amount: amountPaid,
+                    receipt: mpesaReceiptNumber,
+                    phone: phoneNumber,
                     method: 'M-Pesa',
+                    date: now,
+                    status: 'Success',
+                    checkoutRequestId: CheckoutRequestID,
+                    recordedBy: 'System (M-Pesa)',
                 });
-            }
-            console.log(`Idempotent skip — order ${orderDoc.id} already Paid`);
-            return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
-        }
-
-        if (ResultCode === 0) {
-            const orderTotal = Number(orderData.total || 0);
-            const amountMatches = orderTotal > 0 && Math.abs(amountPaid - orderTotal) < 1;
-
-            if (!amountMatches) {
-                await orderRef.update({
+            } else if (decision.action === 'amount-mismatch') {
+                tx.update(orderRef, {
                     paymentStatus: 'Pending Verification',
                     status: 'Pending Payment',
                     amountPaid,
                     mpesaReceiptNumber,
                     mpesaPhoneNumber: phoneNumber,
                     mpesaTransactionDate: transactionDate,
-                    paymentFailureReason: `Amount mismatch: received KES ${amountPaid}, expected KES ${orderTotal}`,
+                    paymentFailureReason: `Amount mismatch: received KES ${amountPaid}, expected KES ${fresh.total}`,
                     lastCallbackEventId: callbackEventId,
-                    updatedAt: new Date().toISOString(),
+                    updatedAt: now,
                 });
-                console.warn(`M-Pesa amount mismatch for order ${orderDoc.id}: received ${amountPaid}, expected ${orderTotal}`);
-                return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
+            } else if (decision.action === 'fill-receipt') {
+                tx.update(orderRef, {
+                    mpesaReceiptNumber,
+                    transactionId: fresh.transactionId || mpesaReceiptNumber,
+                    mpesaPhoneNumber: fresh.mpesaPhoneNumber || phoneNumber,
+                    mpesaTransactionDate: fresh.mpesaTransactionDate || transactionDate,
+                    amountPaid: fresh.amountPaid || amountPaid,
+                    lastCallbackEventId: callbackEventId,
+                    updatedAt: now,
+                });
+            } else if (decision.action === 'mark-failed') {
+                tx.update(orderRef, {
+                    paymentStatus: 'Failed',
+                    status: 'Pending Payment',
+                    paymentFailureReason: ResultDesc,
+                    paymentFailureCode: String(ResultCode),
+                    paymentFailureMessage: getMpesaErrorMessage(ResultCode),
+                    lastCallbackEventId: callbackEventId,
+                    updatedAt: now,
+                });
             }
 
-            await orderRef.update({
-                paymentStatus: 'Paid',
-                paymentMethod: 'M-Pesa',
-                transactionId: mpesaReceiptNumber,
-                mpesaReceiptNumber,
-                mpesaPhoneNumber: phoneNumber,
-                mpesaTransactionDate: transactionDate,
-                amountPaid,
-                status: 'Processing',
-                processingAt: new Date().toISOString(),
-                stockReservationStatus: 'committed',
-                lastCallbackEventId: callbackEventId,
-                paidAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString(),
-                paymentFailureReason: null,
-                paymentFailureCode: null,
-                paymentFailureMessage: null,
-            });
+            return {
+                action: decision.action,
+                order: fresh,
+                notify: paidCode && !fresh.paymentSmsSentAt && (decision.action === 'mark-paid' || decision.action === 'fill-receipt' || decision.action === 'ignore'),
+            };
+        });
 
-            await adminDb.collection('transactions').add({
-                orderId: orderDoc.id,
-                userId: orderData.userId || null,
-                amount: amountPaid,
-                receipt: mpesaReceiptNumber,
-                phone: phoneNumber,
-                method: 'M-Pesa',
-                date: new Date().toISOString(),
-                status: 'Success',
-                checkoutRequestId: CheckoutRequestID,
-                recordedBy: 'System (M-Pesa)',
-            });
-
-            void notifyCustomerPaymentReceived({
-                orderId: orderDoc.id,
-                order: {
-                    ...orderData,
-                    amountPaid,
-                    mpesaReceiptNumber,
-                    paymentMethod: 'M-Pesa',
-                },
-                receipt: mpesaReceiptNumber,
-                phone: phoneNumber || orderData.phone,
-                method: 'M-Pesa',
-            });
-        } else {
+        if (applied.action === 'amount-mismatch') {
+            console.warn(`M-Pesa amount mismatch for order ${orderDoc.id}: received ${amountPaid}, expected ${applied.order.total}`);
+        } else if (applied.action === 'mark-failed') {
             void reportIncident({
                 type: 'payment_failure',
                 severity: 'warning',
@@ -162,14 +146,22 @@ export async function POST(request: Request) {
                 message: 'M-Pesa payment failed',
                 metadata: { resultCode: String(ResultCode), orderId: orderDoc.id },
             });
-            await orderRef.update({
-                paymentStatus: 'Failed',
-                status: 'Pending Payment',
-                paymentFailureReason: ResultDesc,
-                paymentFailureCode: String(ResultCode),
-                paymentFailureMessage: getMpesaErrorMessage(ResultCode),
-                lastCallbackEventId: callbackEventId,
-                updatedAt: new Date().toISOString(),
+        } else if (applied.action === 'ignore') {
+            console.log(`Idempotent skip — callback ${callbackEventId} did not change order ${orderDoc.id}`);
+        }
+
+        if (applied.notify) {
+            void notifyCustomerPaymentReceived({
+                orderId: orderDoc.id,
+                order: {
+                    ...applied.order,
+                    amountPaid: amountPaid || applied.order.amountPaid,
+                    mpesaReceiptNumber: mpesaReceiptNumber || applied.order.mpesaReceiptNumber,
+                    paymentMethod: 'M-Pesa',
+                },
+                receipt: mpesaReceiptNumber || applied.order.mpesaReceiptNumber,
+                phone: phoneNumber || applied.order.phone,
+                method: 'M-Pesa',
             });
         }
 
@@ -184,4 +176,11 @@ export async function POST(request: Request) {
         });
         return NextResponse.json({ ResultCode: 0, ResultDesc: 'Accepted' });
     }
+}
+
+function callbackItems(metadata: { Item?: unknown } | null | undefined): Array<{ Name: string; Value: unknown }> {
+    const item = metadata?.Item;
+    if (Array.isArray(item)) return item as Array<{ Name: string; Value: unknown }>;
+    if (item && typeof item === 'object') return [item as { Name: string; Value: unknown }];
+    return [];
 }

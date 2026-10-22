@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+import type { DocumentReference } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { querySTKStatus } from '@/lib/mpesa-server';
-import { checkoutIdsToQuery, getMpesaErrorMessage, resolveStkQueryProbes } from '@/lib/mpesa';
+import { checkoutIdsToQuery, decideMpesaQueryWrite, getMpesaErrorMessage, resolveStkQueryProbes } from '@/lib/mpesa';
 import { requireOrderOwnerOrAdmin } from '@/lib/auth-server';
 import { enforceRateLimit } from '@/lib/request-guard';
 import { notifyCustomerPaymentReceived } from '@/lib/payment-notifications';
@@ -26,7 +27,7 @@ export async function POST(request: Request) {
         }
 
         let order: any = null;
-        let orderRef: any = null;
+        let orderRef: DocumentReference | null = null;
         let crid = checkoutRequestID as string | undefined;
 
         if (orderId) {
@@ -96,60 +97,80 @@ export async function POST(request: Request) {
         const resultCode = resolved.resultCode;
         const resultDesc = resolved.resultDesc || 'Unknown';
         const data = resolved.data;
+        const now = new Date().toISOString();
 
-        if (resolved.outcome === 'paid') {
-            if (orderRef && order?.paymentStatus !== 'Paid') {
-                await orderRef.update({
-                    paymentStatus: 'Paid',
-                    paymentMethod: order.paymentMethod || 'M-Pesa',
-                    status: order.status === 'Pending Payment' || !order.status ? 'Processing' : order.status,
-                    processingAt: new Date().toISOString(),
-                    stockReservationStatus: 'committed',
-                    paidAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString(),
-                    paymentFailureReason: null,
-                    paymentFailureCode: null,
-                    paymentFailureMessage: null,
-                    paymentResolvedVia: 'STK_QUERY',
+        const applied = orderRef
+            ? await adminDb.runTransaction(async (tx) => {
+                const freshSnap = await tx.get(orderRef);
+                const fresh = freshSnap.data() || order;
+                const write = decideMpesaQueryWrite({
+                    paymentStatus: fresh.paymentStatus,
+                    checkoutRequestId: fresh.checkoutRequestId,
+                    outcome: resolved.outcome,
+                    resultCheckoutRequestId: resolved.checkoutRequestId,
+                });
+                if (write === 'mark-paid') {
+                    const startedProcessing = fresh.status === 'Pending Payment' || !fresh.status;
+                    tx.update(orderRef, {
+                        paymentStatus: 'Paid',
+                        paymentMethod: fresh.paymentMethod || 'M-Pesa',
+                        status: startedProcessing ? 'Processing' : fresh.status,
+                        processingAt: fresh.processingAt || now,
+                        stockReservationStatus: 'committed',
+                        paidAt: fresh.paidAt || now,
+                        updatedAt: now,
+                        paymentFailureReason: null,
+                        paymentFailureCode: null,
+                        paymentFailureMessage: null,
+                        paymentResolvedVia: 'STK_QUERY',
+                    });
+                } else if (write === 'mark-failed' && resultCode) {
+                    tx.update(orderRef, {
+                        paymentStatus: 'Failed',
+                        status: 'Pending Payment',
+                        paymentFailureReason: resultDesc,
+                        paymentFailureCode: resultCode,
+                        paymentFailureMessage: getMpesaErrorMessage(resultCode),
+                        updatedAt: now,
+                    });
+                }
+                return { write, order: fresh };
+            })
+            : { write: 'none' as const, order };
+
+        if (resolved.outcome === 'paid' || applied.order?.paymentStatus === 'Paid' || applied.write === 'mark-paid') {
+            const paidOrder = applied.order || order;
+            if (!paidOrder?.paymentSmsSentAt) {
+                await notifyCustomerPaymentReceived({
+                    orderId,
+                    order: {
+                        ...paidOrder,
+                        paymentStatus: 'Paid',
+                        paymentMethod: paidOrder?.paymentMethod || 'M-Pesa',
+                    },
+                    receipt: paidOrder?.mpesaReceiptNumber || paidOrder?.transactionId,
+                    method: paidOrder?.paymentMethod || 'M-Pesa',
                 });
             }
-            await notifyCustomerPaymentReceived({
-                orderId,
-                order: {
-                    ...order,
-                    paymentStatus: 'Paid',
-                    paymentMethod: order.paymentMethod || 'M-Pesa',
-                },
-                receipt: order?.mpesaReceiptNumber || order?.transactionId,
-                method: order?.paymentMethod || 'M-Pesa',
-            });
             return NextResponse.json({
                 success: true,
                 paid: true,
                 paymentStatus: 'Paid',
                 resultCode,
-                receipt: order?.mpesaReceiptNumber || order?.transactionId || null,
+                receipt: paidOrder?.mpesaReceiptNumber || paidOrder?.transactionId || null,
                 message: 'Payment confirmed',
             });
         }
 
-        if (resolved.outcome === 'failed' && resultCode && orderRef && order?.paymentStatus !== 'Paid') {
-            await orderRef.update({
-                paymentStatus: 'Failed',
-                status: 'Pending Payment',
-                paymentFailureReason: resultDesc,
-                paymentFailureCode: resultCode,
-                paymentFailureMessage: getMpesaErrorMessage(resultCode),
-                updatedAt: new Date().toISOString(),
-            });
-        }
-
+        const staleFailure = resolved.outcome === 'failed' && applied.write !== 'mark-failed';
         return NextResponse.json({
             success: true,
             paid: false,
-            paymentStatus: resolved.outcome === 'pending' ? 'Pending' : 'Failed',
+            paymentStatus: resolved.outcome === 'pending' || staleFailure ? 'Pending' : 'Failed',
             resultCode,
-            message: getMpesaErrorMessage(resultCode || ''),
+            message: staleFailure
+                ? 'Waiting for the latest M-Pesa prompt'
+                : getMpesaErrorMessage(resultCode || ''),
             raw: data,
         });
     } catch (error: any) {

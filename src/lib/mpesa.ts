@@ -118,6 +118,79 @@ export function resolveStkQueryProbes(results: StkQueryProbe[]): {
     };
 }
 
+/** Daraja uses 0 and "0" for an accepted push and for a paid PIN. */
+export function isDarajaSuccessCode(code: unknown): boolean {
+    return String(code ?? '') === MPESA_RESULT_CODES.SUCCESS;
+}
+
+/** Daraja sends ResultCode as a number or a string. Both 0 and "0" are a paid PIN. */
+export function isMpesaPaidCode(resultCode: unknown): boolean {
+    return isDarajaSuccessCode(resultCode);
+}
+
+export type MpesaCallbackDecision =
+    | { action: 'mark-paid' }
+    | { action: 'mark-failed' }
+    | { action: 'amount-mismatch' }
+    | { action: 'fill-receipt' }
+    | { action: 'ignore' };
+
+/**
+ * Decide what one Safaricom STK callback does to the existing order.
+ * A paid PIN marks that same order Paid even when an earlier attempt failed.
+ * A failure for an older prompt does not put the order back to waiting payment.
+ */
+export function decideMpesaCallback(args: {
+    order: {
+        paymentStatus?: string | null;
+        checkoutRequestId?: string | null;
+        lastCallbackEventId?: string | null;
+        mpesaReceiptNumber?: string | null;
+        total?: number | null;
+    };
+    checkoutRequestId: string;
+    resultCode: unknown;
+    callbackEventId: string;
+    amountPaid: number;
+    receipt: string;
+}): MpesaCallbackDecision {
+    const paidCode = isMpesaPaidCode(args.resultCode);
+    if (args.order.paymentStatus === 'Paid') {
+        if (paidCode && args.receipt && !args.order.mpesaReceiptNumber) return { action: 'fill-receipt' };
+        return { action: 'ignore' };
+    }
+
+    if (paidCode) {
+        const orderTotal = Number(args.order.total || 0);
+        const amountMatches = orderTotal > 0 && Math.abs(args.amountPaid - orderTotal) < 1;
+        if (!amountMatches) return { action: 'amount-mismatch' };
+        return { action: 'mark-paid' };
+    }
+
+    const current = args.order.checkoutRequestId || '';
+    if (current && args.checkoutRequestId !== current) return { action: 'ignore' };
+    if (args.order.lastCallbackEventId === args.callbackEventId) return { action: 'ignore' };
+    return { action: 'mark-failed' };
+}
+
+/**
+ * A status query may mark the same order Paid after a failed attempt.
+ * It may record a failure only for the prompt that is current now.
+ */
+export function decideMpesaQueryWrite(args: {
+    paymentStatus?: string | null;
+    checkoutRequestId?: string | null;
+    outcome: 'paid' | 'pending' | 'failed';
+    resultCheckoutRequestId?: string;
+}): 'mark-paid' | 'mark-failed' | 'none' {
+    if (args.paymentStatus === 'Paid') return 'none';
+    if (args.outcome === 'paid') return 'mark-paid';
+    if (args.outcome !== 'failed') return 'none';
+    const current = args.checkoutRequestId || '';
+    if (current && args.resultCheckoutRequestId && args.resultCheckoutRequestId !== current) return 'none';
+    return 'mark-failed';
+}
+
 export interface STKPushParams {
     phoneNumber: string;
     amount: number;
