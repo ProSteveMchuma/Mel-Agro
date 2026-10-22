@@ -29,7 +29,7 @@ export default function JsonLd() {
                     email: 'support@melagri.com',
                     contactType: 'customer service',
                     areaServed: 'KE',
-                    availableLanguage: ['en', 'sw'],
+                    availableLanguage: ['en'],
                 },
                 address: {
                     '@type': 'PostalAddress',
@@ -44,13 +44,7 @@ export default function JsonLd() {
                         '@type': 'OpeningHoursSpecification',
                         dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
                         opens: '08:00',
-                        closes: '18:00',
-                    },
-                    {
-                        '@type': 'OpeningHoursSpecification',
-                        dayOfWeek: 'Saturday',
-                        opens: '09:00',
-                        closes: '16:00',
+                        closes: '17:00',
                     },
                 ],
                 hasMerchantReturnPolicy: {
