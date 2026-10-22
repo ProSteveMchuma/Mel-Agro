@@ -4,6 +4,16 @@ const nextConfig: NextConfig = {
   turbopack: {},
   redirects: async () => [
     {
+      source: '/compare/online-agrovets-kenya',
+      destination: '/',
+      permanent: true,
+    },
+    {
+      source: '/compare/online-agrovets-kenya/',
+      destination: '/',
+      permanent: true,
+    },
+    {
       source: '/images/kenyan-farmer-banner.png',
       destination: '/images/kenyan-farmer-banner.jpg',
       permanent: true,
