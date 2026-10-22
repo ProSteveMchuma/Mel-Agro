@@ -45,7 +45,7 @@ export default function AdminOrderDetailsPage() {
     const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
     const [reminderChannels, setReminderChannels] = useState<{ sms: boolean; email: boolean }>({ sms: true, email: false });
     const [promptPhone, setPromptPhone] = useState('');
-    const [promptFeedback, setPromptFeedback] = useState<{ stkOk: boolean; stkMessage: string; smsMessage: string; smsOk: boolean } | null>(null);
+    const [promptFeedback, setPromptFeedback] = useState<{ stkOk: boolean; stkMessage: string } | null>(null);
     const seenOrderId = useRef('');
     const autoPrompted = useRef(false);
     const [verifyCode, setVerifyCode] = useState('');
@@ -133,7 +133,7 @@ export default function AdminOrderDetailsPage() {
             stkMessage = data.message || (stkOk ? 'Check the phone and enter the M-Pesa PIN' : 'M-Pesa prompt failed');
             if (res.status === 409) {
                 toast.error(data.message || 'Already paid', { id: notice });
-                setPromptFeedback({ stkOk: false, stkMessage: data.message || 'Already paid', smsMessage: '', smsOk: false });
+                setPromptFeedback({ stkOk: false, stkMessage: data.message || 'Already paid' });
                 setMpesaActionLoading(null);
                 return;
             }
@@ -141,33 +141,11 @@ export default function AdminOrderDetailsPage() {
             stkMessage = error?.message || 'M-Pesa prompt failed';
         }
 
-        let sms: any = null;
-        let smsMessage = '';
-        let smsOk = false;
-        try {
-            const res = await authedFetch('/api/admin/orders/payment-sms', {
-                orderId: order.id,
-                phoneNumber: body.phoneNumber,
-            });
-            sms = await res.json();
-            smsOk = Boolean(sms.success);
-            smsMessage = sms.message || (smsOk ? 'Pay link sent by SMS' : 'Pay-link SMS failed');
-            if (res.status === 409) {
-                toast.error(sms.message || 'Already paid', { id: notice });
-                setMpesaActionLoading(null);
-                return;
-            }
-        } catch (error: any) {
-            smsMessage = error?.message || 'Pay-link SMS could not be sent';
-        }
-
-        setPromptFeedback({ stkOk, stkMessage, smsMessage, smsOk });
-        if (stkOk && smsOk) {
-            toast.success('Check the phone and enter the M-Pesa PIN. Pay link sent by SMS.', { id: notice, duration: 6000 });
-        } else if (stkOk) {
-            toast.success(`Check the phone and enter the M-Pesa PIN. ${smsMessage || 'Pay-link SMS failed.'}`, { id: notice, duration: 7000 });
+        setPromptFeedback({ stkOk, stkMessage });
+        if (stkOk) {
+            toast.success('Check the phone and enter the M-Pesa PIN.', { id: notice, duration: 6000 });
         } else {
-            toast.error(`${stkMessage || 'M-Pesa prompt failed'}${smsMessage ? ` ${smsMessage}` : ''}`, { id: notice, duration: 7000 });
+            toast.error(stkMessage || 'M-Pesa prompt failed', { id: notice, duration: 7000 });
         }
         setMpesaActionLoading(null);
     };
@@ -1164,7 +1142,6 @@ export default function AdminOrderDetailsPage() {
                                             {promptFeedback ? (
                                                 <div className={`rounded-xl border p-3 text-xs ${promptFeedback.stkOk ? 'border-green-200 bg-green-50 text-green-900' : 'border-amber-200 bg-amber-50 text-amber-950'}`}>
                                                     <p>{promptFeedback.stkMessage}</p>
-                                                    {promptFeedback.smsMessage ? <p className="mt-1">{promptFeedback.smsMessage}</p> : null}
                                                 </div>
                                             ) : null}
                                         </div>
