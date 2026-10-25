@@ -68,6 +68,10 @@ test('keeps the admin audit log server-authoritative', () => {
     assert.match(block[1], /allow read: if isAdmin\(\);/);
 });
 
+test('keeps staffRoles server-authoritative', () => {
+    assert.match(rules, /match \/staffRoles\/\{id\}[\s\S]*?allow read, write: if false;/);
+});
+
 test('keeps automation configuration and run history server-authoritative', () => {
     for (const collection of ['automationRules', 'automationRuns']) {
         const block = rules.match(new RegExp(`match /${collection}/\\{id\\} \\{([\\s\\S]*?)\\n    \\}`));

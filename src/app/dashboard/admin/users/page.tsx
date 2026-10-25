@@ -8,7 +8,9 @@ import { useUsers } from "@/context/UserContext";
 import { useAuth } from "@/context/AuthContext";
 import type { User } from "@/types";
 import { KENYAN_COUNTIES } from "@/lib/delivery";
-import { STAFF_PROFILES, StaffProfile, profileForPermissions } from "@/lib/admin-permissions";
+import { STAFF_PROFILES, profileForPermissions } from "@/lib/admin-permissions";
+import { labelForStaffAssignment, type StaffRoleDefinition } from "@/lib/staff-roles";
+import Link from "next/link";
 
 type Segment = "all" | "customers" | "admins" | "suspended" | "personalized";
 const segments: Array<{ id: Segment; label: string }> = [
@@ -40,8 +42,54 @@ export default function UserManagement() {
   const [staffCandidates, setStaffCandidates] = useState<User[]>([]);
   const [staffSearchLoading, setStaffSearchLoading] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<User | null>(null);
-  const [staffProfile, setStaffProfile] = useState<StaffProfile>("operations");
+  const [staffProfile, setStaffProfile] = useState<string>("operations");
   const [promoting, setPromoting] = useState(false);
+  const [roleCatalog, setRoleCatalog] = useState<StaffRoleDefinition[]>([]);
+
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const token = await getAuth().currentUser?.getIdToken();
+        if (!token) return;
+        const response = await fetch("/api/admin/staff-roles", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const result = await response.json();
+        if (!cancelled && response.ok && Array.isArray(result.roles)) {
+          setRoleCatalog(result.roles);
+        }
+      } catch {
+        /* non-fatal — fall back to built-in profiles */
+        setRoleCatalog(
+          Object.entries(STAFF_PROFILES).map(([id, item]) => ({
+            id,
+            label: item.label,
+            permissions: [...item.permissions],
+            source: "builtin" as const,
+          })),
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isSuperAdmin]);
+
+  const assignableRoles = roleCatalog.length > 0
+    ? roleCatalog
+    : Object.entries(STAFF_PROFILES).map(([id, item]) => ({
+      id,
+      label: item.label,
+      permissions: [...item.permissions],
+      source: "builtin" as const,
+    }));
+
+  function permissionsForRoleId(roleId: string) {
+    const match = assignableRoles.find((role) => role.id === roleId);
+    return match?.permissions || STAFF_PROFILES.operations.permissions;
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -160,9 +208,10 @@ export default function UserManagement() {
       await updateStaffPermissions(
         String(selectedCandidate.id || selectedCandidate.uid),
         staffProfile,
-        STAFF_PROFILES[staffProfile].permissions,
+        [...permissionsForRoleId(staffProfile)],
       );
-      toast.success(`${selectedCandidate.name || "User"} is now staff (${STAFF_PROFILES[staffProfile].label})`, { id: notice });
+      const roleLabel = assignableRoles.find((role) => role.id === staffProfile)?.label || staffProfile;
+      toast.success(`${selectedCandidate.name || "User"} is now staff (${roleLabel})`, { id: notice });
       setShowMakeStaff(false);
       setSelectedCandidate(null);
       setStaffSearch("");
@@ -198,10 +247,15 @@ export default function UserManagement() {
       toast.error(caught instanceof Error ? caught.message : "Delete failed", { id: notice });
     }
   }
-  async function changeProfile(user: User, profile: StaffProfile) {
-    const notice = toast.loading(`Assigning ${STAFF_PROFILES[profile].label}...`);
+  async function changeProfile(user: User, profileId: string) {
+    const role = assignableRoles.find((entry) => entry.id === profileId);
+    if (!role) {
+      toast.error("Unknown staff role");
+      return;
+    }
+    const notice = toast.loading(`Assigning ${role.label}...`);
     try {
-      await updateStaffPermissions(String(user.id || user.uid), profile, STAFF_PROFILES[profile].permissions);
+      await updateStaffPermissions(String(user.id || user.uid), profileId, [...role.permissions]);
       toast.success("Staff permissions updated", { id: notice });
       refresh();
     } catch (caught) {
@@ -246,7 +300,15 @@ export default function UserManagement() {
             )}
           </li>
           <li>
-            After promotion, pick a <strong className="font-semibold">staff profile</strong> (Operations, Catalogue, Support…) so they only see what they need.
+            After promotion, pick a <strong className="font-semibold">staff role</strong> (Operations, Catalogue, or a custom role you created).
+            {isSuperAdmin && (
+              <>
+                {" "}
+                <Link href="/dashboard/admin/settings/staff-roles" className="font-semibold text-green-800 underline">
+                  Manage roles
+                </Link>
+              </>
+            )}
           </li>
         </ol>
         {!isSuperAdmin && (
@@ -335,7 +397,13 @@ export default function UserManagement() {
               {!loading &&
                 users.map((user) => {
                   const profile = profileForPermissions(user.adminPermissions);
-                  const staffLabel = profile === "custom" ? "Custom profile" : STAFF_PROFILES[profile].label;
+                  const selectedRoleId = user.staffProfile
+                    || (profile !== "custom" ? profile : "");
+                  const staffLabel = labelForStaffAssignment(assignableRoles, {
+                    role: user.role,
+                    staffProfile: user.staffProfile,
+                    adminPermissions: user.adminPermissions,
+                  });
                   return (
                     <tr
                       key={user.id || user.uid}
@@ -373,16 +441,13 @@ export default function UserManagement() {
                       <td className="px-4 py-4" onClick={(event) => event.stopPropagation()}>
                         {user.role === "admin" && isSuperAdmin ? (
                           <select
-                            value={profile}
-                            onChange={(event) => changeProfile(user, event.target.value as StaffProfile)}
+                            value={selectedRoleId || assignableRoles[0]?.id || "operations"}
+                            onChange={(event) => changeProfile(user, event.target.value)}
                             className="rounded-lg border border-gray-200 px-2 py-1.5 text-xs font-bold"
                           >
-                            <option value="custom" disabled>
-                              Custom profile
-                            </option>
-                            {Object.entries(STAFF_PROFILES).map(([id, item]) => (
-                              <option key={id} value={id}>
-                                {item.label}
+                            {assignableRoles.map((role) => (
+                              <option key={role.id} value={role.id}>
+                                {role.source === "custom" ? `${role.label} (custom)` : role.label}
                               </option>
                             ))}
                           </select>
@@ -508,20 +573,26 @@ export default function UserManagement() {
               )}
             </div>
             <label className="mt-4 block text-xs font-black uppercase tracking-widest text-gray-500">
-              Staff profile
+              Staff role
               <select
                 value={staffProfile}
-                onChange={(e) => setStaffProfile(e.target.value as StaffProfile)}
+                onChange={(e) => setStaffProfile(e.target.value)}
                 className="mt-2 min-h-11 w-full rounded-xl border border-gray-200 px-3 text-sm font-semibold"
               >
-                {Object.entries(STAFF_PROFILES).map(([id, item]) => (
-                  <option key={id} value={id}>
-                    {item.label}
+                {assignableRoles.map((role) => (
+                  <option key={role.id} value={role.id}>
+                    {role.source === "custom" ? `${role.label} (custom)` : role.label}
                   </option>
                 ))}
               </select>
             </label>
-            <p className="mt-2 text-xs text-gray-500">{STAFF_PROFILES[staffProfile].permissions.join(" · ")}</p>
+            <p className="mt-2 text-xs text-gray-500">{permissionsForRoleId(staffProfile).join(" · ")}</p>
+            <p className="mt-2 text-xs text-gray-500">
+              Need a different mix of access?{" "}
+              <Link href="/dashboard/admin/settings/staff-roles" className="font-semibold text-green-800 underline">
+                Create a custom role
+              </Link>
+            </p>
             <div className="mt-6 flex justify-end gap-2">
               <button
                 type="button"
