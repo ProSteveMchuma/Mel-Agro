@@ -319,6 +319,7 @@ function applyDispatchProgress(
     auditAfter: Record<string, unknown>;
   },
 ) {
+  // Courier dispatch is not delivery. Delivered still requires a staff confirm.
   const status = statusAfterRecordingDispatch(args.pickup);
   const changed = String(args.order.status || "") !== status;
   const update: Record<string, unknown> = {
