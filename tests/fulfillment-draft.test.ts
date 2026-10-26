@@ -14,7 +14,8 @@ const courier = {
     id: 'ord-courier',
     status: 'Processing',
     shippingMethod: 'standard',
-    shippingAddress: { county: 'Nairobi' },
+    shippingAddress: { county: 'Nairobi', method: null },
+    tracking: null as { carrier?: string; trackingNumber?: string } | null,
     items: [{ id: 'dap', name: 'DAP 50kg', quantity: 4 }],
     deliveries: [] as Array<{ method?: 'courier' | 'pickup' | 'shortfall'; shortfall?: boolean; lines?: Array<{ productId: string; quantity: number; name?: string }> }>,
 };
