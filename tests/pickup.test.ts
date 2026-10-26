@@ -7,6 +7,8 @@ import {
     isActiveFulfillmentStatus,
     isPickupOrder,
     nextFulfillmentStatus,
+    staffFulfillmentLabel,
+    staffStepLabel,
     statusLabelForOrder,
 } from '../src/lib/pickup.ts';
 
@@ -53,4 +55,16 @@ test('status labels and loyalty helpers treat collection as complete', () => {
     assert.equal(awardsLoyaltyOnStatus('Delivered'), true);
     assert.equal(isActiveFulfillmentStatus('Ready for Collection'), true);
     assert.equal(isActiveFulfillmentStatus('Collected'), false);
+});
+
+test('staff see a courier dispatch as on the way, not delivered', () => {
+    const courier = { shippingMethod: 'standard' };
+    const pickup = { shippingMethod: 'pickup' };
+    assert.equal(staffFulfillmentLabel('Shipped', courier), 'Dispatched · courier on the way');
+    assert.equal(staffFulfillmentLabel('Delivered', courier), 'Delivered');
+    assert.equal(staffStepLabel('Shipped', courier), 'Dispatched');
+    assert.equal(staffStepLabel('Delivered', courier), 'Delivered');
+    assert.equal(staffFulfillmentLabel('Ready for Collection', pickup), 'Ready for collection');
+    assert.equal(staffFulfillmentLabel('Collected', pickup), 'Collected');
+    assert.equal(staffFulfillmentLabel('Shipped', pickup), 'Ready for collection');
 });

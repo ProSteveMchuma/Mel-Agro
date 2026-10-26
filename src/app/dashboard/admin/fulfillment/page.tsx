@@ -7,8 +7,8 @@ import { skipImageOptimizer } from "@/lib/product-image";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import type { Order } from "@/types";
-import { isPickupOrder, nextFulfillmentStatus, PICKUP_STORE } from "@/lib/pickup";
-import { lineBalances, nairobiPlacedLabel, partialBlocksCompletion, partSent } from "@/lib/order-admin";
+import { isPickupOrder, nextFulfillmentStatus, PICKUP_STORE, staffFulfillmentLabel } from "@/lib/pickup";
+import { canRecordWhatWentOut, dispatchLineLabel, lineBalances, nairobiPlacedLabel, outstandingQuantity, partialBlocksCompletion, partSent } from "@/lib/order-admin";
 import { hoursSincePackableLabel, type QueueFacts } from "@/lib/fulfillment-age";
 
 type Stats = { processing: number; shipped: number; readyPickup: number; stockAlerts: number; late: number };
@@ -90,6 +90,7 @@ export default function FulfillmentPage() {
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "Fulfillment update failed.");
+    return result as { message?: string };
   }
 
   async function markWaiting(order: QueueOrder, reason: string) {
@@ -170,7 +171,7 @@ export default function FulfillmentPage() {
         <p className="mb-1 text-[10px] font-black uppercase tracking-[.18em] text-green-700">Order operations</p>
         <h1 className="text-2xl font-black text-gray-950">Fulfillment queue</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Delivery and Machakos pickup, oldest first. Late orders are listed before the rest. A wait is not counted late.
+          Delivery and Machakos pickup, oldest first. A dispatched courier order stays on the way until you confirm the customer has the goods. Late orders are listed before the rest. A wait is not counted late.
         </p>
       </header>
       {stats.late > 0 && (
@@ -181,7 +182,7 @@ export default function FulfillmentPage() {
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Processing" value={stats.processing} tone="blue" />
-        <StatCard label="In transit" value={stats.shipped} tone="green" />
+        <StatCard label="On the way" value={stats.shipped} tone="green" />
         <StatCard label="Ready to collect" value={stats.readyPickup} tone="amber" />
         <StatCard label="Stock alerts" value={stats.stockAlerts} tone="red" />
       </div>
@@ -212,7 +213,7 @@ export default function FulfillmentPage() {
         >
           <option value="all">All stages</option>
           <option value="Processing">Processing</option>
-          <option value="Shipped">Shipped / in transit</option>
+          <option value="Shipped">Dispatched · on the way</option>
           <option value="Ready for Collection">Ready for collection</option>
         </select>
       </section>
@@ -269,14 +270,14 @@ export default function FulfillmentPage() {
                       }`}>
                         {pickup ? "Collection" : "Delivery"}
                       </span>
-                      <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${
+                      <span className={`rounded-full px-3 py-1 text-left text-[11px] font-black leading-snug ${
                         order.status === "Processing"
                           ? "bg-amber-100 text-amber-700"
-                          : order.status === "Ready for Collection"
+                          : order.status === "Ready for Collection" || pickup
                             ? "bg-orange-100 text-orange-800"
-                            : "bg-blue-100 text-blue-700"
+                            : "bg-blue-100 text-blue-800"
                       }`}>
-                        {order.status}
+                        {staffFulfillmentLabel(order.status, order)}
                       </span>
                       {partSent(order) ? (
                         <span className="rounded-full bg-violet-100 px-3 py-1 text-[10px] font-black uppercase text-violet-800">Part sent</span>
@@ -297,6 +298,12 @@ export default function FulfillmentPage() {
                     {queue?.place || (pickup ? "Machakos pickup" : order.shippingAddress?.county || "No county")}
                   </p>
                   <p className="mt-1 text-sm text-gray-500">{queue?.etaText || (pickup ? PICKUP_STORE.etaText : "Zone promise")}</p>
+                  {!pickup && order.status === "Shipped" ? (
+                    <p className="mt-2 text-xs font-semibold text-blue-800">Dispatched. Courier is on the way.</p>
+                  ) : null}
+                  {partSent(order) ? (
+                    <p className="mt-1 text-xs font-semibold text-violet-800">{outstandingQuantity(order)} still to send</p>
+                  ) : null}
                   {queue?.waiting ? (
                     <p className="mt-2 text-xs font-semibold text-slate-600">
                       Waiting: {queue.waiting.reason} · {queue.waiting.by}
@@ -390,6 +397,12 @@ export default function FulfillmentPage() {
                   </div>
                 ) : null}
 
+                {!selectedPickup && selectedOrder.status === "Shipped" ? (
+                  <p className="mt-3 text-sm font-semibold text-blue-950">Dispatched. Courier is on the way. Confirm delivered only when the customer has the goods.</p>
+                ) : null}
+                {selectedPickup && (selectedOrder.status === "Ready for Collection" || selectedOrder.status === "Shipped") ? (
+                  <p className="mt-3 text-sm font-semibold text-amber-950">Ready for collection. Mark collected only when the customer has the goods.</p>
+                ) : null}
                 {selectedNext && !selectedBlocked ? (
                   <button
                     type="button"
@@ -406,7 +419,7 @@ export default function FulfillmentPage() {
                           : "Confirm delivered"}
                   </button>
                 ) : selectedBlocked ? (
-                  <p className="mt-3 text-sm text-amber-900">Some units are still in the store. Record what went out, or close the shortfall.</p>
+                  <p className="mt-3 text-sm text-amber-900">{outstandingQuantity(selectedOrder)} still to send. Record what went out, or close the shortfall.</p>
                 ) : (
                   <p className="mt-3 text-sm text-gray-500">No further fulfillment step for this status.</p>
                 )}
@@ -427,7 +440,7 @@ export default function FulfillmentPage() {
                 </Link>
               </div>
 
-              {(selectedOrder.status === "Processing" || selectedOrder.status === "Shipped") && (
+              {canRecordWhatWentOut(selectedOrder) && (
                 <PartialDispatch
                   order={selectedOrder}
                   pickup={selectedPickup}
@@ -441,8 +454,8 @@ export default function FulfillmentPage() {
                     setPending(true);
                     const notice = toast.loading(body.action === "shortfall" ? "Closing the shortfall…" : "Recording what went out…");
                     try {
-                      await mutate({ ...body, orderId: selectedOrder.id });
-                      toast.success(body.action === "shortfall" ? "Shortfall closed" : "Recorded what went out", { id: notice });
+                      const result = await mutate({ ...body, orderId: selectedOrder.id });
+                      toast.success(result.message || (body.action === "shortfall" ? "Shortfall closed" : "Recorded what went out"), { id: notice });
                       setCarrier("");
                       setTrackingNumber("");
                       setSelectedOrder(null);
@@ -559,7 +572,7 @@ function PartialDispatch({
         {lineBalances(order).map((row) => (
           <li key={`${row.productId}::${row.variantId}`} className="text-sm text-gray-700">
             <span className="font-bold text-gray-950">{row.name}</span>
-            <span className="block text-xs text-gray-500">{row.remaining} still here · {row.sent} sent{row.shortfall ? ` · ${row.shortfall} closed` : ""}</span>
+            <span className="block text-xs text-gray-500">{dispatchLineLabel(row, pickup)}</span>
             {row.remaining > 0 ? (
               <input
                 type="number"

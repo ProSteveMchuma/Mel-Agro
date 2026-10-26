@@ -125,9 +125,40 @@ export function partialBlocksCompletion(order: { items?: LineItem[] | null; deli
     return outstandingQuantity(order) > 0;
 }
 
+const OPEN_DISPATCH_STATUSES = new Set(['Processing', 'Shipped', 'Ready for Collection']);
+
 export function partSent(order: { status?: string | null; items?: LineItem[] | null; deliveries?: OrderDelivery[] | null }): boolean {
-    if (order.status !== 'Processing' && order.status !== 'Shipped') return false;
+    if (!OPEN_DISPATCH_STATUSES.has(String(order.status || ''))) return false;
     return partialBlocksCompletion(order);
+}
+
+/**
+ * Recording what went out means the goods have left or are ready to collect.
+ * It does not mean the customer has them. Delivered and Collected stay on the confirm step.
+ */
+export function statusAfterRecordingDispatch(pickup: boolean): 'Shipped' | 'Ready for Collection' {
+    return pickup ? 'Ready for Collection' : 'Shipped';
+}
+
+export function canRecordWhatWentOut(order: {
+    status?: string | null;
+    shippingMethod?: string | null;
+    shippingAddress?: { method?: string | null } | null;
+}): boolean {
+    const status = String(order.status || '');
+    if (isPickupOrder(order)) return status === 'Processing' || status === 'Shipped' || status === 'Ready for Collection';
+    return status === 'Processing' || status === 'Shipped';
+}
+
+export function dispatchLineLabel(
+    row: { sent: number; remaining: number; shortfall: number },
+    pickup: boolean,
+): string {
+    const bits: string[] = [];
+    if (row.sent > 0) bits.push(pickup ? `${row.sent} for collection` : `${row.sent} dispatched`);
+    if (row.remaining > 0) bits.push(`${row.remaining} still to send`);
+    if (row.shortfall > 0) bits.push(`${row.shortfall} closed`);
+    return bits.join(' · ') || 'Nothing outstanding';
 }
 
 export function partialSmsSummary(lines: Array<{ name?: string; quantity: number }>): string {
