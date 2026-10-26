@@ -686,7 +686,7 @@ function InternalNotes({
   onSaved,
 }: {
   order: Order;
-  mutate: (body: Record<string, unknown>) => Promise<void>;
+  mutate: (body: Record<string, unknown>) => Promise<unknown>;
   onSaved: (note: string) => void;
 }) {
   const [note, setNote] = useState(order.internalNotes || "");
