@@ -13,10 +13,12 @@ import {
     isPickupOrder,
     nextFulfillmentStatus,
     PICKUP_STORE,
+    staffFulfillmentLabel,
+    staffStepLabel,
 } from "@/lib/pickup";
 import { hasAdminPermission } from "@/lib/admin-permissions";
 import { mpesaControlVisibility, paymentPromptAccess, stkRetryBody } from "@/lib/whatsapp-order";
-import { lineBalances, nairobiPlacedLabel, orderTimeline, partialBlocksCompletion, partSent } from "@/lib/order-admin";
+import { canRecordWhatWentOut, dispatchLineLabel, lineBalances, nairobiPlacedLabel, orderTimeline, outstandingQuantity, partialBlocksCompletion, partSent } from "@/lib/order-admin";
 
 async function authedFetch(url: string, body: any) {
     const token = await getAuth().currentUser?.getIdToken();
@@ -566,7 +568,7 @@ export default function AdminOrderDetailsPage() {
                                             <span className="text-xs font-black">{index + 1}</span>
                                         )}
                                     </div>
-                                    <span className={`mt-3 text-[10px] font-black uppercase tracking-[0.2em] ${isCurrent ? 'text-melagri-primary' : 'text-gray-400'}`}>{step}</span>
+                                    <span className={`mt-3 text-[10px] font-black uppercase tracking-[0.2em] ${isCurrent ? 'text-melagri-primary' : 'text-gray-400'}`}>{staffStepLabel(step, order)}</span>
                                 </div>
                             );
                         })}
@@ -580,6 +582,18 @@ export default function AdminOrderDetailsPage() {
                                 </li>
                             ))}
                         </ol>
+                    )}
+                    {!pickup && order.status === 'Shipped' && (
+                        <p className="mx-auto mt-6 max-w-4xl text-sm font-semibold text-blue-900">
+                            Dispatched. The courier is on the way. Mark delivered only when the customer has the goods.
+                            {blocked ? ` ${outstandingQuantity(order)} still to send.` : ''}
+                        </p>
+                    )}
+                    {pickup && (order.status === 'Ready for Collection' || order.status === 'Shipped') && (
+                        <p className="mx-auto mt-6 max-w-4xl text-sm font-semibold text-amber-950">
+                            Ready for collection. Mark collected only when the customer has the goods.
+                            {blocked ? ` ${outstandingQuantity(order)} still to send.` : ''}
+                        </p>
                     )}
                 </div>
             )}
@@ -617,7 +631,7 @@ export default function AdminOrderDetailsPage() {
                                             {(() => {
                                                 const row = balances.find((balance) => balance.productId === String(item.id) && balance.variantId === String(item.selectedVariant?.id || ''));
                                                 if (!row || !(order.deliveries || []).length) return null;
-                                                return <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">{row.remaining} left</p>;
+                                                return <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-gray-400">{dispatchLineLabel(row, pickup)}</p>;
                                             })()}
                                         </div>
                                         <div className="text-right">
@@ -669,12 +683,12 @@ export default function AdminOrderDetailsPage() {
                                 ))}
                             </ul>
                         )}
-                        {order.paymentStatus === 'Paid' && ['Processing', 'Shipped'].includes(order.status) && balances.some((row) => row.remaining > 0) && (
+                        {order.paymentStatus === 'Paid' && canRecordWhatWentOut(order) && balances.some((row) => row.remaining > 0) && (
                             <div className="mt-6 space-y-3 border-t border-gray-50 pt-6">
                                 {balances.filter((row) => row.remaining > 0).map((row) => (
                                     <label key={`${row.productId}::${row.variantId}`} className="block text-sm">
                                         <span className="font-bold text-gray-900">{row.name}</span>
-                                        <span className="ml-2 text-xs text-gray-400">{row.remaining} outstanding</span>
+                                        <span className="ml-2 text-xs text-gray-400">{row.remaining} still to send</span>
                                         <input
                                             type="number"
                                             min={0}
@@ -710,14 +724,14 @@ export default function AdminOrderDetailsPage() {
                                             }
                                             const t = toast.loading('Recording what went out…');
                                             try {
-                                                await postJson('/api/admin/fulfillment', {
+                                                const data = await postJson('/api/admin/fulfillment', {
                                                     action: 'partial',
                                                     orderId: order.id,
                                                     lines,
                                                     ...(!pickup ? { tracking: { carrier: trackingInfo.carrier.trim(), trackingNumber: trackingInfo.trackingNumber.trim() } } : {}),
                                                 });
                                                 setPartialQty({});
-                                                toast.success('Recorded what went out', { id: t });
+                                                toast.success(data.message || 'Recorded what went out', { id: t });
                                             } catch (err: any) {
                                                 toast.error(err?.message || 'Could not record the send', { id: t });
                                             }
@@ -733,8 +747,8 @@ export default function AdminOrderDetailsPage() {
                                                 if (!window.confirm('Close the unsent units? Those units go back on the shelf. This does not refund the customer.')) return;
                                                 const t = toast.loading('Closing the shortfall…');
                                                 try {
-                                                    await postJson('/api/admin/fulfillment', { action: 'shortfall', orderId: order.id });
-                                                    toast.success('Shortfall closed', { id: t });
+                                                    const data = await postJson('/api/admin/fulfillment', { action: 'shortfall', orderId: order.id });
+                                                    toast.success(data.message || 'Shortfall closed', { id: t });
                                                 } catch (err: any) {
                                                     toast.error(err?.message || 'Could not close the shortfall', { id: t });
                                                 }
@@ -799,13 +813,13 @@ export default function AdminOrderDetailsPage() {
                     <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
                         <h2 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6">Execution Status</h2>
                         <div className="mb-8">
-                            <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${
+                            <span className={`inline-flex max-w-full px-4 py-2 rounded-xl text-xs font-black leading-snug ${
                                 order.status === 'Delivered' || order.status === 'Collected' ? 'bg-green-100 text-green-700' :
-                                order.status === 'Shipped' || order.status === 'Ready for Collection' ? 'bg-blue-100 text-blue-700' :
+                                order.status === 'Shipped' || order.status === 'Ready for Collection' ? 'bg-blue-100 text-blue-800' :
                                 order.status === 'Processing' ? 'bg-yellow-100 text-yellow-700' :
                                 'bg-red-100 text-red-700'
                             }`}>
-                                {order.status}
+                                {staffFulfillmentLabel(order.status, order)}
                             </span>
                             {partSent(order) && (
                                 <span className="ml-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-violet-100 text-violet-800">Part sent</span>
@@ -860,7 +874,10 @@ export default function AdminOrderDetailsPage() {
                                 </button>
                             )}
                             {blocked && (
-                                <p className="text-xs font-semibold text-amber-800">Some units are still outstanding. Record what went out, or close the shortfall, before finishing this order.</p>
+                                <p className="text-xs font-semibold text-amber-800">{outstandingQuantity(order)} still to send. Record what went out, or close the shortfall, before marking this finished.</p>
+                            )}
+                            {!pickup && order.status === 'Shipped' && !blocked && (
+                                <p className="text-xs font-semibold text-blue-900">Courier is on the way. Mark delivered only when the customer has the goods.</p>
                             )}
                             {canCancel && (
                                 <button
@@ -1027,7 +1044,7 @@ export default function AdminOrderDetailsPage() {
                                 <div className="mt-6 pt-6 border-t border-gray-50 p-4 rounded-2xl bg-green-50/50">
                                     <div className="flex items-center gap-2 mb-3">
                                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                        <p className="text-[10px] font-black text-green-700 uppercase tracking-widest">In Transit</p>
+                                        <p className="text-[10px] font-black text-green-700 uppercase tracking-widest">{order.status === 'Delivered' ? 'Delivered' : 'Dispatched · courier on the way'}</p>
                                     </div>
                                     <p className="text-xs text-gray-900 font-black uppercase tracking-tight">{order.tracking.carrier}</p>
                                     <p className="text-[10px] text-green-600 font-mono tracking-widest mt-1 bg-white inline-block px-2 py-1 rounded-md border border-green-100">#{order.tracking.trackingNumber}</p>

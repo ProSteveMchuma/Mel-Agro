@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { CommunicationTemplates } from '../src/lib/communication-templates.ts';
 import {
+    canRecordWhatWentOut,
+    dispatchLineLabel,
     lineBalances,
     nairobiPlacedLabel,
     orderTimeline,
@@ -9,6 +11,7 @@ import {
     partSent,
     partialBlocksCompletion,
     partialSmsSummary,
+    statusAfterRecordingDispatch,
 } from '../src/lib/order-admin.ts';
 
 test('placed time is shown in Nairobi, not a second stored field', () => {
@@ -47,6 +50,9 @@ test('partial lines cannot exceed what is still outstanding', () => {
     assert.equal(outstandingQuantity(order), 5);
     assert.equal(partialBlocksCompletion(order), true);
     assert.equal(partSent({ ...order, status: 'Processing' }), true);
+    assert.equal(partSent({ ...order, status: 'Shipped' }), true);
+    assert.equal(partSent({ ...order, status: 'Ready for Collection' }), true);
+    assert.equal(partSent({ ...order, status: 'Delivered' }), false);
     assert.equal(partialBlocksCompletion({ items: order.items, deliveries: [] }), false);
 });
 
@@ -70,6 +76,21 @@ test('partial SMS does not say the order is delivered', () => {
         summary,
     ).smsBody;
     assert.match(sms, /we sent 2 of DAP 50kg/);
-    assert.match(sms, /still being packed/);
+    assert.match(sms, /still to be sent/);
     assert.doesNotMatch(sms, /delivered/i);
+});
+
+test('recording what went out is dispatch, not proof the customer has the goods', () => {
+    assert.equal(statusAfterRecordingDispatch(false), 'Shipped');
+    assert.equal(statusAfterRecordingDispatch(true), 'Ready for Collection');
+    assert.notEqual(statusAfterRecordingDispatch(false), 'Delivered');
+    assert.notEqual(statusAfterRecordingDispatch(true), 'Collected');
+    assert.equal(canRecordWhatWentOut({ status: 'Processing', shippingMethod: 'standard' }), true);
+    assert.equal(canRecordWhatWentOut({ status: 'Shipped', shippingMethod: 'standard' }), true);
+    assert.equal(canRecordWhatWentOut({ status: 'Ready for Collection', shippingMethod: 'standard' }), false);
+    assert.equal(canRecordWhatWentOut({ status: 'Delivered', shippingMethod: 'standard' }), false);
+    assert.equal(canRecordWhatWentOut({ status: 'Ready for Collection', shippingMethod: 'pickup' }), true);
+    assert.equal(dispatchLineLabel({ sent: 1, remaining: 3, shortfall: 0 }, false), '1 dispatched · 3 still to send');
+    assert.equal(dispatchLineLabel({ sent: 2, remaining: 0, shortfall: 0 }, false), '2 dispatched');
+    assert.equal(dispatchLineLabel({ sent: 1, remaining: 1, shortfall: 0 }, true), '1 for collection · 1 still to send');
 });

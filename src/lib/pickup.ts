@@ -47,6 +47,35 @@ export function statusLabelForOrder(
     return status;
 }
 
+/** Staff label. A courier dispatch is on the way, not delivered. */
+export function staffFulfillmentLabel(
+    status: string,
+    order?: { shippingMethod?: string | null; shippingAddress?: { method?: string | null } | null },
+): string {
+    if (order && isPickupOrder(order)) {
+        if (status === 'Shipped' || status === 'Ready for Collection') return 'Ready for collection';
+        if (status === 'Delivered' || status === 'Collected') return 'Collected';
+        if (status === 'Processing') return 'Packing for collection';
+    }
+    if (status === 'Shipped') return 'Dispatched · courier on the way';
+    if (status === 'Delivered') return 'Delivered';
+    if (status === 'Processing') return 'Packing';
+    if (status === 'Ready for Collection') return 'Ready for collection';
+    if (status === 'Collected') return 'Collected';
+    if (status === 'Pending Payment') return 'Awaiting payment';
+    if (status === 'Cancelled') return 'Cancelled';
+    return status;
+}
+
+export function staffStepLabel(
+    step: string,
+    order?: { shippingMethod?: string | null; shippingAddress?: { method?: string | null } | null },
+): string {
+    if (!order || isPickupOrder(order)) return step;
+    if (step === 'Shipped') return 'Dispatched';
+    return step;
+}
+
 export const DELIVERY_FULFILLMENT_STATUSES = ['Processing', 'Shipped', 'Delivered'] as const;
 export const PICKUP_FULFILLMENT_STATUSES = ['Processing', 'Ready for Collection', 'Collected'] as const;
 

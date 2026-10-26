@@ -13,7 +13,7 @@ import {
   nextFulfillmentStatus,
 } from "@/lib/pickup";
 import { pointsEarnedForOrderTotal } from "@/lib/loyalty";
-import { lineBalances, outstandingQuantity, partialBlocksCompletion, partialSmsSummary } from "@/lib/order-admin";
+import { canRecordWhatWentOut, lineBalances, outstandingQuantity, partialBlocksCompletion, partialSmsSummary, statusAfterRecordingDispatch } from "@/lib/order-admin";
 import { orderPhoneKey } from "@/lib/phone-match";
 import { canPackOrder, cashSettlementOnFinish } from "@/lib/commerce-ops";
 import { notifyCustomerPaymentReceived } from "@/lib/payment-notifications";
@@ -230,12 +230,6 @@ function numberOrZero(value: unknown) {
   return Number.isFinite(result) ? result : 0;
 }
 
-async function loyaltyReader(transaction: Transaction, order: Record<string, any>) {
-  if (order.loyaltyAwarded || !order.userId) return { userRef: null as DocumentReference | null, userSnapshot: null as DocumentSnapshot | null };
-  const userRef = adminDb.collection("users").doc(String(order.userId));
-  return { userRef, userSnapshot: await transaction.get(userRef) };
-}
-
 function writeRestoredStock(
   transaction: Transaction,
   snaps: DocumentSnapshot[],
@@ -308,50 +302,50 @@ function recordCashIfDue(
   return true;
 }
 
-function writeFinishedOrder(
+/** Move a send onto Shipped or Ready for collection. Never Delivered or Collected. */
+function applyDispatchProgress(
   transaction: Transaction,
   args: {
     orderRef: DocumentReference;
     order: Record<string, any>;
-    actor: { uid: string; email?: string | null };
-    now: string;
-    pickup: boolean;
     deliveries: unknown[];
-    userRef: DocumentReference | null;
-    userSnapshot: DocumentSnapshot | null;
+    pickup: boolean;
+    now: string;
+    actorName: string;
+    actorId: string;
+    actorEmail: string | null;
+    tracking?: { carrier: string; trackingNumber: string };
+    auditAction: string;
+    auditAfter: Record<string, unknown>;
   },
 ) {
-  const status = args.pickup ? "Collected" : "Delivered";
+  const status = statusAfterRecordingDispatch(args.pickup);
+  const changed = String(args.order.status || "") !== status;
   const update: Record<string, unknown> = {
-    status,
     deliveries: args.deliveries,
+    status,
     updatedAt: args.now,
-    statusHistory: FieldValue.arrayUnion({ status, at: args.now, by: args.actor.email || args.actor.uid }),
-    ...(args.pickup ? { collectedAt: args.now } : { deliveredAt: args.now }),
   };
-  const cashRecorded = recordCashIfDue(transaction, args.orderRef, args.order, args.actor, args.now, status, update);
-  if (!args.order.loyaltyAwarded && args.userRef && args.userSnapshot?.exists) {
-    const points = pointsEarnedForOrderTotal(Number(args.order.total || 0));
-    transaction.update(args.userRef, { loyaltyPoints: FieldValue.increment(points) });
-    update.loyaltyAwarded = true;
-    update.loyaltyAwardedAmount = points;
-    update.loyaltyAwardedAt = args.now;
+  if (!args.pickup) {
+    if (!args.order.shippedAt) update.shippedAt = args.now;
+    if (args.tracking) update.tracking = args.tracking;
+  } else if (!args.order.readyForCollectionAt) {
+    update.readyForCollectionAt = args.now;
+  }
+  if (changed) {
+    update.statusHistory = FieldValue.arrayUnion({ status, at: args.now, by: args.actorName });
   }
   transaction.update(args.orderRef, update);
   transaction.set(adminDb.collection("adminAuditLog").doc(), {
-    action: "fulfillment_status_changed",
-    actorId: args.actor.uid,
-    actorEmail: args.actor.email || null,
+    action: args.auditAction,
+    actorId: args.actorId,
+    actorEmail: args.actorEmail,
     targetId: args.orderRef.id,
     before: { status: args.order.status },
-    after: { status, closedRemainder: true },
+    after: { status, ...args.auditAfter },
     createdAt: args.now,
   });
-  return {
-    status,
-    cashRecorded,
-    order: { id: args.orderRef.id, ...args.order, status, deliveries: args.deliveries, ...(cashRecorded ? { paymentStatus: "Paid", amountPaid: Number(args.order.total) || 0 } : {}) } as Record<string, unknown>,
-  };
+  return { status, changed };
 }
 
 export async function POST(request: Request) {
@@ -415,11 +409,12 @@ export async function POST(request: Request) {
       if (!canPackOrder(order as any)) throw new Error("PAYMENT_REQUIRED");
 
       if (input.action === "partial" || input.action === "shortfall") {
-        if (!["Processing", "Shipped"].includes(String(order.status || ""))) throw new Error("INVALID_TRANSITION");
+        if (!canRecordWhatWentOut(order as any)) throw new Error("INVALID_TRANSITION");
         const pickup = isPickupOrder(order as any);
         const balances = lineBalances(order as any);
         const actorName = actor.email || actor.uid || "staff";
-        const staffActor = { uid: actor.uid || "staff", email: actor.email || null };
+        const actorId = actor.uid || "staff";
+        const actorEmail = actor.email || null;
 
         if (input.action === "shortfall") {
           const lines = balances.filter((row) => row.remaining > 0).map((row) => ({
@@ -435,14 +430,29 @@ export async function POST(request: Request) {
           if (!sentAlready) throw new Error("NOTHING_SENT");
           const productIds = [...new Set(lines.map((line) => line.productId))];
           const productSnaps = await transaction.getAll(...productIds.map((id) => adminDb.collection("products").doc(id)));
-          const loyalty = await loyaltyReader(transaction, order);
           writeRestoredStock(transaction, productSnaps, lines, input.orderId, actorName, now);
           const entry = { at: now, by: actorName, method: "shortfall" as const, shortfall: true, lines };
           const deliveries = [...(Array.isArray(order.deliveries) ? order.deliveries : []), entry];
-          const finished = writeFinishedOrder(transaction, {
-            orderRef, order, actor: staffActor, now, pickup, deliveries, ...loyalty,
+          const progress = applyDispatchProgress(transaction, {
+            orderRef,
+            order,
+            deliveries,
+            pickup,
+            now,
+            actorName,
+            actorId,
+            actorEmail,
+            auditAction: "fulfillment_shortfall_closed",
+            auditAfter: { lines, remaining: 0 },
           });
-          return { kind: "status" as const, order: finished.order, status: finished.status, cashRecorded: finished.cashRecorded };
+          return {
+            kind: "shortfall" as const,
+            message: pickup
+              ? "Shortfall closed. Confirm when the customer collects."
+              : "Shortfall closed. The courier is on the way until you confirm delivery.",
+            order: { id: input.orderId, ...order, status: progress.status, deliveries } as Record<string, unknown>,
+            status: progress.status,
+          };
         }
 
         if (!pickup && (!input.tracking?.carrier || !input.tracking?.trackingNumber)) throw new Error("TRACKING_REQUIRED");
@@ -471,26 +481,38 @@ export async function POST(request: Request) {
         };
         const deliveries = [...(Array.isArray(order.deliveries) ? order.deliveries : []), entry];
         const remaining = outstandingQuantity({ ...order, deliveries } as any);
-        if (remaining === 0) {
-          const loyalty = await loyaltyReader(transaction, order);
-          const finished = writeFinishedOrder(transaction, {
-            orderRef, order, actor: staffActor, now, pickup, deliveries, ...loyalty,
-          });
-          return { kind: "status" as const, order: finished.order, status: finished.status, cashRecorded: finished.cashRecorded };
-        }
-        transaction.update(orderRef, { deliveries, updatedAt: now });
-        transaction.set(adminDb.collection("adminAuditLog").doc(), {
-          action: "partial_delivery_recorded",
-          actorId: actor.uid,
-          actorEmail: actor.email || null,
-          targetId: input.orderId,
-          after: { lines, remaining },
-          createdAt: now,
+        const progress = applyDispatchProgress(transaction, {
+          orderRef,
+          order,
+          deliveries,
+          pickup,
+          now,
+          actorName,
+          actorId,
+          actorEmail,
+          ...(input.tracking ? { tracking: input.tracking } : {}),
+          auditAction: "partial_delivery_recorded",
+          auditAfter: { lines, remaining },
         });
+        const recorded = { id: input.orderId, ...order, status: progress.status, deliveries, ...(input.tracking ? { tracking: input.tracking } : {}) } as Record<string, unknown>;
+        if (remaining > 0) {
+          return {
+            kind: "partial" as const,
+            summary: partialSmsSummary(lines),
+            message: pickup
+              ? "Recorded what went out. Some units are still to send."
+              : "Dispatched. Courier is on the way. Some units are still to send.",
+            order: recorded,
+          };
+        }
         return {
-          kind: "partial" as const,
-          summary: partialSmsSummary(lines),
-          order: { id: input.orderId, ...order, deliveries } as Record<string, unknown>,
+          kind: "status" as const,
+          order: recorded,
+          status: progress.status,
+          cashRecorded: false,
+          message: pickup
+            ? "Ready for collection. Confirm when the customer collects."
+            : "Dispatched. Courier is on the way.",
         };
       }
 
@@ -606,10 +628,12 @@ export async function POST(request: Request) {
         method: "Cash on Delivery",
       });
     }
-    return NextResponse.json({
-      success: true,
-      message: outcome.kind === "partial" ? "Recorded what went out" : "Fulfillment updated",
-    });
+    const message = "message" in outcome && outcome.message
+      ? outcome.message
+      : outcome.kind === "partial"
+        ? "Recorded what went out"
+        : "Fulfillment updated";
+    return NextResponse.json({ success: true, message });
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     if (code === "ORDER_NOT_FOUND") return NextResponse.json({ success: false, message: "Order not found." }, { status: 404 });
@@ -620,7 +644,7 @@ export async function POST(request: Request) {
     if (code === "UNKNOWN_LINE") return NextResponse.json({ success: false, message: "That line is not on this order." }, { status: 400 });
     if (code === "NOTHING_OUTSTANDING") return NextResponse.json({ success: false, message: "Nothing is left to close." }, { status: 409 });
     if (code === "NOTHING_SENT") return NextResponse.json({ success: false, message: "Record what went out before closing the rest. Unpaid orders can still be cancelled." }, { status: 409 });
-    if (code === "OUTSTANDING") return NextResponse.json({ success: false, message: "Some units are still outstanding. Record what went out, or close the shortfall, before marking this finished." }, { status: 409 });
+    if (code === "OUTSTANDING") return NextResponse.json({ success: false, message: "Some units are still to send. Record what went out, or close the shortfall, before marking this finished." }, { status: 409 });
     throw error;
   }
 }
