@@ -12,7 +12,7 @@ function source(path: string) {
 const adminPhotos = [
   'src/app/dashboard/admin/products/page.tsx',
   'src/app/dashboard/admin/inventory/page.tsx',
-  'src/app/dashboard/admin/fulfillment/page.tsx',
+  'src/components/admin/FulfillmentOrderCard.tsx',
   'src/app/dashboard/admin/returns/page.tsx',
   'src/app/dashboard/admin/operations/page.tsx',
   'src/app/dashboard/admin/orders/[id]/page.tsx',

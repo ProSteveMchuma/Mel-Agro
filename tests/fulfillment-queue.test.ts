@@ -99,13 +99,22 @@ test('the queue lists late orders before older waits', () => {
 
 test('the fulfillment screen can mark a wait and does not count it late', () => {
     const page = readFileSync(join(process.cwd(), 'src/app/dashboard/admin/fulfillment/page.tsx'), 'utf8');
+    const card = readFileSync(join(process.cwd(), 'src/components/admin/FulfillmentOrderCard.tsx'), 'utf8');
     const route = readFileSync(join(process.cwd(), 'src/app/api/admin/fulfillment/route.ts'), 'utf8');
+    const screen = `${page}\n${card}`;
     assert.match(page, /Late/);
     assert.match(page, /Mark waiting/);
     assert.match(page, /Clear waiting/);
     assert.match(page, /A wait is not counted late/);
+    assert.match(screen, /Record what went out/);
+    assert.match(screen, /Confirm delivered/);
+    assert.match(screen, /Confirm collected/);
+    assert.match(screen, /Mark ready for collection/);
+    assert.match(screen, /previewDispatch/);
     assert.match(route, /action: z\.literal\("wait"\)/);
     assert.match(route, /action: z\.literal\("clear-wait"\)/);
     assert.match(route, /compareFulfillmentQueue/);
+    assert.match(route, /statusAfterRecordingDispatch/);
     assert.doesNotMatch(page, /shippingAddress\?\.details/);
+    assert.doesNotMatch(card, /shippingAddress\?\.details/);
 });

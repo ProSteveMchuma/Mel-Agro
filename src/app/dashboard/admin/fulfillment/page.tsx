@@ -1,22 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import { skipImageOptimizer } from "@/lib/product-image";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { getAuth } from "firebase/auth";
 import { toast } from "react-hot-toast";
-import type { Order } from "@/types";
-import { isPickupOrder, nextFulfillmentStatus, PICKUP_STORE, staffFulfillmentLabel } from "@/lib/pickup";
-import { canRecordWhatWentOut, dispatchLineLabel, lineBalances, nairobiPlacedLabel, outstandingQuantity, partialBlocksCompletion, partSent } from "@/lib/order-admin";
-import { hoursSincePackableLabel, type QueueFacts } from "@/lib/fulfillment-age";
+import FulfillmentOrderCard, { type QueueOrder } from "@/components/admin/FulfillmentOrderCard";
+import { isPickupOrder } from "@/lib/pickup";
+import {
+  orderAfterFulfillmentWrite,
+  queueAfterSave,
+  readDraftLines,
+  statsAfterStatusChange,
+  type DispatchDraft,
+  type QueueStats,
+} from "@/lib/fulfillment-draft";
 
-type Stats = { processing: number; shipped: number; readyPickup: number; stockAlerts: number; late: number };
-type QueueOrder = Order & { queue?: QueueFacts };
+type Stats = QueueStats;
 
 export default function FulfillmentPage() {
   const [orders, setOrders] = useState<QueueOrder[]>([]);
-  const [selectedOrder, setSelectedOrder] = useState<QueueOrder | null>(null);
+  const [revisions, setRevisions] = useState<Record<string, number>>({});
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [method, setMethod] = useState<"all" | "delivery" | "pickup">("all");
@@ -30,8 +32,7 @@ export default function FulfillmentPage() {
   const [queueCapped, setQueueCapped] = useState(false);
   const [pending, setPending] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [carrier, setCarrier] = useState("");
-  const [trackingNumber, setTrackingNumber] = useState("");
+  const lateMemory = useRef<Record<string, boolean>>({});
 
   useEffect(() => {
     const controller = new AbortController();
@@ -57,9 +58,6 @@ export default function FulfillmentPage() {
         setStats(result.stats || { processing: 0, shipped: 0, readyPickup: 0, stockAlerts: 0, late: 0 });
         setSearchLimited(Boolean(result.searchLimited));
         setQueueCapped(Boolean(result.queueCapped));
-        setSelectedOrder((current) =>
-          current ? (result.orders || []).find((order: QueueOrder) => order.id === current.id) || null : null,
-        );
       } catch (caught) {
         if ((caught as Error).name !== "AbortError") {
           setError(caught instanceof Error ? caught.message : "Could not load fulfillment queue.");
@@ -77,7 +75,11 @@ export default function FulfillmentPage() {
   function resetPage() {
     setCursor(null);
     setHistory([]);
-    setSelectedOrder(null);
+  }
+
+  function chooseStatus(next: string) {
+    setStatus(next);
+    resetPage();
   }
 
   async function mutate(body: Record<string, unknown>) {
@@ -93,67 +95,49 @@ export default function FulfillmentPage() {
     return result as { message?: string };
   }
 
-  async function markWaiting(order: QueueOrder, reason: string) {
-    setPending(true);
-    const notice = toast.loading(reason ? "Marking as waiting…" : "Clearing the wait…");
-    try {
-      await mutate(reason
-        ? { action: "wait", orderId: order.id, reason }
-        : { action: "clear-wait", orderId: order.id });
-      toast.success(reason ? "Marked waiting" : "Wait cleared", { id: notice });
-      setSelectedOrder(null);
-      setRefreshKey((value) => value + 1);
-    } catch (caught) {
-      toast.error(caught instanceof Error ? caught.message : "Could not update the wait", { id: notice });
-    } finally {
-      setPending(false);
-    }
+  function commit(previous: QueueOrder, next: QueueOrder) {
+    const filters = { status, method };
+    const stays = queueAfterSave([previous], next, filters).length === 1;
+    setOrders((current) => queueAfterSave(current, next, filters));
+    setStats((current) => statsAfterStatusChange(
+      current,
+      previous.status,
+      String(next.status || ""),
+      Boolean(previous.queue?.late) && !stays,
+    ));
+    setRevisions((current) => ({ ...current, [previous.id]: (current[previous.id] || 0) + 1 }));
   }
 
-  async function advanceOrder(order: QueueOrder) {
-    const next = nextFulfillmentStatus(order);
-    if (!next) return;
-
-    if (next === "Shipped") {
-      if (!carrier.trim() || !trackingNumber.trim()) {
-        toast.error("Enter carrier and tracking number before dispatch.");
-        return;
-      }
+  async function record(order: QueueOrder, draft: DispatchDraft) {
+    const parsed = readDraftLines(order, draft.quantities);
+    if (parsed.over) {
+      toast.error("That quantity is more than what is still outstanding.");
+      return;
     }
-    if (next === "Delivered" && !window.confirm("Confirm this order has been delivered?")) return;
-    if (next === "Collected" && !window.confirm("Confirm the customer collected this order?")) return;
-
+    if (parsed.lines.length === 0) {
+      toast.error("Enter a quantity for at least one line.");
+      return;
+    }
+    const pickup = isPickupOrder(order);
+    if (!pickup && (!draft.carrier.trim() || !draft.trackingNumber.trim())) {
+      toast.error("Enter carrier and tracking number before dispatch.");
+      return;
+    }
     setPending(true);
-    const labels: Record<string, string> = {
-      Shipped: "Marking as shipped…",
-      Delivered: "Confirming delivery…",
-      "Ready for Collection": "Marking ready for collection…",
-      Collected: "Confirming collection…",
-    };
-    const notice = toast.loading(labels[next] || "Updating…");
+    const notice = toast.loading("Recording what went out…");
     try {
-      await mutate({
-        action: "status",
+      const result = await mutate({
+        action: "partial",
         orderId: order.id,
-        status: next,
-        ...(next === "Shipped"
-          ? { tracking: { carrier: carrier.trim(), trackingNumber: trackingNumber.trim() } }
-          : {}),
+        lines: parsed.lines.map((line) => ({
+          productId: line.productId,
+          ...(line.variantId ? { variantId: line.variantId } : {}),
+          quantity: line.quantity,
+        })),
+        ...(!pickup ? { tracking: { carrier: draft.carrier.trim(), trackingNumber: draft.trackingNumber.trim() } } : {}),
       });
-      toast.success(
-        next === "Ready for Collection"
-          ? "Ready for Machakos collection"
-          : next === "Collected"
-            ? "Collection confirmed"
-            : next === "Shipped"
-              ? "Order dispatched"
-              : "Delivery confirmed",
-        { id: notice },
-      );
-      setCarrier("");
-      setTrackingNumber("");
-      setSelectedOrder(null);
-      setRefreshKey((value) => value + 1);
+      commit(order, orderAfterFulfillmentWrite(order, { type: "partial", ...draft }));
+      toast.success(result.message || "Recorded what went out", { id: notice });
     } catch (caught) {
       toast.error(caught instanceof Error ? caught.message : "Could not update order", { id: notice });
     } finally {
@@ -161,9 +145,111 @@ export default function FulfillmentPage() {
     }
   }
 
-  const selectedPickup = selectedOrder ? isPickupOrder(selectedOrder) : false;
-  const selectedNext = selectedOrder ? nextFulfillmentStatus(selectedOrder) : null;
-  const selectedBlocked = selectedOrder ? partialBlocksCompletion(selectedOrder) : false;
+  async function dispatchOrder(order: QueueOrder, draft: DispatchDraft) {
+    if (!draft.carrier.trim() || !draft.trackingNumber.trim()) {
+      toast.error("Enter carrier and tracking number before dispatch.");
+      return;
+    }
+    setPending(true);
+    const notice = toast.loading("Marking as shipped…");
+    try {
+      await mutate({
+        action: "status",
+        orderId: order.id,
+        status: "Shipped",
+        tracking: { carrier: draft.carrier.trim(), trackingNumber: draft.trackingNumber.trim() },
+      });
+      commit(order, orderAfterFulfillmentWrite(order, {
+        type: "dispatch",
+        carrier: draft.carrier,
+        trackingNumber: draft.trackingNumber,
+      }));
+      toast.success("Order dispatched", { id: notice });
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Could not update order", { id: notice });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function advance(order: QueueOrder, nextStatus: "Delivered" | "Ready for Collection" | "Collected") {
+    if (nextStatus === "Delivered" && !window.confirm("Confirm this order has been delivered?")) return;
+    if (nextStatus === "Collected" && !window.confirm("Confirm the customer collected this order?")) return;
+    const labels: Record<string, string> = {
+      Delivered: "Confirming delivery…",
+      "Ready for Collection": "Marking ready for collection…",
+      Collected: "Confirming collection…",
+    };
+    const done: Record<string, string> = {
+      Delivered: "Delivery confirmed",
+      "Ready for Collection": "Ready for Machakos collection",
+      Collected: "Collection confirmed",
+    };
+    setPending(true);
+    const notice = toast.loading(labels[nextStatus]);
+    try {
+      await mutate({ action: "status", orderId: order.id, status: nextStatus });
+      commit(order, orderAfterFulfillmentWrite(order, { type: "status", status: nextStatus }));
+      toast.success(done[nextStatus], { id: notice });
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Could not update order", { id: notice });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function closeShortfall(order: QueueOrder) {
+    if (!window.confirm("Close the unsent units? Those units go back on the shelf. This does not refund the customer.")) return;
+    setPending(true);
+    const notice = toast.loading("Closing the shortfall…");
+    try {
+      const result = await mutate({ action: "shortfall", orderId: order.id });
+      commit(order, orderAfterFulfillmentWrite(order, { type: "shortfall" }));
+      toast.success(result.message || "Shortfall closed", { id: notice });
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Could not update order", { id: notice });
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function markWaiting(order: QueueOrder, reason: string) {
+    setPending(true);
+    const notice = toast.loading(reason ? "Marking as waiting…" : "Clearing the wait…");
+    try {
+      await mutate(reason
+        ? { action: "wait", orderId: order.id, reason }
+        : { action: "clear-wait", orderId: order.id });
+      const wasLate = Boolean(order.queue?.late);
+      const restoreLate = !reason && Boolean(lateMemory.current[order.id]);
+      if (reason && wasLate) lateMemory.current[order.id] = true;
+      if (!reason) delete lateMemory.current[order.id];
+      setOrders((current) => current.map((entry) => {
+        if (entry.id !== order.id || !entry.queue) return entry;
+        if (reason) {
+          return {
+            ...entry,
+            queue: {
+              ...entry.queue,
+              late: false,
+              waiting: { reason, by: "You", at: new Date().toISOString() },
+            },
+          };
+        }
+        return { ...entry, queue: { ...entry.queue, late: restoreLate, waiting: null } };
+      }));
+      setStats((current) => {
+        if (reason && wasLate) return { ...current, late: Math.max(0, current.late - 1) };
+        if (restoreLate) return { ...current, late: current.late + 1 };
+        return current;
+      });
+      toast.success(reason ? "Marked waiting" : "Wait cleared", { id: notice });
+    } catch (caught) {
+      toast.error(caught instanceof Error ? caught.message : "Could not update the wait", { id: notice });
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
@@ -172,6 +258,7 @@ export default function FulfillmentPage() {
         <h1 className="text-2xl font-black text-gray-950">Fulfillment queue</h1>
         <p className="mt-1 text-sm text-gray-500">
           Delivery and Machakos pickup, oldest first. A dispatched courier order stays on the way until you confirm the customer has the goods. Late orders are listed before the rest. A wait is not counted late.
+          What you type updates the line and the status here before you save.
         </p>
       </header>
       {stats.late > 0 && (
@@ -181,9 +268,9 @@ export default function FulfillmentPage() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Processing" value={stats.processing} tone="blue" />
-        <StatCard label="On the way" value={stats.shipped} tone="green" />
-        <StatCard label="Ready to collect" value={stats.readyPickup} tone="amber" />
+        <StatCard label="Processing" value={stats.processing} tone="blue" pressed={status === "Processing"} onClick={() => chooseStatus(status === "Processing" ? "all" : "Processing")} />
+        <StatCard label="On the way" value={stats.shipped} tone="green" pressed={status === "Shipped"} onClick={() => chooseStatus(status === "Shipped" ? "all" : "Shipped")} />
+        <StatCard label="Ready to collect" value={stats.readyPickup} tone="amber" pressed={status === "Ready for Collection"} onClick={() => chooseStatus(status === "Ready for Collection" ? "all" : "Ready for Collection")} />
         <StatCard label="Stock alerts" value={stats.stockAlerts} tone="red" />
       </div>
 
@@ -208,7 +295,7 @@ export default function FulfillmentPage() {
         </select>
         <select
           value={status}
-          onChange={(event) => { setStatus(event.target.value); resetPage(); }}
+          onChange={(event) => chooseStatus(event.target.value)}
           className="min-h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm font-bold"
         >
           <option value="all">All stages</option>
@@ -237,271 +324,85 @@ export default function FulfillmentPage() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-        <section className="space-y-3">
-          {loading ? (
-            <QueueMessage>Loading paid orders…</QueueMessage>
-          ) : orders.length === 0 && !error ? (
-            <QueueMessage>No paid orders are waiting in this stage.</QueueMessage>
-          ) : (
-            orders.map((order) => {
-              const pickup = isPickupOrder(order);
-              const queue = order.queue;
-              return (
-                <button
-                  key={order.id}
-                  type="button"
-                  onClick={() => setSelectedOrder(order)}
-                  className={`w-full rounded-2xl border bg-white p-5 text-left shadow-sm transition ${
-                    selectedOrder?.id === order.id ? "border-green-600 ring-2 ring-green-600/10" : "border-gray-200 hover:border-gray-300"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="font-black text-gray-950">Order #{order.id.slice(0, 8)}</p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        {order.userName || order.userEmail || order.phone || "Guest customer"} ·{" "}
-                        {nairobiPlacedLabel(order.date)}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase ${
-                        pickup ? "bg-amber-100 text-amber-800" : "bg-slate-100 text-slate-700"
-                      }`}>
-                        {pickup ? "Collection" : "Delivery"}
-                      </span>
-                      <span className={`rounded-full px-3 py-1 text-left text-[11px] font-black leading-snug ${
-                        order.status === "Processing"
-                          ? "bg-amber-100 text-amber-700"
-                          : order.status === "Ready for Collection" || pickup
-                            ? "bg-orange-100 text-orange-800"
-                            : "bg-blue-100 text-blue-800"
-                      }`}>
-                        {staffFulfillmentLabel(order.status, order)}
-                      </span>
-                      {partSent(order) ? (
-                        <span className="rounded-full bg-violet-100 px-3 py-1 text-[10px] font-black uppercase text-violet-800">Part sent</span>
-                      ) : null}
-                      {queue?.late ? (
-                        <span className="rounded-full bg-red-100 px-3 py-1 text-[10px] font-black uppercase text-red-700">Late</span>
-                      ) : null}
-                      {queue?.waiting ? (
-                        <span className="rounded-full bg-slate-200 px-3 py-1 text-[10px] font-black uppercase text-slate-700">Waiting</span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <p className="mt-3 text-sm text-gray-700">
-                    {queue ? hoursSincePackableLabel(queue.hours) : nairobiPlacedLabel(order.date)}
-                    {" · "}
-                    {queue?.methodLabel || (pickup ? "Machakos pickup" : "Delivery")}
-                    {" · "}
-                    {queue?.place || (pickup ? "Machakos pickup" : order.shippingAddress?.county || "No county")}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">{queue?.etaText || (pickup ? PICKUP_STORE.etaText : "Zone promise")}</p>
-                  {!pickup && order.status === "Shipped" ? (
-                    <p className="mt-2 text-xs font-semibold text-blue-800">Dispatched. Courier is on the way.</p>
-                  ) : null}
-                  {partSent(order) ? (
-                    <p className="mt-1 text-xs font-semibold text-violet-800">{outstandingQuantity(order)} still to send</p>
-                  ) : null}
-                  {queue?.waiting ? (
-                    <p className="mt-2 text-xs font-semibold text-slate-600">
-                      Waiting: {queue.waiting.reason} · {queue.waiting.by}
-                    </p>
-                  ) : null}
-                  <div className="mt-4 flex items-center justify-between rounded-xl bg-gray-50 p-3">
-                    <div className="flex -space-x-2">
-                      {order.items.slice(0, 3).map((item, index) => (
-                        <span
-                          key={`${item.id}-${index}`}
-                          className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border-2 border-white bg-gray-200 text-[10px] font-bold"
-                        >
-                          {item.image ? <Image src={item.image} alt="" fill unoptimized={skipImageOptimizer(item.image)} className="object-cover" /> : item.name?.[0] || "?"}
-                        </span>
-                      ))}
-                    </div>
-                    <span className="font-black text-gray-950">KES {Number(order.total || 0).toLocaleString()}</span>
-                  </div>
-                </button>
-              );
-            })
-          )}
-          {!loading && orders.length > 0 && (
-            <footer className="flex items-center justify-between pt-2 text-sm text-gray-500">
-              <span>Page {history.length + 1} · {orders.length} orders</span>
-              <div className="flex gap-2">
-                <button
-                  disabled={history.length === 0}
-                  onClick={() => setHistory((current) => {
-                    const copy = [...current];
-                    setCursor(copy.pop() ?? null);
-                    setSelectedOrder(null);
-                    return copy;
-                  })}
-                  className="min-h-10 rounded-lg border border-gray-200 bg-white px-3 font-bold disabled:opacity-40"
-                >
-                  Previous
-                </button>
-                <button
-                  disabled={!nextCursor}
-                  onClick={() => {
-                    if (nextCursor) {
-                      setHistory((current) => [...current, cursor]);
-                      setCursor(nextCursor);
-                      setSelectedOrder(null);
-                    }
-                  }}
-                  className="min-h-10 rounded-lg border border-gray-200 bg-white px-3 font-bold disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
-            </footer>
-          )}
-        </section>
-
-        <aside>
-          {selectedOrder ? (
-            <div className="sticky top-24 space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="flex items-center justify-between">
-                <h2 className="font-black text-gray-950">Fulfillment actions</h2>
-                <Link href={`/dashboard/admin/orders/${selectedOrder.id}`} className="text-xs font-black text-green-700 hover:underline">
-                  Full details
-                </Link>
-              </div>
-
-              <div className={`rounded-xl p-4 ${selectedPickup ? "bg-amber-50 border border-amber-200" : "bg-gray-50"}`}>
-                <p className="text-xs font-black uppercase tracking-wider text-gray-400">
-                  {selectedPickup ? "Machakos collection" : "Delivery dispatch"}
-                </p>
-                {selectedPickup ? (
-                  <p className="mt-2 text-sm text-amber-950">
-                    {PICKUP_STORE.name}. Customer collects in person — no carrier tracking.
-                  </p>
-                ) : null}
-
-                {!selectedPickup && selectedNext === "Shipped" ? (
-                  <div className="mt-3 space-y-2">
-                    <input
-                      value={carrier}
-                      onChange={(e) => setCarrier(e.target.value)}
-                      placeholder="Carrier e.g. G4S"
-                      className="min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm"
-                    />
-                    <input
-                      value={trackingNumber}
-                      onChange={(e) => setTrackingNumber(e.target.value)}
-                      placeholder="Tracking / reference"
-                      className="min-h-11 w-full rounded-xl border border-gray-200 bg-white px-3 font-mono text-sm"
-                    />
-                  </div>
-                ) : null}
-
-                {!selectedPickup && selectedOrder.status === "Shipped" ? (
-                  <p className="mt-3 text-sm font-semibold text-blue-950">Dispatched. Courier is on the way. Confirm delivered only when the customer has the goods.</p>
-                ) : null}
-                {selectedPickup && (selectedOrder.status === "Ready for Collection" || selectedOrder.status === "Shipped") ? (
-                  <p className="mt-3 text-sm font-semibold text-amber-950">Ready for collection. Mark collected only when the customer has the goods.</p>
-                ) : null}
-                {selectedNext && !selectedBlocked ? (
-                  <button
-                    type="button"
-                    disabled={pending}
-                    onClick={() => advanceOrder(selectedOrder)}
-                    className="mt-3 min-h-12 w-full rounded-xl bg-green-700 px-4 text-sm font-black text-white hover:bg-green-800 disabled:opacity-50"
-                  >
-                    {selectedNext === "Ready for Collection"
-                      ? "Mark ready for collection"
-                      : selectedNext === "Collected"
-                        ? "Confirm collected"
-                        : selectedNext === "Shipped"
-                          ? "Dispatch / mark shipped"
-                          : "Confirm delivered"}
-                  </button>
-                ) : selectedBlocked ? (
-                  <p className="mt-3 text-sm text-amber-900">{outstandingQuantity(selectedOrder)} still to send. Record what went out, or close the shortfall.</p>
-                ) : (
-                  <p className="mt-3 text-sm text-gray-500">No further fulfillment step for this status.</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Link
-                  href={`/orders/${selectedOrder.id}/delivery-note`}
-                  className="rounded-lg border border-gray-200 px-3 py-2 text-center text-xs font-bold hover:bg-gray-50"
-                >
-                  {selectedPickup ? "Collection slip" : "Packing slip"}
-                </Link>
-                <Link
-                  href={`/orders/${selectedOrder.id}/invoice`}
-                  className="rounded-lg border border-gray-200 px-3 py-2 text-center text-xs font-bold hover:bg-gray-50"
-                >
-                  Invoice
-                </Link>
-              </div>
-
-              {canRecordWhatWentOut(selectedOrder) && (
-                <PartialDispatch
-                  order={selectedOrder}
-                  pickup={selectedPickup}
-                  pending={pending}
-                  carrier={carrier}
-                  trackingNumber={trackingNumber}
-                  showTracking={!selectedPickup && selectedNext !== "Shipped"}
-                  onCarrier={setCarrier}
-                  onTracking={setTrackingNumber}
-                  onSubmit={async (body) => {
-                    setPending(true);
-                    const notice = toast.loading(body.action === "shortfall" ? "Closing the shortfall…" : "Recording what went out…");
-                    try {
-                      const result = await mutate({ ...body, orderId: selectedOrder.id });
-                      toast.success(result.message || (body.action === "shortfall" ? "Shortfall closed" : "Recorded what went out"), { id: notice });
-                      setCarrier("");
-                      setTrackingNumber("");
-                      setSelectedOrder(null);
-                      setRefreshKey((value) => value + 1);
-                    } catch (caught) {
-                      toast.error(caught instanceof Error ? caught.message : "Could not update order", { id: notice });
-                    } finally {
-                      setPending(false);
-                    }
-                  }}
-                />
-              )}
-
-              <WaitingControl
-                order={selectedOrder}
-                pending={pending}
-                onWait={(reason) => markWaiting(selectedOrder, reason)}
-                onClear={() => markWaiting(selectedOrder, "")}
-              />
-
-              <InternalNotes
-                order={selectedOrder}
-                mutate={mutate}
-                onSaved={(note) =>
-                  setSelectedOrder((current) =>
-                    current
-                      ? {
-                          ...current,
-                          internalNotes: note,
-                          internalHistory: [
-                            ...(current.internalHistory || []),
-                            { date: new Date().toISOString(), note, author: "Current admin" },
-                          ],
-                        }
-                      : current,
-                  )
-                }
-              />
+      <section className="space-y-3">
+        {loading ? (
+          <QueueMessage>Loading paid orders…</QueueMessage>
+        ) : orders.length === 0 && !error ? (
+          <QueueMessage>No paid orders are waiting in this stage.</QueueMessage>
+        ) : (
+          orders.map((order) => (
+            <FulfillmentOrderCard
+              key={`${order.id}:${revisions[order.id] || 0}`}
+              order={order}
+              pending={pending}
+              onRecord={(draft) => record(order, draft)}
+              onDispatch={(draft) => dispatchOrder(order, draft)}
+              onReady={() => advance(order, "Ready for Collection")}
+              onDelivered={() => advance(order, "Delivered")}
+              onCollected={() => advance(order, "Collected")}
+              onShortfall={() => closeShortfall(order)}
+              extras={
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <WaitingControl
+                    order={order}
+                    pending={pending}
+                    onWait={(reason) => markWaiting(order, reason)}
+                    onClear={() => markWaiting(order, "")}
+                  />
+                  <InternalNotes
+                    order={order}
+                    mutate={mutate}
+                    onSaved={(note) => setOrders((current) => current.map((entry) => (
+                      entry.id === order.id
+                        ? {
+                            ...entry,
+                            internalNotes: note,
+                            internalHistory: [
+                              ...(entry.internalHistory || []),
+                              { date: new Date().toISOString(), note, author: "Current admin" },
+                            ],
+                          }
+                        : entry
+                    )))}
+                  />
+                </div>
+              }
+            />
+          ))
+        )}
+        {!loading && orders.length > 0 && (
+          <footer className="flex items-center justify-between pt-2 text-sm text-gray-500">
+            <span>Page {history.length + 1} · {orders.length} orders</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={history.length === 0}
+                onClick={() => setHistory((current) => {
+                  const copy = [...current];
+                  setCursor(copy.pop() ?? null);
+                  return copy;
+                })}
+                className="min-h-10 rounded-lg border border-gray-200 bg-white px-3 font-bold disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={!nextCursor}
+                onClick={() => {
+                  if (nextCursor) {
+                    setHistory((current) => [...current, cursor]);
+                    setCursor(nextCursor);
+                  }
+                }}
+                className="min-h-10 rounded-lg border border-gray-200 bg-white px-3 font-bold disabled:opacity-40"
+              >
+                Next
+              </button>
             </div>
-          ) : (
-            <div className="flex min-h-72 items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 p-8 text-center text-sm text-gray-400">
-              Select an order to see its next action.
-            </div>
-          )}
-        </aside>
-      </div>
+          </footer>
+        )}
+      </section>
     </div>
   );
 }
@@ -510,10 +411,14 @@ function StatCard({
   label,
   value,
   tone,
+  pressed,
+  onClick,
 }: {
   label: string;
   value: number;
   tone: "blue" | "green" | "red" | "amber";
+  pressed?: boolean;
+  onClick?: () => void;
 }) {
   const colors = {
     blue: "bg-blue-50 text-blue-700",
@@ -521,111 +426,29 @@ function StatCard({
     red: "bg-red-50 text-red-700",
     amber: "bg-amber-50 text-amber-800",
   };
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+  const body = (
+    <>
       <p className="text-xs font-bold text-gray-500">{label}</p>
       <p className={`mt-2 inline-flex rounded-xl px-3 py-1 text-2xl font-black ${colors[tone]}`}>{value}</p>
-    </div>
+    </>
   );
-}
-
-function QueueMessage({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-10 text-center text-sm text-gray-500">{children}</div>;
-}
-
-function PartialDispatch({
-  order,
-  pickup,
-  pending,
-  carrier,
-  trackingNumber,
-  onCarrier,
-  onTracking,
-  showTracking,
-  onSubmit,
-}: {
-  order: Order;
-  pickup: boolean;
-  pending: boolean;
-  carrier: string;
-  trackingNumber: string;
-  onCarrier: (value: string) => void;
-  onTracking: (value: string) => void;
-  showTracking: boolean;
-  onSubmit: (body: Record<string, unknown>) => Promise<void>;
-}) {
-  const balances = lineBalances(order).filter((row) => row.remaining > 0);
-  const [qty, setQty] = useState<Record<string, string>>({});
-  useEffect(() => { setQty({}); }, [order.id]);
-  if (balances.length === 0) return null;
-  const lines = balances
-    .map((row) => ({
-      productId: row.productId,
-      ...(row.variantId ? { variantId: row.variantId } : {}),
-      quantity: Math.floor(Number(qty[`${row.productId}::${row.variantId}`] || 0)),
-    }))
-    .filter((line) => line.quantity > 0);
+  if (!onClick) {
+    return <div className="rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm">{body}</div>;
+  }
   return (
-    <div className="space-y-3 rounded-xl border border-gray-200 p-4">
-      <p className="text-xs font-black uppercase tracking-wider text-gray-400">What went out</p>
-      <ul className="space-y-2">
-        {lineBalances(order).map((row) => (
-          <li key={`${row.productId}::${row.variantId}`} className="text-sm text-gray-700">
-            <span className="font-bold text-gray-950">{row.name}</span>
-            <span className="block text-xs text-gray-500">{dispatchLineLabel(row, pickup)}</span>
-            {row.remaining > 0 ? (
-              <input
-                type="number"
-                min={0}
-                max={row.remaining}
-                value={qty[`${row.productId}::${row.variantId}`] || ""}
-                onChange={(event) => setQty((current) => ({ ...current, [`${row.productId}::${row.variantId}`]: event.target.value }))}
-                placeholder={`Qty, up to ${row.remaining}`}
-                className="mt-1 min-h-10 w-full rounded-lg border border-gray-200 px-3 text-sm"
-              />
-            ) : null}
-          </li>
-        ))}
-      </ul>
-      {showTracking ? (
-        <div className="space-y-2">
-          <input value={carrier} onChange={(event) => onCarrier(event.target.value)} placeholder="Carrier e.g. G4S" className="min-h-11 w-full rounded-xl border border-gray-200 px-3 text-sm" />
-          <input value={trackingNumber} onChange={(event) => onTracking(event.target.value)} placeholder="Tracking / reference" className="min-h-11 w-full rounded-xl border border-gray-200 px-3 font-mono text-sm" />
-        </div>
-      ) : null}
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => {
-          if (lines.length === 0) {
-            toast.error("Enter a quantity for at least one line.");
-            return;
-          }
-          void onSubmit({
-            action: "partial",
-            lines,
-            ...(!pickup ? { tracking: { carrier: carrier.trim(), trackingNumber: trackingNumber.trim() } } : {}),
-          });
-        }}
-        className="min-h-11 w-full rounded-xl bg-gray-950 text-sm font-black text-white disabled:opacity-50"
-      >
-        Record what went out
-      </button>
-      {partSent(order) ? (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => {
-            if (!window.confirm("Close the unsent units? Those units go back on the shelf. This does not refund the customer.")) return;
-            void onSubmit({ action: "shortfall" });
-          }}
-          className="min-h-11 w-full rounded-xl border border-gray-200 text-sm font-bold text-gray-800 disabled:opacity-50"
-        >
-          Close shortfall
-        </button>
-      ) : null}
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={Boolean(pressed)}
+      className={`rounded-2xl border bg-white p-5 text-left shadow-sm ${pressed ? "border-green-700 ring-2 ring-green-600/20" : "border-gray-200 hover:border-gray-300"}`}
+    >
+      {body}
+    </button>
   );
+}
+
+function QueueMessage({ children }: { children: ReactNode }) {
+  return <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-10 text-center text-sm text-gray-500">{children}</div>;
 }
 
 function WaitingControl({
@@ -685,7 +508,7 @@ function InternalNotes({
   mutate,
   onSaved,
 }: {
-  order: Order;
+  order: QueueOrder;
   mutate: (body: Record<string, unknown>) => Promise<unknown>;
   onSaved: (note: string) => void;
 }) {
@@ -695,7 +518,7 @@ function InternalNotes({
   return (
     <div>
       <label className="text-xs font-black uppercase tracking-wider text-gray-400">Internal note</label>
-      <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} className="mt-2 w-full rounded-xl border border-gray-200 p-3 text-sm" />
+      <textarea value={note} onChange={(event) => setNote(event.target.value)} rows={3} className="mt-2 w-full rounded-xl border border-gray-200 p-3 text-sm" />
       <button
         type="button"
         disabled={saving || !note.trim()}
