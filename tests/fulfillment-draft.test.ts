@@ -4,6 +4,8 @@ import { dispatchLineLabel, lineBalances } from '../src/lib/order-admin.ts';
 import {
     fulfillmentCue,
     fulfillmentSteps,
+    includeInFulfillmentQueue,
+    onTheWayCount,
     orderAfterFulfillmentWrite,
     orderWithDraft,
     queueAfterSave,
@@ -114,6 +116,42 @@ test('saving a dispatch updates the queue in place', () => {
         statsAfterStatusChange({ processing: 3, shipped: 3, readyPickup: 1, stockAlerts: 3, late: 2 }, 'Shipped', 'Delivered', true),
         { processing: 3, shipped: 2, readyPickup: 1, stockAlerts: 3, late: 1 },
     );
+});
+
+test('the on the way count and the tab use the same courier Shipped rule', () => {
+    const paid = { paymentStatus: 'Paid', paymentMethod: 'M-Pesa' };
+    const courierShipped = { ...courier, ...paid, status: 'Shipped' };
+    const delivered = { ...courierShipped, status: 'Delivered' };
+    const pickupShipped = { ...courierShipped, shippingMethod: 'pickup' };
+    const unpaid = { ...courier, status: 'Shipped', paymentStatus: 'Unpaid', paymentMethod: 'M-Pesa' };
+    const cod = { ...courier, status: 'Shipped', paymentStatus: 'Unpaid', paymentMethod: 'Cash on Delivery' };
+    const onTheWay = { status: 'Shipped', method: 'all' };
+
+    assert.equal(includeInFulfillmentQueue(courierShipped, onTheWay), true);
+    assert.equal(includeInFulfillmentQueue(delivered, onTheWay), false);
+    assert.equal(includeInFulfillmentQueue(pickupShipped, onTheWay), false);
+    assert.equal(includeInFulfillmentQueue(unpaid, onTheWay), false);
+    assert.equal(includeInFulfillmentQueue(cod, onTheWay), true);
+    assert.equal(onTheWayCount([courierShipped, delivered, pickupShipped, unpaid, cod]), 2);
+    assert.equal(
+        [courierShipped, delivered, pickupShipped, unpaid, cod].filter((order) => includeInFulfillmentQueue(order, onTheWay)).length,
+        onTheWayCount([courierShipped, delivered, pickupShipped, unpaid, cod]),
+    );
+
+    const deliveredSaved = orderAfterFulfillmentWrite(courierShipped, { type: 'status', status: 'Delivered' });
+    assert.equal(deliveredSaved.status, 'Delivered');
+    assert.equal(includeInFulfillmentQueue({ ...deliveredSaved, ...paid }, onTheWay), false);
+    const hidden = queueAfterSave(
+        [courierShipped],
+        { ...deliveredSaved, id: courier.id },
+        onTheWay,
+    );
+    assert.equal(hidden.length, 0);
+    const pickupHidden = queueAfterSave([pickupShipped], pickupShipped, onTheWay);
+    assert.equal(pickupHidden.length, 0);
+    assert.equal(fulfillmentCue(deliveredSaved).delivered, true);
+    assert.equal(fulfillmentCue(deliveredSaved).onTheWay, false);
+    assert.equal(fulfillmentCue(courierShipped).label, 'Dispatched · courier on the way');
 });
 
 test('pickup recording stays ready for collection', () => {

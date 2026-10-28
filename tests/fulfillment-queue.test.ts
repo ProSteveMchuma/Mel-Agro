@@ -115,6 +115,9 @@ test('the fulfillment screen can mark a wait and does not count it late', () => 
     assert.match(route, /action: z\.literal\("clear-wait"\)/);
     assert.match(route, /compareFulfillmentQueue/);
     assert.match(route, /statusAfterRecordingDispatch/);
+    assert.match(route, /includeInFulfillmentQueue/);
+    assert.match(route, /onTheWayCount/);
+    assert.doesNotMatch(route, /where\("status", "==", "Shipped"\)\.count\(\)/);
     assert.doesNotMatch(page, /shippingAddress\?\.details/);
     assert.doesNotMatch(card, /shippingAddress\?\.details/);
 });
