@@ -1,3 +1,4 @@
+import { canPackOrder } from './commerce-ops.ts';
 import { lineBalances, lineKey, partSent, outstandingQuantity, statusAfterRecordingDispatch } from './order-admin.ts';
 import { fulfillmentStepsFor, isPickupOrder, staffFulfillmentLabel } from './pickup.ts';
 
@@ -232,6 +233,39 @@ export function orderAfterShortfall<T extends DraftableOrder>(order: T): T {
 
 const ACTIVE = new Set(['Processing', 'Shipped', 'Ready for Collection']);
 
+type QueueFilterOrder = {
+    status?: string | null;
+    paymentStatus?: string | null;
+    paymentMethod?: string | null;
+    shippingMethod?: string | null;
+    shippingAddress?: { method?: string | null } | null;
+};
+
+/**
+ * On the way is a courier order that is still Shipped.
+ * Delivered is a different status. A pickup order stored as Shipped is not on the way.
+ * The queue only lists orders it can still pack.
+ */
+export function includeInFulfillmentQueue(order: QueueFilterOrder, filters: { status: string | null; method: string }): boolean {
+    if (!canPackOrder(order)) return false;
+    const pickup = isPickupOrder(order);
+    const status = String(order.status || '');
+    if (filters.status === 'Shipped') {
+        if (pickup || status !== 'Shipped') return false;
+    } else if (filters.status) {
+        if (status !== filters.status) return false;
+    } else if (!ACTIVE.has(status)) {
+        return false;
+    }
+    if (filters.method === 'pickup' && !pickup) return false;
+    if (filters.method === 'delivery' && pickup) return false;
+    return true;
+}
+
+export function onTheWayCount(orders: QueueFilterOrder[]): number {
+    return orders.filter((order) => includeInFulfillmentQueue(order, { status: 'Shipped', method: 'all' })).length;
+}
+
 export function queueAfterSave<T extends { id: string } & DraftableOrder>(
     orders: T[],
     next: T,
@@ -241,9 +275,10 @@ export function queueAfterSave<T extends { id: string } & DraftableOrder>(
     if (index < 0) return orders;
     const status = String(next.status || '');
     const pickup = isPickupOrder(next);
-    const listed = ACTIVE.has(status)
-        && (filters.status === 'all' || filters.status === status)
-        && (filters.method === 'all' || (filters.method === 'pickup' ? pickup : !pickup));
+    const methodOk = filters.method === 'all' || (filters.method === 'pickup' ? pickup : !pickup);
+    const listed = filters.status === 'Shipped'
+        ? !pickup && status === 'Shipped' && methodOk
+        : ACTIVE.has(status) && (filters.status === 'all' || filters.status === status) && methodOk;
     if (!listed) return orders.filter((order) => order.id !== next.id);
     const copy = orders.slice();
     copy[index] = next;

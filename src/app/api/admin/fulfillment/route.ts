@@ -20,6 +20,7 @@ import { notifyCustomerPaymentReceived } from "@/lib/payment-notifications";
 import { DELIVERY_ZONES, type DeliveryZone } from "@/lib/delivery";
 import { normalizeZoneInput } from "@/lib/shipping-zones-admin";
 import { compareFulfillmentQueue, fulfillmentQueueFacts, type QueueFacts } from "@/lib/fulfillment-age";
+import { includeInFulfillmentQueue, onTheWayCount } from "@/lib/fulfillment-draft";
 
 const PAGE_SIZE = 20;
 type Cursor = { date: string; id: string };
@@ -71,35 +72,37 @@ export async function GET(request: Request) {
   const method = ["pickup", "delivery", "all"].includes(methodParam) ? methodParam : "all";
   const zones = await loadZones();
   const now = Date.now();
-  const queueStats = async (late: number) => {
-    const [processing, shipped, readyPickup, stockAlerts] = await Promise.all([
+  const queueStats = async (late: number, shipped: number) => {
+    const [processing, readyPickup, stockAlerts] = await Promise.all([
       adminDb.collection("orders").where("status", "==", "Processing").count().get(),
-      adminDb.collection("orders").where("status", "==", "Shipped").count().get(),
       adminDb.collection("orders").where("status", "==", "Ready for Collection").count().get(),
       adminDb.collection("products").where("stockQuantity", "==", 0).count().get(),
     ]);
     return {
       processing: processing.data().count,
-      shipped: shipped.data().count,
+      shipped,
       readyPickup: readyPickup.data().count,
       stockAlerts: stockAlerts.data().count,
       late,
     };
   };
+  const loadShipped = () => adminDb.collection("orders").where("status", "==", "Shipped").limit(200).get();
 
   if (!search) {
     const statuses = status ? [status] : ACTIVE_STATUSES;
     const snapshots = await Promise.all(statuses.map((value) =>
       adminDb.collection("orders").where("status", "==", value).limit(200).get(),
     ));
+    const shippedSnapshot = statuses.includes("Shipped")
+      ? snapshots[statuses.indexOf("Shipped")]
+      : await loadShipped();
     const matches: Array<{ id: string; queue: QueueFacts; [key: string]: unknown }> = [];
     let capped = snapshots.some((snapshot) => snapshot.size >= 200);
     for (const snapshot of snapshots) {
       for (const document of snapshot.docs) {
         const data = document.data();
-        if (!canPackOrder(data as any)) continue;
+        if (!includeInFulfillmentQueue(data as any, { status, method })) continue;
         const orderMethod = fulfillmentMethodOf(data as any);
-        if (method !== "all" && orderMethod !== method) continue;
         matches.push(withQueue({ id: document.id, ...data, fulfillmentMethod: orderMethod }, zones, now));
       }
     }
@@ -114,7 +117,7 @@ export async function GET(request: Request) {
       nextCursor: nextOffset < matches.length
         ? Buffer.from(JSON.stringify({ offset: nextOffset })).toString("base64url")
         : null,
-      stats: await queueStats(late),
+      stats: await queueStats(late, onTheWayCount(shippedSnapshot.docs.map((document) => document.data()))),
       searchLimited: false,
       queueCapped: capped,
     });
@@ -135,10 +138,8 @@ export async function GET(request: Request) {
       const data = document.data();
       const date = String(data.date || "");
       cursor = { date, id: document.id };
-      if (!canPackOrder(data as any)) continue;
-      if (status && data.status !== status) continue;
+      if (!includeInFulfillmentQueue(data as any, { status, method })) continue;
       const orderMethod = fulfillmentMethodOf(data as any);
-      if (method !== "all" && orderMethod !== method) continue;
       if (search) {
         const haystack = [
           document.id,
@@ -169,7 +170,7 @@ export async function GET(request: Request) {
     nextCursor: last && (orders.length > PAGE_SIZE || !exhausted)
       ? encode({ date: String(last.date || ""), id: String(last.id) })
       : null,
-    stats: await queueStats(page.filter((order) => order.queue.late).length),
+    stats: await queueStats(page.filter((order) => order.queue.late).length, onTheWayCount((await loadShipped()).docs.map((document) => document.data()))),
     searchLimited: scanned >= 600,
     queueCapped: false,
   });

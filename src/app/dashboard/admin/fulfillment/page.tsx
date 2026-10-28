@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import FulfillmentOrderCard, { type QueueOrder } from "@/components/admin/FulfillmentOrderCard";
 import { isPickupOrder } from "@/lib/pickup";
 import {
+  onTheWayCount,
   orderAfterFulfillmentWrite,
   queueAfterSave,
   readDraftLines,
@@ -99,12 +100,16 @@ export default function FulfillmentPage() {
     const filters = { status, method };
     const stays = queueAfterSave([previous], next, filters).length === 1;
     setOrders((current) => queueAfterSave(current, next, filters));
-    setStats((current) => statsAfterStatusChange(
-      current,
-      previous.status,
-      String(next.status || ""),
-      Boolean(previous.queue?.late) && !stays,
-    ));
+    setStats((current) => {
+      const nextStats = statsAfterStatusChange(
+        current,
+        previous.status,
+        String(next.status || ""),
+        Boolean(previous.queue?.late) && !stays,
+      );
+      const onTheWayDelta = onTheWayCount([next]) - onTheWayCount([previous]);
+      return { ...nextStats, shipped: Math.max(0, current.shipped + onTheWayDelta) };
+    });
     setRevisions((current) => ({ ...current, [previous.id]: (current[previous.id] || 0) + 1 }));
   }
 
