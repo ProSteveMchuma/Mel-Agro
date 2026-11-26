@@ -53,15 +53,6 @@ export const metadata: Metadata = {
     template: "%s | Mel-Agri"
   },
   description: SITE_DESCRIPTION,
-  keywords: [
-    "buy agricultural inputs online kenya",
-    "online agrovet near me",
-    "farm inputs delivery kenya",
-    "agrochemicals online delivery kenya",
-    "maize seeds kenya",
-    "DAP fertilizer price kenya",
-    "certified agrochemicals kenya"
-  ],
   authors: [{ name: "Mel-Agri" }],
   creator: "Mel-Agri",
   publisher: "Mel-Agri",

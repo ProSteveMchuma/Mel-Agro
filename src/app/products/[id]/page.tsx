@@ -4,7 +4,7 @@ import { getAllProductsServerCached, getProductByIdServerCached, getRelatedProdu
 import { absoluteUrl, SITE_URL } from '@/lib/site';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { kenyaOfferShippingDetails } from '@/lib/shipping-schema';
-import { productIdFromRouteParam, productSeoPath, productSeoSlug } from '@/lib/seo';
+import { productIdFromRouteParam, productSeoPath, productSeoSlug, truncateMetaDescription } from '@/lib/seo';
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -41,31 +41,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const productSummary = (product.description || `Certified ${product.category} available for delivery across Kenya.`)
         .replace(/\s+/g, ' ')
         .trim();
-    const seoDescription = `Buy ${product.name} online in Kenya for KES ${product.price.toLocaleString()}. ${productSummary}`.slice(0, 158).trim();
+    const seoDescription = truncateMetaDescription(`Buy ${product.name} online in Kenya for KES ${product.price.toLocaleString()}. ${productSummary}`);
 
     const ogImage = `${SITE_URL}/api/og/product?name=${encodeURIComponent(product.name)}&price=${product.price}&category=${encodeURIComponent(product.category)}&image=${encodeURIComponent(product.image)}`;
     const canonicalPath = productSeoPath(product);
 
-    const keywords = [
-        product.name,
-        product.brand || "",
-        product.category,
-        `Buy ${product.name} online`,
-        `Original ${product.name} price Kenya`,
-        `Where to buy ${product.name}`,
-        `Certified ${product.category} Kenya`,
-        `Buy ${product.name} Nairobi`,
-        `Buy ${product.name} Nakuru`,
-        `Buy ${product.name} Eldoret`,
-        `Mel-Agri products`,
-        "certified agrovet Kenya",
-        "agricultural inputs online"
-    ].filter(Boolean);
-
     return {
         title: { absolute: `Buy ${product.name} Online in Kenya | Mel-Agri` },
         description: seoDescription,
-        keywords,
         openGraph: {
             title: `Buy ${product.name} Online | Mel-Agri Kenya`,
             description: seoDescription,

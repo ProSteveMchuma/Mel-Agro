@@ -26,6 +26,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { checkoutSchema, CheckoutFormData } from '@/lib/schemas';
 import { MPESA_TILL_DISPLAY } from '@/lib/site';
 import { PICKUP_STORE } from '@/lib/pickup';
+import { CASH_ON_DELIVERY_ENABLED, cashOnDeliveryAllowed } from '@/lib/payment-options';
 import { Input } from '@/components/ui/form/Input';
 import MpesaReceiptClaim from '@/components/MpesaReceiptClaim';
 import { Select } from '@/components/ui/form/Select';
@@ -259,11 +260,12 @@ export default function CheckoutPage() {
     const quickPaymentMethod = (() => {
         const valid = ['mpesa', 'manual_mpesa', 'cod'] as const;
         const preferred = (user as any)?.preferredPaymentMethod;
-        if (preferred && (valid as readonly string[]).includes(preferred)) return preferred;
+        if (preferred && (valid as readonly string[]).includes(preferred) && (preferred !== 'cod' || CASH_ON_DELIVERY_ENABLED)) return preferred;
         const fromOrder = String((lastPaidOrder as any)?.paymentMethod || '').toLowerCase();
         if (fromOrder.includes('express') || fromOrder === 'mpesa') return 'mpesa';
         if (fromOrder.includes('till') || fromOrder.includes('manual') || fromOrder.includes('buy goods')) return 'manual_mpesa';
-        if (fromOrder.includes('cod') || fromOrder.includes('cash')) return 'cod';
+        if ((fromOrder.includes('cod') || fromOrder.includes('cash')) && CASH_ON_DELIVERY_ENABLED) return 'cod';
+        if (paymentMethod === 'cod' && !CASH_ON_DELIVERY_ENABLED) return 'mpesa';
         return paymentMethod || 'mpesa';
     })();
     const paymentMethodLabel = (method: string) => {
@@ -361,7 +363,7 @@ export default function CheckoutPage() {
         // Storefront checkout only offers M-Pesa Express, Buy Goods (Till), and COD.
         const validPaymentMethods = ['mpesa', 'manual_mpesa', 'cod'] as const;
         const preferred = (user as any).preferredPaymentMethod;
-        const initialPaymentMethod = (preferred && validPaymentMethods.includes(preferred)) ? preferred : 'mpesa';
+        const initialPaymentMethod = (preferred && validPaymentMethods.includes(preferred) && (preferred !== 'cod' || CASH_ON_DELIVERY_ENABLED)) ? preferred : 'mpesa';
 
         reset({
             shipping: {
@@ -387,6 +389,11 @@ export default function CheckoutPage() {
     const discountFromPoints = usePoints ? Math.min(cartTotal, user?.loyaltyPoints || 0) : 0;
     const couponDiscount = appliedCoupon?.amount || 0;
     const total = Math.max(0, cartTotal + shippingCost - discountFromPoints - couponDiscount);
+    // Cash on delivery is paused; it only stays available when nothing is left to pay.
+    const codAvailable = cashOnDeliveryAllowed(total);
+    useEffect(() => {
+        if (paymentMethod === 'cod' && !codAvailable) setValue('paymentMethod', 'mpesa');
+    }, [paymentMethod, codAvailable, setValue]);
 
     const handleApplyCoupon = async () => {
         if (!couponInput.trim()) return;
@@ -1145,7 +1152,8 @@ export default function CheckoutPage() {
                                                                 <p className="text-xs text-gray-500 font-medium">Pay manually via M-Pesa menu.</p>
                                                             </div>
 
-                                                            {/* Cash on Delivery */}
+                                                            {/* Cash on Delivery (paused unless the order total is zero) */}
+                                                            {codAvailable && (
                                                             <div
                                                                 onClick={() => setValue('paymentMethod', 'cod')}
                                                                 className={`relative cursor-pointer rounded-2xl border-2 p-5 transition-all duration-200 ${paymentMethod === 'cod'
@@ -1170,6 +1178,7 @@ export default function CheckoutPage() {
                                                                         : 'Pay when we deliver.'}
                                                                 </p>
                                                             </div>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 ) : (
@@ -1178,7 +1187,7 @@ export default function CheckoutPage() {
                                                         onClick={() => setShowOtherPayments(true)}
                                                         className="w-full rounded-2xl border border-dashed border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-500 hover:border-gray-300 hover:text-gray-700 transition-colors"
                                                     >
-                                                        Other ways to pay → Buy Goods (Till) or Cash on Delivery
+                                                        {codAvailable ? 'Other ways to pay → Buy Goods (Till) or Cash on Delivery' : 'Other ways to pay → Buy Goods (Till)'}
                                                     </button>
                                                 )}
                                             </div>
@@ -1416,7 +1425,7 @@ export default function CheckoutPage() {
                                                         </button>
                                                     </div>
                                                     <p className="text-[11px] text-emerald-700 mt-4 text-center font-medium">
-                                                        💡 Phone locked or no prompt? Tap &ldquo;Didn&apos;t get the prompt?&rdquo; to switch to Buy Goods or Cash on Delivery.
+                                                        💡 Phone locked or no prompt? Tap &ldquo;Didn&apos;t get the prompt?&rdquo; to switch to {codAvailable ? 'Buy Goods or Cash on Delivery' : 'Buy Goods'}.
                                                     </p>
                                                 </div>
                                             )}
@@ -1449,6 +1458,7 @@ export default function CheckoutPage() {
                                                         >
                                                             <span>📲</span> Pay via Buy Goods (Till)
                                                         </button>
+                                                        {CASH_ON_DELIVERY_ENABLED && (
                                                         <button
                                                             type="button"
                                                             onClick={handleFailureSwitchToCod}
@@ -1457,6 +1467,7 @@ export default function CheckoutPage() {
                                                         >
                                                             <span>💵</span> Cash on Delivery
                                                         </button>
+                                                        )}
                                                         <button
                                                             type="button"
                                                             onClick={handlePayLater}

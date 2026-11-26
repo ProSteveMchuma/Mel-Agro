@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CASH_ON_DELIVERY_ENABLED } from "@/lib/payment-options";
 
 const FAQS = [
     {
@@ -9,7 +10,7 @@ const FAQS = [
     },
     {
         question: "What payment methods do you accept?",
-        answer: "We accept M-Pesa at checkout (STK push or Buy Goods Till) and Cash on Delivery where offered. Bank transfer is available for bulk and wholesale orders fulfilled via Makamithi, our parent company — request a quote on the Bulk page."
+        answer: `We accept M-Pesa at checkout (STK push or Buy Goods Till)${CASH_ON_DELIVERY_ENABLED ? ' and Cash on Delivery where offered' : ''}. Bank transfer is available for bulk and wholesale orders fulfilled via Makamithi, our parent company — request a quote on the Bulk page.`
     },
     {
         question: "Do you offer bulk or wholesale supply?",

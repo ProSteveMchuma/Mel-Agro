@@ -1,6 +1,7 @@
 import Footer from '@/components/Footer';
 import Header from '@/components/Header';
 import Link from 'next/link';
+import { CASH_ON_DELIVERY_ENABLED } from '@/lib/payment-options';
 
 export default function BillingPolicy() {
     return (
@@ -16,7 +17,7 @@ export default function BillingPolicy() {
                         <ul className="list-disc pl-5 space-y-2 mb-4">
                             <li>M-Pesa Express (STK Push to your phone)</li>
                             <li>Buy Goods (Till) — pay via M-Pesa and enter your receipt code</li>
-                            <li>Cash on Delivery or collection, where offered at checkout</li>
+                            {CASH_ON_DELIVERY_ENABLED && <li>Cash on Delivery or collection, where offered at checkout</li>}
                             <li>
                                 Bank transfer for{' '}
                                 <Link href="/bulk" className="text-melagri-primary font-semibold hover:underline">

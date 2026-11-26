@@ -17,6 +17,7 @@ import { enforceRateLimit } from '@/lib/request-guard';
 import { revalidateStorefrontCatalogue } from '@/lib/revalidate-catalogue';
 import { normalizeAnalyticsPath } from '@/lib/commerce-ops';
 import { isListingPath } from '@/lib/shop-journey';
+import { cashOnDeliveryAllowed } from '@/lib/payment-options';
 
 const lineItemSchema = z.object({
     id: z.union([z.string(), z.number()]).transform(String),
@@ -355,6 +356,9 @@ export async function POST(request: Request) {
             const total = Math.max(0, Math.round(subtotal + shippingInfo.cost - pointsRedeemed - couponDiscount));
             if (['mpesa', 'manual_mpesa', 'card'].includes(input.paymentMethod) && total <= 0) {
                 throw new OrderCreationError('Choose Cash on Delivery when discounts cover the full order', 409, 'PAYMENT_TOTAL_ZERO');
+            }
+            if (input.paymentMethod === 'cod' && !cashOnDeliveryAllowed(total)) {
+                throw new OrderCreationError('Cash on delivery is not available right now. Please pay with M-Pesa.', 409, 'COD_DISABLED');
             }
 
             const payment = paymentDetails(input.paymentMethod, input.transactionCode);

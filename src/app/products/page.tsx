@@ -15,7 +15,6 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     
     let title = "Buy Agricultural Inputs, Seeds & Fertilizers Online Kenya";
     let description = "Order certified seeds, fertilizers, and crop protection from Mel-Agri in Machakos, with delivery across Kenya.";
-    let keywords = ["buy agricultural inputs", "agrovet online Kenya", "certified seeds supplier", "fertilizer price Kenya", "farm tools online", "Mel-Agri"];
     // Catalogue stays on /products for filter UX; SEO landings own category/brand URLs.
     const listing = catalogueListingMeta({ category, brand, search });
     const canonical = listing.canonical;
@@ -23,21 +22,17 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     if (category) {
         title = `Buy Premium ${category} Online Kenya - Fast Farm Delivery`;
         description = `Buy certified ${category} online at Mel-Agri. Select from premium brands with fast shipping to Nakuru, Eldoret, Nairobi, Kisumu, and all 47 counties in Kenya.`;
-        keywords = [category, `buy ${category} online`, `${category} price Kenya`, `certified ${category} supplier`, "agrovet Kenya", "farm inputs"];
     } else if (brand) {
         title = `Buy Original ${brand} Products Online Kenya - Best Prices`;
         description = `Shop certified crop protection and seed products from ${brand} online at Mel-Agri. Authorized dealer with fast farm delivery to Nakuru, Eldoret, Kisumu, and countrywide in Kenya.`;
-        keywords = [brand, `original ${brand} products`, `${brand} distributor Kenya`, `buy ${brand} online`, "authorized agrovet"];
     } else if (search) {
         title = `Search Results for "${search}"`;
         description = `Find premium certified agricultural inputs matching "${search}" at Mel-Agri Kenya. Shop seeds, fertilizers, and farm equipment online with secure payment and fast delivery.`;
-        keywords = [search, `buy ${search} Kenya`, `${search} price`, "online agrovet"];
     }
 
     return {
         title,
         description,
-        keywords: keywords.map(k => k.toLowerCase()),
         alternates: { canonical },
         // Prefer /categories and /brands landings for indexation; filtered catalogue is a tool.
         robots: listing.index ? { index: true, follow: true } : { index: false, follow: true },
