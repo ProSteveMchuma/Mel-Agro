@@ -19,7 +19,7 @@ import { getMpesaErrorMessage } from '@/lib/mpesa';
 import { authenticatedJsonHeaders } from '@/lib/auth-headers';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
-import { getDeliveryCost, KENYAN_COUNTIES } from '@/lib/delivery';
+import { getDeliveryCost, KENYAN_COUNTIES, KENYAN_TOWNS, OTHER_TOWN, findKenyanTown, composeShippingTown, splitShippingTown } from '@/lib/delivery';
 import { useShippingZones } from '@/hooks/useShippingZones';
 import { get, useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,6 +43,11 @@ const LocationPicker = dynamic(() => import('../../components/checkout/LocationP
 });
 
 const KENYA_COUNTIES = KENYAN_COUNTIES.map(c => ({ value: c, label: c }));
+const DELIVERY_TOWN_OPTIONS = [
+    { value: '', label: 'Select your town' },
+    ...KENYAN_TOWNS.map(t => ({ value: t.town, label: `${t.town} (${t.county})` })),
+    { value: OTHER_TOWN, label: "My town isn't listed" },
+];
 
 const CONTACT_FIELDS = [
     { name: 'shipping.phone', label: 'Phone number' },
@@ -51,6 +56,7 @@ const CONTACT_FIELDS = [
 ] as const;
 
 const DELIVERY_FIELDS = [
+    { name: 'shipping.deliveryTown', label: 'Delivery town' },
     { name: 'shipping.county', label: 'County' },
     { name: 'shipping.town', label: 'Town, estate, or area' },
     { name: 'shipping.address', label: 'Street address or landmark' },
@@ -138,6 +144,7 @@ export default function CheckoutPage() {
                 fullName: '',
                 email: '',
                 phone: '',
+                deliveryTown: '',
                 county: 'Nairobi',
                 town: '',
                 address: '',
@@ -155,6 +162,28 @@ export default function CheckoutPage() {
     const shippingData = watch('shipping');
     const shippingMethod = watch('shippingMethod');
     const paymentMethod = watch('paymentMethod');
+    const deliveryTown = shippingData.deliveryTown || '';
+    const pickedTown = deliveryTown && deliveryTown !== OTHER_TOWN ? findKenyanTown(deliveryTown) : undefined;
+    const displayTown = composeShippingTown(deliveryTown, shippingData.town);
+
+    // The picked town decides the county, which still drives the delivery fee.
+    useEffect(() => {
+        if (pickedTown && shippingData.county !== pickedTown.county) {
+            setValue('shipping.county', pickedTown.county, { shouldValidate: true });
+        }
+    }, [pickedTown, shippingData.county, setValue]);
+
+    /** Keep the town dropdown in step with a location found on the map. */
+    const syncDeliveryTown = (county?: string, town?: string) => {
+        const match = findKenyanTown(town);
+        if (match && (!county || match.county === county)) {
+            setValue('shipping.deliveryTown', match.town, { shouldValidate: true });
+            return;
+        }
+        if (county && pickedTown?.county !== county) {
+            setValue('shipping.deliveryTown', OTHER_TOWN, { shouldValidate: true });
+        }
+    };
 
     const applyMapPlace = (place: GeocodeSuggestion, opts?: { toastMessage?: string }) => {
         setShowMap(true);
@@ -162,6 +191,7 @@ export default function CheckoutPage() {
         setValue('shipping.lng', place.lng);
 
         const county = matchKenyanCounty(place.county) || place.county;
+        syncDeliveryTown(county, place.town);
         if (county) setValue('shipping.county', county, { shouldValidate: true });
         if (place.town) setValue('shipping.town', place.town, { shouldValidate: true });
         if (place.street) setValue('shipping.address', place.street, { shouldValidate: true, shouldDirty: true });
@@ -256,7 +286,7 @@ export default function CheckoutPage() {
         ? `${primarySavedAddress.label}: ${primarySavedAddress.details}${primarySavedAddress.city ? `, ${primarySavedAddress.city}` : ''}${primarySavedAddress.county ? `, ${primarySavedAddress.county}` : ''}`
         : (lastPaidOrder as any)?.shippingAddress?.details
             ? `${(lastPaidOrder as any).shippingAddress.details}${(lastPaidOrder as any).shippingAddress?.county ? `, ${(lastPaidOrder as any).shippingAddress.county}` : ''}`
-            : [shippingData.address, shippingData.town, shippingData.county].filter(Boolean).join(', ') || 'Saved delivery details';
+            : [shippingData.address, displayTown, shippingData.county].filter(Boolean).join(', ') || 'Saved delivery details';
     const quickPaymentMethod = (() => {
         const valid = ['mpesa', 'manual_mpesa', 'cod'] as const;
         const preferred = (user as any)?.preferredPaymentMethod;
@@ -365,13 +395,17 @@ export default function CheckoutPage() {
         const preferred = (user as any).preferredPaymentMethod;
         const initialPaymentMethod = (preferred && validPaymentMethods.includes(preferred) && (preferred !== 'cod' || CASH_ON_DELIVERY_ENABLED)) ? preferred : 'mpesa';
 
+        const prefillCounty = primary?.county || user.county || 'Nairobi';
+        const prefillTown = splitShippingTown(primary?.city || user.city || '', primary?.county || user.county);
+
         reset({
             shipping: {
                 fullName: cleanName,
                 email: user.email || '',
                 phone: user.phone || '',
-                county: primary?.county || user.county || 'Nairobi',
-                town: primary?.city || user.city || '',
+                deliveryTown: prefillTown.deliveryTown,
+                county: prefillCounty,
+                town: prefillTown.area,
                 address: primary?.details || user.address || '',
                 lat: primary?.lat ?? -1.2921,
                 lng: primary?.lng ?? 36.8219,
@@ -457,7 +491,13 @@ export default function CheckoutPage() {
         toast.error('Please correct the highlighted fields before placing your order.');
     };
 
-    const onSubmit = async (data: CheckoutFormData) => {
+    const onSubmit = async (formData: CheckoutFormData) => {
+        // Orders keep a single `town` string: fold the picked town and the
+        // optional estate/area together, and drop the UI-only field.
+        const { deliveryTown: pickedDeliveryTown, ...shippingFields } = formData.shipping;
+        const data: CheckoutFormData = formData.shippingMethod === 'standard'
+            ? { ...formData, shipping: { ...shippingFields, town: composeShippingTown(pickedDeliveryTown, shippingFields.town) } }
+            : { ...formData, shipping: shippingFields };
         let activeUser = user;
         if (!activeUser) {
             setIsProcessing(true);
@@ -982,8 +1022,10 @@ export default function CheckoutPage() {
                                                                         type="button"
                                                                         key={addr.id}
                                                                         onClick={() => {
+                                                                            const savedTown = splitShippingTown(addr.city, addr.county);
+                                                                            setValue('shipping.deliveryTown', savedTown.deliveryTown, { shouldValidate: true });
                                                                             setValue('shipping.county', addr.county, { shouldValidate: true });
-                                                                            setValue('shipping.town', addr.city, { shouldValidate: true });
+                                                                            setValue('shipping.town', savedTown.area, { shouldValidate: true });
                                                                             setValue('shipping.address', addr.details, { shouldValidate: true });
                                                                             toast.success(`Loaded "${addr.label}"`);
                                                                         }}
@@ -997,18 +1039,32 @@ export default function CheckoutPage() {
                                                         </div>
                                                     )}
 
-                                                    <Select
-                                                        name="shipping.county"
-                                                        label="County"
-                                                        options={KENYA_COUNTIES}
-                                                        required
-                                                    />
+                                                    <div>
+                                                        <Select
+                                                            name="shipping.deliveryTown"
+                                                            label="Delivery town"
+                                                            options={DELIVERY_TOWN_OPTIONS}
+                                                            required
+                                                        />
+                                                        {pickedTown && (
+                                                            <p className="mt-1 text-xs text-gray-500">{pickedTown.county} County · {deliveryInfo.etaText}</p>
+                                                        )}
+                                                    </div>
+
+                                                    {deliveryTown === OTHER_TOWN && (
+                                                        <Select
+                                                            name="shipping.county"
+                                                            label="County"
+                                                            options={KENYA_COUNTIES}
+                                                            required
+                                                        />
+                                                    )}
 
                                                     <AddressSearchField
                                                         name="shipping.town"
-                                                        label="Town / Estate / Area"
-                                                        placeholder="Start typing e.g. Westlands, Nakuru, Eldoret..."
-                                                        required
+                                                        label={deliveryTown === OTHER_TOWN ? 'Town / Estate / Area' : 'Estate / Area / Village'}
+                                                        placeholder={deliveryTown === OTHER_TOWN ? 'Type your town, e.g. Kinangop' : 'e.g. Kabati, Lakeview, Section 58'}
+                                                        required={deliveryTown === OTHER_TOWN}
                                                         helperText="Suggestions search the online map. Pick one to pin your delivery location."
                                                         onPlaceSelect={(place) => applyMapPlace(place)}
                                                     />
@@ -1050,6 +1106,7 @@ export default function CheckoutPage() {
                                                                         setValue('shipping.lat', lat);
                                                                         setValue('shipping.lng', lng);
                                                                         const county = matchKenyanCounty(address?.county) || address?.county;
+                                                                        syncDeliveryTown(county, address?.town);
                                                                         if (county) setValue('shipping.county', county, { shouldValidate: true });
                                                                         if (address?.town) setValue('shipping.town', address.town, { shouldValidate: true });
 
@@ -1323,7 +1380,7 @@ export default function CheckoutPage() {
                                                     ) : (
                                                         <>
                                                             <p className="text-gray-600">{shippingData.address}</p>
-                                                            <p className="text-gray-600">{shippingData.town}, {shippingData.county}</p>
+                                                            <p className="text-gray-600">{displayTown}, {shippingData.county}</p>
                                                         </>
                                                     )}
                                                 </div>

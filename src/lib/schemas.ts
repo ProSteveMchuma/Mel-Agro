@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { KENYAN_COUNTIES } from './delivery.ts';
+import { KENYAN_COUNTIES, OTHER_TOWN, findKenyanTown } from './delivery.ts';
 
 // --- Auth Schemas ---
 
@@ -45,6 +45,8 @@ const checkoutShippingSchema = z.object({
     fullName: z.string().min(2, { message: "Full name is required" }).max(80, { message: "Name is too long" }),
     email: z.string().email({ message: "Invalid email address" }).optional().or(z.literal('')),
     phone: phoneSchema,
+    /** Town picked from the checkout list, or OTHER_TOWN when not listed. Folded into `town` before submit. */
+    deliveryTown: z.string().optional(),
     county: z.string().optional(),
     town: z.string().optional(),
     address: z.string().optional(),
@@ -60,6 +62,16 @@ export const checkoutSchema = z.object({
 }).superRefine((data, ctx) => {
     if (data.shippingMethod !== 'standard') return;
 
+    const pickedTown = data.shipping.deliveryTown && data.shipping.deliveryTown !== OTHER_TOWN
+        ? findKenyanTown(data.shipping.deliveryTown)
+        : undefined;
+    if (!pickedTown && data.shipping.deliveryTown !== OTHER_TOWN) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['shipping', 'deliveryTown'],
+            message: 'Please select your delivery town',
+        });
+    }
     if (!data.shipping.county || !KENYAN_COUNTIES.includes(data.shipping.county)) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
@@ -67,7 +79,8 @@ export const checkoutSchema = z.object({
             message: 'Please select a valid Kenyan county',
         });
     }
-    if (!data.shipping.town || data.shipping.town.trim().length < 2) {
+    // A town picked from the list is enough; "Other" needs the town typed in.
+    if (!pickedTown && (!data.shipping.town || data.shipping.town.trim().length < 2)) {
         ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ['shipping', 'town'],
