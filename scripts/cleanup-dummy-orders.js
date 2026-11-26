@@ -2,9 +2,14 @@
 /*
  * Remove test/dummy orders from Firestore, keeping only real completed orders.
  *
- * KEEP rule (default): paymentStatus === 'Paid' AND status is 'Delivered' or 'Collected'.
- * Everything else in `orders` is a deletion candidate, together with records that
- * point at those orders: transactions, notifications, analytics_purchases, refunds.
+ * Step 1 (no --before): writes ALL-orders-timeline.csv, every order oldest first with
+ * hints (placed by a staff account, test-looking name/email/phone), and suggests the
+ * date the first real customer order came in. Nothing is marked for deletion.
+ *
+ * Step 2 (--before=YYYY-MM-DD[THH:MM]): every order placed BEFORE that moment is a
+ * deletion candidate, together with records that point at those orders:
+ * transactions, notifications, analytics_purchases, refunds. Orders on/after it are kept.
+ * Use --keep / --delete to override individual orders.
  *
  * Nothing is deleted unless you pass --apply AND the --confirm code printed by the
  * dry run. The code is a hash of the exact id list, so if the data changes between
@@ -16,10 +21,11 @@
  * same variables as the site: FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL,
  * FIREBASE_PRIVATE_KEY, or GOOGLE_APPLICATION_CREDENTIALS=path/to/key.json):
  *
- *   node scripts/cleanup-dummy-orders.js                      # dry run: backup + report
+ *   node scripts/cleanup-dummy-orders.js                      # timeline: backup + list all orders
+ *   node scripts/cleanup-dummy-orders.js --before=2026-03-01  # dry run: list orders before that date
  *   node scripts/cleanup-dummy-orders.js --keep=ID1,ID2       # also keep these order ids
  *   node scripts/cleanup-dummy-orders.js --delete=ID3         # also delete these (even if they match KEEP)
- *   node scripts/cleanup-dummy-orders.js --apply --confirm=XXXXXXXX [same --keep/--delete flags]
+ *   node scripts/cleanup-dummy-orders.js --before=2026-03-01 --apply --confirm=XXXXXXXX [same --keep/--delete flags]
  *
  * Reports also list customer accounts that have no kept order (possible test users).
  * Those are NEVER deleted by this script; they are only listed for review.
@@ -61,15 +67,26 @@ const forceKeep = new Set(list(args.keep));
 const forceDelete = new Set(list(args.delete));
 const APPLY = Boolean(args.apply);
 
-const KEEP_STATUSES = new Set(['Delivered', 'Collected']);
 const RELATED = [
     { collection: 'transactions', field: 'orderId' },
     { collection: 'notifications', field: 'orderId' },
     { collection: 'refunds', field: 'orderId' },
 ];
 
+const BEFORE = typeof args.before === 'string' ? new Date(args.before.length === 10 ? `${args.before}T00:00:00+03:00` : args.before) : null;
+if (args.before && (!BEFORE || isNaN(BEFORE))) { console.error(`Bad --before date: ${args.before}`); process.exit(1); }
+if (APPLY && !BEFORE) { console.error('--apply needs --before=DATE (the cutoff you reviewed).'); process.exit(1); }
+
+function orderTime(o) {
+    const v = o.date || o.createdAt;
+    const d = v && typeof v.toDate === 'function' ? v.toDate() : new Date(v);
+    return isNaN(d) ? null : d;
+}
+const TEST_RE = /\b(test|testing|demo|dummy|sample|example|fake|asdf|qwerty)\b|@example\.|@test\./i;
 function isRealOrder(o) {
-    return o.paymentStatus === 'Paid' && KEEP_STATUSES.has(o.status);
+    if (!BEFORE) return true; // timeline mode: nothing is marked for deletion
+    const t = orderTime(o);
+    return Boolean(t && t >= BEFORE); // orders with no readable date are kept; review them by hand
 }
 
 function toPlain(v) {
@@ -109,13 +126,21 @@ async function main() {
     console.log(`Backing up to ${dir}`);
     const data = await backup(dir, ['orders', 'users', 'analytics_purchases', 'c2bPayments', ...RELATED.map((r) => r.collection)]);
 
+    const staffIds = new Set(data.users.filter((d) => ['admin', 'super-admin'].includes(d.data().role)).map((d) => d.id));
+    const phoneCount = {};
+    for (const d of data.orders) { const ph = d.data().phone; if (ph) phoneCount[ph] = (phoneCount[ph] || 0) + 1; }
     const keep = [];
     const del = [];
+    const timeline = [];
     for (const d of data.orders) {
         const o = d.data();
         const real = forceDelete.has(d.id) ? false : (forceKeep.has(d.id) || isRealOrder(o));
+        const who = `${o.userName || ''} ${o.userEmail || ''}`;
+        const staff = staffIds.has(o.userId);
+        const hints = [staff && 'staff account', TEST_RE.test(who) && 'test-looking name/email', o.phone && phoneCount[o.phone] >= 5 && 'phone used on 5+ orders'].filter(Boolean).join('; ');
         const row = {
             id: d.id,
+            placed: orderTime(o)?.toISOString() || '(no date)',
             date: toPlain(o.date || o.createdAt || ''),
             customer: o.userName || o.userEmail || '',
             phone: o.phone || '',
@@ -125,11 +150,13 @@ async function main() {
             paymentMethod: o.paymentMethod || '',
             transactionId: o.transactionId || '',
             items: (o.items || []).map((i) => `${i.quantity}x ${i.name}`).join('; '),
+            hints,
         };
+        timeline.push(row);
         (real ? keep : del).push(row);
     }
-    const byDate = (a, b) => String(a.date).localeCompare(String(b.date));
-    keep.sort(byDate); del.sort(byDate);
+    const byDate = (a, b) => String(a.placed).localeCompare(String(b.placed));
+    keep.sort(byDate); del.sort(byDate); timeline.sort(byDate);
     const delIds = new Set(del.map((r) => r.id));
 
     // Related records pointing at deleted orders.
@@ -158,15 +185,31 @@ async function main() {
     const plan = [...[...delIds].sort().map((id) => `orders/${id}`), ...related.map((r) => `${r.collection}/${r.id}`).sort()];
     const code = crypto.createHash('sha256').update(plan.join('\n')).digest('hex').slice(0, 8);
 
+    fs.writeFileSync(path.join(dir, 'ALL-orders-timeline.csv'), csv(timeline));
     fs.writeFileSync(path.join(dir, 'KEEP-orders.csv'), csv(keep));
     fs.writeFileSync(path.join(dir, 'DELETE-orders.csv'), csv(del));
     fs.writeFileSync(path.join(dir, 'DELETE-related.csv'), csv(related));
     fs.writeFileSync(path.join(dir, 'REVIEW-c2b-payments-on-deleted-orders.csv'), csv(c2bWarnings));
     fs.writeFileSync(path.join(dir, 'REVIEW-users-without-real-orders.csv'), csv(userReview));
 
-    console.log(`\nOrders total: ${data.orders.length}`);
-    console.log(`  KEEP   (paid + delivered/collected): ${keep.length}`);
-    console.log(`  DELETE (everything else):            ${del.length}`);
+    // Timeline summary: orders per month, and the first order that looks like a real customer.
+    const perMonth = {};
+    for (const r of timeline) { const m = r.placed.slice(0, 7); perMonth[m] = (perMonth[m] || 0) + 1; }
+    console.log('\nOrders per month:');
+    for (const [m, n] of Object.entries(perMonth)) console.log(`  ${m}  ${String(n).padStart(4)}`);
+    const firstReal = timeline.find((r) => !r.hints && r.paymentStatus === 'Paid' && r.placed !== '(no date)');
+    if (firstReal) console.log(`\nFirst paid order with no test/staff hints: ${firstReal.placed}  ${firstReal.id}  ${firstReal.customer}  KSh ${firstReal.total}  (${firstReal.status})`);
+    console.log('Read ALL-orders-timeline.csv to confirm where testing stopped and real customers started.');
+    if (!BEFORE) {
+        console.log(`\nTimeline only. Nothing was marked or deleted. Reports: ${dir}`);
+        console.log('Next: node scripts/cleanup-dummy-orders.js --before=YYYY-MM-DD   (Nairobi time; orders before that date are listed for deletion)\n');
+        return;
+    }
+
+    console.log(`\nCutoff: orders placed before ${BEFORE.toISOString()}`);
+    console.log(`Orders total: ${data.orders.length}`);
+    console.log(`  KEEP   (on/after cutoff): ${keep.length}`);
+    console.log(`  DELETE (before cutoff):   ${del.length}`);
     const tally = {};
     for (const r of del) { const k = `${r.paymentStatus || 'no payment status'} / ${r.status || 'no status'}`; tally[k] = (tally[k] || 0) + 1; }
     for (const [k, n] of Object.entries(tally).sort((a, b) => b[1] - a[1])) console.log(`      ${String(n).padStart(4)}  ${k}`);
@@ -178,7 +221,7 @@ async function main() {
 
     if (!APPLY) {
         console.log('\nDry run only. Nothing was deleted. Review DELETE-orders.csv, then re-run with:');
-        console.log(`  node scripts/cleanup-dummy-orders.js --apply --confirm=${code}${args.keep ? ` --keep=${args.keep}` : ''}${args.delete ? ` --delete=${args.delete}` : ''}\n`);
+        console.log(`  node scripts/cleanup-dummy-orders.js --before=${args.before} --apply --confirm=${code}${args.keep ? ` --keep=${args.keep}` : ''}${args.delete ? ` --delete=${args.delete}` : ''}\n`);
         return;
     }
     if (args.confirm !== code) {
