@@ -108,3 +108,18 @@ export function categoryEditorial(category: string): CategoryEditorial {
         faq: [{ question: `Can ${category} be delivered across Kenya?`, answer: 'Eligible stocked products can be delivered across Kenya. Checkout shows the exact location-specific charge and estimate.' }],
     };
 }
+
+/**
+ * Shorten text for a meta description without cutting a word in half.
+ * Ends on the last full sentence if one fits, otherwise the last whole word plus "…".
+ */
+export function truncateMetaDescription(text: string, max = 158): string {
+    const clean = text.replace(/\s+/g, ' ').trim();
+    if (clean.length <= max) return clean;
+    const cut = clean.slice(0, max);
+    const sentenceEnd = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+    if (sentenceEnd >= max * 0.6) return cut.slice(0, sentenceEnd + 1);
+    const lastSpace = cut.slice(0, max - 1).lastIndexOf(' ');
+    const base = (lastSpace > 0 ? cut.slice(0, lastSpace) : cut.slice(0, max - 1)).replace(/[\s,;:—–-]+$/, '');
+    return `${base}…`;
+}

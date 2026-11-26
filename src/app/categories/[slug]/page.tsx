@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import CatalogLandingPage from '@/components/seo/CatalogLandingPage';
 import { getProductsByTaxonomyCached, getUniqueCategoriesCached } from '@/lib/products-server';
 import { absoluteUrl } from '@/lib/site';
-import { categoryEditorial, productSeoPath, resolveSeoValue, slugifySeoValue } from '@/lib/seo';
+import { categoryEditorial, productSeoPath, resolveSeoValue, slugifySeoValue, truncateMetaDescription } from '@/lib/seo';
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const editorial = categoryEditorial(category);
     const canonical = `/categories/${slugifySeoValue(category)}`;
     const title = `${category} in Kenya — Compare Products & Prices`;
-    const description = editorial.summary.slice(0, 158);
+    const description = truncateMetaDescription(editorial.summary);
     return { title, description, alternates: { canonical }, openGraph: { title, description, type: 'website', url: canonical, images: ['/images/melagri-social.jpg'] } };
 }
 

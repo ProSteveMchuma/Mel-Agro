@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Logo from "./Logo";
 import { whatsAppUrl, SUPPORT_PHONE_DISPLAY } from "@/lib/site";
+import { CASH_ON_DELIVERY_ENABLED } from "@/lib/payment-options";
 
 export default function Footer() {
     return (
@@ -48,7 +49,9 @@ export default function Footer() {
                         <div className="flex flex-wrap gap-2 mb-8">
                             <span className="bg-white px-2 py-1 rounded text-[10px] font-bold text-gray-800">M-PESA EXPRESS</span>
                             <span className="bg-white px-2 py-1 rounded text-[10px] font-bold text-gray-800">BUY GOODS</span>
-                            <span className="bg-white px-2 py-1 rounded text-[10px] font-bold text-gray-800">CASH ON DELIVERY</span>
+                            {CASH_ON_DELIVERY_ENABLED && (
+                                <span className="bg-white px-2 py-1 rounded text-[10px] font-bold text-gray-800">CASH ON DELIVERY</span>
+                            )}
                         </div>
 
                         <h3 className="text-white font-bold uppercase tracking-wider text-xs mb-4">Need Help?</h3>

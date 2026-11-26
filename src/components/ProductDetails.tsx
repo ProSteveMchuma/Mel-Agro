@@ -208,7 +208,7 @@ export default function ProductDetails({ id, initialProduct, initialRelatedProdu
                                 >
                                     <Image
                                         src={safeImage}
-                                        alt={`${product.name} - ${product.brand || 'Premium'} ${product.category} in Kenya | Mel-Agri`}
+                                        alt={product.brand ? `${product.name} by ${product.brand}` : product.name}
                                         fill
                                         sizes="(max-width: 1024px) 100vw, 50vw"
                                         unoptimized={skipImageOptimizer(safeImage)}
